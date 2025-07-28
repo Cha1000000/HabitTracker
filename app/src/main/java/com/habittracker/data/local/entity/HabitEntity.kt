@@ -1,0 +1,29 @@
+package com.habittracker.data.local.entity
+
+import androidx.room.Entity
+import androidx.room.PrimaryKey
+import com.habittracker.domain.model.HabitFrequency
+import com.habittracker.domain.model.HabitType
+import kotlinx.datetime.Instant
+import kotlinx.datetime.LocalTime
+
+@Entity(tableName = "habits")
+data class HabitEntity(
+    @PrimaryKey
+    val id: String,
+    val title: String,
+    val description: String,
+    val icon: String,
+    val color: String,
+    val type: HabitType,
+    val frequency: HabitFrequency,
+    val reminderTime: LocalTime?,
+    val reminderEnabled: Boolean,
+    val targetValue: Int,
+    val unit: String,
+    val createdBy: String,
+    val participants: List<String>,
+    val isActive: Boolean,
+    val createdAt: Instant,
+    val updatedAt: Instant
+)

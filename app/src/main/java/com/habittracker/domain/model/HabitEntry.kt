@@ -1,16 +1,11 @@
 package com.habittracker.domain.model
 
-import androidx.room.Entity
 import kotlinx.datetime.Instant
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.atStartOfDayIn
 import kotlinx.datetime.toLocalDateTime
 
-@Entity(
-    tableName = "habit_entries",
-    primaryKeys = ["habitId", "userId", "date"]
-)
 data class HabitEntry(
     val habitId: String,
     val userId: String,

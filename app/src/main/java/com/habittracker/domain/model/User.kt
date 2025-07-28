@@ -1,13 +1,9 @@
 package com.habittracker.domain.model
 
-import androidx.room.Entity
-import androidx.room.PrimaryKey
 import kotlinx.datetime.Instant
 import kotlinx.datetime.TimeZone
 
-@Entity(tableName = "users")
 data class User(
-    @PrimaryKey
     val id: String,
     val name: String,
     val email: String,
@@ -18,7 +14,7 @@ data class User(
     val longestStreak: Int = 0,
     val createdAt: Instant,
     val lastActiveAt: Instant,
-    val timezone: String = TimeZone.currentSystemDefault().id
+    val timezone: String? = TimeZone.currentSystemDefault().id
 )
 
 // Extension functions для работы с пользователем

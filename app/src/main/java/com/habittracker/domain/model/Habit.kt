@@ -1,13 +1,9 @@
 package com.habittracker.domain.model
 
-import androidx.room.Entity
-import androidx.room.PrimaryKey
 import kotlinx.datetime.Instant
 import kotlinx.datetime.LocalTime
 
-@Entity(tableName = "habits")
 data class Habit(
-    @PrimaryKey
     val id: String,
     val title: String,
     val description: String = "",
