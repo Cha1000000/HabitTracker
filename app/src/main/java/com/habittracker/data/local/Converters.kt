@@ -3,6 +3,7 @@ package com.habittracker.data.local
 import androidx.room.TypeConverter
 import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
+import com.habittracker.domain.model.ChallengeRules
 import com.habittracker.domain.model.HabitFrequency
 import com.habittracker.domain.model.HabitType
 import kotlinx.datetime.Instant
@@ -41,6 +42,17 @@ class Converters {
             val type = object : TypeToken<List<String>>() {}.type
             gson.fromJson<List<String>>(it, type)
         } ?: emptyList()
+
+    // ChallengeRules converters
+    @TypeConverter
+    fun toChallengeRules(value: String?): ChallengeRules? {
+        return value?.let { gson.fromJson(it, ChallengeRules::class.java) }
+    }
+
+    @TypeConverter
+    fun fromChallengeRules(rules: ChallengeRules?): String? {
+        return gson.toJson(rules)
+    }
 
     // HabitType converters
     @TypeConverter

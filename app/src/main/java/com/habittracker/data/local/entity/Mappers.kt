@@ -1,5 +1,11 @@
 package com.habittracker.data.local.entity
 
+import com.google.gson.Gson
+import com.habittracker.domain.model.Challenge
+import com.habittracker.domain.model.ChallengeRules
+import com.habittracker.domain.model.ChallengeStatus
+import com.habittracker.domain.model.Friendship
+import com.habittracker.domain.model.FriendshipStatus
 import com.habittracker.domain.model.Habit
 import com.habittracker.domain.model.HabitEntry
 import com.habittracker.domain.model.User
@@ -97,3 +103,72 @@ fun HabitEntry.toEntity(): HabitEntryEntity = HabitEntryEntity(
     createdAt = createdAt,
     updatedAt = updatedAt
 )
+
+fun List<HabitEntryEntity>.toDomain(): List<HabitEntry> = map { it.toDomain() }
+
+// Challenge Mappers
+fun Challenge.toEntity(gson: Gson): ChallengeEntity = ChallengeEntity(
+    id = id,
+    habitId = habitId,
+    title = title,
+    description = description,
+    createdBy = createdBy,
+    participants = participants,
+    startDate = startDate,
+    endDate = endDate,
+    rules = gson.toJson(rules), // Serialize ChallengeRules to JSON
+    reward = reward,
+    status = status.name,
+    winnerId = winnerId,
+    createdAt = createdAt,
+    updatedAt = updatedAt
+)
+
+fun ChallengeEntity.toDomain(gson: Gson): Challenge {
+    val rulesObject = gson.fromJson(rules, ChallengeRules::class.java)
+    return Challenge(
+        id = id,
+        habitId = habitId,
+        title = title,
+        description = description,
+        createdBy = createdBy,
+        participants = participants,
+        startDate = startDate,
+        endDate = endDate,
+        rules = rulesObject, // Deserialize JSON to ChallengeRules
+        reward = reward,
+        status = ChallengeStatus.valueOf(status),
+        winnerId = winnerId,
+        createdAt = createdAt,
+        updatedAt = updatedAt
+    )
+}
+
+fun List<ChallengeEntity>.toDomainChallenges(gson: Gson): List<Challenge> = map { it.toDomain(gson) }
+
+// Friendship Mappers
+fun Friendship.toEntity(): FriendshipEntity = FriendshipEntity(
+    userId1 = userId1,
+    userId2 = userId2,
+    status = status.name,
+    requestedBy = requestedBy,
+    requestedAt = requestedAt,
+    acceptedAt = acceptedAt,
+    blockedBy = blockedBy,
+    blockedAt = blockedAt,
+    updatedAt = updatedAt
+)
+
+fun FriendshipEntity.toDomain(): Friendship = Friendship(
+    userId1 = userId1,
+    userId2 = userId2,
+    status = FriendshipStatus.valueOf(status),
+    requestedBy = requestedBy,
+    requestedAt = requestedAt,
+    acceptedAt = acceptedAt,
+    blockedBy = blockedBy,
+    blockedAt = blockedAt,
+    updatedAt = updatedAt
+)
+
+fun List<FriendshipEntity>.toDomainFriendships(): List<Friendship> = map { it.toDomain() }

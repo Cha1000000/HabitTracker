@@ -7,12 +7,20 @@ import androidx.room.RoomDatabase
 import androidx.room.TypeConverters
 import androidx.room.migration.Migration
 import androidx.sqlite.db.SupportSQLiteDatabase
+import com.habittracker.data.local.entity.ChallengeEntity
+import com.habittracker.data.local.entity.FriendshipEntity
 import com.habittracker.data.local.entity.HabitEntity
 import com.habittracker.data.local.entity.HabitEntryEntity
 import com.habittracker.data.local.entity.UserEntity
 
 @Database(
-    entities = [UserEntity::class, HabitEntity::class, HabitEntryEntity::class],
+    entities = [
+        UserEntity::class,
+        HabitEntity::class,
+        HabitEntryEntity::class,
+        ChallengeEntity::class,
+        FriendshipEntity::class
+    ],
     version = 1,
     exportSchema = false // Для простоты отключаем экспорт схемы
 )
@@ -22,6 +30,8 @@ abstract class HabitTrackerDatabase : RoomDatabase() {
     abstract fun userDao(): UserDao
     abstract fun habitDao(): HabitDao
     abstract fun habitEntryDao(): HabitEntryDao
+    abstract fun challengeDao(): ChallengeDao
+    abstract fun friendshipDao(): FriendshipDao
 
     companion object {
         const val DATABASE_NAME = "habit_tracker_db"
