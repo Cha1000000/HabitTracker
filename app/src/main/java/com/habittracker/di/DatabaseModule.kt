@@ -1,7 +1,6 @@
 package com.habittracker.di
 
 import android.content.Context
-import androidx.room.Room
 import com.google.gson.Gson
 import com.habittracker.data.local.ChallengeDao
 import com.habittracker.data.local.FriendshipDao
@@ -23,22 +22,14 @@ object DatabaseModule {
     @Provides
     @Singleton
     fun provideDatabase(@ApplicationContext context: Context): HabitTrackerDatabase {
-        return Room.databaseBuilder(
-            context,
-            HabitTrackerDatabase::class.java,
-            HabitTrackerDatabase.DATABASE_NAME
-        ).build()
+        return HabitTrackerDatabase.getDatabase(context)
     }
 
     @Provides
-    fun provideUserDao(database: HabitTrackerDatabase): UserDao {
-        return database.userDao()
-    }
+    fun provideUserDao(database: HabitTrackerDatabase): UserDao = database.userDao()
 
     @Provides
-    fun provideHabitDao(database: HabitTrackerDatabase): HabitDao {
-        return database.habitDao()
-    }
+    fun provideHabitDao(database: HabitTrackerDatabase): HabitDao = database.habitDao()
 
     @Provides
     @Singleton
