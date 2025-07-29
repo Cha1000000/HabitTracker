@@ -2,10 +2,12 @@ package com.habittracker.presentation.viewmodel
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.google.android.gms.auth.api.signin.GoogleSignInClient
 import com.habittracker.domain.usecase.GetCurrentUserUseCase
 import com.habittracker.domain.usecase.LoginUseCase
 import com.habittracker.domain.usecase.LogoutUseCase
 import com.habittracker.domain.usecase.RegisterUseCase
+import com.habittracker.domain.usecase.SignInWithGoogleUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -31,7 +33,9 @@ class AuthViewModel @Inject constructor(
     private val loginUseCase: LoginUseCase,
     private val registerUseCase: RegisterUseCase,
     private val logoutUseCase: LogoutUseCase,
-    private val getCurrentUserUseCase: GetCurrentUserUseCase
+    private val getCurrentUserUseCase: GetCurrentUserUseCase,
+    private val signInWithGoogleUseCase: SignInWithGoogleUseCase,
+    val googleSignInClient: GoogleSignInClient
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(AuthUiState())
@@ -82,6 +86,22 @@ class AuthViewModel @Inject constructor(
                     }
                 }
                 .launchIn(viewModelScope)
+        }
+    }
+
+    fun signInWithGoogle(idToken: String) {
+        viewModelScope.launch {
+            _uiState.update { it.copy(isLoading = true, error = null) }
+            signInWithGoogleUseCase(idToken).collect { result ->
+                result.fold(
+                    onSuccess = {
+                        _uiState.update { it.copy(isLoading = false, isSuccess = true) }
+                    },
+                    onFailure = { throwable: Throwable ->
+                        _uiState.update { it.copy(isLoading = false, error = throwable.message) }
+                    }
+                )
+            }
         }
     }
 }

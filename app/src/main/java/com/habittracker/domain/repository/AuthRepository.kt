@@ -34,6 +34,14 @@ interface AuthRepository {
     suspend fun register(email: String, password: String): Flow<Result<Unit>>
 
     /**
+     * Выполняет вход пользователя с помощью Google аккаунта.
+     *
+     * @param idToken Токен, полученный от Google Sign-In.
+     * @return Flow, который эмитит результат операции: успех или ошибку.
+     */
+    suspend fun signInWithGoogle(idToken: String): Flow<Result<Unit>>
+
+    /**
      * Выполняет выход текущего пользователя из системы.
      */
     suspend fun logout()

@@ -1,6 +1,7 @@
 package com.habittracker.data.repository
 
 import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.auth.GoogleAuthProvider
 import com.habittracker.domain.model.User
 import com.habittracker.domain.repository.AuthRepository
 import kotlinx.coroutines.flow.Flow
@@ -44,6 +45,17 @@ class AuthRepositoryImpl @Inject constructor(
         try {
             firebaseAuth.createUserWithEmailAndPassword(email, password).await()
             // Здесь в будущем будет логика сохранения пользователя в Firestore
+            emit(Result.success(Unit))
+        } catch (e: Exception) {
+            emit(Result.failure(e))
+        }
+    }
+
+    override suspend fun signInWithGoogle(idToken: String): Flow<Result<Unit>> = flow {
+        try {
+            val credential = GoogleAuthProvider.getCredential(idToken, null)
+            firebaseAuth.signInWithCredential(credential).await()
+            // Здесь также может понадобиться логика сохранения/обновления данных пользователя в Firestore
             emit(Result.success(Unit))
         } catch (e: Exception) {
             emit(Result.failure(e))
