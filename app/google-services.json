@@ -12,7 +12,20 @@
           "package_name": "com.habittracker"
         }
       },
-      "oauth_client": [],
+      "oauth_client": [
+        {
+          "client_id": "637297267141-9pc8bfmq899hkrjc8qfkbkd7hd5peqnm.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.habittracker",
+            "certificate_hash": "1ffefc182e6ab2496acb3f7493bd7b59c9e945c8"
+          }
+        },
+        {
+          "client_id": "637297267141-flvhigsfcbgc0m20hdoh3kid6vl0k0ne.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
       "api_key": [
         {
           "current_key": "AIzaSyCddP9MB8fgRzGTN6X0ibPGuBQVjJYcE8k"
@@ -20,7 +33,12 @@
       ],
       "services": {
         "appinvite_service": {
-          "other_platform_oauth_client": []
+          "other_platform_oauth_client": [
+            {
+              "client_id": "637297267141-flvhigsfcbgc0m20hdoh3kid6vl0k0ne.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
         }
       }
     }
