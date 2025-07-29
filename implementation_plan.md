@@ -1,17 +1,15 @@
-# План реализации: Создание и отображение привычек
+# План реализации
 
-## 1. Domain Layer (Доменный слой)
-- [x] Создать/доработать модель данных `Habit` в `domain/model`.
-- [x] Определить интерфейс `HabitRepository` в `domain/repository`.
-- [x] Создать `UseCase` для добавления привычки: `AddHabitUseCase`.
+## 1. Реализовать экран добавления/редактирования привычки:
+- [x] Создать навигацию для экрана.
+- [x] Разработать UI-экран (`AddEditHabitScreen`).
+- [x] Создать `ViewModel` (`AddEditHabitViewModel`).
+- [x] Создать необходимые `UseCases` (Update, GetById).
 
-## 2. Data Layer (Слой данных)
-- [x] Реализовать `HabitRepositoryImpl` в `data/repository`.
-- [x] Настроить `Room Database` и создать `HabitDao`.
+## 2. Настроить аутентификацию пользователя:
+- [ ] Интегрировать Firebase Auth.
+- [ ] Создать экраны входа и регистрации.
 
-## 3. Presentation Layer (Слой представления)
-- [x] Создать `HabitsViewModel` для управления состоянием экрана.
-- [x] Разработать UI-экран `HabitsScreen` с использованием Jetpack Compose.
-
-## 4. Dependency Injection (Внедрение зависимостей)
-- [x] Настроить Hilt-модули для предоставления `HabitRepository`, `UseCase` и `HabitDao`.
+## 3. Поработать над UI/UX:
+- [ ] Улучшить дизайн списка привычек.
+- [ ] Добавить анимации и пользовательские взаимодействия.

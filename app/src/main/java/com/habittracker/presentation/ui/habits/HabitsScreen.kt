@@ -1,5 +1,6 @@
 package com.habittracker.presentation.ui.habits
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -9,6 +10,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -17,21 +19,27 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.navigation.NavController
+import androidx.navigation.compose.rememberNavController
 import com.habittracker.domain.model.Habit
 import com.habittracker.domain.model.HabitFrequency
 import com.habittracker.domain.model.HabitType
+import com.habittracker.presentation.navigation.Screen
 import com.habittracker.presentation.viewmodel.HabitsViewModel
 import kotlinx.datetime.Clock
 
 @Composable
 fun HabitsScreen(
+    navController: NavController,
     viewModel: HabitsViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
 
     Scaffold(
         floatingActionButton = {
-            FloatingActionButton(onClick = { /* TODO: Navigate to Add Habit Screen */ }) {
+            FloatingActionButton(onClick = { 
+                navController.navigate(Screen.AddEditHabit.route)
+            }) {
                 Icon(Icons.Default.Add, contentDescription = "Add Habit")
             }
         }
@@ -53,7 +61,9 @@ fun HabitsScreen(
                     verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
                     items(uiState.habits) { habit ->
-                        HabitItem(habit = habit)
+                        HabitItem(habit = habit, onHabitClick = {
+                            navController.navigate(Screen.AddEditHabit.route + "?habitId=${habit.id}")
+                        })
                     }
                 }
             }
@@ -62,9 +72,11 @@ fun HabitsScreen(
 }
 
 @Composable
-fun HabitItem(habit: Habit) {
+fun HabitItem(habit: Habit, onHabitClick: (Habit) -> Unit) {
     Card(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable { onHabitClick(habit) },
         elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
     ) {
         Row(
@@ -85,6 +97,12 @@ fun HabitItem(habit: Habit) {
 
 @Preview(showBackground = true)
 @Composable
+fun HabitsScreenPreview() {
+    HabitsScreen(navController = rememberNavController())
+}
+
+@Preview(showBackground = true)
+@Composable
 fun HabitItemPreview() {
     HabitItem(
         habit = Habit(
@@ -97,6 +115,7 @@ fun HabitItemPreview() {
             createdBy = "user1",
             createdAt = Clock.System.now(),
             updatedAt = Clock.System.now()
-        )
+        ),
+        onHabitClick = {}
     )
 }
