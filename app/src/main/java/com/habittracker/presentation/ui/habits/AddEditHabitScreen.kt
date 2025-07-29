@@ -2,7 +2,7 @@ package com.habittracker.presentation.ui.habits
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
@@ -37,14 +37,17 @@ fun AddEditHabitScreen(
                 title = { Text(if (uiState.isLoading) "" else "Новая привычка") },
                 navigationIcon = {
                     IconButton(onClick = { navController.popBackStack() }) {
-                        Icon(Icons.Default.ArrowBack, contentDescription = "Назад")
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                            contentDescription = "Назад"
+                        )
                     }
                 }
             )
         },
         floatingActionButton = {
             FloatingActionButton(onClick = { viewModel.saveHabit() }) {
-                Icon(Icons.Default.Check, contentDescription = "Сохранить")
+                Icon(Icons.Filled.Check, contentDescription = "Сохранить")
             }
         }
     ) { paddingValues ->

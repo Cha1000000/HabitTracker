@@ -1,6 +1,7 @@
 [versions]
 agp = "8.2.2"
-kotlin = "1.9.22"
+kotlin = "2.0.0"
+ksp = "2.0.0-1.0.21"
 coreKtx = "1.13.1"
 junit = "4.13.2"
 junitVersion = "1.2.1"
@@ -22,10 +23,10 @@ okhttp = "4.12.0"
 coil = "2.5.0"
 work = "2.9.0"
 datetime = "0.6.0"
-ksp = "1.9.22-1.0.17"
 appcompat = "1.7.0"
 material3 = "1.2.1"
 uiTestJunit4 = "1.6.8"
+firebase-bom = "34.0.0"
 
 [libraries]
 # Core
@@ -33,6 +34,7 @@ androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = 
 androidx-appcompat = { module = "androidx.appcompat:appcompat", version.ref = "appcompat" }
 
 # Testing
+firebase-analytics = { module = "com.google.firebase:firebase-analytics" }
 junit = { group = "junit", name = "junit", version.ref = "junit" }
 kotlinx-serialization-json = { module = "org.jetbrains.kotlinx:kotlinx-serialization-json", version.ref = "kotlinxSerializationJson" }
 room-testing = { group = "androidx.room", name = "room-testing", version.ref = "room" }
@@ -90,9 +92,15 @@ androidx-work-runtime-ktx = { module = "androidx.work:work-runtime-ktx", version
 # DateTime
 kotlinx-datetime = { group = "org.jetbrains.kotlinx", name = "kotlinx-datetime", version.ref = "datetime" }
 
+# Firebase
+firebase-bom = { group = "com.google.firebase", name = "firebase-bom", version.ref = "firebase-bom" }
+firebase-auth = { group = "com.google.firebase", name = "firebase-auth" }
+
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }
 hilt-android = { id = "com.google.dagger.hilt.android", version.ref = "hilt" }
 kotlin-android = { id = "org.jetbrains.kotlin.android", version.ref = "kotlin" }
 kotlin-kapt = { id = "org.jetbrains.kotlin.kapt", version.ref = "kotlin" }
 kotlin-ksp = { id = "com.google.devtools.ksp", version.ref = "ksp" }
+kotlin-serialization = { id = "org.jetbrains.kotlin.plugin.serialization", version.ref = "kotlin" }
+kotlin-compose = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "kotlin" }

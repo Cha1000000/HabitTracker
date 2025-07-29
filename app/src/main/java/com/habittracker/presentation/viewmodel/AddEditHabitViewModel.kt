@@ -81,7 +81,7 @@ class AddEditHabitViewModel @Inject constructor(
                     title = uiState.value.title,
                     description = uiState.value.description,
                     createdBy = creatorId,
-                    icon = "ic_default_habit",
+                    icon = "📚",
                     type = HabitType.PERSONAL,
                     frequency = HabitFrequency.DAILY,
                     participants = listOf(creatorId),

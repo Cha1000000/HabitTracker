@@ -1,13 +1,12 @@
 package com.habittracker.presentation.navigation
 
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.ui.Alignment
-import androidx.compose.ui.Modifier
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
+import com.habittracker.presentation.ui.auth.LoginScreen
+import com.habittracker.presentation.ui.auth.RegisterScreen
 import com.habittracker.presentation.ui.habits.AddEditHabitScreen
 import com.habittracker.presentation.ui.habits.HabitsScreen
 
@@ -18,6 +17,8 @@ import com.habittracker.presentation.ui.habits.HabitsScreen
 sealed class Screen(val route: String) {
     object Habits : Screen("habits_screen")
     object AddEditHabit : Screen("add_edit_habit_screen")
+    object Login : Screen("login_screen")
+    object Register : Screen("register_screen")
     // TODO: Добавить другие экраны по мере их создания
 }
 
@@ -28,7 +29,8 @@ sealed class Screen(val route: String) {
 @Composable
 fun AppNavHost() {
     val navController = rememberNavController()
-    NavHost(navController = navController, startDestination = Screen.Habits.route) {
+    // TODO: Add logic to check if user is logged in and set start destination accordingly
+    NavHost(navController = navController, startDestination = Screen.Login.route) {
         composable(route = Screen.Habits.route) {
             HabitsScreen(navController = navController)
         }
@@ -40,6 +42,14 @@ fun AppNavHost() {
             })
         ) {
             AddEditHabitScreen(navController = navController)
+        }
+
+        composable(route = Screen.Login.route) {
+            LoginScreen(navController = navController)
+        }
+
+        composable(route = Screen.Register.route) {
+            RegisterScreen(navController = navController)
         }
         // TODO: Определить навигацию для других экранов
     }
