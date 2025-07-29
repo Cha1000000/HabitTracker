@@ -20,7 +20,10 @@ interface ChallengeDao {
     suspend fun deleteChallenge(challengeId: String)
 
     @Query("SELECT * FROM challenges WHERE id = :challengeId")
-    fun getChallengeById(challengeId: String): Flow<ChallengeEntity?>
+    suspend fun getChallengeById(challengeId: String): ChallengeEntity?
+
+    @Query("SELECT * FROM challenges ORDER BY endDate DESC")
+    fun getAllChallenges(): Flow<List<ChallengeEntity>>
 
     @Query("SELECT * FROM challenges WHERE habitId = :habitId")
     fun getChallengesForHabit(habitId: String): Flow<List<ChallengeEntity>>
@@ -30,4 +33,13 @@ interface ChallengeDao {
 
     @Query("SELECT * FROM challenges WHERE status = :status ORDER BY endDate DESC")
     fun getChallengesByStatus(status: String): Flow<List<ChallengeEntity>>
+
+    @Query("UPDATE challenges SET participants = :participants WHERE id = :challengeId")
+    suspend fun updateChallengeParticipants(challengeId: String, participants: List<String>)
+
+    @Query("UPDATE challenges SET status = :status WHERE id = :challengeId")
+    suspend fun updateChallengeStatus(challengeId: String, status: String)
+
+    @Query("UPDATE challenges SET winnerId = :winnerId, status = 'COMPLETED' WHERE id = :challengeId")
+    suspend fun updateChallengeWinner(challengeId: String, winnerId: String?)
 }

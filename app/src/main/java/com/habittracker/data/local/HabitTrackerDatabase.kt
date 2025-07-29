@@ -50,7 +50,7 @@ abstract class HabitTrackerDatabase : RoomDatabase() {
                     .addMigrations(
                         // Добавим миграции по мере необходимости
                     )
-                    .fallbackToDestructiveMigration(dropAllTables = true) // Только для разработки!
+                    .fallbackToDestructiveMigration() // Только для разработки!
                     .build()
 
                 INSTANCE = instance

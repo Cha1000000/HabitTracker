@@ -1,9 +1,18 @@
 package com.habittracker.data.local.entity
 
+import com.habittracker.data.local.entity.tuples.HabitEntryWithUserTuple
+import com.habittracker.domain.model.Challenge
+import com.habittracker.domain.model.ChallengeRules
+import com.habittracker.domain.model.ChallengeStatus
+import com.habittracker.domain.model.Friendship
+import com.habittracker.domain.model.FriendshipStatus
 import com.habittracker.domain.model.Habit
 import com.habittracker.domain.model.HabitEntry
+import com.habittracker.domain.model.HabitEntryWithUser
 import com.habittracker.domain.model.User
 import kotlinx.datetime.TimeZone
+import kotlinx.serialization.encodeToString
+import kotlinx.serialization.json.Json
 
 // User Mappers
 fun UserEntity.toDomain(): User = User(
@@ -95,5 +104,70 @@ fun HabitEntry.toEntity(): HabitEntryEntity = HabitEntryEntity(
     value = value,
     note = note,
     createdAt = createdAt,
+    updatedAt = updatedAt
+)
+
+fun HabitEntryWithUserTuple.toDomain(): HabitEntryWithUser = HabitEntryWithUser(
+    entry = this.entry.toDomain(),
+    user = this.user.toDomain()
+)
+
+// Challenge Mappers
+fun ChallengeEntity.toDomain(): Challenge = Challenge(
+    id = id,
+    habitId = habitId,
+    title = title,
+    description = description,
+    createdBy = createdBy,
+    participants = participants,
+    startDate = startDate,
+    endDate = endDate,
+    rules = Json.decodeFromString<ChallengeRules>(rules),
+    reward = reward,
+    status = ChallengeStatus.valueOf(status),
+    winnerId = winnerId,
+    createdAt = createdAt,
+    updatedAt = updatedAt
+)
+
+fun Challenge.toEntity(): ChallengeEntity = ChallengeEntity(
+    id = id,
+    habitId = habitId,
+    title = title,
+    description = description,
+    createdBy = createdBy,
+    participants = participants,
+    startDate = startDate,
+    endDate = endDate,
+    rules = Json.encodeToString(rules),
+    reward = reward,
+    status = status.name,
+    winnerId = winnerId,
+    createdAt = createdAt,
+    updatedAt = updatedAt
+)
+
+// Friendship Mappers
+fun FriendshipEntity.toDomain(): Friendship = Friendship(
+    userId1 = userId1,
+    userId2 = userId2,
+    status = FriendshipStatus.valueOf(status),
+    requestedBy = requestedBy,
+    requestedAt = requestedAt,
+    acceptedAt = acceptedAt,
+    blockedBy = blockedBy,
+    blockedAt = blockedAt,
+    updatedAt = updatedAt
+)
+
+fun Friendship.toEntity(): FriendshipEntity = FriendshipEntity(
+    userId1 = userId1,
+    userId2 = userId2,
+    status = status.name,
+    requestedBy = requestedBy,
+    requestedAt = requestedAt,
+    acceptedAt = acceptedAt,
+    blockedBy = blockedBy,
+    blockedAt = blockedAt,
     updatedAt = updatedAt
 )

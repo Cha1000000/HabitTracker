@@ -13,7 +13,7 @@ data class HabitEntry(
     val completed: Boolean = false,
     val completedAt: Instant? = null,
     val value: Int = 1, // сколько раз выполнил (для привычек с targetValue > 1)
-    val note: String = "",
+    val note: String? = "",
     val createdAt: Instant,
     val updatedAt: Instant
 )

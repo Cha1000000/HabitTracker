@@ -1,13 +1,13 @@
 package com.habittracker.di
 
 import android.content.Context
-import com.google.gson.Gson
-import com.habittracker.data.local.ChallengeDao
-import com.habittracker.data.local.FriendshipDao
+import androidx.room.Room
+import com.habittracker.data.local.HabitTrackerDatabase
 import com.habittracker.data.local.HabitDao
 import com.habittracker.data.local.HabitEntryDao
-import com.habittracker.data.local.HabitTrackerDatabase
 import com.habittracker.data.local.UserDao
+import com.habittracker.data.local.ChallengeDao
+import com.habittracker.data.local.FriendshipDao
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -32,18 +32,11 @@ object DatabaseModule {
     fun provideHabitDao(database: HabitTrackerDatabase): HabitDao = database.habitDao()
 
     @Provides
-    @Singleton
     fun provideHabitEntryDao(database: HabitTrackerDatabase): HabitEntryDao = database.habitEntryDao()
 
     @Provides
-    @Singleton
     fun provideChallengeDao(database: HabitTrackerDatabase): ChallengeDao = database.challengeDao()
 
     @Provides
-    @Singleton
     fun provideFriendshipDao(database: HabitTrackerDatabase): FriendshipDao = database.friendshipDao()
-
-    @Provides
-    @Singleton
-    fun provideGson(): Gson = Gson()
 }

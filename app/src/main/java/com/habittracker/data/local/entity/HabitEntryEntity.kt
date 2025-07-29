@@ -15,7 +15,7 @@ data class HabitEntryEntity(
     val completed: Boolean,
     val completedAt: Instant?,
     val value: Int,
-    val note: String,
+    val note: String?,
     val createdAt: Instant,
     val updatedAt: Instant
 )

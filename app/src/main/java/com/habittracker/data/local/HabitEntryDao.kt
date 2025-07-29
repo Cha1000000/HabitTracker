@@ -61,29 +61,29 @@ interface HabitEntryDao {
 
     @Query("""
         SELECT * FROM habit_entries 
+        WHERE habitId = :habitId AND userId = :userId 
+        AND date BETWEEN :startDate AND :endDate
+        ORDER BY date DESC
+    """)
+    suspend fun getEntriesForUserAndPeriod(
+        habitId: String,
+        userId: String,
+        startDate: LocalDate,
+        endDate: LocalDate
+    ): List<HabitEntryEntity>
+
+    @Query("""
+        SELECT * FROM habit_entries 
         WHERE habitId = :habitId AND date = :date
         ORDER BY completedAt IS NULL, completedAt DESC
     """)
     suspend fun getEntriesForHabitAndDate(habitId: String, date: LocalDate): List<HabitEntryEntity>
 
+    @androidx.room.Transaction
     @Query("""
-        SELECT 
-            he.*, 
-            u.id AS user_id, 
-            u.name AS user_name, 
-            u.email AS user_email, 
-            u.avatarUrl AS user_avatarUrl, 
-            u.level AS user_level, 
-            u.points AS user_points, 
-            u.streak AS user_streak, 
-            u.longestStreak AS user_longestStreak, 
-            u.createdAt AS user_createdAt, 
-            u.lastActiveAt AS user_lastActiveAt, 
-            u.timezone AS user_timezone
-        FROM habit_entries he
-        JOIN users u ON he.userId = u.id
-        WHERE he.habitId = :habitId AND he.date = :date
-        ORDER BY he.completedAt IS NULL, he.completedAt DESC
+        SELECT * FROM habit_entries
+        WHERE habitId = :habitId AND date = :date
+        ORDER BY completedAt IS NULL, completedAt DESC
     """)
     suspend fun getEntriesWithUsersForHabitAndDate(habitId: String, date: LocalDate): List<HabitEntryWithUserTuple>
 
@@ -163,18 +163,61 @@ interface HabitEntryDao {
     suspend fun getCompletedHabitsCountForDate(userId: String, date: LocalDate): Int
 
     @Query("""
-        SELECT habitId, COUNT(*) as streak FROM (
-            SELECT habitId, date, completed,
-                   (ROW_NUMBER() OVER (PARTITION BY habitId ORDER BY date DESC) - 
-                    ROW_NUMBER() OVER (PARTITION BY habitId, completed ORDER BY date DESC)) as grp
+        SELECT habitId, COUNT(*) as streak 
+        FROM habit_entries 
+        WHERE userId = :userId AND completed = 1 
+        AND date >= (
+            SELECT MAX(date) 
             FROM habit_entries 
-            WHERE userId = :userId AND completed = 1
-        ) GROUP BY habitId, grp
+            WHERE userId = :userId AND habitId = habit_entries.habitId AND completed = 0
+        ) OR date >= (
+            SELECT MAX(date) 
+            FROM habit_entries 
+            WHERE userId = :userId AND habitId = habit_entries.habitId
+        )
+        GROUP BY habitId
         ORDER BY streak DESC
     """)
     suspend fun getCurrentStreaks(userId: String): List<HabitStreakTuple>
 
-    // Запросы для календарного отображения
+    @Query("""
+        SELECT COUNT(*) as streak
+        FROM habit_entries
+        WHERE userId = :userId AND habitId = :habitId AND completed = 1
+        AND date >= (
+            SELECT COALESCE(MAX(date), '1900-01-01')
+            FROM habit_entries
+            WHERE userId = :userId AND habitId = :habitId AND completed = 0
+            AND date < (
+                SELECT MAX(date)
+                FROM habit_entries
+                WHERE userId = :userId AND habitId = :habitId AND completed = 1
+            )
+        )
+    """)
+    suspend fun getCurrentStreakForHabit(userId: String, habitId: String): Int?
+
+    @Query("""
+        SELECT MAX(streak) FROM (
+            SELECT COUNT(*) as streak
+            FROM habit_entries h1
+            WHERE userId = :userId AND habitId = :habitId AND completed = 1
+            AND date >= (
+                SELECT COALESCE(MAX(date), '1900-01-01')
+                FROM habit_entries h2
+                WHERE userId = :userId AND habitId = :habitId AND completed = 0
+                AND h2.date < h1.date
+            )
+            GROUP BY (
+                SELECT COUNT(*)
+                FROM habit_entries h3
+                WHERE userId = :userId AND habitId = :habitId AND completed = 0
+                AND h3.date < h1.date
+            )
+        )
+    """)
+    suspend fun getLongestStreakForHabit(userId: String, habitId: String): Int?
+
     @Query("""
         SELECT date, COUNT(*) as total_habits, 
                SUM(CASE WHEN completed = 1 THEN 1 ELSE 0 END) as completed_habits
@@ -184,6 +227,18 @@ interface HabitEntryDao {
         ORDER BY date
     """)
     suspend fun getCalendarData(userId: String, startDate: LocalDate, endDate: LocalDate): List<CalendarDayData>
+
+    @Query("""
+        SELECT COUNT(*) FROM habit_entries
+        WHERE habitId = :habitId AND userId = :userId AND completed = 1 AND date >= :since
+    """)
+    suspend fun getCompletedCountSince(habitId: String, userId: String, since: LocalDate): Int
+
+    @Query("""
+        SELECT COUNT(*) FROM habit_entries
+        WHERE habitId = :habitId AND userId = :userId AND date >= :since
+    """)
+    suspend fun getTotalCountSince(habitId: String, userId: String, since: LocalDate): Int
 }
 
 // Data class для календарных данных

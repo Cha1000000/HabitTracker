@@ -1,24 +1,24 @@
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
-    alias(libs.plugins.kotlin.compose)
-    kotlin("kapt")
-    id("com.google.dagger.hilt.android") version "2.57"
+    alias(libs.plugins.kotlin.ksp)
+    alias(libs.plugins.hilt.android)
+    kotlin("plugin.serialization") version "1.9.22"
 }
 
-// Разрешаем использование kapt с KSP
-kapt {
-    correctErrorTypes = true
+// Разрешаем использование ksp с Room
+ksp {
+    arg("room.schemaLocation", "$projectDir/schemas")
 }
 
 android {
     namespace = "com.habittracker"
-    compileSdk = 36
+    compileSdk = 34
 
     defaultConfig {
         applicationId = "com.habittracker"
         minSdk = 27
-        targetSdk = 36
+        targetSdk = 34
         versionCode = 1
         versionName = "1.0"
 
@@ -43,6 +43,9 @@ android {
     }
     buildFeatures {
         compose = true
+    }
+    composeOptions {
+        kotlinCompilerExtensionVersion = "1.5.8"
     }
 }
 
@@ -71,13 +74,14 @@ dependencies {
     
     // Hilt DI
     implementation(libs.hilt.android)
-    kapt(libs.hilt.compiler)
+    ksp(libs.hilt.compiler)
     implementation(libs.androidx.hilt.navigation.compose)
+    implementation(libs.androidx.hilt.work)
     
     // Room database
     implementation(libs.androidx.room.runtime)
     implementation(libs.androidx.room.ktx)
-    kapt(libs.androidx.room.compiler)
+    ksp(libs.androidx.room.compiler)
     
     // Coroutines
     implementation(libs.kotlinx.coroutines.android)
@@ -92,11 +96,12 @@ dependencies {
     
     // WorkManager
     implementation(libs.androidx.work.runtime.ktx)
-    implementation(libs.androidx.hilt.work)
-    kapt(libs.androidx.hilt.compiler)
     
     // Date/Time
     implementation(libs.kotlinx.datetime)
+    
+    // Serialization
+    implementation(libs.kotlinx.serialization.json)
 
     // Firebase (раскомментировать когда будем добавлять социальные функции)
     // implementation(platform("com.google.firebase:firebase-bom:33.1.0"))

@@ -25,6 +25,9 @@ interface FriendshipDao {
     @Query("SELECT * FROM friendships WHERE userId2 = :userId AND status = 'PENDING'")
     fun getPendingFriendRequests(userId: String): Flow<List<FriendshipEntity>>
 
+    @Query("SELECT * FROM friendships WHERE userId1 = :userId AND status = 'PENDING'")
+    fun getSentFriendRequests(userId: String): Flow<List<FriendshipEntity>>
+
     @Query("SELECT * FROM friendships WHERE userId1 = :userId1 AND userId2 = :userId2")
     fun getFriendshipStatus(userId1: String, userId2: String): Flow<FriendshipEntity?>
 }
