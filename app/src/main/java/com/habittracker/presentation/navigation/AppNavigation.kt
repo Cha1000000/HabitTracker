@@ -5,6 +5,7 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
+import com.habittracker.presentation.ui.ProfileScreen
 import com.habittracker.presentation.ui.auth.LoginScreen
 import com.habittracker.presentation.ui.auth.RegisterScreen
 import com.habittracker.presentation.ui.habits.AddEditHabitScreen
@@ -19,6 +20,7 @@ sealed class Screen(val route: String) {
     object AddEditHabit : Screen("add_edit_habit_screen")
     object Login : Screen("login_screen")
     object Register : Screen("register_screen")
+    object Profile : Screen("profile_screen")
     // TODO: Добавить другие экраны по мере их создания
 }
 
@@ -50,6 +52,10 @@ fun AppNavHost() {
 
         composable(route = Screen.Register.route) {
             RegisterScreen(navController = navController)
+        }
+        
+        composable(route = Screen.Profile.route) {
+            ProfileScreen(navController = navController)
         }
         // TODO: Определить навигацию для других экранов
     }

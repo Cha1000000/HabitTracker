@@ -8,6 +8,7 @@ import com.habittracker.domain.usecase.GetGoogleSignInIntentUseCase
 import com.habittracker.domain.usecase.LoginUseCase
 import com.habittracker.domain.usecase.RegisterUseCase
 import com.habittracker.domain.usecase.SignInWithGoogleUseCase
+import com.habittracker.domain.usecase.SignOutUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -35,6 +36,7 @@ sealed class AuthEvent {
     object SignUp : AuthEvent()
     object GoogleSignInClicked : AuthEvent()
     data class SignInWithGoogle(val idToken: String) : AuthEvent()
+    object SignOut : AuthEvent()
 }
 
 sealed class AuthState {
@@ -49,7 +51,8 @@ class AuthViewModel @Inject constructor(
     private val loginUseCase: LoginUseCase,
     private val registerUseCase: RegisterUseCase,
     private val signInWithGoogleUseCase: SignInWithGoogleUseCase,
-    private val getGoogleSignInIntentUseCase: GetGoogleSignInIntentUseCase
+    private val getGoogleSignInIntentUseCase: GetGoogleSignInIntentUseCase,
+    private val signOutUseCase: SignOutUseCase
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(AuthUiState())
@@ -71,6 +74,20 @@ class AuthViewModel @Inject constructor(
                 _authState.value = AuthState.Authenticated
             } else {
                 _authState.value = AuthState.Unauthenticated
+            }
+        }
+    }
+    
+    private fun signOut() {
+        viewModelScope.launch {
+            _authState.value = AuthState.Loading
+            signOutUseCase().collect { result ->
+                result.onSuccess {
+                    _authState.value = AuthState.Unauthenticated
+                }
+                result.onFailure {
+                    _authState.value = AuthState.Error(it.message ?: "Failed to sign out")
+                }
             }
         }
     }
@@ -101,6 +118,10 @@ class AuthViewModel @Inject constructor(
 
             is AuthEvent.SignInWithGoogle -> {
                 signInWithGoogle(event.idToken)
+            }
+            
+            AuthEvent.SignOut -> {
+                signOut()
             }
         }
     }
