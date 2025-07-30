@@ -1,8 +1,6 @@
 package com.habittracker.di
 
 import android.content.Context
-import com.google.android.gms.auth.api.signin.GoogleSignIn
-import com.google.android.gms.auth.api.signin.GoogleSignInClient
 import com.google.android.gms.auth.api.signin.GoogleSignInOptions
 import com.google.firebase.auth.FirebaseAuth
 import com.habittracker.R
@@ -30,14 +28,5 @@ object FirebaseModule {
             .requestIdToken(context.getString(R.string.default_web_client_id))
             .requestEmail()
             .build()
-    }
-
-    @Provides
-    @Singleton
-    fun provideGoogleSignInClient(
-        @ApplicationContext context: Context,
-        gso: GoogleSignInOptions
-    ): GoogleSignInClient {
-        return GoogleSignIn.getClient(context, gso)
     }
 }

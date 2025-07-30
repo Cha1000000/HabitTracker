@@ -29,6 +29,7 @@ uiTestJunit4 = "1.6.8"
 firebaseBom = "34.0.0"
 firebaseAnalytics = "22.0.2"
 playServicesAuth = "21.2.0"
+googleGmsGoogleServices = "4.4.2"
 
 [libraries]
 # Core
@@ -107,3 +108,4 @@ kotlin-kapt = { id = "org.jetbrains.kotlin.kapt", version.ref = "kotlin" }
 kotlin-ksp = { id = "com.google.devtools.ksp", version.ref = "ksp" }
 kotlin-serialization = { id = "org.jetbrains.kotlin.plugin.serialization", version.ref = "kotlin" }
 kotlin-compose = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "kotlin" }
+google-gms-google-services = { id = "com.google.gms.google-services", version.ref = "googleGmsGoogleServices" }

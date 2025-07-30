@@ -1,5 +1,6 @@
 package com.habittracker.domain.repository
 
+import android.content.Intent
 import com.habittracker.domain.model.User
 import kotlinx.coroutines.flow.Flow
 
@@ -40,6 +41,13 @@ interface AuthRepository {
      * @return Flow, который эмитит результат операции: успех или ошибку.
      */
     suspend fun signInWithGoogle(idToken: String): Flow<Result<Unit>>
+
+    /**
+     * Получает Intent для запуска процесса входа через Google.
+     *
+     * @return Intent для Google Sign-In.
+     */
+    fun getGoogleSignInIntent(): Intent
 
     /**
      * Выполняет выход текущего пользователя из системы.

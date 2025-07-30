@@ -12,6 +12,8 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
 import com.habittracker.presentation.navigation.Screen
+import com.habittracker.presentation.viewmodel.AuthEvent
+import com.habittracker.presentation.viewmodel.AuthState
 import com.habittracker.presentation.viewmodel.AuthViewModel
 
 @Composable
@@ -20,12 +22,11 @@ fun RegisterScreen(
     viewModel: AuthViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
+    val authState by viewModel.authState.collectAsState()
 
-    // Navigate away on successful registration
-    LaunchedEffect(uiState.isSuccess) {
-        if (uiState.isSuccess) {
+    LaunchedEffect(authState) {
+        if (authState is AuthState.Authenticated) {
             navController.navigate(Screen.Habits.route) {
-                // Очищаем весь стек, чтобы пользователь не мог вернуться назад
                 popUpTo(navController.graph.startDestinationId) { inclusive = true }
             }
         }
@@ -43,7 +44,7 @@ fun RegisterScreen(
 
         OutlinedTextField(
             value = uiState.email,
-            onValueChange = { viewModel.onEmailChange(it) },
+            onValueChange = { viewModel.onEvent(AuthEvent.EmailChanged(it)) },
             label = { Text("Email") },
             modifier = Modifier.fillMaxWidth(),
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
@@ -53,7 +54,7 @@ fun RegisterScreen(
 
         OutlinedTextField(
             value = uiState.password,
-            onValueChange = { viewModel.onPasswordChange(it) },
+            onValueChange = { viewModel.onEvent(AuthEvent.PasswordChanged(it)) },
             label = { Text("Пароль") },
             modifier = Modifier.fillMaxWidth(),
             visualTransformation = PasswordVisualTransformation(),
@@ -66,7 +67,7 @@ fun RegisterScreen(
             CircularProgressIndicator()
         } else {
             Button(
-                onClick = { viewModel.register() },
+                onClick = { viewModel.onEvent(AuthEvent.SignUp) },
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Text("Зарегистрироваться")

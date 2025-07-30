@@ -1,17 +1,29 @@
 package com.habittracker.data.repository
 
+import android.content.Context
+import android.content.Intent
+import com.google.android.gms.auth.api.signin.GoogleSignIn
+import com.google.android.gms.auth.api.signin.GoogleSignInClient
+import com.google.android.gms.auth.api.signin.GoogleSignInOptions
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.GoogleAuthProvider
 import com.habittracker.domain.model.User
 import com.habittracker.domain.repository.AuthRepository
+import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.tasks.await
 import javax.inject.Inject
 
 class AuthRepositoryImpl @Inject constructor(
-    private val firebaseAuth: FirebaseAuth
+    private val firebaseAuth: FirebaseAuth,
+    @ApplicationContext private val context: Context,
+    private val gso: GoogleSignInOptions
 ) : AuthRepository {
+
+    private val googleSignInClient: GoogleSignInClient by lazy {
+        GoogleSignIn.getClient(context, gso)
+    }
 
     override fun getCurrentUser(): Flow<User?> = flow {
         // Эта логика будет усложнена, когда мы добавим Firestore
@@ -62,7 +74,17 @@ class AuthRepositoryImpl @Inject constructor(
         }
     }
 
+    override fun getGoogleSignInIntent(): Intent {
+        return googleSignInClient.signInIntent
+    }
+
     override suspend fun logout() {
-        firebaseAuth.signOut()
+        try {
+            firebaseAuth.signOut()
+            googleSignInClient.signOut().await()
+        } catch (e: Exception) {
+            // Обработка возможных ошибок при выходе
+            e.printStackTrace()
+        }
     }
 }

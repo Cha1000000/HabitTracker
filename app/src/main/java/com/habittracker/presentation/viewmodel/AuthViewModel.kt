@@ -1,18 +1,18 @@
 package com.habittracker.presentation.viewmodel
 
+import android.content.Intent
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.google.android.gms.auth.api.signin.GoogleSignInClient
-import com.habittracker.domain.usecase.GetCurrentUserUseCase
+import com.google.firebase.auth.FirebaseAuth
+import com.habittracker.domain.usecase.GetGoogleSignInIntentUseCase
 import com.habittracker.domain.usecase.LoginUseCase
-import com.habittracker.domain.usecase.LogoutUseCase
 import com.habittracker.domain.usecase.RegisterUseCase
 import com.habittracker.domain.usecase.SignInWithGoogleUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.launchIn
-import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import javax.inject.Inject
@@ -28,79 +28,121 @@ data class AuthUiState(
     val isSuccess: Boolean = false
 )
 
+sealed class AuthEvent {
+    data class EmailChanged(val email: String) : AuthEvent()
+    data class PasswordChanged(val password: String) : AuthEvent()
+    object SignIn : AuthEvent()
+    object SignUp : AuthEvent()
+    object GoogleSignInClicked : AuthEvent()
+    data class SignInWithGoogle(val idToken: String) : AuthEvent()
+}
+
+sealed class AuthState {
+    object Unauthenticated : AuthState()
+    object Authenticated : AuthState()
+    data class Error(val message: String) : AuthState()
+    object Loading : AuthState()
+}
+
 @HiltViewModel
 class AuthViewModel @Inject constructor(
     private val loginUseCase: LoginUseCase,
     private val registerUseCase: RegisterUseCase,
-    private val logoutUseCase: LogoutUseCase,
-    private val getCurrentUserUseCase: GetCurrentUserUseCase,
     private val signInWithGoogleUseCase: SignInWithGoogleUseCase,
-    val googleSignInClient: GoogleSignInClient
+    private val getGoogleSignInIntentUseCase: GetGoogleSignInIntentUseCase
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(AuthUiState())
     val uiState = _uiState.asStateFlow()
 
-    fun onEmailChange(email: String) {
-        _uiState.update { it.copy(email = email, error = null) }
+    private val _authState = MutableStateFlow<AuthState>(AuthState.Unauthenticated)
+    val authState = _authState.asStateFlow()
+
+    private val _googleSignInIntent = MutableSharedFlow<Intent>()
+    val googleSignInIntent = _googleSignInIntent.asSharedFlow()
+
+    init {
+        checkUserAuthentication()
     }
 
-    fun onPasswordChange(password: String) {
-        _uiState.update { it.copy(password = password, error = null) }
-    }
-
-    fun login() {
+    private fun checkUserAuthentication() {
         viewModelScope.launch {
-            _uiState.update { it.copy(isLoading = true, error = null) }
-            val email = _uiState.value.email
-            val password = _uiState.value.password
-
-            loginUseCase(email, password)
-                .onEach { result ->
-                    _uiState.update { currentState ->
-                        currentState.copy(
-                            isLoading = false,
-                            isSuccess = result.isSuccess,
-                            error = result.exceptionOrNull()?.message
-                        )
-                    }
-                }
-                .launchIn(viewModelScope)
+            if (FirebaseAuth.getInstance().currentUser != null) {
+                _authState.value = AuthState.Authenticated
+            } else {
+                _authState.value = AuthState.Unauthenticated
+            }
         }
     }
 
-    fun register() {
-        viewModelScope.launch {
-            _uiState.update { it.copy(isLoading = true, error = null) }
-            val email = _uiState.value.email
-            val password = _uiState.value.password
+    fun onEvent(event: AuthEvent) {
+        when (event) {
+            is AuthEvent.EmailChanged -> {
+                _uiState.update { it.copy(email = event.email, error = null) }
+            }
 
-            registerUseCase(email, password)
-                .onEach { result ->
-                    _uiState.update { currentState ->
-                        currentState.copy(
-                            isLoading = false,
-                            isSuccess = result.isSuccess,
-                            error = result.exceptionOrNull()?.message
-                        )
-                    }
+            is AuthEvent.PasswordChanged -> {
+                _uiState.update { it.copy(password = event.password, error = null) }
+            }
+
+            AuthEvent.SignIn -> {
+                signIn()
+            }
+
+            AuthEvent.SignUp -> {
+                signUp()
+            }
+
+            AuthEvent.GoogleSignInClicked -> {
+                viewModelScope.launch {
+                    _googleSignInIntent.emit(getGoogleSignInIntentUseCase())
                 }
-                .launchIn(viewModelScope)
+            }
+
+            is AuthEvent.SignInWithGoogle -> {
+                signInWithGoogle(event.idToken)
+            }
         }
     }
 
-    fun signInWithGoogle(idToken: String) {
+    private fun signIn() {
         viewModelScope.launch {
-            _uiState.update { it.copy(isLoading = true, error = null) }
-            signInWithGoogleUseCase(idToken).collect { result ->
-                result.fold(
-                    onSuccess = {
-                        _uiState.update { it.copy(isLoading = false, isSuccess = true) }
-                    },
-                    onFailure = { throwable: Throwable ->
-                        _uiState.update { it.copy(isLoading = false, error = throwable.message) }
-                    }
-                )
+            _authState.value = AuthState.Loading
+            loginUseCase(email = uiState.value.email, password = uiState.value.password).collect {
+                it.onSuccess {
+                    _authState.value = AuthState.Authenticated
+                }
+                it.onFailure {
+                    _authState.value = AuthState.Error(it.message ?: "Unknown error")
+                }
+            }
+        }
+    }
+
+    private fun signUp() {
+        viewModelScope.launch {
+            _authState.value = AuthState.Loading
+            registerUseCase(email = uiState.value.email, password = uiState.value.password).collect {
+                it.onSuccess {
+                    _authState.value = AuthState.Authenticated
+                }
+                it.onFailure {
+                    _authState.value = AuthState.Error(it.message ?: "Unknown error")
+                }
+            }
+        }
+    }
+
+    private fun signInWithGoogle(idToken: String) {
+        viewModelScope.launch {
+            _authState.value = AuthState.Loading
+            signInWithGoogleUseCase(idToken).collect {
+                it.onSuccess {
+                    _authState.value = AuthState.Authenticated
+                }
+                it.onFailure {
+                    _authState.value = AuthState.Error(it.message ?: "Unknown error")
+                }
             }
         }
     }
