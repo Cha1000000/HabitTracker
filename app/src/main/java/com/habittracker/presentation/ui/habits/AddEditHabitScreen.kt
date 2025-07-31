@@ -2,65 +2,75 @@ package com.habittracker.presentation.ui.habits
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.*
-import androidx.compose.material3.*
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Description
+import androidx.compose.material.icons.filled.Group
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Timeline
 import androidx.compose.material.icons.filled.Title
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Card
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ExposedDropdownMenuBox
+import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.FloatingActionButtonDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
+import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.runtime.*
-import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.material3.TopAppBar
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import androidx.compose.foundation.layout.ExperimentalLayoutApi
-import com.google.accompanist.flowlayout.FlowRow
-import com.google.accompanist.flowlayout.MainAxisAlignment
-import com.google.accompanist.flowlayout.SizeMode
-import com.google.accompanist.flowlayout.FlowCrossAxisAlignment
-import com.google.accompanist.flowlayout.FlowMainAxisAlignment
-import androidx.compose.foundation.layout.Arrangement
-
 import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.SavedStateHandle
 import androidx.navigation.NavController
 import androidx.navigation.compose.rememberNavController
 import com.habittracker.domain.model.HabitFrequency
 import com.habittracker.domain.model.HabitType
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.ui.graphics.Color
-import androidx.lifecycle.SavedStateHandle
-import com.habittracker.domain.model.Habit as DomainHabit
-import com.habittracker.domain.model.HabitType as DomainHabitType
-import com.habittracker.domain.model.HabitFrequency as DomainHabitFrequency
 import com.habittracker.domain.repository.HabitRepository
 import com.habittracker.domain.usecase.AddHabitUseCase
 import com.habittracker.domain.usecase.GetHabitByIdUseCase
@@ -68,14 +78,13 @@ import com.habittracker.domain.usecase.UpdateHabitUseCase
 import com.habittracker.presentation.viewmodel.AddEditHabitViewModel
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
-import kotlinx.coroutines.flow.update
 import kotlinx.datetime.Clock
 import kotlinx.datetime.LocalTime
 import java.util.UUID
+import com.habittracker.domain.model.Habit as DomainHabit
+import com.habittracker.domain.model.HabitFrequency as DomainHabitFrequency
+import com.habittracker.domain.model.HabitType as DomainHabitType
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -103,43 +112,79 @@ private fun IconPickerDialog(
     onIconSelected: (String) -> Unit,
     onDismiss: () -> Unit
 ) {
-    val icons = listOf("🏃", "📚", "💧", "🍎", "💤", "🏋️", "🚭", "🧘", "📱", "✏️")
+    val icons = listOf(
+        // Health & Fitness
+        "🏃‍♂️", "💪", "🧘‍♀️", "🏋️‍♀️", "🤸", "🚴", "🏊", "🧗", "🤸‍♂️", "🚶‍♂️",
+        // Food & Drink
+        "🍎", "🥗", "🥦", "🥛", "☕", "💧", "🍵", "🥑", "🥜", "🥝",
+        // Personal Growth
+        "📚", "✍️", "🎯", "🎨", "🎵", "🎸", "📖", "📝", "🧠", "🎓",
+        // Productivity
+        "⏰", "📅", "✅", "📊", "📈", "📱", "💡", "🔔", "🎮", "📱",
+        // Well-being
+        "😴", "💤", "🧘", "🌞", "🌙", "🌱", "🌿", "🌸", "🌍", "🌈",
+        // Social & Family
+        "👨‍👩‍👧‍👦", "👥", "❤️", "🤝", "👨‍👧", "👩‍👧", "👨‍👩‍👧", "🐕", "🐈", "🐦",
+        // Work & Study
+        "💼", "📊", "📝", "📌", "📋", "✂️", "📎", "📏", "📐", "📚",
+        // Other
+        "🎲", "🧩", "🧵", "🧶", "🛁", "🧼", "🛌", "🧹", "🧺", "🧸"
+    )
     
     AlertDialog(
+        modifier = Modifier
+            .fillMaxWidth(0.96f)
+            .wrapContentHeight(),
         onDismissRequest = onDismiss,
-        title = { Text("Выберите иконку") },
+        title = { 
+            Text(
+                text = "Выберите иконку",
+                style = MaterialTheme.typography.headlineSmall
+            ) 
+        },
         text = {
-            Column {
-                Text("Доступные иконки:")
-                Spacer(modifier = Modifier.height(8.dp))
-                FlowRow(
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    icons.forEach { icon ->
-                        Text(
-                            text = icon,
-                            modifier = Modifier
-                                .size(48.dp)
-                                .clip(CircleShape)
-                                .clickable {
-                                    onIconSelected(icon)
-                                    onDismiss()
-                                }
-                                .background(MaterialTheme.colorScheme.surfaceVariant)
-                                .padding(8.dp),
-                            textAlign = TextAlign.Center,
-                            style = MaterialTheme.typography.headlineMedium
-                        )
+            LazyVerticalGrid(
+                columns = GridCells.Adaptive(minSize = 48.dp),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .heightIn(max = 500.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+                contentPadding = PaddingValues(8.dp)
+            ) {
+                items(icons.size) { index ->
+                    val icon = icons[index]
+                    Surface(
+                        shape = CircleShape,
+                        color = MaterialTheme.colorScheme.surfaceVariant,
+                        modifier = Modifier
+                            .size(48.dp)
+                            .clickable {
+                                onIconSelected(icon)
+                                onDismiss()
+                            },
+                        contentColor = MaterialTheme.colorScheme.onSurfaceVariant
+                    ) {
+                        Box(
+                            contentAlignment = Alignment.Center,
+                            modifier = Modifier.fillMaxSize()
+                        ) {
+                            Text(
+                                text = icon,
+                                style = MaterialTheme.typography.headlineMedium,
+                                textAlign = TextAlign.Center
+                            )
+                        }
                     }
                 }
             }
         },
-        confirmButton = {
+        confirmButton = {},
+        dismissButton = {
             TextButton(onClick = onDismiss) {
                 Text("Отмена")
             }
-        }
+        },
     )
 }
 
@@ -151,7 +196,7 @@ private fun HabitTypeSelector(
     modifier: Modifier = Modifier
 ) {
     var expanded by remember { mutableStateOf(false) }
-    val items = HabitType.values()
+    val items = HabitType.entries
     
     ExposedDropdownMenuBox(
         expanded = expanded,
@@ -212,7 +257,7 @@ private fun FrequencySelector(
     modifier: Modifier = Modifier
 ) {
     var expanded by remember { mutableStateOf(false) }
-    val items = HabitFrequency.values()
+    val items = HabitFrequency.entries
     
     ExposedDropdownMenuBox(
         expanded = expanded,
@@ -312,8 +357,7 @@ fun AddEditHabitScreen(
                     Text(
                         if (uiState.isLoading) "" 
                         else if (uiState.isHabitSaved) "Сохранение..." 
-                        else if (uiState.title.isNotBlank()) uiState.title 
-                        else "Новая привычка" 
+                        else uiState.title.ifBlank { "Новая привычка" }
                     )
                 },
                 navigationIcon = {
