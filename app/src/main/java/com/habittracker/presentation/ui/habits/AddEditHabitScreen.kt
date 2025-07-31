@@ -32,6 +32,8 @@ import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Timeline
 import androidx.compose.material.icons.filled.Title
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenuItem
@@ -50,7 +52,10 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.TimePicker
+import androidx.compose.material3.TimePickerDefaults
 import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.rememberTimePickerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -89,20 +94,86 @@ import com.habittracker.domain.model.HabitType as DomainHabitType
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun TimePickerDialog(
-    time: LocalTime,
+    initialTime: LocalTime,
     onTimeSelected: (LocalTime) -> Unit,
     onDismiss: () -> Unit
 ) {
-    // TODO: Реализовать кастомный TimePicker
+    // Initialize time state with the provided initial time
+    val timeState = rememberTimePickerState(
+        initialHour = initialTime.hour,
+        initialMinute = initialTime.minute,
+        is24Hour = true
+    )
+    
     AlertDialog(
         onDismissRequest = onDismiss,
-        confirmButton = { 
-            TextButton(onClick = onDismiss) { 
-                Text("Готово") 
-            } 
+        title = { 
+            Text(
+                text = "Выберите время",
+                style = MaterialTheme.typography.titleLarge
+            ) 
         },
-        title = { Text("Выберите время") },
-        text = { Text("Реализация выбора времени будет добавлена позже") }
+        text = {
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                TimePicker(
+                    state = timeState,
+                    modifier = Modifier.padding(8.dp),
+                    colors = TimePickerDefaults.colors(
+                        clockDialColor = MaterialTheme.colorScheme.surfaceVariant,
+                        selectorColor = MaterialTheme.colorScheme.primary,
+                        clockDialUnselectedContentColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                        clockDialSelectedContentColor = MaterialTheme.colorScheme.onPrimary
+                    )
+                )
+                
+                Spacer(modifier = Modifier.height(16.dp))
+                
+                // Selected time preview
+                Text(
+                    text = "%02d:%02d".format(timeState.hour, timeState.minute),
+                    style = MaterialTheme.typography.displaySmall
+                )
+            }
+        },
+        confirmButton = {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 8.dp),
+                horizontalArrangement = Arrangement.End
+            ) {
+                TextButton(
+                    onClick = onDismiss,
+                    colors = ButtonDefaults.textButtonColors(
+                        contentColor = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                ) {
+                    Text("Отмена")
+                }
+                
+                Spacer(modifier = Modifier.width(8.dp))
+                
+                Button(
+                    onClick = {
+                        val selectedTime = LocalTime(
+                            hour = timeState.hour,
+                            minute = timeState.minute
+                        )
+                        onTimeSelected(selectedTime)
+                        onDismiss()
+                    },
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = MaterialTheme.colorScheme.primary,
+                        contentColor = MaterialTheme.colorScheme.onPrimary
+                    )
+                ) {
+                    Text("Готово")
+                }
+            }
+        }
     )
 }
 
@@ -336,7 +407,7 @@ fun AddEditHabitScreen(
     if (showTimePicker) {
         val currentTime = uiState.reminderTime ?: LocalTime(12, 0)
         TimePickerDialog(
-            time = currentTime,
+            initialTime = currentTime,
             onTimeSelected = { viewModel.onReminderTimeChange(it) },
             onDismiss = { showTimePicker = false }
         )
