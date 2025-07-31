@@ -1,29 +1,277 @@
 package com.habittracker.presentation.ui.habits
 
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Text
+import androidx.compose.material3.TopAppBar
+import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.Description
+import androidx.compose.material.icons.filled.Notifications
+import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.filled.Timeline
+import androidx.compose.material.icons.filled.Title
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FloatingActionButton
+import androidx.compose.material3.FloatingActionButtonDefaults
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Switch
+import androidx.compose.material3.TextButton
+import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import com.google.accompanist.flowlayout.FlowRow
+import com.google.accompanist.flowlayout.MainAxisAlignment
+import com.google.accompanist.flowlayout.SizeMode
+import com.google.accompanist.flowlayout.FlowCrossAxisAlignment
+import com.google.accompanist.flowlayout.FlowMainAxisAlignment
+import androidx.compose.foundation.layout.Arrangement
+
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
 import androidx.navigation.compose.rememberNavController
+import com.habittracker.domain.model.HabitFrequency
+import com.habittracker.domain.model.HabitType
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.ui.graphics.Color
+import androidx.lifecycle.SavedStateHandle
+import com.habittracker.domain.model.Habit as DomainHabit
+import com.habittracker.domain.model.HabitType as DomainHabitType
+import com.habittracker.domain.model.HabitFrequency as DomainHabitFrequency
+import com.habittracker.domain.repository.HabitRepository
+import com.habittracker.domain.usecase.AddHabitUseCase
+import com.habittracker.domain.usecase.GetHabitByIdUseCase
+import com.habittracker.domain.usecase.UpdateHabitUseCase
 import com.habittracker.presentation.viewmodel.AddEditHabitViewModel
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.update
+import kotlinx.datetime.Clock
+import kotlinx.datetime.LocalTime
+import java.util.UUID
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun TimePickerDialog(
+    time: LocalTime,
+    onTimeSelected: (LocalTime) -> Unit,
+    onDismiss: () -> Unit
+) {
+    // TODO: Реализовать кастомный TimePicker
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        confirmButton = { 
+            TextButton(onClick = onDismiss) { 
+                Text("Готово") 
+            } 
+        },
+        title = { Text("Выберите время") },
+        text = { Text("Реализация выбора времени будет добавлена позже") }
+    )
+}
+
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
+@Composable
+private fun IconPickerDialog(
+    onIconSelected: (String) -> Unit,
+    onDismiss: () -> Unit
+) {
+    val icons = listOf("🏃", "📚", "💧", "🍎", "💤", "🏋️", "🚭", "🧘", "📱", "✏️")
+    
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Выберите иконку") },
+        text = {
+            Column {
+                Text("Доступные иконки:")
+                Spacer(modifier = Modifier.height(8.dp))
+                FlowRow(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    icons.forEach { icon ->
+                        Text(
+                            text = icon,
+                            modifier = Modifier
+                                .size(48.dp)
+                                .clip(CircleShape)
+                                .clickable {
+                                    onIconSelected(icon)
+                                    onDismiss()
+                                }
+                                .background(MaterialTheme.colorScheme.surfaceVariant)
+                                .padding(8.dp),
+                            textAlign = TextAlign.Center,
+                            style = MaterialTheme.typography.headlineMedium
+                        )
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Отмена")
+            }
+        }
+    )
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun HabitTypeSelector(
+    currentType: HabitType,
+    onTypeSelected: (HabitType) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    var expanded by remember { mutableStateOf(false) }
+    val items = HabitType.values()
+    
+    ExposedDropdownMenuBox(
+        expanded = expanded,
+        onExpandedChange = { expanded = !expanded },
+        modifier = modifier
+    ) {
+        OutlinedTextField(
+            value = when (currentType) {
+                HabitType.PERSONAL -> "Личная привычка"
+                HabitType.GROUP -> "Групповая привычка"
+            },
+            onValueChange = {},
+            readOnly = true,
+            label = { Text("Тип привычки") },
+            trailingIcon = {
+                ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded)
+            },
+            colors = ExposedDropdownMenuDefaults.outlinedTextFieldColors(),
+            modifier = Modifier.menuAnchor()
+        )
+        
+        ExposedDropdownMenu(
+            expanded = expanded,
+            onDismissRequest = { expanded = false }
+        ) {
+            items.forEach { type ->
+                DropdownMenuItem(
+                    text = { 
+                        Text(when (type) {
+                            HabitType.PERSONAL -> "Личная привычка"
+                            HabitType.GROUP -> "Групповая привычка"
+                        })
+                    },
+                    onClick = {
+                        onTypeSelected(type)
+                        expanded = false
+                    },
+                    leadingIcon = {
+                        Icon(
+                            imageVector = when (type) {
+                                HabitType.PERSONAL -> Icons.Default.Person
+                                HabitType.GROUP -> Icons.Default.Group
+                            },
+                            contentDescription = null
+                        )
+                    }
+                )
+            }
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun FrequencySelector(
+    currentFrequency: HabitFrequency,
+    onFrequencySelected: (HabitFrequency) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    var expanded by remember { mutableStateOf(false) }
+    val items = HabitFrequency.values()
+    
+    ExposedDropdownMenuBox(
+        expanded = expanded,
+        onExpandedChange = { expanded = !expanded },
+        modifier = modifier
+    ) {
+        OutlinedTextField(
+            value = when (currentFrequency) {
+                HabitFrequency.DAILY -> "Каждый день"
+                HabitFrequency.WEEKLY -> "Раз в неделю"
+                HabitFrequency.WEEKDAYS -> "По будням"
+                HabitFrequency.WEEKENDS -> "По выходным"
+                HabitFrequency.CUSTOM -> "Произвольно"
+            },
+            onValueChange = {},
+            readOnly = true,
+            label = { Text("Частота") },
+            trailingIcon = {
+                ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded)
+            },
+            colors = ExposedDropdownMenuDefaults.outlinedTextFieldColors(),
+            modifier = Modifier.menuAnchor()
+        )
+        
+        ExposedDropdownMenu(
+            expanded = expanded,
+            onDismissRequest = { expanded = false }
+        ) {
+            items.forEach { frequency ->
+                DropdownMenuItem(
+                    text = { 
+                        Text(when (frequency) {
+                            HabitFrequency.DAILY -> "Каждый день"
+                            HabitFrequency.WEEKLY -> "Раз в неделю"
+                            HabitFrequency.WEEKDAYS -> "По будням"
+                            HabitFrequency.WEEKENDS -> "По выходным"
+                            HabitFrequency.CUSTOM -> "Произвольно"
+                        })
+                    },
+                    onClick = {
+                        onFrequencySelected(frequency)
+                        expanded = false
+                    }
+                )
+            }
+        }
+    }
+}
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AddEditHabitScreen(
     navController: NavController,
-    viewModel: AddEditHabitViewModel = hiltViewModel()
+    viewModel: AddEditHabitViewModel = hiltViewModel(),
+    onBackClick: () -> Unit = { navController.popBackStack() }
 ) {
     val uiState by viewModel.uiState.collectAsState()
+    var showIconPicker by remember { mutableStateOf(false) }
+    var showTimePicker by remember { mutableStateOf(false) }
 
     LaunchedEffect(uiState.isHabitSaved) {
         if (uiState.isHabitSaved) {
@@ -31,47 +279,255 @@ fun AddEditHabitScreen(
         }
     }
 
+    // Показываем диалог выбора иконки
+    if (showIconPicker) {
+        IconPickerDialog(
+            onIconSelected = { viewModel.onIconChange(it) },
+            onDismiss = { showIconPicker = false }
+        )
+    }
+
+    // Показываем диалог выбора времени
+    if (showTimePicker) {
+        val currentTime = uiState.reminderTime ?: LocalTime(12, 0)
+        TimePickerDialog(
+            time = currentTime,
+            onTimeSelected = { viewModel.onReminderTimeChange(it) },
+            onDismiss = { showTimePicker = false }
+        )
+    }
+
+    // Показываем ошибку, если она есть
+    LaunchedEffect(uiState.error) {
+        if (uiState.error != null) {
+            // TODO: Показать Snackbar с ошибкой
+            viewModel.onErrorShown()
+        }
+    }
+
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text(if (uiState.isLoading) "" else "Новая привычка") },
+                title = { 
+                    Text(
+                        if (uiState.isLoading) "" 
+                        else if (uiState.isHabitSaved) "Сохранение..." 
+                        else if (uiState.title.isNotBlank()) uiState.title 
+                        else "Новая привычка" 
+                    )
+                },
                 navigationIcon = {
-                    IconButton(onClick = { navController.popBackStack() }) {
+                    IconButton(
+                        onClick = onBackClick,
+                        enabled = !uiState.isLoading && !uiState.isHabitSaved
+                    ) {
                         Icon(
                             imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                             contentDescription = "Назад"
+                        )
+                    }
+                },
+                actions = {
+                    if (uiState.isLoading) {
+                        CircularProgressIndicator(
+                            modifier = Modifier
+                                .size(24.dp)
+                                .padding(end = 16.dp)
                         )
                     }
                 }
             )
         },
         floatingActionButton = {
-            FloatingActionButton(onClick = { viewModel.saveHabit() }) {
-                Icon(Icons.Filled.Check, contentDescription = "Сохранить")
+            FloatingActionButton(
+                onClick = { viewModel.saveHabit() },
+                containerColor = MaterialTheme.colorScheme.primary,
+                contentColor = MaterialTheme.colorScheme.onPrimary,
+                elevation = FloatingActionButtonDefaults.elevation(
+                    defaultElevation = 4.dp,
+                    pressedElevation = 8.dp
+                ),
+                modifier = Modifier.padding(16.dp)
+            ) {
+                Icon(
+                    Icons.Filled.Check,
+                    contentDescription = "Сохранить",
+                    modifier = Modifier.size(24.dp)
+                )
             }
         }
     ) { paddingValues ->
-        Column(
+        LazyColumn(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(paddingValues)
                 .padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            OutlinedTextField(
-                value = uiState.title,
-                onValueChange = { viewModel.onTitleChange(it) },
-                label = { Text("Название") },
-                modifier = Modifier.fillMaxWidth()
-            )
+            item {
+                // Выбор иконки
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 8.dp)
+                ) {
+                    Text(
+                        text = uiState.icon,
+                        style = MaterialTheme.typography.displayLarge,
+                        modifier = Modifier
+                            .size(80.dp)
+                            .clip(CircleShape)
+                            .clickable { showIconPicker = true }
+                            .background(MaterialTheme.colorScheme.surfaceVariant)
+                            .padding(8.dp),
+                        textAlign = TextAlign.Center
+                    )
+                    Text(
+                        text = "Нажмите, чтобы изменить иконку",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
 
-            OutlinedTextField(
-                value = uiState.description,
-                onValueChange = { viewModel.onDescriptionChange(it) },
-                label = { Text("Описание (необязательно)") },
-                modifier = Modifier.fillMaxWidth(),
-                minLines = 3
-            )
+            item {
+                // Название
+                OutlinedTextField(
+                    value = uiState.title,
+                    onValueChange = { viewModel.onTitleChange(it) },
+                    label = { Text("Название") },
+                    modifier = Modifier.fillMaxWidth(),
+                    isError = uiState.title.isBlank(),
+                    singleLine = true,
+                    leadingIcon = { Icon(Icons.Default.Title, null) },
+                    enabled = !uiState.isLoading && !uiState.isHabitSaved
+                )
+            }
+
+            item {
+                // Описание
+                OutlinedTextField(
+                    value = uiState.description,
+                    onValueChange = { viewModel.onDescriptionChange(it) },
+                    label = { Text("Описание (необязательно)") },
+                    modifier = Modifier.fillMaxWidth(),
+                    minLines = 3,
+                    leadingIcon = { Icon(Icons.Default.Description, null) },
+                    enabled = !uiState.isLoading && !uiState.isHabitSaved
+                )
+            }
+
+            item {
+                // Тип привычки
+                HabitTypeSelector(
+                    currentType = uiState.type,
+                    onTypeSelected = { viewModel.onTypeChange(it) },
+                    modifier = Modifier.fillMaxWidth()
+                )
+            }
+
+            item {
+                // Частота
+                FrequencySelector(
+                    currentFrequency = uiState.frequency,
+                    onFrequencySelected = { viewModel.onFrequencyChange(it) },
+                    modifier = Modifier.fillMaxWidth()
+                )
+            }
+
+            item {
+                // Напоминание
+                Card(
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Column(
+                        modifier = Modifier.padding(16.dp)
+                    ) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Icon(
+                                Icons.Default.Notifications,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.padding(end = 16.dp)
+                            )
+                            
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text("Напоминание")
+                                Text(
+                                    text = if (uiState.isReminderEnabled) {
+                                        uiState.reminderTime?.let { time ->
+                                            "Каждый день в ${time.hour}:${time.minute.toString().padStart(2, '0')}"
+                                        } ?: "Время не установлено"
+                                    } else {
+                                        "Выкл"
+                                    },
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                            
+                            Switch(
+                                checked = uiState.isReminderEnabled,
+                                onCheckedChange = { isChecked ->
+                                    viewModel.onReminderEnabledChange(isChecked)
+                                    if (isChecked && uiState.reminderTime == null) {
+                                        showTimePicker = true
+                                    }
+                                },
+                                enabled = !uiState.isLoading && !uiState.isHabitSaved
+                            )
+                        }
+                        
+                        if (uiState.isReminderEnabled) {
+                            Spacer(modifier = Modifier.height(8.dp))
+                            OutlinedButton(
+                                onClick = { showTimePicker = true },
+                                modifier = Modifier.fillMaxWidth(),
+                                enabled = !uiState.isLoading && !uiState.isHabitSaved
+                            ) {
+                                Text("Изменить время")
+                            }
+                        }
+                    }
+                }
+            }
+
+            item {
+                // Целевое значение
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    OutlinedTextField(
+                        value = uiState.targetValue.toString(),
+                        onValueChange = { 
+                            val value = it.toIntOrNull()
+                            if (value != null && value > 0) {
+                                viewModel.onTargetValueChange(value)
+                            }
+                        },
+                        label = { Text("Целевое значение") },
+                        modifier = Modifier.weight(1f),
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                        singleLine = true,
+                        leadingIcon = { Icon(Icons.Default.Timeline, null) },
+                        enabled = !uiState.isLoading && !uiState.isHabitSaved
+                    )
+                    
+                    OutlinedTextField(
+                        value = uiState.unit,
+                        onValueChange = { viewModel.onUnitChange(it) },
+                        label = { Text("Ед. изм.") },
+                        modifier = Modifier.width(100.dp),
+                        singleLine = true,
+                        enabled = !uiState.isLoading && !uiState.isHabitSaved
+                    )
+                }
+            }
         }
     }
 }
@@ -79,5 +535,184 @@ fun AddEditHabitScreen(
 @Preview(showBackground = true)
 @Composable
 fun AddEditHabitScreenPreview() {
-    AddEditHabitScreen(navController = rememberNavController())
+    MaterialTheme {
+        val navController = rememberNavController()
+        val fakeRepository = FakeHabitRepository()
+        val viewModel = AddEditHabitViewModel(
+            addHabitUseCase = AddHabitUseCase(fakeRepository),
+            getHabitByIdUseCase = GetHabitByIdUseCase(fakeRepository),
+            updateHabitUseCase = UpdateHabitUseCase(fakeRepository),
+            savedStateHandle = SavedStateHandle()
+        )
+        
+        // Set initial state
+        viewModel.onTitleChange("Бег по утрам")
+        viewModel.onDescriptionChange("Пробежка в парке")
+        viewModel.onIconChange("🏃")
+        viewModel.onTypeChange(HabitType.PERSONAL)
+        
+        AddEditHabitScreen(
+            navController = navController,
+            viewModel = viewModel,
+            onBackClick = {}
+        )
+    }
+}
+
+@Preview(showBackground = true)
+@Composable
+fun AddEditHabitScreenLoadingPreview() {
+    MaterialTheme {
+        val navController = rememberNavController()
+        val fakeRepository = FakeHabitRepository()
+        val viewModel = AddEditHabitViewModel(
+            addHabitUseCase = AddHabitUseCase(fakeRepository),
+            getHabitByIdUseCase = GetHabitByIdUseCase(fakeRepository),
+            updateHabitUseCase = UpdateHabitUseCase(fakeRepository),
+            savedStateHandle = SavedStateHandle()
+        )
+        
+        // Set initial state
+        viewModel.onTitleChange("Бег по утрам")
+        viewModel.onDescriptionChange("Пробежка в парке")
+        viewModel.onIconChange("🏃")
+        viewModel.onTypeChange(HabitType.PERSONAL)
+        
+        // Simulate loading state
+        LaunchedEffect(Unit) {
+            // Simulate loading state by not immediately setting any state
+        }
+        
+        AddEditHabitScreen(
+            navController = navController,
+            viewModel = viewModel,
+            onBackClick = {}
+        )
+    }
+}
+
+@Preview(showBackground = true)
+@Composable
+fun AddEditHabitScreenFilledPreview() {
+    MaterialTheme {
+        val navController = rememberNavController()
+        val fakeRepository = FakeHabitRepository()
+        val viewModel = AddEditHabitViewModel(
+            addHabitUseCase = AddHabitUseCase(fakeRepository),
+            getHabitByIdUseCase = GetHabitByIdUseCase(fakeRepository),
+            updateHabitUseCase = UpdateHabitUseCase(fakeRepository),
+            savedStateHandle = SavedStateHandle().apply {
+                // Set any required saved state here
+            }
+        )
+        
+        // Set filled state
+        viewModel.onTitleChange("Чтение книги")
+        viewModel.onDescriptionChange("Чтение перед сном 30 минут")
+        viewModel.onIconChange("📚")
+        viewModel.onTypeChange(HabitType.PERSONAL)
+        
+        AddEditHabitScreen(
+            navController = navController,
+            viewModel = viewModel,
+            onBackClick = {}
+        )
+    }
+}
+
+// Fake repository for previews
+class FakeHabitRepository : HabitRepository {
+    private val _habits = mutableListOf<DomainHabit>()
+    private val habitsFlow = MutableStateFlow<List<DomainHabit>>(emptyList())
+    
+    // Add a test user ID for previews
+    private val testUserId = "test_user_id"
+    
+    init {
+        // Add some test data for previews
+        _habits.add(
+            DomainHabit(
+                id = UUID.randomUUID().toString(),
+                title = "Test Habit",
+                description = "Test Description",
+                icon = "🏃",
+                type = DomainHabitType.PERSONAL,
+                frequency = DomainHabitFrequency.DAILY,
+                reminderTime = LocalTime(hour = 8, minute = 0),
+                reminderEnabled = true,
+                targetValue = 100,
+                unit = "minutes",
+                createdBy = "current_user_id", // TODO: Replace with actual user ID
+                participants = listOf("current_user_id"),
+                isActive = true,
+                createdAt = Clock.System.now(),
+                updatedAt = Clock.System.now()
+            )
+        )
+    }
+
+    override suspend fun insertHabit(habit: DomainHabit) {
+        _habits.add(habit)
+        habitsFlow.emit(_habits.toList())
+    }
+
+    override suspend fun updateHabit(habit: DomainHabit) {
+        val index = _habits.indexOfFirst { it.id == habit.id }
+        if (index != -1) {
+            _habits[index] = habit
+            habitsFlow.emit(_habits.toList())
+        }
+    }
+
+    override suspend fun deleteHabit(habitId: String) {
+        _habits.removeAll { it.id == habitId }
+        habitsFlow.emit(_habits.toList())
+    }
+
+    override suspend fun getHabitById(habitId: String): DomainHabit? {
+        return _habits.find { it.id == habitId }
+    }
+
+    override fun getAllHabits(): Flow<List<DomainHabit>> {
+        return habitsFlow
+    }
+
+    override fun getHabitsByUserId(userId: String): Flow<List<DomainHabit>> {
+        return habitsFlow.map { habits ->
+            habits.filter { it.createdBy == testUserId }
+        }
+    }
+
+    override fun getPersonalHabits(userId: String): Flow<List<DomainHabit>> {
+        return habitsFlow.map { habits ->
+            habits.filter { it.createdBy == testUserId && it.type == DomainHabitType.PERSONAL }
+        }
+    }
+
+    override fun getGroupHabits(userId: String): Flow<List<DomainHabit>> {
+        return habitsFlow.map { habits ->
+            habits.filter { it.createdBy == testUserId && it.type == DomainHabitType.GROUP }
+        }
+    }
+
+    override suspend fun addParticipantToHabit(habitId: String, userId: String) {
+        // In a real implementation, this would add a participant to a group habit
+    }
+
+    override suspend fun removeParticipantFromHabit(habitId: String, userId: String) {
+        // In a real implementation, this would remove a participant from a group habit
+    }
+
+    override suspend fun getHabitParticipants(habitId: String): List<String> {
+        // In a real implementation, this would return the list of participant IDs
+        return emptyList()
+    }
+
+    override suspend fun searchHabits(userId: String, query: String): List<DomainHabit> {
+        return _habits.filter { 
+            it.createdBy == testUserId && 
+            (it.title.contains(query, ignoreCase = true) || 
+             it.description.contains(query, ignoreCase = true))
+        }
+    }
 }
