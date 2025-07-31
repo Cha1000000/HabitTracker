@@ -99,11 +99,17 @@ dependencies {
     // Image loading
     implementation(libs.coil.compose)
     
+    // FlowLayout from Accompanist
+    implementation(libs.accompanist.flowlayout)
+    
     // WorkManager
     implementation(libs.androidx.work.runtime.ktx)
     
-    // Date/Time
+    // DateTime
     implementation(libs.kotlinx.datetime)
+    
+    // Java 8+ API desugaring
+    coreLibraryDesugaring(libs.desugar.jdk.libs)
     
     // Serialization
     implementation(libs.kotlinx.serialization.json)
