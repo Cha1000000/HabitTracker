@@ -79,6 +79,7 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.core.graphics.toColorInt
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.SavedStateHandle
 import androidx.navigation.NavController
@@ -295,7 +296,9 @@ private fun HabitTypeSelector(
                 ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded)
             },
             colors = ExposedDropdownMenuDefaults.outlinedTextFieldColors(),
-            modifier = Modifier.menuAnchor()
+            modifier = Modifier
+                .fillMaxWidth()
+                .menuAnchor()
         )
         
         ExposedDropdownMenu(
@@ -359,7 +362,9 @@ private fun FrequencySelector(
                 ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded)
             },
             colors = ExposedDropdownMenuDefaults.outlinedTextFieldColors(),
-            modifier = Modifier.menuAnchor()
+            modifier = Modifier
+                .fillMaxWidth()
+                .menuAnchor()
         )
         
         ExposedDropdownMenu(
@@ -520,7 +525,7 @@ fun AddEditHabitScreen(
                     pressedElevation = 8.dp
                 ),
                 modifier = Modifier
-                    .padding(16.dp)
+                    //.padding(16.dp)
                     .graphicsLayer {
                         scaleX = fabScale
                         scaleY = fabScale
@@ -566,7 +571,7 @@ fun AddEditHabitScreen(
                             .size(80.dp)
                             .clip(CircleShape)
                             .clickable { showIconPicker = true }
-                            .background(Color(android.graphics.Color.parseColor(uiState.color)))
+                            .background(Color(uiState.color.toColorInt()))
                             .padding(8.dp),
                         textAlign = TextAlign.Center
                     )
@@ -594,7 +599,7 @@ fun AddEditHabitScreen(
                             modifier = Modifier
                                 .size(32.dp)
                                 .clip(CircleShape)
-                                .background(Color(android.graphics.Color.parseColor(uiState.color)))
+                                .background(Color(uiState.color.toColorInt()))
                                 .clickable { showColorPicker = true }
                                 .border(
                                     width = 2.dp,
@@ -658,66 +663,6 @@ fun AddEditHabitScreen(
             }
 
             item {
-                // Напоминание
-                Card(
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Column(
-                        modifier = Modifier.padding(16.dp)
-                    ) {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            modifier = Modifier.fillMaxWidth()
-                        ) {
-                            Icon(
-                                Icons.Default.Notifications,
-                                contentDescription = null,
-                                tint = MaterialTheme.colorScheme.primary,
-                                modifier = Modifier.padding(end = 16.dp)
-                            )
-                            
-                            Column(modifier = Modifier.weight(1f)) {
-                                Text("Напоминание")
-                                Text(
-                                    text = if (uiState.isReminderEnabled) {
-                                        uiState.reminderTime?.let { time ->
-                                            "Каждый день в ${time.hour}:${time.minute.toString().padStart(2, '0')}"
-                                        } ?: "Время не установлено"
-                                    } else {
-                                        "Выкл"
-                                    },
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
-                            }
-                            
-                            Switch(
-                                checked = uiState.isReminderEnabled,
-                                onCheckedChange = { isChecked ->
-                                    viewModel.onReminderEnabledChange(isChecked)
-                                    if (isChecked && uiState.reminderTime == null) {
-                                        showTimePicker = true
-                                    }
-                                },
-                                enabled = !uiState.isLoading && !uiState.isHabitSaved
-                            )
-                        }
-                        
-                        if (uiState.isReminderEnabled) {
-                            Spacer(modifier = Modifier.height(8.dp))
-                            OutlinedButton(
-                                onClick = { showTimePicker = true },
-                                modifier = Modifier.fillMaxWidth(),
-                                enabled = !uiState.isLoading && !uiState.isHabitSaved
-                            ) {
-                                Text("Изменить время")
-                            }
-                        }
-                    }
-                }
-            }
-
-            item {
                 // Целевое значение
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
@@ -747,6 +692,67 @@ fun AddEditHabitScreen(
                         singleLine = true,
                         enabled = !uiState.isLoading && !uiState.isHabitSaved
                     )
+                }
+            }
+
+            item {
+                Spacer(modifier = Modifier.height(4.dp))
+                // Напоминание
+                Card(
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Column(
+                        modifier = Modifier.padding(16.dp)
+                    ) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Icon(
+                                Icons.Default.Notifications,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.padding(end = 16.dp)
+                            )
+
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text("Напоминание")
+                                Text(
+                                    text = if (uiState.isReminderEnabled) {
+                                        uiState.reminderTime?.let { time ->
+                                            "Каждый день в ${time.hour}:${time.minute.toString().padStart(2, '0')}"
+                                        } ?: "Время не установлено"
+                                    } else {
+                                        "Выкл"
+                                    },
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+
+                            Switch(
+                                checked = uiState.isReminderEnabled,
+                                onCheckedChange = { isChecked ->
+                                    viewModel.onReminderEnabledChange(isChecked)
+                                    if (isChecked && uiState.reminderTime == null) {
+                                        showTimePicker = true
+                                    }
+                                },
+                                enabled = !uiState.isLoading && !uiState.isHabitSaved
+                            )
+                        }
+
+                        if (uiState.isReminderEnabled) {
+                            Spacer(modifier = Modifier.height(8.dp))
+                            OutlinedButton(
+                                onClick = { showTimePicker = true },
+                                modifier = Modifier.fillMaxWidth(),
+                                enabled = !uiState.isLoading && !uiState.isHabitSaved
+                            ) {
+                                Text("Изменить время")
+                            }
+                        }
+                    }
                 }
             }
         }
