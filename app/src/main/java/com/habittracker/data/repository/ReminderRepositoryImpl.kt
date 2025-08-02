@@ -1,5 +1,6 @@
 package com.habittracker.data.repository
 
+import android.util.Log
 import androidx.work.Data
 import androidx.work.ExistingWorkPolicy
 import androidx.work.OneTimeWorkRequestBuilder
@@ -33,6 +34,7 @@ class ReminderRepositoryImpl @Inject constructor(
     }
 
     override suspend fun scheduleReminder(habit: Habit) {
+        Log.d("ReminderRepositoryImpl", "scheduleReminder: $habit")
         val reminderTime = habit.reminderTime ?: return
         
         // Отменяем существующее напоминание
@@ -62,20 +64,25 @@ class ReminderRepositoryImpl @Inject constructor(
             workRequest
         )
 
+        Log.d("ReminderRepositoryImpl", "Scheduled reminder for habit ${habit.id} with delay $delay")
+
         // Если привычка повторяющаяся, планируем следующие напоминания
         scheduleRecurringReminders(habit, delay)
     }
 
     override suspend fun cancelReminder(habitId: String) {
+        Log.d("ReminderRepositoryImpl", "cancelReminder: $habitId")
         workManager.cancelUniqueWork(getWorkName(habitId))
         workManager.cancelAllWorkByTag(getWorkTag(habitId))
     }
 
     override suspend fun cancelAllReminders() {
+        Log.d("ReminderRepositoryImpl", "cancelAllReminders")
         workManager.cancelAllWorkByTag("habit_reminder")
     }
 
     override suspend fun isReminderScheduled(habitId: String): Boolean {
+        Log.d("ReminderRepositoryImpl", "isReminderScheduled: $habitId")
         val workInfos = workManager.getWorkInfosForUniqueWork(getWorkName(habitId)).get()
         return workInfos.any { !it.state.isFinished }
     }
@@ -84,6 +91,7 @@ class ReminderRepositoryImpl @Inject constructor(
      * Планирует повторяющиеся напоминания в зависимости от частоты привычки
      */
     private fun scheduleRecurringReminders(habit: Habit, initialDelay: Long) {
+        Log.d("ReminderRepositoryImpl", "scheduleRecurringReminders: $habit")
         val reminderTime = habit.reminderTime ?: return
         
         when (habit.frequency) {
@@ -127,6 +135,7 @@ class ReminderRepositoryImpl @Inject constructor(
         dayOffset: Int,
         baseDelay: Long
     ) {
+        Log.d("ReminderRepositoryImpl", "scheduleReminderForDay: $habit, dayOffset=$dayOffset")
         val additionalDelay = dayOffset * 24 * 60 * 60 * 1000L // дни в миллисекундах
         val totalDelay = baseDelay + additionalDelay
 
@@ -150,6 +159,7 @@ class ReminderRepositoryImpl @Inject constructor(
      * Планирует напоминания только на будние дни
      */
     private fun scheduleWeekdayReminders(habit: Habit, reminderTime: LocalTime, baseDelay: Long) {
+        Log.d("ReminderRepositoryImpl", "scheduleWeekdayReminders: $habit")
         val now = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault())
         
         // Планируем на следующие 14 дней, но только на будние
@@ -170,6 +180,7 @@ class ReminderRepositoryImpl @Inject constructor(
      * Планирует напоминания только на выходные дни
      */
     private fun scheduleWeekendReminders(habit: Habit, reminderTime: LocalTime, baseDelay: Long) {
+        Log.d("ReminderRepositoryImpl", "scheduleWeekendReminders: $habit")
         val now = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault())
         
         // Планируем на следующие 14 дней, но только на выходные
@@ -190,22 +201,29 @@ class ReminderRepositoryImpl @Inject constructor(
      * Вычисляет задержку в миллисекундах до времени напоминания
      */
     private fun calculateDelayUntilReminderTime(reminderTime: LocalTime): Long {
+        Log.d("ReminderRepositoryImpl", "calculateDelayUntilReminderTime: $reminderTime")
         val now = Clock.System.now()
         val currentDateTime = now.toLocalDateTime(TimeZone.currentSystemDefault())
         val currentTime = currentDateTime.time
         
-        // Если время напоминания уже прошло сегодня, планируем на завтра
-        val targetDate = if (reminderTime <= currentTime) {
-            currentDateTime.date.plus(1, DateTimeUnit.DAY)
+        Log.d("ReminderRepositoryImpl", "Current time: $currentTime")
+        
+        val targetDateTime = if (currentTime < reminderTime) {
+            // Напоминание сегодня
+            LocalDateTime(currentDateTime.date, reminderTime)
         } else {
-            currentDateTime.date
+            // Напоминание завтра
+            LocalDateTime(currentDateTime.date.plus(1, DateTimeUnit.DAY), reminderTime)
         }
         
-        val targetDateTime = LocalDateTime(targetDate, reminderTime)
-        val targetInstant = targetDateTime.toInstant(TimeZone.UTC)
+        Log.d("ReminderRepositoryImpl", "Target datetime: $targetDateTime")
         
-        val delayMillis = targetInstant.toEpochMilliseconds() - now.toEpochMilliseconds()
-        return maxOf(0L, delayMillis) // Убеждаемся, что задержка не отрицательная
+        val targetInstant = targetDateTime.toInstant(TimeZone.currentSystemDefault())
+        val delay = (targetInstant - now).inWholeMilliseconds
+        
+        Log.d("ReminderRepositoryImpl", "Calculated delay: $delay ms (${delay / 1000 / 60} minutes)")
+        
+        return delay
     }
 
     private fun getWorkName(habitId: String): String = "${REMINDER_WORK_PREFIX}$habitId"

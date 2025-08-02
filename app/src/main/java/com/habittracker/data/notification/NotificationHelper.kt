@@ -6,6 +6,7 @@ import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
 import android.os.Build
+import android.util.Log
 import androidx.core.app.NotificationCompat
 import com.habittracker.MainActivity
 import com.habittracker.R
@@ -50,6 +51,7 @@ class NotificationHelper @Inject constructor(
             }
             
             notificationManager.createNotificationChannel(channel)
+            Log.d("NotificationHelper", "Уведомительный канал создан")
         }
     }
 
@@ -88,6 +90,7 @@ class NotificationHelper @Inject constructor(
             .build()
 
         notificationManager.notify(habitId.hashCode(), notification)
+        Log.d("NotificationHelper", "Уведомление показано для привычки $habitId")
     }
 
     /**
@@ -95,6 +98,7 @@ class NotificationHelper @Inject constructor(
      */
     fun cancelHabitNotification(habitId: String) {
         notificationManager.cancel(habitId.hashCode())
+        Log.d("NotificationHelper", "Уведомление отменено для привычки $habitId")
     }
 
     /**

@@ -98,6 +98,8 @@ import com.habittracker.domain.model.Habit as DomainHabit
 import com.habittracker.domain.model.HabitFrequency as DomainHabitFrequency
 import com.habittracker.domain.model.HabitType as DomainHabitType
 import com.habittracker.presentation.viewmodel.AddEditHabitViewModel
+import com.habittracker.presentation.ui.permission.NotificationPermissionHandler
+import com.habittracker.presentation.ui.permission.hasNotificationPermission
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.map
@@ -427,6 +429,8 @@ fun AddEditHabitScreen(
     var showIconPicker by remember { mutableStateOf(false) }
     var showColorPicker by remember { mutableStateOf(false) }
     var showTimePicker by remember { mutableStateOf(false) }
+    var shouldRequestNotificationPermission by remember { mutableStateOf(false) }
+    val hasPermission = hasNotificationPermission()
     val snackbarHostState = remember { SnackbarHostState() }
 
     LaunchedEffect(uiState.isHabitSaved) {
@@ -757,6 +761,11 @@ fun AddEditHabitScreen(
                             Switch(
                                 checked = uiState.isReminderEnabled,
                                 onCheckedChange = { isChecked ->
+                                    if (isChecked) {
+                                        if (!hasPermission) {
+                                            shouldRequestNotificationPermission = true
+                                        }
+                                    }
                                     viewModel.onReminderEnabledChange(isChecked)
                                     if (isChecked && uiState.reminderTime == null) {
                                         showTimePicker = true
@@ -781,6 +790,18 @@ fun AddEditHabitScreen(
             }
         }
     }
+    
+    // Обработчик запроса разрешения на уведомления
+    NotificationPermissionHandler(
+        shouldRequest = shouldRequestNotificationPermission,
+        onPermissionResult = { isGranted ->
+            shouldRequestNotificationPermission = false
+            if (!isGranted) {
+                // Если разрешение не получено, отключаем напоминания
+                viewModel.onReminderEnabledChange(false)
+            }
+        }
+    )
 }
 
 @Preview(showBackground = true)

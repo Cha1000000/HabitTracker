@@ -1,5 +1,6 @@
 package com.habittracker.presentation.viewmodel
 
+import android.util.Log
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -122,6 +123,7 @@ class AddEditHabitViewModel @Inject constructor(
                     // Планируем напоминание для новой привычки
                     if (newHabit.reminderEnabled && newHabit.reminderTime != null) {
                         scheduleHabitReminderUseCase(newHabit)
+                        Log.d("AddEditHabitViewModel", "Напоминание запланировано для новой привычки")
                     }
                 } else {
                     // Обновляем существующую привычку
@@ -142,6 +144,7 @@ class AddEditHabitViewModel @Inject constructor(
                     
                     // Обновляем напоминание для существующей привычки
                     updateHabitReminderUseCase(updatedHabit)
+                    Log.d("AddEditHabitViewModel", "Напоминание обновлено для существующей привычки")
                 }
                 
                 _uiState.update { it.copy(
@@ -212,6 +215,7 @@ class AddEditHabitViewModel @Inject constructor(
                     ) ?: return@launch
                     
                     scheduleHabitReminderUseCase(tempHabit)
+                    Log.d("AddEditHabitViewModel", "Напоминание запланировано")
                 }
             } catch (e: Exception) {
                 _uiState.update { it.copy(error = "Не удалось запланировать напоминание: ${e.localizedMessage}") }
@@ -224,6 +228,7 @@ class AddEditHabitViewModel @Inject constructor(
             try {
                 currentHabit?.let { habit ->
                     cancelHabitReminderUseCase(habit.id)
+                    Log.d("AddEditHabitViewModel", "Напоминание отменено")
                 }
             } catch (e: Exception) {
                 _uiState.update { it.copy(error = "Не удалось отменить напоминание: ${e.localizedMessage}") }
@@ -241,6 +246,7 @@ class AddEditHabitViewModel @Inject constructor(
                 ) ?: return@launch
                 
                 updateHabitReminderUseCase(tempHabit)
+                Log.d("AddEditHabitViewModel", "Напоминание обновлено")
             } catch (e: Exception) {
                 _uiState.update { it.copy(error = "Не удалось обновить напоминание: ${e.localizedMessage}") }
             }
