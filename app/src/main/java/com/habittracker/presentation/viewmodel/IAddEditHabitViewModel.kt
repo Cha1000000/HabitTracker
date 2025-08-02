@@ -11,6 +11,7 @@ interface IAddEditHabitViewModel {
     fun onTitleChange(newTitle: String)
     fun onDescriptionChange(newDescription: String)
     fun onIconChange(newIcon: String)
+    fun onColorChange(newColor: String)
     fun onTypeChange(newType: HabitType)
     fun onFrequencyChange(newFrequency: HabitFrequency)
     fun onReminderTimeChange(newTime: LocalTime?)
@@ -18,5 +19,6 @@ interface IAddEditHabitViewModel {
     fun onTargetValueChange(newValue: Int)
     fun onUnitChange(newUnit: String)
     fun onErrorShown()
+    fun onSuccessMessageShown()
     fun saveHabit()
 }

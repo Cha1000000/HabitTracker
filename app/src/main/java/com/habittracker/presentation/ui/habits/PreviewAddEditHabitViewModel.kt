@@ -41,6 +41,10 @@ class PreviewAddEditHabitViewModel @Inject constructor(
         _uiState.update { it.copy(icon = newIcon) }
     }
 
+    override fun onColorChange(newColor: String) {
+        _uiState.update { it.copy(color = newColor) }
+    }
+
     override fun onTypeChange(newType: HabitType) {
         _uiState.update { it.copy(type = newType) }
     }
@@ -69,6 +73,10 @@ class PreviewAddEditHabitViewModel @Inject constructor(
         _uiState.update { it.copy(error = null) }
     }
 
+    override fun onSuccessMessageShown() {
+        _uiState.update { it.copy(successMessage = null) }
+    }
+
     override fun saveHabit() {
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true) }
@@ -76,7 +84,8 @@ class PreviewAddEditHabitViewModel @Inject constructor(
             delay(1000)
             _uiState.update { it.copy(
                 isLoading = false,
-                isHabitSaved = true
+                isHabitSaved = true,
+                successMessage = "Привычка создана!"
             )}
         }
     }

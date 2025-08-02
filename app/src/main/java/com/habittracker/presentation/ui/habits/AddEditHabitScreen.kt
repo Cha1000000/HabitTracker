@@ -1,6 +1,10 @@
 package com.habittracker.presentation.ui.habits
 
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -48,6 +52,9 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarDuration
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
@@ -66,6 +73,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
@@ -387,7 +396,9 @@ fun AddEditHabitScreen(
 ) {
     val uiState by viewModel.uiState.collectAsState()
     var showIconPicker by remember { mutableStateOf(false) }
+    var showColorPicker by remember { mutableStateOf(false) }
     var showTimePicker by remember { mutableStateOf(false) }
+    val snackbarHostState = remember { SnackbarHostState() }
 
     LaunchedEffect(uiState.isHabitSaved) {
         if (uiState.isHabitSaved) {
@@ -403,6 +414,15 @@ fun AddEditHabitScreen(
         )
     }
 
+    // Показываем диалог выбора цвета
+    if (showColorPicker) {
+        ColorPickerDialog(
+            currentColor = uiState.color,
+            onColorSelected = { viewModel.onColorChange(it) },
+            onDismiss = { showColorPicker = false }
+        )
+    }
+
     // Показываем диалог выбора времени
     if (showTimePicker) {
         val currentTime = uiState.reminderTime ?: LocalTime(12, 0)
@@ -413,11 +433,25 @@ fun AddEditHabitScreen(
         )
     }
 
-    // Показываем ошибку, если она есть
+    // Показываем ошибку через Snackbar
     LaunchedEffect(uiState.error) {
-        if (uiState.error != null) {
-            // TODO: Показать Snackbar с ошибкой
+        uiState.error?.let { errorMessage ->
+            snackbarHostState.showSnackbar(
+                message = errorMessage,
+                duration = SnackbarDuration.Long
+            )
             viewModel.onErrorShown()
+        }
+    }
+
+    // Показываем сообщение об успехе через Snackbar
+    LaunchedEffect(uiState.successMessage) {
+        uiState.successMessage?.let { successMessage ->
+            snackbarHostState.showSnackbar(
+                message = successMessage,
+                duration = SnackbarDuration.Short
+            )
+            viewModel.onSuccessMessageShown()
         }
     }
 
@@ -454,39 +488,77 @@ fun AddEditHabitScreen(
             )
         },
         floatingActionButton = {
+            // Анимированная кнопка сохранения
+            val fabScale by animateFloatAsState(
+                targetValue = if (uiState.isLoading) 0.8f else 1f,
+                animationSpec = tween(300),
+                label = "fab_scale"
+            )
+            
+            val fabColor by animateColorAsState(
+                targetValue = if (uiState.isLoading) 
+                    MaterialTheme.colorScheme.surfaceVariant 
+                else 
+                    MaterialTheme.colorScheme.primary,
+                animationSpec = tween(300),
+                label = "fab_color"
+            )
+            
             FloatingActionButton(
-                onClick = { viewModel.saveHabit() },
-                containerColor = MaterialTheme.colorScheme.primary,
-                contentColor = MaterialTheme.colorScheme.onPrimary,
+                onClick = { 
+                    if (!uiState.isLoading && !uiState.isHabitSaved) {
+                        viewModel.saveHabit()
+                    }
+                },
+                containerColor = fabColor,
+                contentColor = if (uiState.isLoading) 
+                    MaterialTheme.colorScheme.onSurfaceVariant 
+                else 
+                    MaterialTheme.colorScheme.onPrimary,
                 elevation = FloatingActionButtonDefaults.elevation(
                     defaultElevation = 4.dp,
                     pressedElevation = 8.dp
                 ),
-                modifier = Modifier.padding(16.dp)
+                modifier = Modifier
+                    .padding(16.dp)
+                    .graphicsLayer {
+                        scaleX = fabScale
+                        scaleY = fabScale
+                    }
             ) {
-                Icon(
-                    Icons.Filled.Check,
-                    contentDescription = "Сохранить",
-                    modifier = Modifier.size(24.dp)
-                )
+                if (uiState.isLoading) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(24.dp),
+                        strokeWidth = 2.dp,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                } else {
+                    Icon(
+                        Icons.Filled.Check,
+                        contentDescription = "Сохранить",
+                        modifier = Modifier.size(24.dp)
+                    )
+                }
             }
-        }
+        },
+        snackbarHost = { SnackbarHost(snackbarHostState) }
     ) { paddingValues ->
         LazyColumn(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(paddingValues)
-                .padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp)
+                .padding(12.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             item {
-                // Выбор иконки
+                // Выбор иконки и цвета
                 Column(
                     horizontalAlignment = Alignment.CenterHorizontally,
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(vertical = 8.dp)
                 ) {
+                    // Иконка с цветным фоном
                     Text(
                         text = uiState.icon,
                         style = MaterialTheme.typography.displayLarge,
@@ -494,15 +566,49 @@ fun AddEditHabitScreen(
                             .size(80.dp)
                             .clip(CircleShape)
                             .clickable { showIconPicker = true }
-                            .background(MaterialTheme.colorScheme.surfaceVariant)
+                            .background(Color(android.graphics.Color.parseColor(uiState.color)))
                             .padding(8.dp),
                         textAlign = TextAlign.Center
                     )
                     Text(
                         text = "Нажмите, чтобы изменить иконку",
                         style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(top = 4.dp)
                     )
+                    
+                    //Spacer(modifier = Modifier.height(4.dp))
+                    
+                    // Выбор цвета
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = "Цвет:",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
+                        
+                        Box(
+                            modifier = Modifier
+                                .size(32.dp)
+                                .clip(CircleShape)
+                                .background(Color(android.graphics.Color.parseColor(uiState.color)))
+                                .clickable { showColorPicker = true }
+                                .border(
+                                    width = 2.dp,
+                                    color = MaterialTheme.colorScheme.outline,
+                                    shape = CircleShape
+                                )
+                        )
+                        
+                        TextButton(
+                            onClick = { showColorPicker = true }
+                        ) {
+                            Text("Изменить цвет")
+                        }
+                    }
                 }
             }
 

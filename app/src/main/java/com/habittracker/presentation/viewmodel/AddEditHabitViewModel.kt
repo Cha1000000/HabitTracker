@@ -60,6 +60,7 @@ class AddEditHabitViewModel @Inject constructor(
                             title = habit.title,
                             description = habit.description,
                             icon = habit.icon,
+                            color = habit.color, // Загружаем цвет привычки
                             type = habit.type,
                             frequency = habit.frequency,
                             reminderTime = habit.reminderTime,
@@ -97,7 +98,7 @@ class AddEditHabitViewModel @Inject constructor(
                         title = currentState.title,
                         description = currentState.description,
                         icon = currentState.icon,
-                        color = "#2196F3", // TODO: Добавить выбор цвета
+                        color = currentState.color, // Используем выбранный цвет
                         type = currentState.type,
                         frequency = currentState.frequency,
                         reminderTime = if (currentState.isReminderEnabled) currentState.reminderTime else null,
@@ -117,6 +118,7 @@ class AddEditHabitViewModel @Inject constructor(
                         title = currentState.title,
                         description = currentState.description,
                         icon = currentState.icon,
+                        color = currentState.color, // Используем выбранный цвет
                         type = currentState.type,
                         frequency = currentState.frequency,
                         reminderTime = if (currentState.isReminderEnabled) currentState.reminderTime else null,
@@ -128,7 +130,11 @@ class AddEditHabitViewModel @Inject constructor(
                     updateHabitUseCase(updatedHabit)
                 }
                 
-                _uiState.update { it.copy(isHabitSaved = true, isLoading = false) }
+                _uiState.update { it.copy(
+                    isHabitSaved = true, 
+                    isLoading = false,
+                    successMessage = if (currentHabit == null) "Привычка создана!" else "Привычка обновлена!"
+                )}
             } catch (e: Exception) {
                 _uiState.update { it.copy(
                     isLoading = false,
@@ -141,6 +147,10 @@ class AddEditHabitViewModel @Inject constructor(
     // Методы для обновления состояния
     override fun onIconChange(newIcon: String) {
         _uiState.update { it.copy(icon = newIcon) }
+    }
+    
+    override fun onColorChange(newColor: String) {
+        _uiState.update { it.copy(color = newColor) }
     }
     
     override fun onTypeChange(newType: HabitType) {
@@ -169,5 +179,9 @@ class AddEditHabitViewModel @Inject constructor(
     
     override fun onErrorShown() {
         _uiState.update { it.copy(error = null) }
+    }
+    
+    override fun onSuccessMessageShown() {
+        _uiState.update { it.copy(successMessage = null) }
     }
 }

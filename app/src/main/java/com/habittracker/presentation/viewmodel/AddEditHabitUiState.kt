@@ -8,7 +8,8 @@ data class AddEditHabitUiState(
     // Основные поля
     val title: String = "",
     val description: String = "",
-    val icon: String = "🎯",
+    val icon: String = "",
+    val color: String = "#2196F3", // Цвет привычки
     val type: HabitType = HabitType.PERSONAL,
     
     // Настройки частоты
@@ -25,5 +26,6 @@ data class AddEditHabitUiState(
     // Состояния
     val isHabitSaved: Boolean = false,
     val isLoading: Boolean = true,
-    val error: String? = null
+    val error: String? = null,
+    val successMessage: String? = null // Для Snackbar успешных действий
 )
