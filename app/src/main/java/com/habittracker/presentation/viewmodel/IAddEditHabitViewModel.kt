@@ -21,4 +21,9 @@ interface IAddEditHabitViewModel {
     fun onErrorShown()
     fun onSuccessMessageShown()
     fun saveHabit()
+    
+    // Методы для работы с напоминаниями
+    fun scheduleReminder()
+    fun cancelReminder()
+    fun updateReminder()
 }

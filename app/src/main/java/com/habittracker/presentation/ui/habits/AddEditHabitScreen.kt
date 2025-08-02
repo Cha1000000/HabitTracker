@@ -90,6 +90,13 @@ import com.habittracker.domain.repository.HabitRepository
 import com.habittracker.domain.usecase.AddHabitUseCase
 import com.habittracker.domain.usecase.GetHabitByIdUseCase
 import com.habittracker.domain.usecase.UpdateHabitUseCase
+import com.habittracker.domain.usecase.ScheduleHabitReminderUseCase
+import com.habittracker.domain.usecase.CancelHabitReminderUseCase
+import com.habittracker.domain.usecase.UpdateHabitReminderUseCase
+import com.habittracker.domain.repository.ReminderRepository
+import com.habittracker.domain.model.Habit as DomainHabit
+import com.habittracker.domain.model.HabitFrequency as DomainHabitFrequency
+import com.habittracker.domain.model.HabitType as DomainHabitType
 import com.habittracker.presentation.viewmodel.AddEditHabitViewModel
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -97,9 +104,26 @@ import kotlinx.coroutines.flow.map
 import kotlinx.datetime.Clock
 import kotlinx.datetime.LocalTime
 import java.util.UUID
-import com.habittracker.domain.model.Habit as DomainHabit
-import com.habittracker.domain.model.HabitFrequency as DomainHabitFrequency
-import com.habittracker.domain.model.HabitType as DomainHabitType
+import com.habittracker.domain.model.Habit
+
+// Fake repository for previews
+class FakeReminderRepository : ReminderRepository {
+    override suspend fun scheduleReminder(habit: Habit) {
+        // Пустая реализация для превью
+    }
+    
+    override suspend fun cancelReminder(habitId: String) {
+        // Пустая реализация для превью
+    }
+    
+    override suspend fun cancelAllReminders() {
+        // Пустая реализация для превью
+    }
+    
+    override suspend fun isReminderScheduled(habitId: String): Boolean {
+        return false // Всегда возвращаем false для превью
+    }
+}
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -769,6 +793,9 @@ fun AddEditHabitScreenPreview() {
             addHabitUseCase = AddHabitUseCase(fakeRepository),
             getHabitByIdUseCase = GetHabitByIdUseCase(fakeRepository),
             updateHabitUseCase = UpdateHabitUseCase(fakeRepository),
+            scheduleHabitReminderUseCase = ScheduleHabitReminderUseCase(FakeReminderRepository()),
+            cancelHabitReminderUseCase = CancelHabitReminderUseCase(FakeReminderRepository()),
+            updateHabitReminderUseCase = UpdateHabitReminderUseCase(FakeReminderRepository()),
             savedStateHandle = SavedStateHandle()
         )
         
@@ -796,6 +823,9 @@ fun AddEditHabitScreenLoadingPreview() {
             addHabitUseCase = AddHabitUseCase(fakeRepository),
             getHabitByIdUseCase = GetHabitByIdUseCase(fakeRepository),
             updateHabitUseCase = UpdateHabitUseCase(fakeRepository),
+            scheduleHabitReminderUseCase = ScheduleHabitReminderUseCase(FakeReminderRepository()),
+            cancelHabitReminderUseCase = CancelHabitReminderUseCase(FakeReminderRepository()),
+            updateHabitReminderUseCase = UpdateHabitReminderUseCase(FakeReminderRepository()),
             savedStateHandle = SavedStateHandle()
         )
         
@@ -828,6 +858,9 @@ fun AddEditHabitScreenFilledPreview() {
             addHabitUseCase = AddHabitUseCase(fakeRepository),
             getHabitByIdUseCase = GetHabitByIdUseCase(fakeRepository),
             updateHabitUseCase = UpdateHabitUseCase(fakeRepository),
+            scheduleHabitReminderUseCase = ScheduleHabitReminderUseCase(FakeReminderRepository()),
+            cancelHabitReminderUseCase = CancelHabitReminderUseCase(FakeReminderRepository()),
+            updateHabitReminderUseCase = UpdateHabitReminderUseCase(FakeReminderRepository()),
             savedStateHandle = SavedStateHandle().apply {
                 // Set any required saved state here
             }

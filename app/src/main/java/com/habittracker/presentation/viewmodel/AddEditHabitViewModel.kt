@@ -9,6 +9,9 @@ import com.habittracker.domain.model.HabitType
 import com.habittracker.domain.usecase.AddHabitUseCase
 import com.habittracker.domain.usecase.GetHabitByIdUseCase
 import com.habittracker.domain.usecase.UpdateHabitUseCase
+import com.habittracker.domain.usecase.ScheduleHabitReminderUseCase
+import com.habittracker.domain.usecase.CancelHabitReminderUseCase
+import com.habittracker.domain.usecase.UpdateHabitReminderUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -25,6 +28,9 @@ class AddEditHabitViewModel @Inject constructor(
     private val addHabitUseCase: AddHabitUseCase,
     private val getHabitByIdUseCase: GetHabitByIdUseCase,
     private val updateHabitUseCase: UpdateHabitUseCase,
+    private val scheduleHabitReminderUseCase: ScheduleHabitReminderUseCase,
+    private val cancelHabitReminderUseCase: CancelHabitReminderUseCase,
+    private val updateHabitReminderUseCase: UpdateHabitReminderUseCase,
     savedStateHandle: SavedStateHandle
 ) : ViewModel(), IAddEditHabitViewModel {
 
@@ -112,6 +118,11 @@ class AddEditHabitViewModel @Inject constructor(
                         updatedAt = now
                     )
                     addHabitUseCase(newHabit)
+                    
+                    // Планируем напоминание для новой привычки
+                    if (newHabit.reminderEnabled && newHabit.reminderTime != null) {
+                        scheduleHabitReminderUseCase(newHabit)
+                    }
                 } else {
                     // Обновляем существующую привычку
                     val updatedHabit = currentHabit!!.copy(
@@ -128,6 +139,9 @@ class AddEditHabitViewModel @Inject constructor(
                         updatedAt = now
                     )
                     updateHabitUseCase(updatedHabit)
+                    
+                    // Обновляем напоминание для существующей привычки
+                    updateHabitReminderUseCase(updatedHabit)
                 }
                 
                 _uiState.update { it.copy(
@@ -183,5 +197,53 @@ class AddEditHabitViewModel @Inject constructor(
     
     override fun onSuccessMessageShown() {
         _uiState.update { it.copy(successMessage = null) }
+    }
+    
+    // Методы для работы с напоминаниями
+    override fun scheduleReminder() {
+        viewModelScope.launch {
+            try {
+                val currentState = uiState.value
+                if (currentState.isReminderEnabled && currentState.reminderTime != null) {
+                    // Создаем временную привычку для планирования напоминания
+                    val tempHabit = currentHabit?.copy(
+                        reminderTime = currentState.reminderTime,
+                        reminderEnabled = currentState.isReminderEnabled
+                    ) ?: return@launch
+                    
+                    scheduleHabitReminderUseCase(tempHabit)
+                }
+            } catch (e: Exception) {
+                _uiState.update { it.copy(error = "Не удалось запланировать напоминание: ${e.localizedMessage}") }
+            }
+        }
+    }
+    
+    override fun cancelReminder() {
+        viewModelScope.launch {
+            try {
+                currentHabit?.let { habit ->
+                    cancelHabitReminderUseCase(habit.id)
+                }
+            } catch (e: Exception) {
+                _uiState.update { it.copy(error = "Не удалось отменить напоминание: ${e.localizedMessage}") }
+            }
+        }
+    }
+    
+    override fun updateReminder() {
+        viewModelScope.launch {
+            try {
+                val currentState = uiState.value
+                val tempHabit = currentHabit?.copy(
+                    reminderTime = if (currentState.isReminderEnabled) currentState.reminderTime else null,
+                    reminderEnabled = currentState.isReminderEnabled
+                ) ?: return@launch
+                
+                updateHabitReminderUseCase(tempHabit)
+            } catch (e: Exception) {
+                _uiState.update { it.copy(error = "Не удалось обновить напоминание: ${e.localizedMessage}") }
+            }
+        }
     }
 }

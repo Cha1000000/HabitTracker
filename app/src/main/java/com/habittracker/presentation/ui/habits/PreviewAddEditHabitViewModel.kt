@@ -89,6 +89,19 @@ class PreviewAddEditHabitViewModel @Inject constructor(
             )}
         }
     }
+    
+    // Пустые реализации для use cases напоминаний (только для превью)
+    override fun scheduleReminder() {
+        // Пустая реализация для превью
+    }
+    
+    override fun cancelReminder() {
+        // Пустая реализация для превью
+    }
+    
+    override fun updateReminder() {
+        // Пустая реализация для превью
+    }
 }
 
 /**
