@@ -417,7 +417,7 @@ fun AddEditHabitScreen(
     // Показываем диалог выбора цвета
     if (showColorPicker) {
         ColorPickerDialog(
-            currentColor = uiState.color,
+            selectedColor = uiState.color,
             onColorSelected = { viewModel.onColorChange(it) },
             onDismiss = { showColorPicker = false }
         )

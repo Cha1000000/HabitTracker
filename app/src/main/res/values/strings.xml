@@ -61,6 +61,20 @@
     <string name="habit_click_to_change_icon">Нажмите, чтобы изменить иконку</string>
     <string name="habit_color_label">Цвет:</string>
     
+    <!-- Color Names -->
+    <string name="color_blue">Синий</string>
+    <string name="color_green">Зеленый</string>
+    <string name="color_orange">Оранжевый</string>
+    <string name="color_red">Красный</string>
+    <string name="color_purple">Фиолетовый</string>
+    <string name="color_cyan">Бирюзовый</string>
+    <string name="color_lime">Лайм</string>
+    <string name="color_yellow">Желтый</string>
+    <string name="color_pink">Розовый</string>
+    <string name="color_gray">Серый</string>
+    <string name="color_brown">Коричневый</string>
+    <string name="color_indigo">Индиго</string>
+    
     <!-- Habit Types -->
     <string name="habit_type_personal">Личная привычка</string>
     <string name="habit_type_group">Групповая привычка</string>

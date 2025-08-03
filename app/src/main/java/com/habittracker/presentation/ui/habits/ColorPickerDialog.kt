@@ -38,23 +38,23 @@ import com.habittracker.R
  */
 @Composable
 fun ColorPickerDialog(
-    currentColor: String,
+    selectedColor: String,
     onColorSelected: (String) -> Unit,
     onDismiss: () -> Unit
 ) {
     val colors = listOf(
-        "#2196F3" to "Синий",
-        "#4CAF50" to "Зеленый", 
-        "#FF9800" to "Оранжевый",
-        "#F44336" to "Красный",
-        "#9C27B0" to "Фиолетовый",
-        "#00BCD4" to "Бирюзовый",
-        "#8BC34A" to "Лайм",
-        "#FFC107" to "Желтый",
-        "#E91E63" to "Розовый",
-        "#607D8B" to "Серый",
-        "#795548" to "Коричневый",
-        "#3F51B5" to "Индиго"
+        "#2196F3" to stringResource(R.string.color_blue),
+        "#4CAF50" to stringResource(R.string.color_green), 
+        "#FF9800" to stringResource(R.string.color_orange),
+        "#F44336" to stringResource(R.string.color_red),
+        "#9C27B0" to stringResource(R.string.color_purple),
+        "#00BCD4" to stringResource(R.string.color_cyan),
+        "#8BC34A" to stringResource(R.string.color_lime),
+        "#FFC107" to stringResource(R.string.color_yellow),
+        "#E91E63" to stringResource(R.string.color_pink),
+        "#607D8B" to stringResource(R.string.color_gray),
+        "#795548" to stringResource(R.string.color_brown),
+        "#3F51B5" to stringResource(R.string.color_indigo)
     )
 
     AlertDialog(
@@ -78,7 +78,7 @@ fun ColorPickerDialog(
                     ColorItem(
                         color = colorHex,
                         name = colorName,
-                        isSelected = colorHex == currentColor,
+                        isSelected = colorHex == selectedColor,
                         onClick = { 
                             onColorSelected(colorHex)
                             onDismiss()
@@ -147,7 +147,7 @@ private fun ColorItem(
 private fun ColorPickerDialogPreview() {
     MaterialTheme {
         ColorPickerDialog(
-            currentColor = "#2196F3",
+            selectedColor = "#2196F3",
             onColorSelected = {},
             onDismiss = {}
         )
