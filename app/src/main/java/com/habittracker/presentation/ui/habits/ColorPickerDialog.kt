@@ -26,10 +26,12 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.core.graphics.toColorInt
+import com.habittracker.R
 
 /**
  * Диалог выбора цвета для привычки
@@ -59,7 +61,7 @@ fun ColorPickerDialog(
         onDismissRequest = onDismiss,
         title = {
             Text(
-                text = "Выберите цвет",
+                text = stringResource(R.string.habit_select_color),
                 style = MaterialTheme.typography.headlineSmall,
                 fontWeight = FontWeight.Bold
             )
@@ -87,7 +89,7 @@ fun ColorPickerDialog(
         },
         confirmButton = {
             TextButton(onClick = onDismiss) {
-                Text("Отмена")
+                Text(stringResource(R.string.action_cancel))
             }
         }
     )
@@ -124,7 +126,7 @@ private fun ColorItem(
             if (isSelected) {
                 Icon(
                     imageVector = Icons.Default.Check,
-                    contentDescription = "Выбрано",
+                    contentDescription = stringResource(R.string.cd_chosen),
                     tint = Color.White,
                     modifier = Modifier.size(24.dp)
                 )

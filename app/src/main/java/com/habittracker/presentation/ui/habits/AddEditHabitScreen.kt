@@ -75,28 +75,23 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.core.graphics.toColorInt
 import androidx.hilt.navigation.compose.hiltViewModel
-import androidx.lifecycle.SavedStateHandle
 import androidx.navigation.NavController
 import androidx.navigation.compose.rememberNavController
+import com.habittracker.R
 import com.habittracker.domain.model.HabitFrequency
 import com.habittracker.domain.model.HabitType
-import com.habittracker.domain.usecase.AddHabitUseCase
-import com.habittracker.domain.usecase.CancelHabitReminderUseCase
-import com.habittracker.domain.usecase.GetHabitByIdUseCase
-import com.habittracker.domain.usecase.ScheduleHabitReminderUseCase
-import com.habittracker.domain.usecase.UpdateHabitReminderUseCase
-import com.habittracker.domain.usecase.UpdateHabitUseCase
-import com.habittracker.presentation.fakes.FakeHabitRepository
-import com.habittracker.presentation.fakes.FakeReminderRepository
 import com.habittracker.presentation.ui.permission.NotificationPermissionHandler
 import com.habittracker.presentation.ui.permission.hasNotificationPermission
+import com.habittracker.presentation.viewmodel.AddEditHabitUiState
 import com.habittracker.presentation.viewmodel.AddEditHabitViewModel
+import com.habittracker.presentation.viewmodel.IAddEditHabitViewModel
 import kotlinx.datetime.LocalTime
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -117,7 +112,7 @@ private fun TimePickerDialog(
         onDismissRequest = onDismiss,
         title = { 
             Text(
-                text = "Выберите время",
+                text = stringResource(R.string.habit_select_time),
                 style = MaterialTheme.typography.titleLarge
             ) 
         },
@@ -159,7 +154,7 @@ private fun TimePickerDialog(
                         contentColor = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 ) {
-                    Text("Отмена")
+                    Text(stringResource(R.string.action_cancel))
                 }
                 
                 Spacer(modifier = Modifier.width(8.dp))
@@ -178,7 +173,7 @@ private fun TimePickerDialog(
                         contentColor = MaterialTheme.colorScheme.onPrimary
                     )
                 ) {
-                    Text("Готово")
+                    Text(stringResource(R.string.action_done))
                 }
             }
         }
@@ -217,7 +212,7 @@ private fun IconPickerDialog(
         onDismissRequest = onDismiss,
         title = { 
             Text(
-                text = "Выберите иконку",
+                text = stringResource(R.string.habit_select_icon),
                 style = MaterialTheme.typography.headlineSmall
             ) 
         },
@@ -261,7 +256,7 @@ private fun IconPickerDialog(
         confirmButton = {},
         dismissButton = {
             TextButton(onClick = onDismiss) {
-                Text("Отмена")
+                Text(stringResource(R.string.action_cancel))
             }
         },
     )
@@ -284,12 +279,12 @@ private fun HabitTypeSelector(
     ) {
         OutlinedTextField(
             value = when (currentType) {
-                HabitType.PERSONAL -> "Личная привычка"
-                HabitType.GROUP -> "Групповая привычка"
+                HabitType.PERSONAL -> stringResource(R.string.habit_type_personal)
+                HabitType.GROUP -> stringResource(R.string.habit_type_group)
             },
             onValueChange = {},
             readOnly = true,
-            label = { Text("Тип привычки") },
+            label = { Text(stringResource(R.string.habit_type_label)) },
             trailingIcon = {
                 ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded)
             },
@@ -307,8 +302,8 @@ private fun HabitTypeSelector(
                 DropdownMenuItem(
                     text = { 
                         Text(when (type) {
-                            HabitType.PERSONAL -> "Личная привычка"
-                            HabitType.GROUP -> "Групповая привычка"
+                            HabitType.PERSONAL -> stringResource(R.string.habit_type_personal)
+                            HabitType.GROUP -> stringResource(R.string.habit_type_group)
                         })
                     },
                     onClick = {
@@ -347,15 +342,15 @@ private fun FrequencySelector(
     ) {
         OutlinedTextField(
             value = when (currentFrequency) {
-                HabitFrequency.DAILY -> "Каждый день"
-                HabitFrequency.WEEKLY -> "Раз в неделю"
-                HabitFrequency.WEEKDAYS -> "По будням"
-                HabitFrequency.WEEKENDS -> "По выходным"
-                HabitFrequency.CUSTOM -> "Произвольно"
+                HabitFrequency.DAILY -> stringResource(R.string.frequency_daily)
+                HabitFrequency.WEEKLY -> stringResource(R.string.frequency_weekly)
+                HabitFrequency.WEEKDAYS -> stringResource(R.string.frequency_weekdays)
+                HabitFrequency.WEEKENDS -> stringResource(R.string.frequency_weekends)
+                HabitFrequency.CUSTOM -> stringResource(R.string.frequency_custom)
             },
             onValueChange = {},
             readOnly = true,
-            label = { Text("Частота") },
+            label = { Text(stringResource(R.string.habit_frequency_label)) },
             trailingIcon = {
                 ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded)
             },
@@ -373,11 +368,11 @@ private fun FrequencySelector(
                 DropdownMenuItem(
                     text = { 
                         Text(when (frequency) {
-                            HabitFrequency.DAILY -> "Каждый день"
-                            HabitFrequency.WEEKLY -> "Раз в неделю"
-                            HabitFrequency.WEEKDAYS -> "По будням"
-                            HabitFrequency.WEEKENDS -> "По выходным"
-                            HabitFrequency.CUSTOM -> "Произвольно"
+                            HabitFrequency.DAILY -> stringResource(R.string.frequency_daily)
+                            HabitFrequency.WEEKLY -> stringResource(R.string.frequency_weekly)
+                            HabitFrequency.WEEKDAYS -> stringResource(R.string.frequency_weekdays)
+                            HabitFrequency.WEEKENDS -> stringResource(R.string.frequency_weekends)
+                            HabitFrequency.CUSTOM -> stringResource(R.string.frequency_custom)
                         })
                     },
                     onClick = {
@@ -394,7 +389,7 @@ private fun FrequencySelector(
 @Composable
 fun AddEditHabitScreen(
     navController: NavController,
-    viewModel: AddEditHabitViewModel = hiltViewModel(),
+    viewModel: IAddEditHabitViewModel = hiltViewModel<AddEditHabitViewModel>(),
     onBackClick: () -> Unit = { navController.popBackStack() }
 ) {
     val uiState by viewModel.uiState.collectAsState()
@@ -466,8 +461,8 @@ fun AddEditHabitScreen(
                 title = { 
                     Text(
                         if (uiState.isLoading) "" 
-                        else if (uiState.isHabitSaved) "Сохранение..." 
-                        else uiState.title.ifBlank { "Новая привычка" }
+                        else if (uiState.isHabitSaved) stringResource(R.string.habit_saving) 
+                        else uiState.title.ifBlank { stringResource(R.string.habit_new_title) }
                     )
                 },
                 navigationIcon = {
@@ -477,7 +472,7 @@ fun AddEditHabitScreen(
                     ) {
                         Icon(
                             imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = "Назад"
+                            contentDescription = stringResource(R.string.cd_back)
                         )
                     }
                 },
@@ -497,7 +492,7 @@ fun AddEditHabitScreen(
             val fabScale by animateFloatAsState(
                 targetValue = if (uiState.isLoading) 0.8f else 1f,
                 animationSpec = tween(300),
-                label = "fab_scale"
+                label = stringResource(R.string.animation_fab_scale)
             )
             
             val fabColor by animateColorAsState(
@@ -506,7 +501,7 @@ fun AddEditHabitScreen(
                 else 
                     MaterialTheme.colorScheme.primary,
                 animationSpec = tween(300),
-                label = "fab_color"
+                label = stringResource(R.string.animation_fab_color)
             )
             
             FloatingActionButton(
@@ -540,7 +535,7 @@ fun AddEditHabitScreen(
                 } else {
                     Icon(
                         Icons.Filled.Check,
-                        contentDescription = "Сохранить",
+                        contentDescription = stringResource(R.string.cd_save),
                         modifier = Modifier.size(24.dp)
                     )
                 }
@@ -576,7 +571,7 @@ fun AddEditHabitScreen(
                         textAlign = TextAlign.Center
                     )
                     Text(
-                        text = "Нажмите, чтобы изменить иконку",
+                        text = stringResource(R.string.habit_click_to_change_icon),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.padding(top = 4.dp)
@@ -590,7 +585,7 @@ fun AddEditHabitScreen(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Text(
-                            text = "Цвет:",
+                            text = stringResource(R.string.habit_color_label),
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.onSurface
                         )
@@ -611,7 +606,7 @@ fun AddEditHabitScreen(
                         TextButton(
                             onClick = { showColorPicker = true }
                         ) {
-                            Text("Изменить цвет")
+                            Text(stringResource(R.string.habit_change_color))
                         }
                     }
                 }
@@ -622,7 +617,7 @@ fun AddEditHabitScreen(
                 OutlinedTextField(
                     value = uiState.title,
                     onValueChange = { viewModel.onTitleChange(it) },
-                    label = { Text("Название") },
+                    label = { Text(stringResource(R.string.habit_name_label)) },
                     modifier = Modifier.fillMaxWidth(),
                     isError = uiState.title.isBlank(),
                     singleLine = true,
@@ -636,7 +631,7 @@ fun AddEditHabitScreen(
                 OutlinedTextField(
                     value = uiState.description,
                     onValueChange = { viewModel.onDescriptionChange(it) },
-                    label = { Text("Описание (необязательно)") },
+                    label = { Text(stringResource(R.string.habit_description_label)) },
                     modifier = Modifier.fillMaxWidth(),
                     minLines = 3,
                     leadingIcon = { Icon(Icons.Default.Description, null) },
@@ -676,7 +671,7 @@ fun AddEditHabitScreen(
                                 viewModel.onTargetValueChange(value)
                             }
                         },
-                        label = { Text("Целевое значение") },
+                        label = { Text(stringResource(R.string.habit_target_value_label)) },
                         modifier = Modifier.weight(1f),
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                         singleLine = true,
@@ -687,7 +682,7 @@ fun AddEditHabitScreen(
                     OutlinedTextField(
                         value = uiState.unit,
                         onValueChange = { viewModel.onUnitChange(it) },
-                        label = { Text("Ед. изм.") },
+                        label = { Text(stringResource(R.string.habit_unit_label)) },
                         modifier = Modifier.width(100.dp),
                         singleLine = true,
                         enabled = !uiState.isLoading && !uiState.isHabitSaved
@@ -716,14 +711,14 @@ fun AddEditHabitScreen(
                             )
 
                             Column(modifier = Modifier.weight(1f)) {
-                                Text("Напоминание")
+                                Text(stringResource(R.string.habit_reminder_label))
                                 Text(
                                     text = if (uiState.isReminderEnabled) {
                                         uiState.reminderTime?.let { time ->
-                                            "Каждый день в ${time.hour}:${time.minute.toString().padStart(2, '0')}"
-                                        } ?: "Время не установлено"
+                                            stringResource(R.string.habit_reminder_time_format, time.hour, time.minute)
+                                        } ?: stringResource(R.string.habit_reminder_not_set)
                                     } else {
-                                        "Выкл"
+                                        stringResource(R.string.habit_reminder_disabled)
                                     },
                                     style = MaterialTheme.typography.bodySmall,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant
@@ -754,7 +749,7 @@ fun AddEditHabitScreen(
                                 modifier = Modifier.fillMaxWidth(),
                                 enabled = !uiState.isLoading && !uiState.isHabitSaved
                             ) {
-                                Text("Изменить время")
+                                Text(stringResource(R.string.habit_change_reminder_time))
                             }
                         }
                     }
@@ -781,16 +776,7 @@ fun AddEditHabitScreen(
 fun AddEditHabitScreenPreview() {
     MaterialTheme {
         val navController = rememberNavController()
-        val fakeRepository = FakeHabitRepository()
-        val viewModel = AddEditHabitViewModel(
-            addHabitUseCase = AddHabitUseCase(fakeRepository),
-            getHabitByIdUseCase = GetHabitByIdUseCase(fakeRepository),
-            updateHabitUseCase = UpdateHabitUseCase(fakeRepository),
-            scheduleHabitReminderUseCase = ScheduleHabitReminderUseCase(FakeReminderRepository()),
-            cancelHabitReminderUseCase = CancelHabitReminderUseCase(FakeReminderRepository()),
-            updateHabitReminderUseCase = UpdateHabitReminderUseCase(FakeReminderRepository()),
-            savedStateHandle = SavedStateHandle()
-        )
+        val viewModel = PreviewAddEditHabitViewModel()
         
         // Set initial state
         viewModel.onTitleChange("Бег по утрам")
@@ -800,8 +786,28 @@ fun AddEditHabitScreenPreview() {
         
         AddEditHabitScreen(
             navController = navController,
-            viewModel = viewModel,
-            onBackClick = {}
+            viewModel = viewModel
+        )
+    }
+}
+
+@Preview(showBackground = true)
+@Composable
+fun AddEditHabitScreenEditModePreview() {
+    MaterialTheme {
+        val navController = rememberNavController()
+        val viewModel = PreviewAddEditHabitViewModel()
+        
+        // Set initial state for editing
+        viewModel.onTitleChange("Медитация")
+        viewModel.onDescriptionChange("Утренняя медитация 10 минут")
+        viewModel.onIconChange("🧘")
+        viewModel.onTypeChange(HabitType.GROUP)
+        viewModel.onFrequencyChange(HabitFrequency.DAILY)
+        
+        AddEditHabitScreen(
+            navController = navController,
+            viewModel = viewModel
         )
     }
 }
@@ -811,64 +817,17 @@ fun AddEditHabitScreenPreview() {
 fun AddEditHabitScreenLoadingPreview() {
     MaterialTheme {
         val navController = rememberNavController()
-        val fakeRepository = FakeHabitRepository()
-        val viewModel = AddEditHabitViewModel(
-            addHabitUseCase = AddHabitUseCase(fakeRepository),
-            getHabitByIdUseCase = GetHabitByIdUseCase(fakeRepository),
-            updateHabitUseCase = UpdateHabitUseCase(fakeRepository),
-            scheduleHabitReminderUseCase = ScheduleHabitReminderUseCase(FakeReminderRepository()),
-            cancelHabitReminderUseCase = CancelHabitReminderUseCase(FakeReminderRepository()),
-            updateHabitReminderUseCase = UpdateHabitReminderUseCase(FakeReminderRepository()),
-            savedStateHandle = SavedStateHandle()
+        val viewModel = PreviewAddEditHabitViewModel(
+            testState = AddEditHabitUiState(
+                isLoading = true,
+                title = "Загрузка...",
+                description = "Загружаем данные привычки"
+            )
         )
-        
-        // Set initial state
-        viewModel.onTitleChange("Бег по утрам")
-        viewModel.onDescriptionChange("Пробежка в парке")
-        viewModel.onIconChange("🏃")
-        viewModel.onTypeChange(HabitType.PERSONAL)
-        
-        // Simulate loading state
-        LaunchedEffect(Unit) {
-            // Simulate loading state by not immediately setting any state
-        }
         
         AddEditHabitScreen(
             navController = navController,
-            viewModel = viewModel,
-            onBackClick = {}
-        )
-    }
-}
-
-@Preview(showBackground = true)
-@Composable
-fun AddEditHabitScreenFilledPreview() {
-    MaterialTheme {
-        val navController = rememberNavController()
-        val fakeRepository = FakeHabitRepository()
-        val viewModel = AddEditHabitViewModel(
-            addHabitUseCase = AddHabitUseCase(fakeRepository),
-            getHabitByIdUseCase = GetHabitByIdUseCase(fakeRepository),
-            updateHabitUseCase = UpdateHabitUseCase(fakeRepository),
-            scheduleHabitReminderUseCase = ScheduleHabitReminderUseCase(FakeReminderRepository()),
-            cancelHabitReminderUseCase = CancelHabitReminderUseCase(FakeReminderRepository()),
-            updateHabitReminderUseCase = UpdateHabitReminderUseCase(FakeReminderRepository()),
-            savedStateHandle = SavedStateHandle().apply {
-                // Set any required saved state here
-            }
-        )
-        
-        // Set filled state
-        viewModel.onTitleChange("Чтение книги")
-        viewModel.onDescriptionChange("Чтение перед сном 30 минут")
-        viewModel.onIconChange("📚")
-        viewModel.onTypeChange(HabitType.PERSONAL)
-        
-        AddEditHabitScreen(
-            navController = navController,
-            viewModel = viewModel,
-            onBackClick = {}
+            viewModel = viewModel
         )
     }
 }

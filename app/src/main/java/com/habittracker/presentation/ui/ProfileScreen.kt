@@ -23,9 +23,11 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
+import com.habittracker.R
 import com.habittracker.presentation.viewmodel.AuthViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -49,12 +51,12 @@ fun ProfileScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Профиль") },
+                title = { Text(stringResource(R.string.profile_title)) },
                 navigationIcon = {
                     IconButton(onClick = { navController.navigateUp() }) {
                         Icon(
                             imageVector = Icons.Default.ArrowBack,
-                            contentDescription = "Назад"
+                            contentDescription = stringResource(R.string.cd_back)
                         )
                     }
                 }
@@ -71,7 +73,7 @@ fun ProfileScreen(
         ) {
             // User information would go here
             Text(
-                "Добро пожаловать в профиль",
+                stringResource(R.string.profile_welcome),
                 style = MaterialTheme.typography.headlineSmall
             )
             
@@ -85,7 +87,7 @@ fun ProfileScreen(
                 if (authState is com.habittracker.presentation.viewmodel.AuthState.Loading) {
                     CircularProgressIndicator(color = MaterialTheme.colorScheme.onPrimary)
                 } else {
-                    Text("Выйти из аккаунта")
+                    Text(stringResource(R.string.action_sign_out))
                 }
             }
             

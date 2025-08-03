@@ -6,11 +6,13 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
+import com.habittracker.R
 import com.habittracker.presentation.navigation.Screen
 import com.habittracker.presentation.viewmodel.AuthEvent
 import com.habittracker.presentation.viewmodel.AuthState
@@ -39,13 +41,13 @@ fun RegisterScreen(
         verticalArrangement = Arrangement.Center,
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        Text("Регистрация", style = MaterialTheme.typography.headlineMedium)
+        Text(stringResource(R.string.auth_register_title), style = MaterialTheme.typography.headlineMedium)
         Spacer(modifier = Modifier.height(32.dp))
 
         OutlinedTextField(
             value = uiState.email,
             onValueChange = { viewModel.onEvent(AuthEvent.EmailChanged(it)) },
-            label = { Text("Email") },
+            label = { Text(stringResource(R.string.auth_email_label)) },
             modifier = Modifier.fillMaxWidth(),
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
             singleLine = true
@@ -55,7 +57,7 @@ fun RegisterScreen(
         OutlinedTextField(
             value = uiState.password,
             onValueChange = { viewModel.onEvent(AuthEvent.PasswordChanged(it)) },
-            label = { Text("Пароль") },
+            label = { Text(stringResource(R.string.auth_password_label)) },
             modifier = Modifier.fillMaxWidth(),
             visualTransformation = PasswordVisualTransformation(),
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
@@ -70,7 +72,7 @@ fun RegisterScreen(
                 onClick = { viewModel.onEvent(AuthEvent.Register) },
                 modifier = Modifier.fillMaxWidth()
             ) {
-                Text("Зарегистрироваться")
+                Text(stringResource(R.string.action_register))
             }
         }
 
@@ -80,7 +82,7 @@ fun RegisterScreen(
         }
 
         TextButton(onClick = { navController.popBackStack() }) {
-            Text("Уже есть аккаунт? Войдите")
+            Text(stringResource(R.string.auth_have_account))
         }
     }
 }

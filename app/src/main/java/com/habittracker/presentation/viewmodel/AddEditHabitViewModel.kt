@@ -1,18 +1,20 @@
 package com.habittracker.presentation.viewmodel
 
+import android.app.Application
 import android.util.Log
+import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.SavedStateHandle
-import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.habittracker.R
 import com.habittracker.domain.model.Habit
 import com.habittracker.domain.model.HabitFrequency
 import com.habittracker.domain.model.HabitType
 import com.habittracker.domain.usecase.AddHabitUseCase
-import com.habittracker.domain.usecase.GetHabitByIdUseCase
-import com.habittracker.domain.usecase.UpdateHabitUseCase
-import com.habittracker.domain.usecase.ScheduleHabitReminderUseCase
 import com.habittracker.domain.usecase.CancelHabitReminderUseCase
+import com.habittracker.domain.usecase.GetHabitByIdUseCase
+import com.habittracker.domain.usecase.ScheduleHabitReminderUseCase
 import com.habittracker.domain.usecase.UpdateHabitReminderUseCase
+import com.habittracker.domain.usecase.UpdateHabitUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -32,8 +34,9 @@ class AddEditHabitViewModel @Inject constructor(
     private val scheduleHabitReminderUseCase: ScheduleHabitReminderUseCase,
     private val cancelHabitReminderUseCase: CancelHabitReminderUseCase,
     private val updateHabitReminderUseCase: UpdateHabitReminderUseCase,
-    savedStateHandle: SavedStateHandle
-) : ViewModel(), IAddEditHabitViewModel {
+    savedStateHandle: SavedStateHandle,
+    application: Application
+) : AndroidViewModel(application), IAddEditHabitViewModel {
 
     private val _uiState = MutableStateFlow(AddEditHabitUiState())
     override val uiState: StateFlow<AddEditHabitUiState> = _uiState.asStateFlow()
@@ -41,7 +44,7 @@ class AddEditHabitViewModel @Inject constructor(
     private var currentHabit: Habit? = null
 
     init {
-        val habitId: String? = savedStateHandle.get("habitId")
+        val habitId: String? = savedStateHandle["habitId"]
         if (habitId != null) {
             loadHabit(habitId)
         } else {
@@ -83,7 +86,7 @@ class AddEditHabitViewModel @Inject constructor(
             } catch (e: Exception) {
                 _uiState.update { it.copy(
                     isLoading = false,
-                    error = "Не удалось загрузить привычку: ${e.localizedMessage}"
+                    error = getApplication<Application>().getString(R.string.error_loading_habit, e.localizedMessage ?: "")
                 )}
             }
         }
@@ -99,7 +102,7 @@ class AddEditHabitViewModel @Inject constructor(
                 
                 if (currentHabit == null) {
                     // Создаем новую привычку
-                    val creatorId = "DUMMY_USER_ID" // TODO: Заменить на реальный ID пользователя
+                    val creatorId = getApplication<Application>().getString(R.string.dummy_user_id) // TODO: Заменить на реальный ID пользователя
                     val newHabit = Habit(
                         id = UUID.randomUUID().toString(),
                         title = currentState.title,
@@ -150,12 +153,12 @@ class AddEditHabitViewModel @Inject constructor(
                 _uiState.update { it.copy(
                     isHabitSaved = true, 
                     isLoading = false,
-                    successMessage = if (currentHabit == null) "Привычка создана!" else "Привычка обновлена!"
+                    successMessage = if (currentHabit == null) getApplication<Application>().getString(R.string.habit_created) else getApplication<Application>().getString(R.string.habit_updated)
                 )}
             } catch (e: Exception) {
                 _uiState.update { it.copy(
                     isLoading = false,
-                    error = "Не удалось сохранить привычку: ${e.localizedMessage}"
+                    error = getApplication<Application>().getString(R.string.error_saving_habit, e.localizedMessage ?: "")
                 )}
             }
         }
@@ -218,7 +221,7 @@ class AddEditHabitViewModel @Inject constructor(
                     Log.d("AddEditHabitViewModel", "Напоминание запланировано")
                 }
             } catch (e: Exception) {
-                _uiState.update { it.copy(error = "Не удалось запланировать напоминание: ${e.localizedMessage}") }
+                _uiState.update { it.copy(error = getApplication<Application>().getString(R.string.error_scheduling_reminder, e.localizedMessage ?: "")) }
             }
         }
     }
@@ -231,7 +234,7 @@ class AddEditHabitViewModel @Inject constructor(
                     Log.d("AddEditHabitViewModel", "Напоминание отменено")
                 }
             } catch (e: Exception) {
-                _uiState.update { it.copy(error = "Не удалось отменить напоминание: ${e.localizedMessage}") }
+                _uiState.update { it.copy(error = getApplication<Application>().getString(R.string.error_canceling_reminder, e.localizedMessage ?: "")) }
             }
         }
     }
@@ -248,7 +251,7 @@ class AddEditHabitViewModel @Inject constructor(
                 updateHabitReminderUseCase(tempHabit)
                 Log.d("AddEditHabitViewModel", "Напоминание обновлено")
             } catch (e: Exception) {
-                _uiState.update { it.copy(error = "Не удалось обновить напоминание: ${e.localizedMessage}") }
+                _uiState.update { it.copy(error = getApplication<Application>().getString(R.string.error_updating_reminder, e.localizedMessage ?: "")) }
             }
         }
     }

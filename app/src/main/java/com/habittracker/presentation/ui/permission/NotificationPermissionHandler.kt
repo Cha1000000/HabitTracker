@@ -13,8 +13,11 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.core.content.ContextCompat
+import com.habittracker.R
 import android.content.pm.PackageManager
 
 /**
@@ -60,18 +63,17 @@ fun NotificationPermissionHandler(
     if (showRationale) {
         AlertDialog(
             onDismissRequest = { showRationale = false },
-            title = { Text("Разрешение на уведомления") },
+            title = { Text(stringResource(R.string.notification_permission_title)) },
             text = { 
                 Text(
-                    "Для отправки напоминаний о привычках необходимо разрешение на уведомления. " +
-                    "Вы можете включить его в настройках приложения."
+                    stringResource(R.string.notification_permission_message)
                 )
             },
             confirmButton = {
                 TextButton(
                     onClick = { showRationale = false }
                 ) {
-                    Text("Понятно")
+                    Text(stringResource(R.string.action_ok))
                 }
             }
         )

@@ -1,7 +1,9 @@
 package com.habittracker.presentation.viewmodel
 
-import androidx.lifecycle.ViewModel
+import android.app.Application
+import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import com.habittracker.R
 import com.habittracker.domain.model.Habit
 import com.habittracker.domain.usecase.AddHabitUseCase
 import com.habittracker.domain.usecase.GetHabitCompletionStatusUseCase
@@ -44,13 +46,14 @@ class HabitsViewModel @Inject constructor(
     private val addHabitUseCase: AddHabitUseCase,
     private val markHabitCompletedUseCase: MarkHabitCompletedUseCase,
     private val markHabitIncompleteUseCase: MarkHabitIncompleteUseCase,
-    private val getHabitCompletionStatusUseCase: GetHabitCompletionStatusUseCase
-) : ViewModel() {
+    private val getHabitCompletionStatusUseCase: GetHabitCompletionStatusUseCase,
+    application: Application
+) : AndroidViewModel(application) {
 
     private val _uiState = MutableStateFlow(HabitsUiState())
     val uiState: StateFlow<HabitsUiState> = _uiState.asStateFlow()
     
-    private val currentUserId = "DUMMY_USER_ID" // TODO: Заменить на реальный ID пользователя
+    private val currentUserId = getApplication<Application>().getString(R.string.current_user_id) // TODO: Заменить на реальный ID пользователя
     private val today = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault()).date
 
     init {
@@ -119,7 +122,7 @@ class HabitsViewModel @Inject constructor(
             } catch (e: Exception) {
                 // В случае ошибки возвращаем предыдущее состояние
                 updateHabitCompletionStatus(habitId, false, isLoading = false)
-                _uiState.value = _uiState.value.copy(error = "Не удалось отметить привычку: ${e.localizedMessage}")
+                _uiState.value = _uiState.value.copy(error = getApplication<Application>().getString(R.string.error_mark_habit, e.localizedMessage ?: ""))
             }
         }
     }
@@ -141,7 +144,7 @@ class HabitsViewModel @Inject constructor(
             } catch (e: Exception) {
                 // В случае ошибки возвращаем предыдущее состояние
                 updateHabitCompletionStatus(habitId, true, isLoading = false)
-                _uiState.value = _uiState.value.copy(error = "Не удалось снять отметку: ${e.localizedMessage}")
+                _uiState.value = _uiState.value.copy(error = getApplication<Application>().getString(R.string.error_unmark_habit, e.localizedMessage ?: ""))
             }
         }
     }

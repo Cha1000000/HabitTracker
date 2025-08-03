@@ -39,6 +39,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
@@ -46,6 +47,7 @@ import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
+import com.habittracker.R
 import com.habittracker.presentation.navigation.Screen
 import com.habittracker.presentation.viewmodel.AuthEvent
 import com.habittracker.presentation.viewmodel.AuthState
@@ -83,7 +85,7 @@ fun LoginScreen(
         verticalArrangement = Arrangement.Center
     ) {
         Text(
-            text = "Добро пожаловать!",
+            text = stringResource(R.string.auth_welcome_title),
             style = MaterialTheme.typography.headlineMedium,
             fontWeight = FontWeight.Bold
         )
@@ -91,7 +93,7 @@ fun LoginScreen(
         Spacer(modifier = Modifier.height(8.dp))
         
         Text(
-            text = "Войдите в свой аккаунт",
+            text = stringResource(R.string.auth_welcome_subtitle),
             style = MaterialTheme.typography.bodyLarge,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
@@ -102,7 +104,7 @@ fun LoginScreen(
         OutlinedTextField(
             value = uiState.email,
             onValueChange = { viewModel.onEvent(AuthEvent.EmailChanged(it)) },
-            label = { Text("Email") },
+            label = { Text(stringResource(R.string.auth_email_label)) },
             leadingIcon = { Icon(Icons.Default.Email, contentDescription = null) },
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
             modifier = Modifier.fillMaxWidth(),
@@ -116,13 +118,13 @@ fun LoginScreen(
         OutlinedTextField(
             value = uiState.password,
             onValueChange = { viewModel.onEvent(AuthEvent.PasswordChanged(it)) },
-            label = { Text("Пароль") },
+            label = { Text(stringResource(R.string.auth_password_label)) },
             leadingIcon = { Icon(Icons.Default.Lock, contentDescription = null) },
             trailingIcon = {
                 IconButton(onClick = { passwordVisible = !passwordVisible }) {
                     Icon(
                         if (passwordVisible) Icons.Default.Visibility else Icons.Default.VisibilityOff,
-                        contentDescription = if (passwordVisible) "Скрыть пароль" else "Показать пароль"
+                        contentDescription = if (passwordVisible) stringResource(R.string.cd_hide_password) else stringResource(R.string.cd_show_password)
                     )
                 }
             },
@@ -146,7 +148,7 @@ fun LoginScreen(
                     color = MaterialTheme.colorScheme.onPrimary
                 )
             } else {
-                Text("Войти")
+                Text(stringResource(R.string.action_login))
             }
         }
 
@@ -159,7 +161,7 @@ fun LoginScreen(
         ) {
             HorizontalDivider(modifier = Modifier.weight(1f))
             Text(
-                text = "или",
+                text = stringResource(R.string.auth_or),
                 modifier = Modifier.padding(horizontal = 16.dp),
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
@@ -181,7 +183,7 @@ fun LoginScreen(
                 tint = Color.Unspecified
             )
             Spacer(modifier = Modifier.width(8.dp))
-            Text("Войти через Google")
+            Text(stringResource(R.string.auth_login_with_google))
         }
 
         Spacer(modifier = Modifier.height(24.dp))
@@ -190,7 +192,7 @@ fun LoginScreen(
         TextButton(
             onClick = { navController.navigate(Screen.Register.route) }
         ) {
-            Text("Нет аккаунта? Зарегистрироваться")
+            Text(stringResource(R.string.auth_no_account))
         }
     }
 }

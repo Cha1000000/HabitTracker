@@ -31,6 +31,7 @@ globs:
 - ViewBinding НЕ используем (только Compose)
 - Material 3 Design System
 - WorkManager для фоновых напоминаний
+- Не хардкодить текстовые компоненты UI - выносить тексты в strings.xml
 
 ## Структура пакетов
 ```

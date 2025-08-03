@@ -39,6 +39,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -46,6 +47,7 @@ import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
 import androidx.navigation.compose.rememberNavController
+import com.habittracker.R
 import com.habittracker.domain.model.Habit
 import com.habittracker.domain.model.HabitFrequency
 import com.habittracker.domain.model.HabitType
@@ -77,14 +79,14 @@ fun HabitsScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Мои привычки") },
+                title = { Text(stringResource(R.string.habits_title)) },
                 actions = {
                     IconButton(onClick = { 
                         navController.navigate(Screen.Profile.route) 
                     }) {
                         Icon(
                             imageVector = Icons.Default.Person,
-                            contentDescription = "Профиль"
+                            contentDescription = stringResource(R.string.cd_profile)
                         )
                     }
                 }
@@ -94,7 +96,7 @@ fun HabitsScreen(
             FloatingActionButton(
                 onClick = { navController.navigate(Screen.AddEditHabit.route) }
             ) {
-                Icon(Icons.Default.Add, contentDescription = "Добавить привычку")
+                Icon(Icons.Default.Add, contentDescription = stringResource(R.string.cd_add_habit))
             }
         },
         snackbarHost = { SnackbarHost(snackbarHostState) }
@@ -108,7 +110,7 @@ fun HabitsScreen(
             if (uiState.isLoading) {
                 CircularProgressIndicator()
             } else if (uiState.habitsWithCompletion.isEmpty()) {
-                Text("Пока нет привычек. Начните с новой!")
+                Text(stringResource(R.string.habits_empty_state))
             } else {
                 LazyColumn(
                     modifier = Modifier.fillMaxSize(),
@@ -195,11 +197,11 @@ fun HabitItem(
                 // Показываем частоту
                 Text(
                     text = when (habit.frequency) {
-                        HabitFrequency.DAILY -> "Каждый день"
-                        HabitFrequency.WEEKLY -> "Раз в неделю"
-                        HabitFrequency.WEEKDAYS -> "По будням"
-                        HabitFrequency.WEEKENDS -> "По выходным"
-                        HabitFrequency.CUSTOM -> "Произвольно"
+                        HabitFrequency.DAILY -> stringResource(R.string.frequency_daily)
+                        HabitFrequency.WEEKLY -> stringResource(R.string.frequency_weekly)
+                        HabitFrequency.WEEKDAYS -> stringResource(R.string.frequency_weekdays)
+                        HabitFrequency.WEEKENDS -> stringResource(R.string.frequency_weekends)
+                        HabitFrequency.CUSTOM -> stringResource(R.string.frequency_custom)
                     },
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
@@ -220,9 +222,9 @@ fun HabitItem(
                     Icon(
                         imageVector = Icons.Default.Check,
                         contentDescription = if (habitWithCompletion.isCompletedToday) {
-                            "Снять отметку"
+                            stringResource(R.string.habits_unmark_complete)
                         } else {
-                            "Отметить как выполненную"
+                            stringResource(R.string.habits_mark_complete)
                         },
                         tint = if (habitWithCompletion.isCompletedToday) {
                             Color(0xFF4CAF50)
