@@ -4,10 +4,10 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.habittracker.domain.model.Habit
 import com.habittracker.domain.usecase.AddHabitUseCase
+import com.habittracker.domain.usecase.GetHabitCompletionStatusUseCase
 import com.habittracker.domain.usecase.GetHabitsUseCase
 import com.habittracker.domain.usecase.MarkHabitCompletedUseCase
 import com.habittracker.domain.usecase.MarkHabitIncompleteUseCase
-import com.habittracker.domain.usecase.GetHabitCompletionStatusUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -16,7 +16,6 @@ import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.launch
 import kotlinx.datetime.Clock
-import kotlinx.datetime.LocalDate
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toLocalDateTime
 import javax.inject.Inject

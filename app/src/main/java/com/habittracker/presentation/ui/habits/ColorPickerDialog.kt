@@ -29,6 +29,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.core.graphics.toColorInt
 
 /**
  * Диалог выбора цвета для привычки
@@ -102,7 +103,7 @@ private fun ColorItem(
     isSelected: Boolean,
     onClick: () -> Unit
 ) {
-    val colorValue = Color(android.graphics.Color.parseColor(color))
+    val colorValue = Color(color.toColorInt())
     
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
