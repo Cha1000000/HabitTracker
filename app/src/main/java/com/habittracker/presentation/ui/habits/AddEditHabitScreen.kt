@@ -86,46 +86,18 @@ import androidx.navigation.NavController
 import androidx.navigation.compose.rememberNavController
 import com.habittracker.domain.model.HabitFrequency
 import com.habittracker.domain.model.HabitType
-import com.habittracker.domain.repository.HabitRepository
 import com.habittracker.domain.usecase.AddHabitUseCase
-import com.habittracker.domain.usecase.GetHabitByIdUseCase
-import com.habittracker.domain.usecase.UpdateHabitUseCase
-import com.habittracker.domain.usecase.ScheduleHabitReminderUseCase
 import com.habittracker.domain.usecase.CancelHabitReminderUseCase
+import com.habittracker.domain.usecase.GetHabitByIdUseCase
+import com.habittracker.domain.usecase.ScheduleHabitReminderUseCase
 import com.habittracker.domain.usecase.UpdateHabitReminderUseCase
-import com.habittracker.domain.repository.ReminderRepository
-import com.habittracker.domain.model.Habit as DomainHabit
-import com.habittracker.domain.model.HabitFrequency as DomainHabitFrequency
-import com.habittracker.domain.model.HabitType as DomainHabitType
-import com.habittracker.presentation.viewmodel.AddEditHabitViewModel
+import com.habittracker.domain.usecase.UpdateHabitUseCase
+import com.habittracker.presentation.fakes.FakeHabitRepository
+import com.habittracker.presentation.fakes.FakeReminderRepository
 import com.habittracker.presentation.ui.permission.NotificationPermissionHandler
 import com.habittracker.presentation.ui.permission.hasNotificationPermission
-import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.map
-import kotlinx.datetime.Clock
+import com.habittracker.presentation.viewmodel.AddEditHabitViewModel
 import kotlinx.datetime.LocalTime
-import java.util.UUID
-import com.habittracker.domain.model.Habit
-
-// Fake repository for previews
-class FakeReminderRepository : ReminderRepository {
-    override suspend fun scheduleReminder(habit: Habit) {
-        // Пустая реализация для превью
-    }
-    
-    override suspend fun cancelReminder(habitId: String) {
-        // Пустая реализация для превью
-    }
-    
-    override suspend fun cancelAllReminders() {
-        // Пустая реализация для превью
-    }
-    
-    override suspend fun isReminderScheduled(habitId: String): Boolean {
-        return false // Всегда возвращаем false для превью
-    }
-}
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -898,102 +870,5 @@ fun AddEditHabitScreenFilledPreview() {
             viewModel = viewModel,
             onBackClick = {}
         )
-    }
-}
-
-// Fake repository for previews
-class FakeHabitRepository : HabitRepository {
-    private val _habits = mutableListOf<DomainHabit>()
-    private val habitsFlow = MutableStateFlow<List<DomainHabit>>(emptyList())
-    
-    // Add a test user ID for previews
-    private val testUserId = "test_user_id"
-    
-    init {
-        // Add some test data for previews
-        _habits.add(
-            DomainHabit(
-                id = UUID.randomUUID().toString(),
-                title = "Test Habit",
-                description = "Test Description",
-                icon = "🏃",
-                type = DomainHabitType.PERSONAL,
-                frequency = DomainHabitFrequency.DAILY,
-                reminderTime = LocalTime(hour = 8, minute = 0),
-                reminderEnabled = true,
-                targetValue = 100,
-                unit = "minutes",
-                createdBy = "current_user_id", // TODO: Replace with actual user ID
-                participants = listOf("current_user_id"),
-                isActive = true,
-                createdAt = Clock.System.now(),
-                updatedAt = Clock.System.now()
-            )
-        )
-    }
-
-    override suspend fun insertHabit(habit: DomainHabit) {
-        _habits.add(habit)
-        habitsFlow.emit(_habits.toList())
-    }
-
-    override suspend fun updateHabit(habit: DomainHabit) {
-        val index = _habits.indexOfFirst { it.id == habit.id }
-        if (index != -1) {
-            _habits[index] = habit
-            habitsFlow.emit(_habits.toList())
-        }
-    }
-
-    override suspend fun deleteHabit(habitId: String) {
-        _habits.removeAll { it.id == habitId }
-        habitsFlow.emit(_habits.toList())
-    }
-
-    override suspend fun getHabitById(habitId: String): DomainHabit? {
-        return _habits.find { it.id == habitId }
-    }
-
-    override fun getAllHabits(): Flow<List<DomainHabit>> {
-        return habitsFlow
-    }
-
-    override fun getHabitsByUserId(userId: String): Flow<List<DomainHabit>> {
-        return habitsFlow.map { habits ->
-            habits.filter { it.createdBy == testUserId }
-        }
-    }
-
-    override fun getPersonalHabits(userId: String): Flow<List<DomainHabit>> {
-        return habitsFlow.map { habits ->
-            habits.filter { it.createdBy == testUserId && it.type == DomainHabitType.PERSONAL }
-        }
-    }
-
-    override fun getGroupHabits(userId: String): Flow<List<DomainHabit>> {
-        return habitsFlow.map { habits ->
-            habits.filter { it.createdBy == testUserId && it.type == DomainHabitType.GROUP }
-        }
-    }
-
-    override suspend fun addParticipantToHabit(habitId: String, userId: String) {
-        // In a real implementation, this would add a participant to a group habit
-    }
-
-    override suspend fun removeParticipantFromHabit(habitId: String, userId: String) {
-        // In a real implementation, this would remove a participant from a group habit
-    }
-
-    override suspend fun getHabitParticipants(habitId: String): List<String> {
-        // In a real implementation, this would return the list of participant IDs
-        return emptyList()
-    }
-
-    override suspend fun searchHabits(userId: String, query: String): List<DomainHabit> {
-        return _habits.filter { 
-            it.createdBy == testUserId && 
-            (it.title.contains(query, ignoreCase = true) || 
-             it.description.contains(query, ignoreCase = true))
-        }
     }
 }
