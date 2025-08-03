@@ -25,7 +25,7 @@ fun RegisterScreen(
     val authState by viewModel.authState.collectAsState()
 
     LaunchedEffect(authState) {
-        if (authState is AuthState.Authenticated) {
+        if (authState is AuthState.Success) {
             navController.navigate(Screen.Habits.route) {
                 popUpTo(navController.graph.startDestinationId) { inclusive = true }
             }
@@ -67,7 +67,7 @@ fun RegisterScreen(
             CircularProgressIndicator()
         } else {
             Button(
-                onClick = { viewModel.onEvent(AuthEvent.SignUp) },
+                onClick = { viewModel.onEvent(AuthEvent.Register) },
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Text("Зарегистрироваться")

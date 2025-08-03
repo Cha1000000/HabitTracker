@@ -2,9 +2,13 @@ package com.habittracker.data.repository
 
 import android.content.Context
 import android.content.Intent
-import com.google.android.gms.auth.api.signin.GoogleSignIn
-import com.google.android.gms.auth.api.signin.GoogleSignInClient
-import com.google.android.gms.auth.api.signin.GoogleSignInOptions
+import androidx.credentials.CredentialManager
+import androidx.credentials.CustomCredential
+import androidx.credentials.GetCredentialRequest
+import androidx.credentials.exceptions.GetCredentialException
+import com.google.android.libraries.identity.googleid.GetGoogleIdOption
+import com.google.android.libraries.identity.googleid.GoogleIdTokenCredential
+import com.google.android.libraries.identity.googleid.GoogleIdTokenParsingException
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.GoogleAuthProvider
 import com.habittracker.domain.model.User
@@ -18,11 +22,11 @@ import javax.inject.Inject
 class AuthRepositoryImpl @Inject constructor(
     private val firebaseAuth: FirebaseAuth,
     @ApplicationContext private val context: Context,
-    private val gso: GoogleSignInOptions
+    private val getGoogleIdOption: GetGoogleIdOption
 ) : AuthRepository {
 
-    private val googleSignInClient: GoogleSignInClient by lazy {
-        GoogleSignIn.getClient(context, gso)
+    private val credentialManager: CredentialManager by lazy {
+        CredentialManager.create(context)
     }
 
     override fun getCurrentUser(): Flow<User?> = flow {
@@ -56,35 +60,57 @@ class AuthRepositoryImpl @Inject constructor(
     override suspend fun register(email: String, password: String): Flow<Result<Unit>> = flow {
         try {
             firebaseAuth.createUserWithEmailAndPassword(email, password).await()
-            // Здесь в будущем будет логика сохранения пользователя в Firestore
             emit(Result.success(Unit))
         } catch (e: Exception) {
             emit(Result.failure(e))
         }
     }
 
-    override suspend fun signInWithGoogle(idToken: String): Flow<Result<Unit>> = flow {
+    override suspend fun signInWithGoogle(): Flow<Result<Intent?>> = flow {
         try {
-            val credential = GoogleAuthProvider.getCredential(idToken, null)
-            firebaseAuth.signInWithCredential(credential).await()
-            // Здесь также может понадобиться логика сохранения/обновления данных пользователя в Firestore
-            emit(Result.success(Unit))
+            val request = GetCredentialRequest.Builder()
+                .addCredentialOption(getGoogleIdOption)
+                .build()
+            
+            val result = credentialManager.getCredential(
+                context = context,
+                request = request
+            )
+            
+            when (val credential = result.credential) {
+                is CustomCredential -> {
+                    if (credential.type == GoogleIdTokenCredential.TYPE_GOOGLE_ID_TOKEN_CREDENTIAL) {
+                        try {
+                            val googleIdTokenCredential = GoogleIdTokenCredential.createFrom(credential.data)
+                            val idToken = googleIdTokenCredential.idToken
+                            val firebaseCredential = GoogleAuthProvider.getCredential(idToken, null)
+                            firebaseAuth.signInWithCredential(firebaseCredential).await()
+                            emit(Result.success(null)) // No Intent needed with new API
+                        } catch (e: GoogleIdTokenParsingException) {
+                            emit(Result.failure(Exception("Failed to parse Google ID token", e)))
+                        }
+                    } else {
+                        emit(Result.failure(Exception("Unexpected credential type: ${credential.type}")))
+                    }
+                }
+                else -> {
+                    emit(Result.failure(Exception("Unexpected credential type")))
+                }
+            }
+        } catch (e: GetCredentialException) {
+            emit(Result.failure(e))
         } catch (e: Exception) {
             emit(Result.failure(e))
         }
     }
 
-    override fun getGoogleSignInIntent(): Intent {
-        return googleSignInClient.signInIntent
-    }
-
-    override suspend fun logout() {
+    override suspend fun signOut(): Flow<Result<Unit>> = flow {
         try {
             firebaseAuth.signOut()
-            googleSignInClient.signOut().await()
+            // Note: With new Credential Manager API, we don't need to sign out from Google client
+            emit(Result.success(Unit))
         } catch (e: Exception) {
-            // Обработка возможных ошибок при выходе
-            e.printStackTrace()
+            emit(Result.failure(e))
         }
     }
 }

@@ -35,22 +35,17 @@ interface AuthRepository {
     suspend fun register(email: String, password: String): Flow<Result<Unit>>
 
     /**
-     * Выполняет вход пользователя с помощью Google аккаунта.
+     * Выполняет вход пользователя с помощью Google аккаунта через Credential Manager API.
      *
-     * @param idToken Токен, полученный от Google Sign-In.
      * @return Flow, который эмитит результат операции: успех или ошибку.
+     * Intent больше не нужен с новым Credential Manager API.
      */
-    suspend fun signInWithGoogle(idToken: String): Flow<Result<Unit>>
-
-    /**
-     * Получает Intent для запуска процесса входа через Google.
-     *
-     * @return Intent для Google Sign-In.
-     */
-    fun getGoogleSignInIntent(): Intent
+    suspend fun signInWithGoogle(): Flow<Result<Intent?>>
 
     /**
      * Выполняет выход текущего пользователя из системы.
+     *
+     * @return Flow, который эмитит результат операции: успех или ошибку.
      */
-    suspend fun logout()
+    suspend fun signOut(): Flow<Result<Unit>>
 }

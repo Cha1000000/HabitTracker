@@ -17,13 +17,6 @@ class SignOutUseCase @Inject constructor(
      * @return Flow с результатом операции (успех/ошибка)
      */
     suspend operator fun invoke(): Flow<Result<Unit>> {
-        return try {
-            authRepository.logout()
-            // Возвращаем успешный результат
-            kotlinx.coroutines.flow.flow { emit(Result.success(Unit)) }
-        } catch (e: Exception) {
-            // Возвращаем ошибку, если что-то пошло не так
-            kotlinx.coroutines.flow.flow { emit(Result.failure(e)) }
-        }
+        return authRepository.signOut()
     }
 }

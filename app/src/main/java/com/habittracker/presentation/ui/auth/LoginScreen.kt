@@ -4,40 +4,28 @@ import android.app.Activity
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.Icon
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Email
+import androidx.compose.material.icons.filled.Lock
+import androidx.compose.material.icons.filled.Visibility
+import androidx.compose.material.icons.filled.VisibilityOff
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
-import com.google.android.gms.auth.api.signin.GoogleSignIn
-import com.google.android.gms.common.api.ApiException
 import com.habittracker.R
 import com.habittracker.presentation.navigation.Screen
 import com.habittracker.presentation.viewmodel.AuthEvent
@@ -53,42 +41,18 @@ fun LoginScreen(
     val authState by viewModel.authState.collectAsState()
     val context = LocalContext.current
 
-    val launcher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.StartActivityForResult(),
-        onResult = {
-            if (it.resultCode == Activity.RESULT_OK) {
-                val task = GoogleSignIn.getSignedInAccountFromIntent(it.data)
-                try {
-                    val account = task.getResult(ApiException::class.java)
-                    if (account != null && account.idToken != null) {
-                        viewModel.onEvent(AuthEvent.SignInWithGoogle(account.idToken!!))
-                    }
-                } catch (e: ApiException) {
-                    Toast.makeText(context, "Google Sign-In failed: ${e.statusCode}", Toast.LENGTH_SHORT).show()
-                }
-            } else {
-                Toast.makeText(context, "Google Sign-In cancelled", Toast.LENGTH_SHORT).show()
-            }
-        }
-    )
-
-    LaunchedEffect(key1 = Unit) {
-        viewModel.googleSignInIntent.collect {
-            launcher.launch(it)
-        }
-    }
-
+    // Обработка состояния аутентификации
     LaunchedEffect(authState) {
         when (authState) {
-            is AuthState.Authenticated -> {
+            is AuthState.Success -> {
                 navController.navigate(Screen.Habits.route) {
-                    popUpTo(navController.graph.startDestinationId) { inclusive = true }
+                    popUpTo(Screen.Login.route) { inclusive = true }
                 }
             }
             is AuthState.Error -> {
-                Toast.makeText(context, (authState as AuthState.Error).message, Toast.LENGTH_SHORT).show()
+                Toast.makeText(context, (authState as AuthState.Error).message, Toast.LENGTH_LONG).show()
             }
-            else -> Unit
+            else -> {}
         }
     }
 
@@ -96,60 +60,117 @@ fun LoginScreen(
         modifier = Modifier
             .fillMaxSize()
             .padding(16.dp),
-        verticalArrangement = Arrangement.Center,
-        horizontalAlignment = Alignment.CenterHorizontally
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center
     ) {
-        Text("Вход", style = MaterialTheme.typography.headlineMedium)
+        Text(
+            text = "Добро пожаловать!",
+            style = MaterialTheme.typography.headlineMedium,
+            fontWeight = FontWeight.Bold
+        )
+        
+        Spacer(modifier = Modifier.height(8.dp))
+        
+        Text(
+            text = "Войдите в свой аккаунт",
+            style = MaterialTheme.typography.bodyLarge,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+        
         Spacer(modifier = Modifier.height(32.dp))
 
+        // Email поле
         OutlinedTextField(
             value = uiState.email,
             onValueChange = { viewModel.onEvent(AuthEvent.EmailChanged(it)) },
             label = { Text("Email") },
+            leadingIcon = { Icon(Icons.Default.Email, contentDescription = null) },
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
             modifier = Modifier.fillMaxWidth(),
-            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email)
+            singleLine = true
         )
+
         Spacer(modifier = Modifier.height(16.dp))
 
+        // Password поле
+        var passwordVisible by remember { mutableStateOf(false) }
         OutlinedTextField(
             value = uiState.password,
             onValueChange = { viewModel.onEvent(AuthEvent.PasswordChanged(it)) },
             label = { Text("Пароль") },
-            modifier = Modifier.fillMaxWidth(),
-            visualTransformation = PasswordVisualTransformation(),
-            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password)
-        )
-        Spacer(modifier = Modifier.height(32.dp))
-
-        if (authState is AuthState.Loading) {
-            CircularProgressIndicator()
-        } else {
-            Button(
-                onClick = { viewModel.onEvent(AuthEvent.SignIn) },
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Text("Войти")
-            }
-            Spacer(modifier = Modifier.height(16.dp))
-            Button(
-                onClick = { viewModel.onEvent(AuthEvent.GoogleSignInClicked) },
-                modifier = Modifier.fillMaxWidth(),
-                colors = ButtonDefaults.buttonColors(containerColor = Color.White, contentColor = Color.Black)
-            ) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
+            leadingIcon = { Icon(Icons.Default.Lock, contentDescription = null) },
+            trailingIcon = {
+                IconButton(onClick = { passwordVisible = !passwordVisible }) {
                     Icon(
-                        painter = painterResource(id = R.drawable.ic_google_logo),
-                        contentDescription = "Google sign-in",
-                        modifier = Modifier.size(24.dp)
+                        if (passwordVisible) Icons.Default.Visibility else Icons.Default.VisibilityOff,
+                        contentDescription = if (passwordVisible) "Скрыть пароль" else "Показать пароль"
                     )
-                    Spacer(modifier = Modifier.size(ButtonDefaults.IconSpacing))
-                    Text("Войти через Google")
                 }
+            },
+            visualTransformation = if (passwordVisible) VisualTransformation.None else PasswordVisualTransformation(),
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
+            modifier = Modifier.fillMaxWidth(),
+            singleLine = true
+        )
+
+        Spacer(modifier = Modifier.height(24.dp))
+
+        // Кнопка входа
+        Button(
+            onClick = { viewModel.onEvent(AuthEvent.Login) },
+            modifier = Modifier.fillMaxWidth(),
+            enabled = !uiState.isLoading
+        ) {
+            if (uiState.isLoading) {
+                CircularProgressIndicator(
+                    modifier = Modifier.size(20.dp),
+                    color = MaterialTheme.colorScheme.onPrimary
+                )
+            } else {
+                Text("Войти")
             }
         }
 
         Spacer(modifier = Modifier.height(16.dp))
-        TextButton(onClick = { navController.navigate(Screen.Register.route) }) {
+
+        // Разделитель
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            HorizontalDivider(modifier = Modifier.weight(1f))
+            Text(
+                text = "или",
+                modifier = Modifier.padding(horizontal = 16.dp),
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            HorizontalDivider(modifier = Modifier.weight(1f))
+        }
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        // Кнопка Google Sign-In
+        OutlinedButton(
+            onClick = { viewModel.onEvent(AuthEvent.SignInWithGoogle) },
+            modifier = Modifier.fillMaxWidth(),
+            enabled = !uiState.isLoading
+        ) {
+            Icon(
+                painter = painterResource(id = android.R.drawable.ic_dialog_info),
+                contentDescription = null,
+                modifier = Modifier.size(20.dp),
+                tint = Color.Unspecified
+            )
+            Spacer(modifier = Modifier.width(8.dp))
+            Text("Войти через Google")
+        }
+
+        Spacer(modifier = Modifier.height(24.dp))
+
+        // Ссылка на регистрацию
+        TextButton(
+            onClick = { navController.navigate(Screen.Register.route) }
+        ) {
             Text("Нет аккаунта? Зарегистрироваться")
         }
     }

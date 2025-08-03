@@ -3,31 +3,35 @@ package com.habittracker.domain.usecase
 import com.habittracker.domain.repository.AuthRepository
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.test.runTest
-import org.junit.Assert.*
-import org.junit.Rule
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
+import org.junit.Before
 import org.junit.Test
 import org.mockito.Mock
 import org.mockito.Mockito
-import org.mockito.junit.MockitoJUnit
-import org.mockito.junit.MockitoRule
-import org.mockito.kotlin.doAnswer
-import org.mockito.kotlin.mock
+import org.mockito.MockitoAnnotations
 import java.io.IOException
 
-@OptIn(ExperimentalCoroutinesApi::class)
+@ExperimentalCoroutinesApi
 class SignOutUseCaseTest {
-    
-    @get:Rule
-    val mockitoRule: MockitoRule = MockitoJUnit.rule()
-    
-    private val authRepository: AuthRepository = mock()
+
+    @Mock
+    private lateinit var authRepository: AuthRepository
+
     private lateinit var signOutUseCase: SignOutUseCase
 
+    @Before
+    fun setUp() {
+        MockitoAnnotations.openMocks(this)
+    }
+
     @Test
-    fun `invoke should return success when logout is successful`() = runTest {
+    fun `invoke should return success when signOut is successful`() = runTest {
         // Arrange
-        Mockito.`when`(authRepository.logout()).then {}
+        val successFlow = flow { emit(Result.success(Unit)) }
+        Mockito.`when`(authRepository.signOut()).thenReturn(successFlow)
         signOutUseCase = SignOutUseCase(authRepository)
         
         // Act
@@ -39,14 +43,15 @@ class SignOutUseCaseTest {
         // Assert
         assertTrue(flowResult.isSuccess)
         assertEquals(Unit, flowResult.getOrNull())
-        Mockito.verify(authRepository).logout()
+        Mockito.verify(authRepository).signOut()
     }
 
     @Test
-    fun `invoke should return error when logout fails`() = runTest {
+    fun `invoke should return error when signOut fails`() = runTest {
         // Arrange
         val expectedException = IOException("Network error")
-        Mockito.`when`(authRepository.logout()).then { throw expectedException }
+        val errorFlow = flow { emit(Result.failure<Unit>(expectedException)) }
+        Mockito.`when`(authRepository.signOut()).thenReturn(errorFlow)
         signOutUseCase = SignOutUseCase(authRepository)
 
         // Act
@@ -58,5 +63,6 @@ class SignOutUseCaseTest {
         // Assert
         assertTrue(flowResult.isFailure)
         assertEquals(expectedException, flowResult.exceptionOrNull())
+        Mockito.verify(authRepository).signOut()
     }
 }
