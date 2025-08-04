@@ -25,6 +25,7 @@ class HabitReminderWorker(
         const val HABIT_ID_KEY = "habit_id"
         const val HABIT_TITLE_KEY = "habit_title"
         const val HABIT_ICON_KEY = "habit_icon"
+        const val USER_ID_KEY = "user_id"
     }
 
     override suspend fun doWork(): Result = withContext(Dispatchers.IO) {
@@ -33,9 +34,10 @@ class HabitReminderWorker(
             val habitId = inputData.getString(HABIT_ID_KEY)
             val habitTitle = inputData.getString(HABIT_TITLE_KEY)
             val habitIcon = inputData.getString(HABIT_ICON_KEY) ?: "🎯"
+            val userId = inputData.getString(USER_ID_KEY)
 
-            if (habitId.isNullOrBlank() || habitTitle.isNullOrBlank()) {
-                Log.e("HabitReminderWorker", "Missing habit ID or title")
+            if (habitId.isNullOrBlank() || habitTitle.isNullOrBlank() || userId.isNullOrBlank()) {
+                Log.e("HabitReminderWorker", "Missing habit ID, title or user ID")
                 return@withContext Result.failure()
             }
 
@@ -54,7 +56,6 @@ class HabitReminderWorker(
 
             // Умная проверка: не отправляем уведомление, если привычка уже выполнена сегодня
             val today = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault()).date
-            val userId = "DUMMY_USER_ID" // TODO: Заменить на реальный ID пользователя
             
             Log.d("HabitReminderWorker", "Checking if habit is already completed today: $today")
             val todayEntry = habitEntryDao.getEntry(habitId, userId, today)

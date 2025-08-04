@@ -17,6 +17,13 @@ interface AuthRepository {
     fun getCurrentUser(): Flow<User?>
 
     /**
+     * Получает UID текущего аутентифицированного пользователя.
+     *
+     * @return UID пользователя или null, если пользователь не аутентифицирован.
+     */
+    fun getCurrentUserId(): String?
+
+    /**
      * Выполняет вход пользователя по email и паролю.
      *
      * @param email Email пользователя.

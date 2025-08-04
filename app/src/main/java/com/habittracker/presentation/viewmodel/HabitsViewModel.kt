@@ -5,6 +5,7 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.habittracker.R
 import com.habittracker.domain.model.Habit
+import com.habittracker.domain.repository.AuthRepository
 import com.habittracker.domain.usecase.AddHabitUseCase
 import com.habittracker.domain.usecase.GetHabitCompletionStatusUseCase
 import com.habittracker.domain.usecase.GetHabitsUseCase
@@ -47,13 +48,16 @@ class HabitsViewModel @Inject constructor(
     private val markHabitCompletedUseCase: MarkHabitCompletedUseCase,
     private val markHabitIncompleteUseCase: MarkHabitIncompleteUseCase,
     private val getHabitCompletionStatusUseCase: GetHabitCompletionStatusUseCase,
+    private val authRepository: AuthRepository,
     application: Application
 ) : AndroidViewModel(application) {
 
     private val _uiState = MutableStateFlow(HabitsUiState())
     val uiState: StateFlow<HabitsUiState> = _uiState.asStateFlow()
     
-    private val currentUserId = getApplication<Application>().getString(R.string.current_user_id) // TODO: Заменить на реальный ID пользователя
+    private val currentUserId: String
+        get() = authRepository.getCurrentUserId() 
+            ?: throw IllegalStateException("User must be authenticated to access habits")
     private val today = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault()).date
 
     init {

@@ -48,6 +48,10 @@ class AuthRepositoryImpl @Inject constructor(
         }
     }
 
+    override fun getCurrentUserId(): String? {
+        return firebaseAuth.currentUser?.uid
+    }
+
     override suspend fun login(email: String, password: String): Flow<Result<Unit>> = flow {
         try {
             firebaseAuth.signInWithEmailAndPassword(email, password).await()

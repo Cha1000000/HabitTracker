@@ -111,8 +111,6 @@
     <string name="habit_created">Привычка создана!</string>
     <string name="success_habit_updated">Привычка обновлена!</string>
     <string name="habit_updated">Привычка обновлена!</string>
-    <string name="dummy_user_id">DUMMY_USER_ID</string>
-    <string name="current_user_id">DUMMY_USER_ID</string>
     <string name="error_marking_habit">Не удалось отметить привычку: %1$s</string>
     <string name="error_unmarking_habit">Не удалось снять отметку: %1$s</string>
     

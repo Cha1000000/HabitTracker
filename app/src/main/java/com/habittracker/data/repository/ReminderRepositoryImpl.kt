@@ -8,6 +8,7 @@ import androidx.work.WorkManager
 import com.habittracker.data.worker.HabitReminderWorker
 import com.habittracker.domain.model.Habit
 import com.habittracker.domain.model.HabitFrequency
+import com.habittracker.domain.repository.AuthRepository
 import com.habittracker.domain.repository.ReminderRepository
 import kotlinx.datetime.Clock
 import kotlinx.datetime.DateTimeUnit
@@ -26,7 +27,8 @@ import javax.inject.Singleton
  */
 @Singleton
 class ReminderRepositoryImpl @Inject constructor(
-    private val workManager: WorkManager
+    private val workManager: WorkManager,
+    private val authRepository: AuthRepository
 ) : ReminderRepository {
 
     companion object {
@@ -48,6 +50,7 @@ class ReminderRepositoryImpl @Inject constructor(
             .putString(HabitReminderWorker.HABIT_ID_KEY, habit.id)
             .putString(HabitReminderWorker.HABIT_TITLE_KEY, habit.title)
             .putString(HabitReminderWorker.HABIT_ICON_KEY, habit.icon)
+            .putString(HabitReminderWorker.USER_ID_KEY, authRepository.getCurrentUserId())
             .build()
 
         // Создаем запрос на выполнение работы
@@ -143,6 +146,7 @@ class ReminderRepositoryImpl @Inject constructor(
             .putString(HabitReminderWorker.HABIT_ID_KEY, habit.id)
             .putString(HabitReminderWorker.HABIT_TITLE_KEY, habit.title)
             .putString(HabitReminderWorker.HABIT_ICON_KEY, habit.icon)
+            .putString(HabitReminderWorker.USER_ID_KEY, authRepository.getCurrentUserId())
             .build()
 
         val workRequest = OneTimeWorkRequestBuilder<HabitReminderWorker>()

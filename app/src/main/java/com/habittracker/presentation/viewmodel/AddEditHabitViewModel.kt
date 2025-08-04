@@ -9,6 +9,7 @@ import com.habittracker.R
 import com.habittracker.domain.model.Habit
 import com.habittracker.domain.model.HabitFrequency
 import com.habittracker.domain.model.HabitType
+import com.habittracker.domain.repository.AuthRepository
 import com.habittracker.domain.usecase.AddHabitUseCase
 import com.habittracker.domain.usecase.CancelHabitReminderUseCase
 import com.habittracker.domain.usecase.GetHabitByIdUseCase
@@ -34,6 +35,7 @@ class AddEditHabitViewModel @Inject constructor(
     private val scheduleHabitReminderUseCase: ScheduleHabitReminderUseCase,
     private val cancelHabitReminderUseCase: CancelHabitReminderUseCase,
     private val updateHabitReminderUseCase: UpdateHabitReminderUseCase,
+    private val authRepository: AuthRepository,
     savedStateHandle: SavedStateHandle,
     application: Application
 ) : AndroidViewModel(application), IAddEditHabitViewModel {
@@ -102,7 +104,8 @@ class AddEditHabitViewModel @Inject constructor(
                 
                 if (currentHabit == null) {
                     // Создаем новую привычку
-                    val creatorId = getApplication<Application>().getString(R.string.dummy_user_id) // TODO: Заменить на реальный ID пользователя
+                    val creatorId = authRepository.getCurrentUserId() 
+                        ?: throw IllegalStateException("User must be authenticated to create habits")
                     val newHabit = Habit(
                         id = UUID.randomUUID().toString(),
                         title = currentState.title,
