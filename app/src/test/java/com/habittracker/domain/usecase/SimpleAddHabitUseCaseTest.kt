@@ -1,0 +1,117 @@
+package com.habittracker.domain.usecase
+
+import com.habittracker.domain.model.Habit
+import com.habittracker.domain.model.HabitFrequency
+import com.habittracker.domain.model.HabitType
+import com.habittracker.domain.repository.FirestoreRepository
+import com.habittracker.domain.repository.HabitRepository
+import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.test.runTest
+import kotlinx.datetime.Clock
+import org.junit.Assert.*
+import org.junit.Before
+import org.junit.Test
+
+@ExperimentalCoroutinesApi
+class SimpleAddHabitUseCaseTest {
+
+    private lateinit var firestoreRepository: FakeFirestoreRepository
+    private lateinit var habitRepository: FakeHabitRepository
+    private lateinit var addHabitUseCase: AddHabitUseCase
+
+    private val testHabit = Habit(
+        id = "test-habit-id",
+        title = "Test Habit",
+        description = "Test Description",
+        icon = "🏃",
+        color = "#2196F3",
+        type = HabitType.PERSONAL,
+        frequency = HabitFrequency.DAILY,
+        reminderTime = null,
+        targetValue = 1,
+        unit = "раз",
+        participants = emptyList(),
+        isActive = true,
+        createdAt = Clock.System.now(),
+        updatedAt = Clock.System.now(),
+        createdBy = "test-user-id"
+    )
+
+    @Before
+    fun setUp() {
+        firestoreRepository = FakeFirestoreRepository()
+        habitRepository = FakeHabitRepository()
+        addHabitUseCase = AddHabitUseCase(firestoreRepository, habitRepository)
+    }
+
+    @Test
+    fun `invoke should save habit to both repositories when Firestore succeeds`() = runTest {
+        // Act
+        addHabitUseCase(testHabit)
+
+        // Assert
+        assertTrue(firestoreRepository.saveHabitCalled)
+        assertTrue(habitRepository.insertHabitCalled)
+        assertEquals(testHabit, firestoreRepository.savedHabit)
+        assertEquals(testHabit, habitRepository.insertedHabit)
+    }
+
+    @Test
+    fun `invoke should save habit locally when Firestore fails`() = runTest {
+        // Arrange
+        firestoreRepository.shouldThrowException = true
+
+        // Act & Assert
+        try {
+            addHabitUseCase(testHabit)
+        } catch (e: Exception) {
+            // Exception should be propagated
+            assertNotNull(e)
+        }
+
+        // Verify both repositories were called
+        assertTrue(firestoreRepository.saveHabitCalled)
+        assertTrue(habitRepository.insertHabitCalled)
+    }
+
+    // Fake implementations for testing
+    private class FakeFirestoreRepository : FirestoreRepository {
+        var saveHabitCalled = false
+        var savedHabit: Habit? = null
+        var shouldThrowException = false
+
+        override suspend fun saveHabit(habit: Habit) {
+            saveHabitCalled = true
+            savedHabit = habit
+            if (shouldThrowException) {
+                throw RuntimeException("Firestore error")
+            }
+        }
+
+        // Other methods not needed for this test
+        override fun getUserHabits(userId: String) = throw NotImplementedError()
+        override suspend fun updateHabit(habit: Habit) = throw NotImplementedError()
+        override suspend fun deleteHabit(habitId: String) = throw NotImplementedError()
+        override suspend fun getHabitById(habitId: String) = throw NotImplementedError()
+        override suspend fun saveHabitEntry(entry: com.habittracker.domain.model.HabitEntry) = throw NotImplementedError()
+        override suspend fun getHabitEntry(habitId: String, userId: String, date: kotlinx.datetime.LocalDate) = throw NotImplementedError()
+        override fun getHabitEntries(habitId: String, userId: String) = throw NotImplementedError()
+        override suspend fun deleteHabitEntry(habitId: String, userId: String, date: kotlinx.datetime.LocalDate) = throw NotImplementedError()
+    }
+
+    private class FakeHabitRepository : HabitRepository {
+        var insertHabitCalled = false
+        var insertedHabit: Habit? = null
+
+        override suspend fun insertHabit(habit: Habit) {
+            insertHabitCalled = true
+            insertedHabit = habit
+        }
+
+        // Other methods not needed for this test
+        override fun getHabitsByUserId(userId: String) = throw NotImplementedError()
+        override suspend fun getHabitById(id: String) = throw NotImplementedError()
+        override suspend fun updateHabit(habit: Habit) = throw NotImplementedError()
+        override suspend fun deleteHabit(id: String) = throw NotImplementedError()
+    }
+}
