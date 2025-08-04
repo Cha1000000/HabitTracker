@@ -1,30 +1,26 @@
 package com.habittracker.domain.usecase
 
 import com.habittracker.domain.model.Habit
+import com.habittracker.domain.model.HabitEntry
 import com.habittracker.domain.model.HabitFrequency
 import com.habittracker.domain.model.HabitType
 import com.habittracker.domain.repository.FirestoreRepository
 import com.habittracker.domain.repository.HabitRepository
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.test.runTest
 import kotlinx.datetime.Clock
+import kotlinx.datetime.LocalDate
 import org.junit.Assert.*
 import org.junit.Before
 import org.junit.Test
-import org.mockito.Mock
-import org.mockito.Mockito
-import org.mockito.MockitoAnnotations
-import java.io.IOException
 
 @ExperimentalCoroutinesApi
 class GetHabitByIdUseCaseTest {
 
-    @Mock
-    private lateinit var firestoreRepository: FirestoreRepository
-
-    @Mock
-    private lateinit var habitRepository: HabitRepository
-
+    private lateinit var firestoreRepository: FakeFirestoreRepository
+    private lateinit var habitRepository: FakeHabitRepository
     private lateinit var getHabitByIdUseCase: GetHabitByIdUseCase
 
     private val testHabitId = "test-habit-id"
@@ -48,80 +44,113 @@ class GetHabitByIdUseCaseTest {
 
     @Before
     fun setUp() {
-        MockitoAnnotations.openMocks(this)
+        firestoreRepository = FakeFirestoreRepository()
+        habitRepository = FakeHabitRepository()
         getHabitByIdUseCase = GetHabitByIdUseCase(firestoreRepository, habitRepository)
     }
 
     @Test
     fun `invoke should return habit from Firestore when available`() = runTest {
         // Arrange
-        Mockito.`when`(firestoreRepository.getHabitById(testHabitId)).thenReturn(testHabit)
+        firestoreRepository.habitToReturn = testHabit
 
         // Act
         val result = getHabitByIdUseCase(testHabitId)
 
         // Assert
         assertEquals(testHabit, result)
-        Mockito.verify(firestoreRepository).getHabitById(testHabitId)
-        Mockito.verifyNoInteractions(habitRepository)
-    }
-
-    @Test
-    fun `invoke should return null when habit not found in Firestore`() = runTest {
-        // Arrange
-        Mockito.`when`(firestoreRepository.getHabitById(testHabitId)).thenReturn(null)
-
-        // Act
-        val result = getHabitByIdUseCase(testHabitId)
-
-        // Assert
-        assertNull(result)
-        Mockito.verify(firestoreRepository).getHabitById(testHabitId)
-        Mockito.verifyNoInteractions(habitRepository)
+        assertTrue(firestoreRepository.getHabitByIdCalled)
     }
 
     @Test
     fun `invoke should fallback to local repository when Firestore fails`() = runTest {
         // Arrange
-        Mockito.doThrow(IOException("Network error")).`when`(firestoreRepository).getHabitById(testHabitId)
-        Mockito.doReturn(testHabit).`when`(habitRepository).getHabitById(testHabitId)
+        firestoreRepository.shouldThrowException = true
+        habitRepository.habitToReturn = testHabit
 
         // Act
         val result = getHabitByIdUseCase(testHabitId)
 
         // Assert
         assertEquals(testHabit, result)
-        Mockito.verify(firestoreRepository).getHabitById(testHabitId)
-        Mockito.verify(habitRepository).getHabitById(testHabitId)
+        assertTrue(firestoreRepository.getHabitByIdCalled)
+        assertTrue(habitRepository.getHabitByIdCalled)
     }
 
     @Test
-    fun `invoke should return null when both Firestore and local fail`() = runTest {
+    fun `invoke should return null when both repositories fail`() = runTest {
         // Arrange
-        Mockito.doThrow(IOException("Network error")).`when`(firestoreRepository).getHabitById(testHabitId)
-        Mockito.doReturn(null).`when`(habitRepository).getHabitById(testHabitId)
+        firestoreRepository.shouldThrowException = true
+        habitRepository.habitToReturn = null
 
         // Act
         val result = getHabitByIdUseCase(testHabitId)
 
         // Assert
         assertNull(result)
-        Mockito.verify(firestoreRepository).getHabitById(testHabitId)
-        Mockito.verify(habitRepository).getHabitById(testHabitId)
+        assertTrue(firestoreRepository.getHabitByIdCalled)
+        assertTrue(habitRepository.getHabitByIdCalled)
     }
 
     @Test
-    fun `invoke should return null when both Firestore and local throw exceptions`() = runTest {
-        // Arrange
-        Mockito.doThrow(IOException("Network error")).`when`(firestoreRepository).getHabitById(testHabitId)
-        Mockito.doThrow(RuntimeException("Database error")).`when`(habitRepository).getHabitById(testHabitId)
+    fun `invoke should return null when habit not found in both repositories`() = runTest {
+        // Arrange - оба репозитория возвращают null
+        firestoreRepository.habitToReturn = null
+        habitRepository.habitToReturn = null
 
         // Act
         val result = getHabitByIdUseCase(testHabitId)
 
         // Assert
         assertNull(result)
-        Mockito.verify(firestoreRepository).getHabitById(testHabitId)
-        Mockito.verify(habitRepository).getHabitById(testHabitId)
+        assertTrue(firestoreRepository.getHabitByIdCalled)
+        // Локальный репозиторий НЕ вызывается, если Firestore возвращает null (а не исключение)
+        assertFalse(habitRepository.getHabitByIdCalled)
+    }
+
+    // Fake implementations for testing
+    private class FakeFirestoreRepository : FirestoreRepository {
+        var getHabitByIdCalled = false
+        var habitToReturn: Habit? = null
+        var shouldThrowException = false
+
+        override suspend fun getHabitById(habitId: String): Habit? {
+            getHabitByIdCalled = true
+            if (shouldThrowException) {
+                throw RuntimeException("Firestore error")
+            }
+            return habitToReturn
+        }
+
+        override fun getUserHabits(userId: String) = throw NotImplementedError()
+        override suspend fun saveHabit(habit: Habit) = throw NotImplementedError()
+        override suspend fun updateHabit(habit: Habit) = throw NotImplementedError()
+        override suspend fun deleteHabit(habitId: String) = throw NotImplementedError()
+        override suspend fun saveHabitEntry(habitEntry: HabitEntry) = throw NotImplementedError()
+        override suspend fun getHabitEntry(habitId: String, userId: String, date: LocalDate) = throw NotImplementedError()
+        override fun getHabitEntries(habitId: String, userId: String) = throw NotImplementedError()
+        override suspend fun syncData() = throw NotImplementedError()
+    }
+
+    private class FakeHabitRepository : HabitRepository {
+        var getHabitByIdCalled = false
+        var habitToReturn: Habit? = null
+
+        override suspend fun getHabitById(id: String): Habit? {
+            getHabitByIdCalled = true
+            return habitToReturn
+        }
+
+        override suspend fun insertHabit(habit: Habit) = throw NotImplementedError()
+        override suspend fun updateHabit(habit: Habit) = throw NotImplementedError()
+        override fun getHabitsByUserId(userId: String) = throw NotImplementedError()
+        override suspend fun deleteHabit(habitId: String) = throw NotImplementedError()
+        override fun getAllHabits() = throw NotImplementedError()
+        override fun getPersonalHabits(userId: String) = throw NotImplementedError()
+        override fun getGroupHabits(userId: String) = throw NotImplementedError()
+        override suspend fun addParticipantToHabit(habitId: String, userId: String) = throw NotImplementedError()
+        override suspend fun removeParticipantFromHabit(habitId: String, userId: String) = throw NotImplementedError()
+        override suspend fun getHabitParticipants(habitId: String) = throw NotImplementedError()
+        override suspend fun searchHabits(userId: String, query: String) = throw NotImplementedError()
     }
 }

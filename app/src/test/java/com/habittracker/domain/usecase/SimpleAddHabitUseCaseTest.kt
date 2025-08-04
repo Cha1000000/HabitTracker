@@ -1,6 +1,7 @@
 package com.habittracker.domain.usecase
 
 import com.habittracker.domain.model.Habit
+import com.habittracker.domain.model.HabitEntry
 import com.habittracker.domain.model.HabitFrequency
 import com.habittracker.domain.model.HabitType
 import com.habittracker.domain.repository.FirestoreRepository
@@ -88,15 +89,14 @@ class SimpleAddHabitUseCaseTest {
             }
         }
 
-        // Other methods not needed for this test
         override fun getUserHabits(userId: String) = throw NotImplementedError()
         override suspend fun updateHabit(habit: Habit) = throw NotImplementedError()
         override suspend fun deleteHabit(habitId: String) = throw NotImplementedError()
         override suspend fun getHabitById(habitId: String) = throw NotImplementedError()
-        override suspend fun saveHabitEntry(entry: com.habittracker.domain.model.HabitEntry) = throw NotImplementedError()
+        override suspend fun saveHabitEntry(habitEntry: HabitEntry) = throw NotImplementedError()
         override suspend fun getHabitEntry(habitId: String, userId: String, date: kotlinx.datetime.LocalDate) = throw NotImplementedError()
         override fun getHabitEntries(habitId: String, userId: String) = throw NotImplementedError()
-        override suspend fun deleteHabitEntry(habitId: String, userId: String, date: kotlinx.datetime.LocalDate) = throw NotImplementedError()
+        override suspend fun syncData() = throw NotImplementedError()
     }
 
     private class FakeHabitRepository : HabitRepository {
@@ -108,10 +108,16 @@ class SimpleAddHabitUseCaseTest {
             insertedHabit = habit
         }
 
-        // Other methods not needed for this test
         override fun getHabitsByUserId(userId: String) = throw NotImplementedError()
         override suspend fun getHabitById(id: String) = throw NotImplementedError()
         override suspend fun updateHabit(habit: Habit) = throw NotImplementedError()
-        override suspend fun deleteHabit(id: String) = throw NotImplementedError()
+        override suspend fun deleteHabit(habitId: String) = throw NotImplementedError()
+        override fun getAllHabits() = throw NotImplementedError()
+        override fun getPersonalHabits(userId: String) = throw NotImplementedError()
+        override fun getGroupHabits(userId: String) = throw NotImplementedError()
+        override suspend fun addParticipantToHabit(habitId: String, userId: String) = throw NotImplementedError()
+        override suspend fun removeParticipantFromHabit(habitId: String, userId: String) = throw NotImplementedError()
+        override suspend fun getHabitParticipants(habitId: String) = throw NotImplementedError()
+        override suspend fun searchHabits(userId: String, query: String) = throw NotImplementedError()
     }
 }
