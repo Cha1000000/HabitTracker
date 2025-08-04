@@ -1,5 +1,6 @@
 package com.habittracker.domain.usecase
 
+import com.habittracker.domain.repository.FirestoreRepository
 import com.habittracker.domain.repository.HabitEntryRepository
 import kotlinx.datetime.Clock
 import kotlinx.datetime.LocalDate
@@ -8,9 +9,11 @@ import kotlinx.datetime.toLocalDateTime
 import javax.inject.Inject
 
 /**
- * Use case для получения статуса выполнения привычки за определенную дату
+ * Use case для получения статуса выполнения привычки за определенную дату.
+ * Приоритетно использует Firestore с локальным фоллбэком.
  */
 class GetHabitCompletionStatusUseCase @Inject constructor(
+    private val firestoreRepository: FirestoreRepository,
     private val habitEntryRepository: HabitEntryRepository
 ) {
     /**
@@ -25,7 +28,14 @@ class GetHabitCompletionStatusUseCase @Inject constructor(
         userId: String,
         date: LocalDate = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault()).date
     ): Boolean {
-        val entry = habitEntryRepository.getEntry(habitId, userId, date)
-        return entry?.completed ?: false
+        return try {
+            // Сначала пытаемся получить из Firestore
+            val firestoreEntry = firestoreRepository.getHabitEntry(habitId, userId, date)
+            firestoreEntry?.completed ?: false
+        } catch (e: Exception) {
+            // При ошибке используем локальные данные
+            val localEntry = habitEntryRepository.getEntry(habitId, userId, date)
+            localEntry?.completed ?: false
+        }
     }
 }

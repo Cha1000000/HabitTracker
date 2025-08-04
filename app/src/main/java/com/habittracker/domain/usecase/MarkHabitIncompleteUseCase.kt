@@ -1,5 +1,7 @@
 package com.habittracker.domain.usecase
 
+import com.habittracker.domain.model.HabitEntry
+import com.habittracker.domain.repository.FirestoreRepository
 import com.habittracker.domain.repository.HabitEntryRepository
 import kotlinx.datetime.Clock
 import kotlinx.datetime.LocalDate
@@ -8,9 +10,11 @@ import kotlinx.datetime.toLocalDateTime
 import javax.inject.Inject
 
 /**
- * Use case для отметки привычки как невыполненной
+ * Use case для отметки привычки как невыполненной.
+ * Сохраняет запись в Firestore для синхронизации и локально для офлайн-доступа.
  */
 class MarkHabitIncompleteUseCase @Inject constructor(
+    private val firestoreRepository: FirestoreRepository,
     private val habitEntryRepository: HabitEntryRepository
 ) {
     /**
@@ -24,6 +28,27 @@ class MarkHabitIncompleteUseCase @Inject constructor(
         userId: String,
         date: LocalDate = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault()).date
     ) {
-        habitEntryRepository.markHabitIncomplete(habitId, userId, date)
+        val habitEntry = HabitEntry(
+            habitId = habitId,
+            userId = userId,
+            date = date,
+            completed = false,
+            completedAt = null,
+            note = null,
+            createdAt = Clock.System.now(),
+            updatedAt = Clock.System.now()
+        )
+
+        try {
+            // Сначала сохраняем в Firestore
+            firestoreRepository.saveHabitEntry(habitEntry)
+            
+            // Затем сохраняем локально
+            habitEntryRepository.markHabitIncomplete(habitId, userId, date)
+        } catch (e: Exception) {
+            // Если Firestore недоступен, сохраняем только локально
+            habitEntryRepository.markHabitIncomplete(habitId, userId, date)
+            throw e
+        }
     }
 }
