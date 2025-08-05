@@ -1,0 +1,685 @@
+package com.habittracker.data.repository
+
+import com.google.firebase.firestore.FirebaseFirestore
+import com.habittracker.data.local.FriendRequestDao
+import com.habittracker.data.local.FriendshipDao
+import com.habittracker.data.local.HabitInvitationDao
+import com.habittracker.data.local.UserDao
+import com.habittracker.data.local.entity.toDomain
+import com.habittracker.data.local.entity.toEntity
+import com.habittracker.data.local.mapper.toDomain
+import com.habittracker.data.local.mapper.toEntity
+import com.habittracker.domain.model.FriendRequest
+import com.habittracker.domain.model.FriendRequestStatus
+import com.habittracker.domain.model.FriendRequestWithUsers
+import com.habittracker.domain.model.Friendship
+import com.habittracker.domain.model.FriendshipStatus
+import com.habittracker.domain.model.FriendshipWithUsers
+import com.habittracker.domain.model.HabitInvitation
+import com.habittracker.domain.model.HabitInvitationStatus
+import com.habittracker.domain.model.User
+import com.habittracker.domain.model.accept
+import com.habittracker.domain.model.block
+import com.habittracker.domain.model.createFriendRequest
+import com.habittracker.domain.model.createFriendship
+import com.habittracker.domain.model.decline
+import com.habittracker.domain.model.isExpired
+import com.habittracker.domain.model.unblock
+import com.habittracker.domain.repository.SocialRepository
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.tasks.await
+import kotlinx.datetime.Clock
+import java.util.UUID
+import javax.inject.Inject
+import javax.inject.Singleton
+import kotlin.time.Duration.Companion.days
+
+@Singleton
+class SocialRepositoryImpl @Inject constructor(
+    private val firestore: FirebaseFirestore,
+    private val userDao: UserDao,
+    private val friendshipDao: FriendshipDao,
+    private val friendRequestDao: FriendRequestDao,
+    private val habitInvitationDao: HabitInvitationDao
+) : SocialRepository {
+
+    override suspend fun searchUsers(query: String, currentUserId: String): List<User> {
+        return try {
+            // Поиск в Firestore по имени и email
+            val nameResults = firestore.collection("users")
+                .whereGreaterThanOrEqualTo("name", query)
+                .whereLessThanOrEqualTo("name", query + "\uf8ff")
+                .limit(20)
+                .get()
+                .await()
+
+            val emailResults = firestore.collection("users")
+                .whereGreaterThanOrEqualTo("email", query)
+                .whereLessThanOrEqualTo("email", query + "\uf8ff")
+                .limit(20)
+                .get()
+                .await()
+
+            val allResults = (nameResults.documents + emailResults.documents)
+                .distinctBy { it.id }
+                .mapNotNull { doc ->
+                    try {
+                        doc.toObject(User::class.java)?.copy(id = doc.id)
+                    } catch (e: Exception) {
+                        null
+                    }
+                }
+                .filter { it.id != currentUserId } // Исключаем текущего пользователя
+
+            allResults
+        } catch (e: Exception) {
+            // Fallback на локальный поиск
+            userDao.searchUsers("%$query%")
+                .map { it.toDomain() }
+                .filter { it.id != currentUserId }
+        }
+    }
+
+    override suspend fun getUserById(userId: String): User? {
+        return try {
+            val doc = firestore.collection("users").document(userId).get().await()
+            if (doc.exists()) {
+                doc.toObject(User::class.java)?.copy(id = doc.id)
+            } else {
+                // Fallback на локальные данные
+                userDao.getUserById(userId)?.toDomain()
+            }
+        } catch (e: Exception) {
+            userDao.getUserById(userId)?.toDomain()
+        }
+    }
+
+    override suspend fun updateUserFcmToken(userId: String, token: String) {
+        try {
+            firestore.collection("users").document(userId)
+                .update("fcmToken", token)
+                .await()
+        } catch (e: Exception) {
+            // Обновляем локально
+            val user = userDao.getUserById(userId)
+            user?.let {
+                userDao.updateUser(it.copy(fcmToken = token))
+            }
+        }
+    }
+
+    override suspend fun updateFriendsCount(userId: String, count: Int) {
+        try {
+            firestore.collection("users").document(userId)
+                .update("friendsCount", count)
+                .await()
+        } catch (e: Exception) {
+            // Обновляем локально
+            val user = userDao.getUserById(userId)
+            user?.let {
+                userDao.updateUser(it.copy(friendsCount = count))
+            }
+        }
+    }
+
+    override suspend fun sendFriendRequest(
+        fromUserId: String,
+        toUserId: String,
+        message: String?
+    ): Result<FriendRequest> {
+        return try {
+            val friendRequest = createFriendRequest(fromUserId, toUserId, message)
+            
+            // Сохраняем в Firestore
+            firestore.collection("friend_requests")
+                .document(friendRequest.id)
+                .set(friendRequest)
+                .await()
+
+            // Сохраняем локально
+            friendRequestDao.insertFriendRequest(friendRequest.toEntity())
+
+            Result.success(friendRequest)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    override suspend fun acceptFriendRequest(requestId: String): Result<Friendship> {
+        return try {
+            val friendRequest = getFriendRequestById(requestId)
+                ?: return Result.failure(IllegalArgumentException("Запрос не найден"))
+
+            val acceptedRequest = friendRequest.accept()
+            val friendship = createFriendship(
+                friendRequest.fromUserId,
+                friendRequest.toUserId,
+                friendRequest.fromUserId
+            ).accept()
+
+            // Обновляем в Firestore
+            firestore.collection("friend_requests")
+                .document(requestId)
+                .set(acceptedRequest)
+                .await()
+
+            firestore.collection("friendships")
+                .document(friendship.userId1 + "_" + friendship.userId2)
+                .set(friendship)
+                .await()
+
+            // Обновляем локально
+            friendRequestDao.updateFriendRequest(acceptedRequest.toEntity())
+            friendshipDao.insertFriendship(friendship.toEntity())
+
+            // Обновляем счетчики друзей
+            val user1FriendsCount = friendshipDao.getFriendsCount(friendship.userId1).first()
+            val user2FriendsCount = friendshipDao.getFriendsCount(friendship.userId2).first()
+            updateFriendsCount(friendship.userId1, user1FriendsCount + 1)
+            updateFriendsCount(friendship.userId2, user2FriendsCount + 1)
+
+            Result.success(friendship)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    override suspend fun declineFriendRequest(requestId: String): Result<FriendRequest> {
+        return try {
+            val friendRequest = getFriendRequestById(requestId)
+                ?: return Result.failure(IllegalArgumentException("Запрос не найден"))
+
+            val declinedRequest = friendRequest.decline()
+
+            // Обновляем в Firestore
+            firestore.collection("friend_requests")
+                .document(requestId)
+                .set(declinedRequest)
+                .await()
+
+            // Обновляем локально
+            friendRequestDao.updateFriendRequest(declinedRequest.toEntity())
+
+            Result.success(declinedRequest)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    override suspend fun cancelFriendRequest(requestId: String): Result<Unit> {
+        return try {
+            // Удаляем из Firestore
+            firestore.collection("friend_requests")
+                .document(requestId)
+                .delete()
+                .await()
+
+            // Удаляем локально
+            friendRequestDao.deleteFriendRequestById(requestId)
+
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    override suspend fun getFriendRequestById(requestId: String): FriendRequest? {
+        return try {
+            val doc = firestore.collection("friend_requests").document(requestId).get().await()
+            if (doc.exists()) {
+                doc.toObject(FriendRequest::class.java)?.copy(id = doc.id)
+            } else {
+                friendRequestDao.getFriendRequestById(requestId)?.toDomain()
+            }
+        } catch (e: Exception) {
+            friendRequestDao.getFriendRequestById(requestId)?.toDomain()
+        }
+    }
+
+    override suspend fun getFriendRequestBetweenUsers(fromUserId: String, toUserId: String): FriendRequest? {
+        return try {
+            val results = firestore.collection("friend_requests")
+                .whereEqualTo("fromUserId", fromUserId)
+                .whereEqualTo("toUserId", toUserId)
+                .whereEqualTo("status", FriendRequestStatus.PENDING.name)
+                .get()
+                .await()
+
+            results.documents.firstOrNull()?.let { doc ->
+                doc.toObject(FriendRequest::class.java)?.copy(id = doc.id)
+            }
+        } catch (e: Exception) {
+            friendRequestDao.getFriendRequestBetweenUsers(fromUserId, toUserId)?.toDomain()
+        }
+    }
+
+    override fun getIncomingFriendRequests(userId: String): Flow<List<FriendRequestWithUsers>> {
+        return friendRequestDao.getIncomingFriendRequests(userId).map { requests ->
+            requests.mapNotNull { requestEntity ->
+                val request = requestEntity.toDomain()
+                val fromUser = getUserById(request.fromUserId)
+                val toUser = getUserById(request.toUserId)
+                
+                if (fromUser != null && toUser != null) {
+                    FriendRequestWithUsers(request, fromUser, toUser)
+                } else null
+            }
+        }
+    }
+
+    override fun getOutgoingFriendRequests(userId: String): Flow<List<FriendRequestWithUsers>> {
+        return friendRequestDao.getOutgoingFriendRequests(userId).map { requests ->
+            requests.mapNotNull { requestEntity ->
+                val request = requestEntity.toDomain()
+                val fromUser = getUserById(request.fromUserId)
+                val toUser = getUserById(request.toUserId)
+                
+                if (fromUser != null && toUser != null) {
+                    FriendRequestWithUsers(request, fromUser, toUser)
+                } else null
+            }
+        }
+    }
+
+    override fun getIncomingRequestsCount(userId: String): Flow<Int> {
+        return friendRequestDao.getIncomingRequestsCount(userId)
+    }
+
+    override suspend fun getFriendshipBetweenUsers(userId1: String, userId2: String): Friendship? {
+        return try {
+            val orderedIds = if (userId1 < userId2) Pair(userId1, userId2) else Pair(userId2, userId1)
+            val doc = firestore.collection("friendships")
+                .document("${orderedIds.first}_${orderedIds.second}")
+                .get()
+                .await()
+
+            if (doc.exists()) {
+                doc.toObject(Friendship::class.java)
+            } else {
+                friendshipDao.getFriendshipBetweenUsers(userId1, userId2)?.toDomain()
+            }
+        } catch (e: Exception) {
+            friendshipDao.getFriendshipBetweenUsers(userId1, userId2)?.toDomain()
+        }
+    }
+
+    override suspend fun removeFriend(currentUserId: String, friendId: String): Result<Unit> {
+        return try {
+            val orderedIds = if (currentUserId < friendId) Pair(currentUserId, friendId) else Pair(friendId, currentUserId)
+            val docId = "${orderedIds.first}_${orderedIds.second}"
+
+            // Удаляем из Firestore
+            firestore.collection("friendships").document(docId).delete().await()
+
+            // Удаляем локально
+            friendshipDao.deleteFriendshipBetweenUsers(currentUserId, friendId)
+
+            // Обновляем счетчики друзей
+            val user1FriendsCount = friendshipDao.getFriendsCount(currentUserId).first()
+            val user2FriendsCount = friendshipDao.getFriendsCount(friendId).first()
+            updateFriendsCount(currentUserId, user1FriendsCount - 1)
+            updateFriendsCount(friendId, user2FriendsCount - 1)
+
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    override suspend fun blockUser(currentUserId: String, userIdToBlock: String): Result<Friendship> {
+        return try {
+            val friendship = getFriendshipBetweenUsers(currentUserId, userIdToBlock)
+                ?: return Result.failure(IllegalStateException("Дружба не найдена"))
+
+            val blockedFriendship = friendship.block(currentUserId)
+
+            // Обновляем в Firestore
+            val orderedIds = if (currentUserId < userIdToBlock) Pair(currentUserId, userIdToBlock) else Pair(userIdToBlock, currentUserId)
+            firestore.collection("friendships")
+                .document("${orderedIds.first}_${orderedIds.second}")
+                .set(blockedFriendship)
+                .await()
+
+            // Обновляем локально
+            friendshipDao.updateFriendship(blockedFriendship.toEntity())
+
+            Result.success(blockedFriendship)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    override suspend fun unblockUser(currentUserId: String, userIdToUnblock: String): Result<Friendship> {
+        return try {
+            val friendship = getFriendshipBetweenUsers(currentUserId, userIdToUnblock)
+                ?: return Result.failure(IllegalStateException("Дружба не найдена"))
+
+            val unblockedFriendship = friendship.unblock()
+
+            // Обновляем в Firestore
+            val orderedIds = if (currentUserId < userIdToUnblock) Pair(currentUserId, userIdToUnblock) else Pair(userIdToUnblock, currentUserId)
+            firestore.collection("friendships")
+                .document("${orderedIds.first}_${orderedIds.second}")
+                .set(unblockedFriendship)
+                .await()
+
+            // Обновляем локально
+            friendshipDao.updateFriendship(unblockedFriendship.toEntity())
+
+            Result.success(unblockedFriendship)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    override fun getFriends(userId: String): Flow<List<FriendshipWithUsers>> {
+        return friendshipDao.getFriendsForUser(userId).map { friendshipEntities ->
+            friendshipEntities.mapNotNull { friendshipEntity ->
+                val friendship = friendshipEntity.toDomain()
+                try {
+                    val user1 = runBlocking { getUserById(friendship.userId1) }
+                    val user2 = runBlocking { getUserById(friendship.userId2) }
+                    
+                    if (user1 != null && user2 != null) {
+                        FriendshipWithUsers(friendship, user1, user2)
+                    } else null
+                } catch (e: Exception) {
+                    null
+                }
+            }.filter { it.friendship.status == FriendshipStatus.ACCEPTED }
+        }
+    }
+
+    override fun getFriendsCount(userId: String): Flow<Int> {
+        return friendshipDao.getFriendsCount(userId)
+    }
+
+    override suspend fun areFriends(userId1: String, userId2: String): Boolean {
+        val friendship = getFriendshipBetweenUsers(userId1, userId2)
+        return friendship?.status == FriendshipStatus.ACCEPTED
+    }
+
+    override suspend fun canSendFriendRequest(fromUserId: String, toUserId: String): Boolean {
+        // Проверяем, что пользователи не друзья
+        if (areFriends(fromUserId, toUserId)) {
+            return false
+        }
+
+        // Проверяем, что нет активного запроса в любом направлении
+        val existingRequest1 = getFriendRequestBetweenUsers(fromUserId, toUserId)
+        val existingRequest2 = getFriendRequestBetweenUsers(toUserId, fromUserId)
+
+        return existingRequest1 == null && existingRequest2 == null
+    }
+
+    override suspend fun expireOldFriendRequests() {
+        val thirtyDaysAgo = Clock.System.now().epochSeconds - (30 * 24 * 60 * 60)
+        try {
+            friendRequestDao.expireOldRequests(thirtyDaysAgo)
+        } catch (e: Exception) {
+            // Игнорируем ошибки
+        }
+    }
+
+    override suspend fun sendFriendRequestNotification(toUserId: String, fromUserName: String) {
+        // TODO: Реализовать отправку FCM уведомления
+        // Пока заглушка
+    }
+
+    override suspend fun sendFriendAcceptedNotification(toUserId: String, acceptedByName: String) {
+        // TODO: Реализовать отправку FCM уведомления
+        // Пока заглушка
+    }
+
+    // Habit invitations implementation
+    override suspend fun sendHabitInvitation(
+        habitId: String,
+        habitTitle: String,
+        fromUserId: String,
+        fromUserName: String,
+        toUserId: String,
+        message: String?
+    ): Result<HabitInvitation> {
+        return try {
+            // Проверяем, можно ли отправить приглашение
+            if (!canSendHabitInvitation(fromUserId, toUserId, habitId)) {
+                return Result.failure(Exception("Нельзя отправить приглашение этому пользователю"))
+            }
+
+            val invitation = HabitInvitation(
+                id = UUID.randomUUID().toString(),
+                habitId = habitId,
+                habitTitle = habitTitle,
+                fromUserId = fromUserId,
+                fromUserName = fromUserName,
+                toUserId = toUserId,
+                message = message,
+                status = HabitInvitationStatus.PENDING,
+                createdAt = Clock.System.now(),
+                respondedAt = null,
+                expiresAt = Clock.System.now() + 7.days // Истекает через 7 дней
+            )
+
+            // Сохраняем локально
+            habitInvitationDao.insert(invitation.toEntity())
+
+            // TODO: Сохранить в Firestore для синхронизации
+            // TODO: Отправить FCM уведомление
+            sendHabitInvitationNotification(toUserId, fromUserName, habitTitle)
+
+            Result.success(invitation)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    override suspend fun acceptHabitInvitation(invitationId: String): Result<HabitInvitation> {
+        return try {
+            val invitation = getHabitInvitationById(invitationId)
+                ?: return Result.failure(Exception("Приглашение не найдено"))
+
+            if (invitation.status != HabitInvitationStatus.PENDING) {
+                return Result.failure(Exception("Приглашение уже обработано"))
+            }
+
+            if (invitation.isExpired()) {
+                return Result.failure(Exception("Приглашение истекло"))
+            }
+
+            val acceptedInvitation = invitation.copy(
+                status = HabitInvitationStatus.ACCEPTED,
+                respondedAt = Clock.System.now()
+            )
+
+            habitInvitationDao.update(acceptedInvitation.toEntity())
+
+            // TODO: Добавить пользователя к участникам привычки в HabitRepository
+            // TODO: Сохранить в Firestore
+            // TODO: Отправить FCM уведомление создателю
+
+            Result.success(acceptedInvitation)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    override suspend fun declineHabitInvitation(invitationId: String): Result<HabitInvitation> {
+        return try {
+            val invitation = getHabitInvitationById(invitationId)
+                ?: return Result.failure(Exception("Приглашение не найдено"))
+
+            if (invitation.status != HabitInvitationStatus.PENDING) {
+                return Result.failure(Exception("Приглашение уже обработано"))
+            }
+
+            val declinedInvitation = invitation.copy(
+                status = HabitInvitationStatus.DECLINED,
+                respondedAt = Clock.System.now()
+            )
+
+            habitInvitationDao.update(declinedInvitation.toEntity())
+
+            // TODO: Сохранить в Firestore
+
+            Result.success(declinedInvitation)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    override suspend fun cancelHabitInvitation(invitationId: String): Result<Unit> {
+        return try {
+            val invitation = getHabitInvitationById(invitationId)
+                ?: return Result.failure(Exception("Приглашение не найдено"))
+
+            if (invitation.status != HabitInvitationStatus.PENDING) {
+                return Result.failure(Exception("Можно отменить только ожидающие приглашения"))
+            }
+
+            val cancelledInvitation = invitation.copy(
+                status = HabitInvitationStatus.CANCELLED,
+                respondedAt = Clock.System.now()
+            )
+
+            habitInvitationDao.update(cancelledInvitation.toEntity())
+
+            // TODO: Сохранить в Firestore
+
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    override suspend fun getHabitInvitationById(invitationId: String): HabitInvitation? {
+        return try {
+            habitInvitationDao.getById(invitationId)?.toDomain()
+        } catch (e: Exception) {
+            null
+        }
+    }
+
+    override suspend fun getPendingHabitInvitation(habitId: String, userId: String): HabitInvitation? {
+        return try {
+            habitInvitationDao.getPendingInvitation(habitId, userId)?.toDomain()
+        } catch (e: Exception) {
+            null
+        }
+    }
+
+    override fun getIncomingHabitInvitations(userId: String): Flow<List<HabitInvitation>> {
+        return habitInvitationDao.getIncomingInvitations(userId).map { entities ->
+            entities.map { it.toDomain() }
+        }
+    }
+
+    override fun getOutgoingHabitInvitations(userId: String): Flow<List<HabitInvitation>> {
+        return habitInvitationDao.getOutgoingInvitations(userId).map { entities ->
+            entities.map { it.toDomain() }
+        }
+    }
+
+    override fun getHabitInvitations(habitId: String): Flow<List<HabitInvitation>> {
+        return habitInvitationDao.getHabitInvitations(habitId).map { entities ->
+            entities.map { it.toDomain() }
+        }
+    }
+
+    override fun getPendingHabitInvitationsCount(userId: String): Flow<Int> {
+        return habitInvitationDao.getPendingInvitationsCount(userId)
+    }
+
+    override suspend fun getActiveOutgoingInvitationsCount(userId: String): Int {
+        return try {
+            habitInvitationDao.getActiveOutgoingInvitationsCount(userId)
+        } catch (e: Exception) {
+            0
+        }
+    }
+
+    override suspend fun expireOldHabitInvitations() {
+        val currentTime = Clock.System.now().epochSeconds
+        try {
+            habitInvitationDao.expireOldInvitations(currentTime)
+            habitInvitationDao.deleteOldInvitations(currentTime - (30 * 24 * 60 * 60)) // Удаляем старые через 30 дней
+        } catch (e: Exception) {
+            // Игнорируем ошибки
+        }
+    }
+
+    override suspend fun canSendHabitInvitation(fromUserId: String, toUserId: String, habitId: String): Boolean {
+        // Проверяем, что пользователи друзья
+        if (!areFriends(fromUserId, toUserId)) {
+            return false
+        }
+
+        // Проверяем, что нет активного приглашения
+        val existingInvitation = getPendingHabitInvitation(habitId, toUserId)
+        return existingInvitation == null
+    }
+
+    override suspend fun sendHabitInvitationNotification(toUserId: String, fromUserName: String, habitTitle: String) {
+        val toUser = getUserById(toUserId)
+        if (toUser != null) {
+            val fcmToken = toUser.fcmToken
+            if (fcmToken != null) {
+                sendPushNotification(
+                    fcmToken,
+                    "Приглашение к привычке",
+                    "$fromUserName приглашает вас к участию в привычке '$habitTitle'",
+                    mapOf("type" to "habit_invitation")
+                )
+            }
+        }
+    }
+
+    override suspend fun sendHabitInvitationAcceptedNotification(toUserId: String, acceptedByName: String, habitTitle: String) {
+        val toUser = getUserById(toUserId)
+        if (toUser != null) {
+            val fcmToken = toUser.fcmToken
+            if (fcmToken != null) {
+                sendPushNotification(
+                    fcmToken,
+                    "Приглашение к привычке",
+                    "$acceptedByName принял(а) ваше приглашение к участию в привычке '$habitTitle'",
+                    mapOf("type" to "habit_invitation_accepted")
+                )
+            }
+        }
+    }
+
+    override suspend fun sendPushNotification(
+        fcmToken: String, 
+        title: String, 
+        body: String, 
+        data: Map<String, String>
+    ) {
+        try {
+            // В реальном приложении здесь была бы интеграция с Firebase Cloud Functions
+            // или прямой вызов FCM API через HTTP
+            
+            // Пример структуры данных для FCM:
+            val fcmMessage = mapOf(
+                "to" to fcmToken,
+                "notification" to mapOf(
+                    "title" to title,
+                    "body" to body,
+                    "sound" to "default"
+                ),
+                "data" to data,
+                "priority" to "high"
+            )
+            
+            // TODO: Отправить HTTP запрос к FCM API
+            // Для демонстрации просто логируем
+            println("FCM Message: $fcmMessage")
+            
+        } catch (e: Exception) {
+            // Логируем ошибку, но не прерываем выполнение
+            println("Ошибка отправки push-уведомления: ${e.message}")
+        }
+    }
+}

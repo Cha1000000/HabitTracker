@@ -4,6 +4,8 @@ import com.habittracker.data.local.entity.tuples.HabitEntryWithUserTuple
 import com.habittracker.domain.model.Challenge
 import com.habittracker.domain.model.ChallengeRules
 import com.habittracker.domain.model.ChallengeStatus
+import com.habittracker.domain.model.FriendRequest
+import com.habittracker.domain.model.FriendRequestStatus
 import com.habittracker.domain.model.Friendship
 import com.habittracker.domain.model.FriendshipStatus
 import com.habittracker.domain.model.Habit
@@ -24,6 +26,8 @@ fun UserEntity.toDomain(): User = User(
     points = points,
     streak = streak,
     longestStreak = longestStreak,
+    friendsCount = friendsCount,
+    fcmToken = fcmToken,
     createdAt = createdAt,
     lastActiveAt = lastActiveAt,
     timezone = timezone
@@ -38,6 +42,8 @@ fun User.toEntity(): UserEntity = UserEntity(
     points = points,
     streak = streak,
     longestStreak = longestStreak,
+    friendsCount = friendsCount,
+    fcmToken = fcmToken,
     createdAt = createdAt,
     lastActiveAt = lastActiveAt,
     timezone = timezone ?: TimeZone.currentSystemDefault().id
@@ -58,6 +64,9 @@ fun HabitEntity.toDomain(): Habit = Habit(
     unit = unit,
     createdBy = createdBy,
     participants = participants,
+    maxParticipants = maxParticipants,
+    inviteCode = inviteCode,
+    isPublic = isPublic,
     isActive = isActive,
     createdAt = createdAt,
     updatedAt = updatedAt
@@ -77,6 +86,9 @@ fun Habit.toEntity(): HabitEntity = HabitEntity(
     unit = unit,
     createdBy = createdBy,
     participants = participants,
+    maxParticipants = maxParticipants,
+    inviteCode = inviteCode,
+    isPublic = isPublic,
     isActive = isActive,
     createdAt = createdAt,
     updatedAt = updatedAt
@@ -169,5 +181,28 @@ fun Friendship.toEntity(): FriendshipEntity = FriendshipEntity(
     acceptedAt = acceptedAt,
     blockedBy = blockedBy,
     blockedAt = blockedAt,
+    updatedAt = updatedAt
+)
+
+// FriendRequest Mappers
+fun FriendRequestEntity.toDomain(): FriendRequest = FriendRequest(
+    id = id,
+    fromUserId = fromUserId,
+    toUserId = toUserId,
+    status = FriendRequestStatus.valueOf(status),
+    message = message,
+    createdAt = createdAt,
+    respondedAt = respondedAt,
+    updatedAt = updatedAt
+)
+
+fun FriendRequest.toEntity(): FriendRequestEntity = FriendRequestEntity(
+    id = id,
+    fromUserId = fromUserId,
+    toUserId = toUserId,
+    status = status.name,
+    message = message,
+    createdAt = createdAt,
+    respondedAt = respondedAt,
     updatedAt = updatedAt
 )

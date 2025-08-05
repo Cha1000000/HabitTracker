@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.habittracker.domain.model.HabitType
 import com.habittracker.domain.model.HabitFrequency
+import com.habittracker.domain.model.User
 import com.habittracker.presentation.viewmodel.AddEditHabitUiState
 import com.habittracker.presentation.viewmodel.IAddEditHabitViewModel
 import kotlinx.coroutines.delay
@@ -13,6 +14,8 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.datetime.LocalTime
+import kotlinx.datetime.Clock
+import kotlinx.datetime.Instant
 import javax.inject.Inject
 
 /**
@@ -29,78 +32,175 @@ class PreviewAddEditHabitViewModel @Inject constructor(
         _uiState.update { it.copy(isLoading = false) }
     }
 
-    override fun onTitleChange(newTitle: String) {
-        _uiState.update { it.copy(title = newTitle) }
+    override fun onTitleChange(title: String) {
+        _uiState.update { it.copy(title = title) }
     }
 
-    override fun onDescriptionChange(newDescription: String) {
-        _uiState.update { it.copy(description = newDescription) }
+    override fun onDescriptionChange(description: String) {
+        _uiState.update { it.copy(description = description) }
     }
 
-    override fun onIconChange(newIcon: String) {
-        _uiState.update { it.copy(icon = newIcon) }
+    override fun onIconChange(icon: String) {
+        _uiState.update { it.copy(icon = icon) }
     }
 
-    override fun onColorChange(newColor: String) {
-        _uiState.update { it.copy(color = newColor) }
+    override fun onColorChange(color: Int) {
+        _uiState.update { it.copy(color = color) }
     }
 
-    override fun onTypeChange(newType: HabitType) {
-        _uiState.update { it.copy(type = newType) }
+    override fun onTypeChange(type: HabitType) {
+        _uiState.update { it.copy(type = type) }
     }
 
-    override fun onFrequencyChange(newFrequency: HabitFrequency) {
-        _uiState.update { it.copy(frequency = newFrequency) }
+    override fun onFrequencyChange(frequency: HabitFrequency) {
+        _uiState.update { it.copy(frequency = frequency) }
     }
 
-    override fun onReminderTimeChange(newTime: LocalTime?) {
-        _uiState.update { it.copy(reminderTime = newTime) }
+    override fun onReminderTimeChange(time: LocalTime?) {
+        _uiState.update { it.copy(reminderTime = time) }
     }
 
-    override fun onReminderEnabledChange(isEnabled: Boolean) {
-        _uiState.update { it.copy(isReminderEnabled = isEnabled) }
+    override fun onReminderEnabledChange(enabled: Boolean) {
+        // Не используется в новом интерфейсе
     }
 
-    override fun onTargetValueChange(newValue: Int) {
-        _uiState.update { it.copy(targetValue = newValue) }
+    override fun onTargetValueChange(value: Int) {
+        _uiState.update { it.copy(targetValue = value) }
     }
 
-    override fun onUnitChange(newUnit: String) {
-        _uiState.update { it.copy(unit = newUnit) }
+    override fun onUnitChange(unit: String) {
+        _uiState.update { it.copy(unit = unit) }
     }
 
-    override fun onErrorShown() {
-        _uiState.update { it.copy(error = null) }
+    override fun onMaxParticipantsChange(maxParticipants: Int) {
+        _uiState.update { it.copy(maxParticipants = maxParticipants) }
     }
 
-    override fun onSuccessMessageShown() {
-        _uiState.update { it.copy(successMessage = null) }
+    override fun onIsPublicChange(isPublic: Boolean) {
+        _uiState.update { it.copy(isPublic = isPublic) }
     }
+
+    override fun onShowFriendSelector(show: Boolean) {
+        _uiState.update { it.copy(showFriendSelector = show) }
+    }
+
+    override fun onErrorShown() {}
+
+    override fun onSuccessMessageShown() {}
 
     override fun saveHabit() {
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true) }
-            // Имитация задержки сети
-            delay(1000)
-            _uiState.update { it.copy(
-                isLoading = false,
-                isHabitSaved = true,
-                successMessage = "Привычка создана!"
-            )}
+            delay(1000) // Имитация сохранения
+            _uiState.update { it.copy(isLoading = false, isHabitSaved = true) }
+        }
+    }
+
+    override fun loadHabit(habitId: String) {
+        // Для превью не загружаем реальные данные
+    }
+
+    // Методы для напоминаний
+    override fun scheduleReminder() {
+        // Для превью не реализовано
+    }
+
+    override fun cancelReminder() {
+        // Для превью не реализовано
+    }
+
+    override fun updateReminder() {
+        // Для превью не реализовано
+    }
+
+    // Методы для групповых привычек
+    override fun generateInviteCode() {
+        viewModelScope.launch {
+            _uiState.update { it.copy(isLoading = true) }
+            delay(500) // Имитация генерации
+            val code = "ABC${(100..999).random()}"
+            _uiState.update { 
+                it.copy(
+                    inviteCode = code,
+                    isLoading = false,
+                    successMessage = "Код приглашения создан"
+                )
+            }
         }
     }
     
-    // Пустые реализации для use cases напоминаний (только для превью)
-    override fun scheduleReminder() {
-        // Пустая реализация для превью
+    override fun disableInviteCode() {
+        _uiState.update { 
+            it.copy(
+                inviteCode = null,
+                successMessage = "Код приглашения отключен"
+            )
+        }
     }
     
-    override fun cancelReminder() {
-        // Пустая реализация для превью
+    override fun shareInviteCode(inviteCode: String) {
+        _uiState.update { 
+            it.copy(successMessage = "Код скопирован в буфер обмена")
+        }
     }
-    
-    override fun updateReminder() {
-        // Пустая реализация для превью
+
+    override fun loadAvailableFriends() {
+        // Для превью создаем тестовых друзей
+        val testFriends = listOf(
+            User(
+                id = "1",
+                name = "Анна",
+                email = "anna@test.com",
+                createdAt = Instant.fromEpochSeconds(Clock.System.now().epochSeconds),
+                lastActiveAt = Instant.fromEpochSeconds(Clock.System.now().epochSeconds)
+            ),
+            User(
+                id = "2",
+                name = "Борис",
+                email = "boris@test.com",
+                createdAt = Instant.fromEpochSeconds(Clock.System.now().epochSeconds),
+                lastActiveAt = Instant.fromEpochSeconds(Clock.System.now().epochSeconds)
+            ),
+            User(
+                id = "3",
+                name = "Виктор",
+                email = "viktor@test.com",
+                createdAt = Instant.fromEpochSeconds(Clock.System.now().epochSeconds),
+                lastActiveAt = Instant.fromEpochSeconds(Clock.System.now().epochSeconds)
+            )
+        )
+        _uiState.update { it.copy(availableFriends = testFriends) }
+    }
+
+    override fun selectFriend(friend: User) {
+        _uiState.update { state ->
+            val currentSelected = state.selectedFriendsToInvite
+            if (!currentSelected.contains(friend)) {
+                state.copy(selectedFriendsToInvite = currentSelected + friend)
+            } else {
+                state
+            }
+        }
+    }
+
+    override fun deselectFriend(friend: User) {
+        _uiState.update { state ->
+            state.copy(selectedFriendsToInvite = state.selectedFriendsToInvite - friend)
+        }
+    }
+
+    override fun sendInvitations() {
+        viewModelScope.launch {
+            _uiState.update { it.copy(isLoading = true) }
+            delay(500) // Имитация отправки
+            _uiState.update { 
+                it.copy(
+                    isLoading = false,
+                    showFriendSelector = false,
+                    selectedFriendsToInvite = emptyList()
+                )
+            }
+        }
     }
 }
 
@@ -115,25 +215,22 @@ fun PreviewAddEditHabitViewModel(
     type: HabitType = HabitType.PERSONAL,
     frequency: HabitFrequency = HabitFrequency.DAILY,
     reminderTime: LocalTime? = LocalTime(8, 30),
-    isReminderEnabled: Boolean = true,
     targetValue: Int = 5,
     unit: String = "км",
     isLoading: Boolean = false,
     isHabitSaved: Boolean = false
 ): PreviewAddEditHabitViewModel {
-    return PreviewAddEditHabitViewModel(
-        testState = AddEditHabitUiState(
-            title = title,
-            description = description,
-            icon = icon,
-            type = type,
-            frequency = frequency,
-            reminderTime = reminderTime,
-            isReminderEnabled = isReminderEnabled,
-            targetValue = targetValue,
-            unit = unit,
-            isLoading = isLoading,
-            isHabitSaved = isHabitSaved
-        )
+    val testState = AddEditHabitUiState(
+        title = title,
+        description = description,
+        icon = icon,
+        type = type,
+        frequency = frequency,
+        reminderTime = reminderTime,
+        targetValue = targetValue,
+        unit = unit,
+        isLoading = isLoading,
+        isHabitSaved = isHabitSaved
     )
+    return PreviewAddEditHabitViewModel(testState)
 }

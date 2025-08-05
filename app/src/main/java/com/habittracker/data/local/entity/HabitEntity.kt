@@ -23,6 +23,9 @@ data class HabitEntity(
     val unit: String,
     val createdBy: String,
     val participants: List<String>,
+    val maxParticipants: Int,
+    val inviteCode: String?,
+    val isPublic: Boolean,
     val isActive: Boolean,
     val createdAt: Instant,
     val updatedAt: Instant

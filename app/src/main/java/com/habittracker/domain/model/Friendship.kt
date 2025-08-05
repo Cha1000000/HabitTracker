@@ -135,20 +135,16 @@ fun Friendship.getRequestTimeText(): String {
 }
 
 fun Friendship.getAcceptedTimeText(): String {
-    return if (acceptedAt != null) {
-        val now = kotlinx.datetime.Clock.System.now()
-        val duration = now - acceptedAt
-        val days = duration.inWholeDays
-        
-        when {
-            days == 0L -> "Сегодня"
-            days == 1L -> "Вчера"
-            days < 7 -> "$days дней назад"
-            days < 30 -> "${days / 7} недель назад"
-            days < 365 -> "${days / 30} месяцев назад"
-            else -> "${days / 365} лет назад"
-        }
-    } else "Не принято"
+    val acceptedTime = acceptedAt ?: requestedAt
+    val now = kotlinx.datetime.Clock.System.now()
+    val duration = now - acceptedTime
+    
+    return when {
+        duration.inWholeDays > 0 -> "${duration.inWholeDays} дн. назад"
+        duration.inWholeHours > 0 -> "${duration.inWholeHours} ч. назад"
+        duration.inWholeMinutes > 0 -> "${duration.inWholeMinutes} мин. назад"
+        else -> "Только что"
+    }
 }
 
 // Функции для создания дружбы (обеспечивают правильный порядок ID)

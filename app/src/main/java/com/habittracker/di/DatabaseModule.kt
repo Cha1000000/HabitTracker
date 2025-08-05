@@ -8,6 +8,8 @@ import com.habittracker.data.local.HabitEntryDao
 import com.habittracker.data.local.UserDao
 import com.habittracker.data.local.ChallengeDao
 import com.habittracker.data.local.FriendshipDao
+import com.habittracker.data.local.FriendRequestDao
+import com.habittracker.data.local.HabitInvitationDao
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -39,4 +41,10 @@ object DatabaseModule {
 
     @Provides
     fun provideFriendshipDao(database: HabitTrackerDatabase): FriendshipDao = database.friendshipDao()
+
+    @Provides
+    fun provideFriendRequestDao(database: HabitTrackerDatabase): FriendRequestDao = database.friendRequestDao()
+
+    @Provides
+    fun provideHabitInvitationDao(database: HabitTrackerDatabase): HabitInvitationDao = database.habitInvitationDao()
 }

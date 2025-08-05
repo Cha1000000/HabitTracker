@@ -32,7 +32,7 @@ class GetHabitsUseCaseTest {
             id = "habit-1",
             title = "Test Habit 1",
             description = "Description 1",
-            icon = "🏃",
+            icon = "",
             color = "#2196F3",
             type = HabitType.PERSONAL,
             frequency = HabitFrequency.DAILY,
@@ -49,7 +49,7 @@ class GetHabitsUseCaseTest {
             id = "habit-2",
             title = "Test Habit 2",
             description = "Description 2",
-            icon = "📚",
+            icon = "",
             color = "#4CAF50",
             type = HabitType.PERSONAL,
             frequency = HabitFrequency.WEEKLY,
@@ -160,7 +160,18 @@ class GetHabitsUseCaseTest {
 
         override suspend fun insertHabit(habit: Habit) = throw NotImplementedError()
         override suspend fun updateHabit(habit: Habit) = throw NotImplementedError()
-        override suspend fun getHabitById(id: String) = throw NotImplementedError()
+        override suspend fun getHabitById(id: String): Habit? {
+            return habitsToReturn.find { it.id == id }
+        }
+        
+        override suspend fun getHabitByInviteCode(inviteCode: String): Habit? {
+            return habitsToReturn.find { it.inviteCode == inviteCode && it.isActive && it.isPublic }
+        }
+
+        override fun getHabitByIdFlow(habitId: String): Flow<Habit?> {
+            return flowOf(habitsToReturn.find { it.id == habitId })
+        }
+
         override suspend fun deleteHabit(habitId: String) = throw NotImplementedError()
         override fun getAllHabits() = throw NotImplementedError()
         override fun getPersonalHabits(userId: String) = throw NotImplementedError()

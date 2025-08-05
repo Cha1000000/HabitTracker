@@ -11,6 +11,7 @@ import com.habittracker.domain.usecase.GetHabitCompletionStatusUseCase
 import com.habittracker.domain.usecase.GetHabitsUseCase
 import com.habittracker.domain.usecase.MarkHabitCompletedUseCase
 import com.habittracker.domain.usecase.MarkHabitIncompleteUseCase
+import com.habittracker.presentation.ui.habits.components.ParticipantProgress
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -29,7 +30,8 @@ import javax.inject.Inject
 data class HabitWithCompletion(
     val habit: Habit,
     val isCompletedToday: Boolean = false,
-    val isLoading: Boolean = false
+    val isLoading: Boolean = false,
+    val participantsProgress: List<ParticipantProgress> = emptyList() // Прогресс участников для групповых привычек
 )
 
 /**

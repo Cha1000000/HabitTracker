@@ -1,0 +1,180 @@
+package com.habittracker.presentation.ui.notifications
+
+import androidx.compose.foundation.layout.*
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.DoneAll
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.dp
+import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.navigation.NavController
+import com.habittracker.R
+import com.habittracker.domain.usecase.notification.GroupHabitNotification
+import com.habittracker.domain.usecase.notification.NotificationType
+import com.habittracker.presentation.viewmodel.NotificationsViewModel
+import kotlinx.datetime.Clock
+
+/**
+ * Экран уведомлений групповых привычек
+ */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun NotificationsScreen(
+    navController: NavController,
+    viewModel: NotificationsViewModel = hiltViewModel(),
+    onBackClick: () -> Unit = { navController.popBackStack() }
+) {
+    val uiState by viewModel.uiState.collectAsState()
+    val snackbarHostState = remember { SnackbarHostState() }
+    
+    // Обработка сообщений об ошибках
+    LaunchedEffect(uiState.error) {
+        uiState.error?.let { error ->
+            snackbarHostState.showSnackbar(
+                message = error,
+                duration = SnackbarDuration.Long
+            )
+            viewModel.onErrorShown()
+        }
+    }
+    
+    // Обработка успешных действий
+    LaunchedEffect(uiState.successMessage) {
+        uiState.successMessage?.let { message ->
+            snackbarHostState.showSnackbar(
+                message = message,
+                duration = SnackbarDuration.Short
+            )
+            viewModel.onSuccessMessageShown()
+        }
+    }
+    
+    Scaffold(
+        topBar = {
+            NotificationsTopBar(
+                unreadCount = uiState.unreadCount,
+                onBackClick = onBackClick,
+                onMarkAllAsRead = { viewModel.markAllAsRead() }
+            )
+        },
+        snackbarHost = { SnackbarHost(snackbarHostState) }
+    ) { paddingValues ->
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(paddingValues)
+        ) {
+            when {
+                uiState.isLoading -> {
+                    CircularProgressIndicator(
+                        modifier = Modifier.align(Alignment.Center)
+                    )
+                }
+                
+                else -> {
+                    NotificationsList(
+                        notifications = uiState.notifications,
+                        onNotificationClick = { notification ->
+                            viewModel.onNotificationClick(notification)
+                        },
+                        onMarkAsRead = { notificationId ->
+                            viewModel.markAsRead(notificationId)
+                        }
+                    )
+                }
+            }
+        }
+    }
+}
+
+/**
+ * Верхняя панель экрана уведомлений
+ */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun NotificationsTopBar(
+    unreadCount: Int,
+    onBackClick: () -> Unit,
+    onMarkAllAsRead: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    TopAppBar(
+        title = {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                Text(stringResource(R.string.notifications_title))
+                if (unreadCount > 0) {
+                    NotificationBadge(count = unreadCount)
+                }
+            }
+        },
+        navigationIcon = {
+            IconButton(onClick = onBackClick) {
+                Icon(
+                    imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                    contentDescription = stringResource(R.string.back)
+                )
+            }
+        },
+        actions = {
+            if (unreadCount > 0) {
+                IconButton(onClick = onMarkAllAsRead) {
+                    Icon(
+                        imageVector = Icons.Default.DoneAll,
+                        contentDescription = stringResource(R.string.mark_all_as_read)
+                    )
+                }
+            }
+        },
+        modifier = modifier
+    )
+}
+
+@Preview(showBackground = true)
+@Composable
+fun NotificationsScreenPreview() {
+    MaterialTheme {
+        // Создаем mock данные для превью
+        val mockNotifications = listOf(
+            GroupHabitNotification(
+                id = "1",
+                type = NotificationType.PARTICIPANT_COMPLETED,
+                habitId = "habit1",
+                habitTitle = "Утренняя зарядка",
+                participantName = "Анна",
+                message = "Анна выполнила привычку \"Утренняя зарядка\"",
+                timestamp = Clock.System.now(),
+                isRead = false
+            ),
+            GroupHabitNotification(
+                id = "2",
+                type = NotificationType.GROUP_ACHIEVEMENT,
+                habitId = "habit2",
+                habitTitle = "Чтение книг",
+                message = "Все участники выполнили \"Чтение книг\" сегодня! 🎉",
+                timestamp = Clock.System.now(),
+                isRead = true
+            )
+        )
+        
+        Column {
+            NotificationsTopBar(
+                unreadCount = 3,
+                onBackClick = {},
+                onMarkAllAsRead = {}
+            )
+            NotificationsList(
+                notifications = mockNotifications,
+                onNotificationClick = {},
+                onMarkAsRead = {}
+            )
+        }
+    }
+}

@@ -1,8 +1,16 @@
 package com.habittracker.domain.usecase
 
 import com.habittracker.domain.model.HabitEntry
+import com.habittracker.domain.model.isGroupHabit
 import com.habittracker.domain.repository.FirestoreRepository
 import com.habittracker.domain.repository.HabitEntryRepository
+import com.habittracker.domain.repository.HabitRepository
+import com.habittracker.domain.repository.SocialRepository
+import com.habittracker.domain.usecase.notification.SendGroupHabitPushNotificationUseCase
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.datetime.Clock
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.TimeZone
@@ -15,7 +23,10 @@ import javax.inject.Inject
  */
 class MarkHabitCompletedUseCase @Inject constructor(
     private val firestoreRepository: FirestoreRepository,
-    private val habitEntryRepository: HabitEntryRepository
+    private val habitEntryRepository: HabitEntryRepository,
+    private val habitRepository: HabitRepository,
+    private val socialRepository: SocialRepository,
+    private val sendGroupHabitPushNotificationUseCase: SendGroupHabitPushNotificationUseCase
 ) {
     /**
      * Отмечает привычку как выполненную за указанную дату
@@ -47,10 +58,41 @@ class MarkHabitCompletedUseCase @Inject constructor(
             
             // Затем сохраняем локально
             habitEntryRepository.markHabitCompleted(habitId, userId, date, note)
+            
+            // Отправляем push-уведомления для групповых привычек
+            sendGroupNotificationsAsync(habitId, userId)
+            
         } catch (e: Exception) {
-            // Если Firestore недоступен, сохраняем только локально
+            // При ошибке Firestore всё равно сохраняем локально
             habitEntryRepository.markHabitCompleted(habitId, userId, date, note)
             throw e
         }
     }
+
+    /**
+     * Асинхронно отправляет push-уведомления для групповых привычек
+     */
+    private fun sendGroupNotificationsAsync(habitId: String, userId: String) {
+        notificationScope.launch {
+            try {
+                val habit = habitRepository.getHabitById(habitId)
+                if (habit != null && habit.isGroupHabit()) {
+                    val user = socialRepository.getUserById(userId)
+                    if (user != null) {
+                        // Уведомляем других участников о выполнении привычки
+                        sendGroupHabitPushNotificationUseCase.sendParticipantCompletedNotification(
+                            habit = habit,
+                            completedByUser = user,
+                            excludeUserId = userId // Исключаем самого пользователя
+                        )
+                    }
+                }
+            } catch (e: Exception) {
+                // Логируем ошибку, но не прерываем основной процесс
+                // TODO: Добавить логирование
+            }
+        }
+    }
+
+    private val notificationScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 }

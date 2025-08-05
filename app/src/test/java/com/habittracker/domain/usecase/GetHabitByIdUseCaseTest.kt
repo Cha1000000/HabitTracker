@@ -135,10 +135,19 @@ class GetHabitByIdUseCaseTest {
     private class FakeHabitRepository : HabitRepository {
         var getHabitByIdCalled = false
         var habitToReturn: Habit? = null
+        private val habits = mutableListOf<Habit>()
 
         override suspend fun getHabitById(id: String): Habit? {
             getHabitByIdCalled = true
-            return habitToReturn
+            return habitToReturn ?: habits.find { it.id == id }
+        }
+
+        override suspend fun getHabitByInviteCode(inviteCode: String): Habit? {
+            return habits.find { it.inviteCode == inviteCode && it.isActive && it.isPublic }
+        }
+
+        override fun getHabitByIdFlow(habitId: String): Flow<Habit?> {
+            return flowOf(habitToReturn ?: habits.find { it.id == habitId })
         }
 
         override suspend fun insertHabit(habit: Habit) = throw NotImplementedError()

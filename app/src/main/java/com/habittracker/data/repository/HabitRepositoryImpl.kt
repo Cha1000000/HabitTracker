@@ -33,6 +33,16 @@ class HabitRepositoryImpl @Inject constructor(
         return habitDao.getHabitById(habitId)?.toDomain()
     }
     
+    override suspend fun getHabitByInviteCode(inviteCode: String): Habit? {
+        return habitDao.getHabitByInviteCode(inviteCode)?.toDomain()
+    }
+    
+    override fun getHabitByIdFlow(habitId: String): Flow<Habit?> {
+        return habitDao.getHabitByIdFlow(habitId).map { entity ->
+            entity?.toDomain()
+        }
+    }
+    
     override fun getAllHabits(): Flow<List<Habit>> {
         return habitDao.getAllHabits().map { entities ->
             entities.map { it.toDomain() }

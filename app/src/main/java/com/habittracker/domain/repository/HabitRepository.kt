@@ -13,6 +13,10 @@ interface HabitRepository {
     
     suspend fun getHabitById(habitId: String): Habit?
     
+    suspend fun getHabitByInviteCode(inviteCode: String): Habit?
+    
+    fun getHabitByIdFlow(habitId: String): Flow<Habit?>
+    
     fun getAllHabits(): Flow<List<Habit>>
     
     fun getHabitsByUserId(userId: String): Flow<List<Habit>>

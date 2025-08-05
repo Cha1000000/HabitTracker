@@ -105,6 +105,7 @@ class UpdateHabitUseCaseTest {
     private class FakeHabitRepository : HabitRepository {
         var updateHabitCalled = false
         var updatedHabit: Habit? = null
+        private val habits = mutableListOf<Habit>()
 
         override suspend fun updateHabit(habit: Habit) {
             updateHabitCalled = true
@@ -113,7 +114,18 @@ class UpdateHabitUseCaseTest {
 
         override suspend fun insertHabit(habit: Habit) = throw NotImplementedError()
         override fun getHabitsByUserId(userId: String) = throw NotImplementedError()
-        override suspend fun getHabitById(id: String) = throw NotImplementedError()
+        override suspend fun getHabitById(id: String): Habit? {
+            return habits.find { it.id == id }
+        }
+        
+        override suspend fun getHabitByInviteCode(inviteCode: String): Habit? {
+            return habits.find { it.inviteCode == inviteCode && it.isActive && it.isPublic }
+        }
+
+        override fun getHabitByIdFlow(habitId: String): Flow<Habit?> {
+            return flowOf(habits.find { it.id == habitId })
+        }
+
         override suspend fun deleteHabit(habitId: String) = throw NotImplementedError()
         override fun getAllHabits() = throw NotImplementedError()
         override fun getPersonalHabits(userId: String) = throw NotImplementedError()

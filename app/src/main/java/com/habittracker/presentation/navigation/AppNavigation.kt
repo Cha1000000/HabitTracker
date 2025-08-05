@@ -1,6 +1,7 @@
 package com.habittracker.presentation.navigation
 
 import androidx.compose.runtime.Composable
+import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
@@ -9,7 +10,12 @@ import com.habittracker.presentation.ui.ProfileScreen
 import com.habittracker.presentation.ui.auth.LoginScreen
 import com.habittracker.presentation.ui.auth.RegisterScreen
 import com.habittracker.presentation.ui.habits.AddEditHabitScreen
+import com.habittracker.presentation.ui.habits.GroupHabitDetailScreen
 import com.habittracker.presentation.ui.habits.HabitsScreen
+import com.habittracker.presentation.ui.notifications.NotificationsScreen
+import com.habittracker.presentation.ui.social.FriendRequestsScreen
+import com.habittracker.presentation.ui.social.FriendsScreen
+import com.habittracker.presentation.ui.social.SearchFriendsScreen
 
 /**
  * Запечатанный класс для определения маршрутов навигации.
@@ -21,6 +27,13 @@ sealed class Screen(val route: String) {
     object Login : Screen("login_screen")
     object Register : Screen("register_screen")
     object Profile : Screen("profile_screen")
+    object Friends : Screen("friends_screen")
+    object SearchFriends : Screen("search_friends_screen")
+    object FriendRequests : Screen("friend_requests_screen")
+    object Notifications : Screen("notifications_screen")
+    object GroupHabitDetail : Screen("group_habit_detail_screen/{habitId}") {
+        fun createRoute(habitId: String) = "group_habit_detail_screen/$habitId"
+    }
     // TODO: Добавить другие экраны по мере их создания
 }
 
@@ -56,6 +69,56 @@ fun AppNavHost() {
         
         composable(route = Screen.Profile.route) {
             ProfileScreen(navController = navController)
+        }
+        
+        composable(route = Screen.Friends.route) {
+            FriendsScreen(
+                onNavigateToSearch = {
+                    navController.navigate(Screen.SearchFriends.route)
+                },
+                onNavigateToRequests = {
+                    navController.navigate(Screen.FriendRequests.route)
+                }
+            )
+        }
+        
+        composable(route = Screen.SearchFriends.route) {
+            SearchFriendsScreen(
+                onNavigateBack = {
+                    navController.popBackStack()
+                }
+            )
+        }
+        
+        composable(route = Screen.FriendRequests.route) {
+            FriendRequestsScreen(
+                onNavigateBack = {
+                    navController.popBackStack()
+                }
+            )
+        }
+        
+        composable(route = Screen.Notifications.route) {
+            NotificationsScreen(
+                navController = navController,
+                onBackClick = {
+                    navController.popBackStack()
+                }
+            )
+        }
+        
+        composable(
+            route = Screen.GroupHabitDetail.route,
+            arguments = listOf(navArgument("habitId") {
+                type = NavType.StringType
+                nullable = false
+            })
+        ) { backStackEntry ->
+            val habitId = backStackEntry.arguments?.getString("habitId") ?: ""
+            GroupHabitDetailScreen(
+                habitId = habitId,
+                navController = navController
+            )
         }
         // TODO: Определить навигацию для других экранов
     }

@@ -12,6 +12,8 @@ data class User(
     val points: Int = 0,
     val streak: Int = 0, // текущая серия выполненных дней
     val longestStreak: Int = 0,
+    val friendsCount: Int = 0, // количество друзей
+    val fcmToken: String? = null, // токен для push-уведомлений
     val createdAt: Instant,
     val lastActiveAt: Instant,
     val timezone: String? = TimeZone.currentSystemDefault().id

@@ -12,6 +12,7 @@ import kotlinx.datetime.Clock
 import org.junit.Assert.*
 import org.junit.Before
 import org.junit.Test
+import kotlinx.coroutines.flow.*
 
 @ExperimentalCoroutinesApi
 class SimpleAddHabitUseCaseTest {
@@ -102,14 +103,27 @@ class SimpleAddHabitUseCaseTest {
     private class FakeHabitRepository : HabitRepository {
         var insertHabitCalled = false
         var insertedHabit: Habit? = null
+        var habits = listOf<Habit>()
 
         override suspend fun insertHabit(habit: Habit) {
             insertHabitCalled = true
             insertedHabit = habit
+            habits = habits + habit
         }
 
         override fun getHabitsByUserId(userId: String) = throw NotImplementedError()
-        override suspend fun getHabitById(id: String) = throw NotImplementedError()
+        override suspend fun getHabitById(id: String): Habit? {
+            return habits.find { it.id == id }
+        }
+        
+        override suspend fun getHabitByInviteCode(inviteCode: String): Habit? {
+            return habits.find { it.inviteCode == inviteCode && it.isActive && it.isPublic }
+        }
+
+        override fun getHabitByIdFlow(habitId: String): Flow<Habit?> {
+            return flowOf(habits.find { it.id == habitId })
+        }
+
         override suspend fun updateHabit(habit: Habit) = throw NotImplementedError()
         override suspend fun deleteHabit(habitId: String) = throw NotImplementedError()
         override fun getAllHabits() = throw NotImplementedError()

@@ -15,6 +15,8 @@ data class UserEntity(
     val points: Int = 0,
     val streak: Int = 0,
     val longestStreak: Int = 0,
+    val friendsCount: Int = 0,
+    val fcmToken: String? = null,
     val createdAt: Instant,
     val lastActiveAt: Instant,
     val timezone: String

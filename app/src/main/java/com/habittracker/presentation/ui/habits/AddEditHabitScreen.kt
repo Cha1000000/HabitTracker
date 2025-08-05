@@ -22,23 +22,32 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.material3.Button
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.Checkbox
+import androidx.compose.material3.TopAppBar
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Description
 import androidx.compose.material.icons.filled.Group
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.filled.PersonAdd
+import androidx.compose.material.icons.filled.Public
 import androidx.compose.material.icons.filled.Timeline
 import androidx.compose.material.icons.filled.Title
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Button
+import androidx.compose.material3.AssistChip
 import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.Card
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -61,7 +70,6 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TimePicker
 import androidx.compose.material3.TimePickerDefaults
-import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.rememberTimePickerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -75,6 +83,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
@@ -87,11 +96,15 @@ import androidx.navigation.compose.rememberNavController
 import com.habittracker.R
 import com.habittracker.domain.model.HabitFrequency
 import com.habittracker.domain.model.HabitType
+import com.habittracker.domain.model.User
+import com.habittracker.presentation.ui.habits.components.InviteCodeCard
 import com.habittracker.presentation.ui.permission.NotificationPermissionHandler
 import com.habittracker.presentation.ui.permission.hasNotificationPermission
 import com.habittracker.presentation.viewmodel.AddEditHabitUiState
 import com.habittracker.presentation.viewmodel.AddEditHabitViewModel
 import com.habittracker.presentation.viewmodel.IAddEditHabitViewModel
+import com.habittracker.presentation.ui.components.FieldValidationFeedback
+import com.habittracker.presentation.ui.components.LiveValidationIndicator
 import kotlinx.datetime.LocalTime
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -262,6 +275,85 @@ private fun IconPickerDialog(
     )
 }
 
+@Composable
+private fun FriendSelectorDialog(
+    friends: List<User>,
+    selectedFriends: List<User>,
+    onFriendToggle: (User) -> Unit,
+    onConfirm: () -> Unit,
+    onDismiss: () -> Unit
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = {
+            Text(stringResource(R.string.select_friends_to_invite))
+        },
+        text = {
+            LazyColumn(
+                modifier = Modifier.heightIn(max = 400.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                if (friends.isEmpty()) {
+                    item {
+                        Text(
+                            text = stringResource(R.string.no_friends_available),
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.padding(16.dp)
+                        )
+                    }
+                } else {
+                    items(friends) { friend ->
+                        val isSelected = selectedFriends.contains(friend)
+                        
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable { onFriendToggle(friend) }
+                                .padding(8.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Checkbox(
+                                checked = isSelected,
+                                onCheckedChange = { onFriendToggle(friend) }
+                            )
+                            
+                            Spacer(modifier = Modifier.width(12.dp))
+                            
+                            Column {
+                                Text(
+                                    text = friend.name,
+                                    style = MaterialTheme.typography.bodyLarge
+                                )
+                                if (friend.email.isNotEmpty()) {
+                                    Text(
+                                        text = friend.email,
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            Button(
+                onClick = onConfirm,
+                enabled = selectedFriends.isNotEmpty()
+            ) {
+                Text(stringResource(R.string.invite_selected, selectedFriends.size))
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text(stringResource(R.string.action_cancel))
+            }
+        }
+    )
+}
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun HabitTypeSelector(
@@ -320,6 +412,145 @@ private fun HabitTypeSelector(
                         )
                     }
                 )
+            }
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun GroupSettings(
+    uiState: AddEditHabitUiState,
+    viewModel: IAddEditHabitViewModel,
+    modifier: Modifier = Modifier
+) {
+    Card(
+        modifier = modifier
+    ) {
+        Column(
+            modifier = Modifier.padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            Text(
+                text = stringResource(R.string.group_habit_settings),
+                style = MaterialTheme.typography.titleMedium,
+                color = MaterialTheme.colorScheme.primary
+            )
+            
+            // Максимальное количество участников
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                Icon(
+                    Icons.Default.Group,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                
+                OutlinedTextField(
+                    value = uiState.maxParticipants.toString(),
+                    onValueChange = { 
+                        val value = it.toIntOrNull()
+                        if (value != null && value in 2..10) {
+                            viewModel.onMaxParticipantsChange(value)
+                        }
+                    },
+                    label = { Text(stringResource(R.string.max_participants)) },
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                    singleLine = true,
+                    modifier = Modifier.width(120.dp),
+                    enabled = !uiState.isLoading && !uiState.isHabitSaved
+                )
+                
+                Text(
+                    text = stringResource(R.string.participants_limit),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+            
+            // Публичная привычка
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Icon(
+                    Icons.Default.Public,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(end = 12.dp)
+                )
+                
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = stringResource(R.string.public_habit),
+                        style = MaterialTheme.typography.bodyLarge
+                    )
+                    Text(
+                        text = stringResource(R.string.public_habit_description),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+                
+                Switch(
+                    checked = uiState.isPublic,
+                    onCheckedChange = { viewModel.onIsPublicChange(it) },
+                    enabled = !uiState.isLoading && !uiState.isHabitSaved
+                )
+            }
+            
+            InviteCodeCard(
+                inviteCode = uiState.inviteCode,
+                isPublic = uiState.isPublic,
+                isGenerating = uiState.isLoading,
+                onGenerateCode = { viewModel.generateInviteCode() },
+                onTogglePublic = { viewModel.onIsPublicChange(it) },
+                onShareCode = { viewModel.shareInviteCode(it) },
+                onDisableCode = { viewModel.disableInviteCode() }
+            )
+            
+            // Кнопка приглашения друзей
+            OutlinedButton(
+                onClick = { viewModel.onShowFriendSelector(true) },
+                modifier = Modifier.fillMaxWidth(),
+                enabled = !uiState.isLoading && !uiState.isHabitSaved
+            ) {
+                Icon(
+                    Icons.Default.PersonAdd,
+                    contentDescription = null,
+                    modifier = Modifier.padding(end = 8.dp)
+                )
+                Text(stringResource(R.string.invite_friends))
+            }
+            
+            // Показываем выбранных друзей
+            if (uiState.selectedFriendsToInvite.isNotEmpty()) {
+                Text(
+                    text = stringResource(R.string.selected_friends, uiState.selectedFriendsToInvite.size),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.primary
+                )
+                
+                LazyRow(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    contentPadding = PaddingValues(vertical = 4.dp)
+                ) {
+                    items(uiState.selectedFriendsToInvite) { friend ->
+                        AssistChip(
+                            onClick = { viewModel.deselectFriend(friend) },
+                            label = { Text(friend.name) },
+                            trailingIcon = {
+                                Icon(
+                                    Icons.Default.Close,
+                                    contentDescription = stringResource(R.string.remove),
+                                    modifier = Modifier.size(16.dp)
+                                )
+                            }
+                        )
+                    }
+                }
             }
         }
     }
@@ -417,8 +648,10 @@ fun AddEditHabitScreen(
     // Показываем диалог выбора цвета
     if (showColorPicker) {
         ColorPickerDialog(
-            selectedColor = uiState.color,
-            onColorSelected = { viewModel.onColorChange(it) },
+            selectedColor = String.format("#%08X", uiState.color),
+            onColorSelected = { colorHex -> 
+                viewModel.onColorChange(Color(colorHex.toColorInt()).toArgb())
+            },
             onDismiss = { showColorPicker = false }
         )
     }
@@ -430,6 +663,27 @@ fun AddEditHabitScreen(
             initialTime = currentTime,
             onTimeSelected = { viewModel.onReminderTimeChange(it) },
             onDismiss = { showTimePicker = false }
+        )
+    }
+
+    // Показываем диалог выбора друзей
+    if (uiState.showFriendSelector) {
+        FriendSelectorDialog(
+            friends = uiState.availableFriends,
+            selectedFriends = uiState.selectedFriendsToInvite,
+            onFriendToggle = { friend ->
+                if (uiState.selectedFriendsToInvite.contains(friend)) {
+                    viewModel.deselectFriend(friend)
+                } else {
+                    viewModel.selectFriend(friend)
+                }
+            },
+            onConfirm = { 
+                viewModel.sendInvitations()
+            },
+            onDismiss = { 
+                viewModel.onShowFriendSelector(false)
+            }
         )
     }
 
@@ -566,7 +820,7 @@ fun AddEditHabitScreen(
                             .size(80.dp)
                             .clip(CircleShape)
                             .clickable { showIconPicker = true }
-                            .background(Color(uiState.color.toColorInt()))
+                            .background(Color(uiState.color))
                             .padding(8.dp),
                         textAlign = TextAlign.Center
                     )
@@ -594,7 +848,7 @@ fun AddEditHabitScreen(
                             modifier = Modifier
                                 .size(32.dp)
                                 .clip(CircleShape)
-                                .background(Color(uiState.color.toColorInt()))
+                                .background(Color(uiState.color))
                                 .clickable { showColorPicker = true }
                                 .border(
                                     width = 2.dp,
@@ -624,6 +878,7 @@ fun AddEditHabitScreen(
                     leadingIcon = { Icon(Icons.Default.Title, null) },
                     enabled = !uiState.isLoading && !uiState.isHabitSaved
                 )
+                FieldValidationFeedback(uiState.titleError)
             }
 
             item {
@@ -637,6 +892,7 @@ fun AddEditHabitScreen(
                     leadingIcon = { Icon(Icons.Default.Description, null) },
                     enabled = !uiState.isLoading && !uiState.isHabitSaved
                 )
+                FieldValidationFeedback(uiState.descriptionError)
             }
 
             item {
@@ -646,6 +902,17 @@ fun AddEditHabitScreen(
                     onTypeSelected = { viewModel.onTypeChange(it) },
                     modifier = Modifier.fillMaxWidth()
                 )
+            }
+
+            item {
+                // Настройки групповой привычки
+                if (uiState.type == HabitType.GROUP) {
+                    GroupSettings(
+                        uiState = uiState,
+                        viewModel = viewModel,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                }
             }
 
             item {
@@ -688,6 +955,7 @@ fun AddEditHabitScreen(
                         enabled = !uiState.isLoading && !uiState.isHabitSaved
                     )
                 }
+                FieldValidationFeedback(uiState.targetValueError)
             }
 
             item {
@@ -713,7 +981,7 @@ fun AddEditHabitScreen(
                             Column(modifier = Modifier.weight(1f)) {
                                 Text(stringResource(R.string.habit_reminder_label))
                                 Text(
-                                    text = if (uiState.isReminderEnabled) {
+                                    text = if (uiState.reminderTime != null) {
                                         uiState.reminderTime?.let { time ->
                                             stringResource(R.string.habit_reminder_time_format, time.hour, time.minute)
                                         } ?: stringResource(R.string.habit_reminder_not_set)
@@ -726,23 +994,24 @@ fun AddEditHabitScreen(
                             }
 
                             Switch(
-                                checked = uiState.isReminderEnabled,
+                                checked = uiState.reminderTime != null,
                                 onCheckedChange = { isChecked ->
                                     if (isChecked) {
                                         if (!hasPermission) {
                                             shouldRequestNotificationPermission = true
                                         }
-                                    }
-                                    viewModel.onReminderEnabledChange(isChecked)
-                                    if (isChecked && uiState.reminderTime == null) {
-                                        showTimePicker = true
+                                        if (uiState.reminderTime == null) {
+                                            showTimePicker = true
+                                        }
+                                    } else {
+                                        viewModel.onReminderTimeChange(null)
                                     }
                                 },
                                 enabled = !uiState.isLoading && !uiState.isHabitSaved
                             )
                         }
 
-                        if (uiState.isReminderEnabled) {
+                        if (uiState.reminderTime != null) {
                             Spacer(modifier = Modifier.height(8.dp))
                             OutlinedButton(
                                 onClick = { showTimePicker = true },
@@ -750,6 +1019,63 @@ fun AddEditHabitScreen(
                                 enabled = !uiState.isLoading && !uiState.isHabitSaved
                             ) {
                                 Text(stringResource(R.string.habit_change_reminder_time))
+                            }
+                        }
+                    }
+                }
+            }
+
+            item {
+                // Общее состояние валидации формы
+                uiState.groupHabitValidationResult?.let { validationResult ->
+                    Card(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 8.dp),
+                        colors = CardDefaults.cardColors(
+                            containerColor = if (validationResult.isValid) {
+                                MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f)
+                            } else {
+                                MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.3f)
+                            }
+                        )
+                    ) {
+                        Column(
+                            modifier = Modifier.padding(16.dp)
+                        ) {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                LiveValidationIndicator(
+                                    isValid = validationResult.isValid,
+                                    hasWarnings = validationResult.warnings.isNotEmpty()
+                                )
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text(
+                                    text = when {
+                                        validationResult.isValid && validationResult.warnings.isEmpty() -> 
+                                            stringResource(R.string.validation_all_good)
+                                        validationResult.isValid && validationResult.warnings.isNotEmpty() -> 
+                                            stringResource(R.string.validation_has_warnings)
+                                        else -> stringResource(R.string.validation_has_errors)
+                                    },
+                                    style = MaterialTheme.typography.titleSmall,
+                                    color = if (validationResult.isValid) {
+                                        MaterialTheme.colorScheme.primary
+                                    } else {
+                                        MaterialTheme.colorScheme.error
+                                    }
+                                )
+                            }
+                            
+                            // Отображение всех ошибок
+                            validationResult.errors.forEach { error ->
+                                FieldValidationFeedback(error)
+                            }
+                            
+                            // Отображение предупреждений
+                            validationResult.warnings.forEach { warning ->
+                                FieldValidationFeedback(warning, isWarning = true)
                             }
                         }
                     }
@@ -765,7 +1091,7 @@ fun AddEditHabitScreen(
             shouldRequestNotificationPermission = false
             if (!isGranted) {
                 // Если разрешение не получено, отключаем напоминания
-                viewModel.onReminderEnabledChange(false)
+                viewModel.onReminderTimeChange(null)
             }
         }
     )

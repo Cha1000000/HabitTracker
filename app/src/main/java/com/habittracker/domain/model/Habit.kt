@@ -17,6 +17,9 @@ data class Habit(
     val unit: String = "раз", // единица измерения (раз, минут, км и т.д.)
     val createdBy: String, // userId создателя
     val participants: List<String> = emptyList(), // список userId участников
+    val maxParticipants: Int = 10, // максимальное количество участников (лимит 10)
+    val inviteCode: String? = null, // код для быстрого присоединения к групповой привычке
+    val isPublic: Boolean = false, // можно ли найти привычку по коду
     val isActive: Boolean = true,
     val createdAt: Instant,
     val updatedAt: Instant
@@ -67,4 +70,29 @@ fun Habit.getTargetText(): String {
     } else {
         "$targetValue $unit"
     }
+}
+
+fun Habit.canAddParticipants(): Boolean = 
+    isGroupHabit() && participants.size < maxParticipants
+
+fun Habit.hasInviteCode(): Boolean = !inviteCode.isNullOrBlank()
+
+fun Habit.canUserInvite(userId: String): Boolean = 
+    isGroupHabit() && createdBy == userId && canAddParticipants()
+
+fun Habit.canUserRemoveParticipant(userId: String, targetUserId: String): Boolean =
+    isGroupHabit() && createdBy == userId && targetUserId != createdBy
+
+fun Habit.getRemainingSlots(): Int = 
+    if (isGroupHabit()) maxParticipants - participants.size else 0
+
+fun Habit.getTypeText(): String = when (type) {
+    HabitType.PERSONAL -> "Личная"
+    HabitType.GROUP -> "Групповая"
+}
+
+fun Habit.getParticipantsText(): String = when {
+    !isGroupHabit() -> "Только вы"
+    participants.isEmpty() -> "Только создатель"
+    else -> "${participants.size + 1} из $maxParticipants участников"
 }

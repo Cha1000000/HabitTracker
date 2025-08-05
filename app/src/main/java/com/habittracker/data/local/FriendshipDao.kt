@@ -30,4 +30,17 @@ interface FriendshipDao {
 
     @Query("SELECT * FROM friendships WHERE userId1 = :userId1 AND userId2 = :userId2")
     fun getFriendshipStatus(userId1: String, userId2: String): Flow<FriendshipEntity?>
+    
+    // Дополнительные методы для SocialRepository
+    @Query("SELECT * FROM friendships WHERE (userId1 = :userId OR userId2 = :userId) AND status = 'ACCEPTED'")
+    fun getFriendsForUser(userId: String): Flow<List<FriendshipEntity>>
+    
+    @Query("SELECT COUNT(*) FROM friendships WHERE (userId1 = :userId OR userId2 = :userId) AND status = 'ACCEPTED'")
+    fun getFriendsCount(userId: String): Flow<Int>
+    
+    @Query("SELECT * FROM friendships WHERE (userId1 = :userId1 AND userId2 = :userId2) OR (userId1 = :userId2 AND userId2 = :userId1)")
+    suspend fun getFriendshipBetweenUsers(userId1: String, userId2: String): FriendshipEntity?
+    
+    @Query("DELETE FROM friendships WHERE (userId1 = :userId1 AND userId2 = :userId2) OR (userId1 = :userId2 AND userId2 = :userId1)")
+    suspend fun deleteFriendshipBetweenUsers(userId1: String, userId2: String)
 }

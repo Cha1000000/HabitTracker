@@ -64,6 +64,14 @@ class FakeHabitRepository : HabitRepository {
         return _habits.find { it.id == habitId }
     }
 
+    override suspend fun getHabitByInviteCode(inviteCode: String): Habit? {
+        return _habits.find { it.inviteCode == inviteCode && it.isActive && it.isPublic }
+    }
+
+    override fun getHabitByIdFlow(habitId: String): Flow<Habit?> {
+        return habitsFlow.map { habits -> habits.find { it.id == habitId } }
+    }
+
     override fun getAllHabits(): Flow<List<Habit>> {
         return habitsFlow
     }
