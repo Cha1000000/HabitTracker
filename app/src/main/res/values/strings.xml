@@ -116,6 +116,8 @@
     <string name="error_canceling_reminder">Не удалось отменить напоминание: %1$s</string>
     <string name="error_update_reminder">Не удалось обновить напоминание: %1$s</string>
     <string name="error_updating_reminder">Не удалось обновить напоминание: %1$s</string>
+    <string name="error_no_friends_selected">Выберите друзей для приглашения</string>
+    <string name="error_too_many_participants">Превышен лимит участников</string>
     <string name="success_habit_created">Привычка создана!</string>
     <string name="habit_created">Привычка создана!</string>
     <string name="success_habit_updated">Привычка обновлена!</string>

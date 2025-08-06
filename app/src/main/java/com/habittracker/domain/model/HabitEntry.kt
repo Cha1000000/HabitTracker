@@ -31,7 +31,7 @@ data class HabitStats(
     val completedDays: Int,
     val currentStreak: Int,
     val longestStreak: Int,
-    val completionRate: Float,
+    val completionRate: Double, // changed from Float to Double
     val lastCompleted: LocalDate?
 )
 
@@ -76,8 +76,8 @@ fun List<HabitEntry>.calculateStats(habitId: String): HabitStats {
     val currentStreak = calculateCurrentStreak(entries)
     val longestStreak = calculateLongestStreak(entries)
     val completionRate = if (entries.isNotEmpty()) {
-        completedEntries.size.toFloat() / entries.size
-    } else 0f
+        completedEntries.size.toDouble() / entries.size // changed from Float to Double
+    } else 0.0
 
     return HabitStats(
         habitId = habitId,

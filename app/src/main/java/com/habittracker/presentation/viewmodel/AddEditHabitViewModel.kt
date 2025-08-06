@@ -9,6 +9,8 @@ import com.habittracker.R
 import com.habittracker.domain.model.Habit
 import com.habittracker.domain.model.HabitFrequency
 import com.habittracker.domain.model.HabitType
+import com.habittracker.domain.model.HabitValidation
+import com.habittracker.domain.model.HabitValidation.HabitField
 import com.habittracker.domain.model.User
 import com.habittracker.domain.repository.AuthRepository
 import com.habittracker.domain.usecase.AddHabitUseCase
@@ -22,7 +24,6 @@ import com.habittracker.domain.usecase.habit.SendHabitInvitationUseCase
 import com.habittracker.domain.usecase.social.GetFriendsUseCase
 import com.habittracker.presentation.utils.GroupHabitValidationResult
 import com.habittracker.presentation.utils.ValidationResult
-import com.habittracker.presentation.utils.ValidationUtils
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -37,8 +38,8 @@ import javax.inject.Inject
 @HiltViewModel
 class AddEditHabitViewModel @Inject constructor(
     private val addHabitUseCase: AddHabitUseCase,
-    private val getHabitByIdUseCase: GetHabitByIdUseCase,
     private val updateHabitUseCase: UpdateHabitUseCase,
+    private val getHabitByIdUseCase: GetHabitByIdUseCase,
     private val scheduleHabitReminderUseCase: ScheduleHabitReminderUseCase,
     private val cancelHabitReminderUseCase: CancelHabitReminderUseCase,
     private val updateHabitReminderUseCase: UpdateHabitReminderUseCase,
@@ -65,11 +66,15 @@ class AddEditHabitViewModel @Inject constructor(
     }
 
     override fun onTitleChange(title: String) {
-        val validationResult = ValidationUtils.validateHabitTitle(title)
+        // Создаем временную привычку для валидации
+        val tempHabit = createTempHabit().copy(title = title)
+        val validationResult = HabitValidation.validateHabit(tempHabit)
+        val titleError = validationResult.getError(HabitField.TITLE)?.message
+        
         _uiState.update { 
             it.copy(
                 title = title,
-                titleError = if (validationResult is ValidationResult.Error) validationResult.message else null,
+                titleError = titleError,
                 hasUnsavedChanges = true
             )
         }
@@ -77,11 +82,15 @@ class AddEditHabitViewModel @Inject constructor(
     }
 
     override fun onDescriptionChange(description: String) {
-        val validationResult = ValidationUtils.validateHabitDescription(description)
+        // Создаем временную привычку для валидации
+        val tempHabit = createTempHabit().copy(description = description)
+        val validationResult = HabitValidation.validateHabit(tempHabit)
+        val descriptionError = validationResult.getError(HabitField.DESCRIPTION)?.message
+        
         _uiState.update { 
             it.copy(
                 description = description,
-                descriptionError = if (validationResult is ValidationResult.Error) validationResult.message else null,
+                descriptionError = descriptionError,
                 hasUnsavedChanges = true
             )
         }
@@ -218,12 +227,36 @@ class AddEditHabitViewModel @Inject constructor(
         _uiState.update { it.copy(frequency = frequency) }
     }
     
-    override fun onTargetValueChange(value: Int) {
-        _uiState.update { it.copy(targetValue = value) }
+    override fun onTargetValueChange(targetValue: Int) {
+        // Создаем временную привычку для валидации
+        val tempHabit = createTempHabit().copy(targetValue = targetValue)
+        val validationResult = HabitValidation.validateHabit(tempHabit)
+        val targetValueError = validationResult.getError(HabitField.TARGET_VALUE)?.message
+        
+        _uiState.update { 
+            it.copy(
+                targetValue = targetValue,
+                targetValueError = targetValueError,
+                hasUnsavedChanges = true
+            )
+        }
+        updateValidationState()
     }
     
     override fun onUnitChange(unit: String) {
-        _uiState.update { it.copy(unit = unit) }
+        // Создаем временную привычку для валидации
+        val tempHabit = createTempHabit().copy(unit = unit)
+        val validationResult = HabitValidation.validateHabit(tempHabit)
+        val unitError = validationResult.getError(HabitField.UNIT)?.message
+        
+        _uiState.update { 
+            it.copy(
+                unit = unit,
+                targetValueError = unitError, // Ошибка единицы показывается в поле targetValue
+                hasUnsavedChanges = true
+            )
+        }
+        updateValidationState()
     }
     
     override fun onErrorShown() {
@@ -479,45 +512,33 @@ class AddEditHabitViewModel @Inject constructor(
     override fun sendInvitations() {
         viewModelScope.launch {
             try {
+                _uiState.update { it.copy(isSendingInvitations = true, error = null) }
+                
                 val currentState = _uiState.value
                 
-                // Валидация перед отправкой
-                val friendsValidation = ValidationUtils.validateInvitedFriends(
-                    currentState.selectedFriendsToInvite,
-                    currentState.maxParticipants,
-                    currentState.participants
-                )
-                
-                if (friendsValidation is ValidationResult.Error) {
+                // Простая валидация перед отправкой
+                if (currentState.selectedFriendsToInvite.isEmpty()) {
                     _uiState.update { 
                         it.copy(
-                            participantsError = friendsValidation.message,
-                            error = "Невозможно отправить приглашения"
+                            isSendingInvitations = false,
+                            error = getApplication<Application>().getString(R.string.error_no_friends_selected)
                         )
                     }
                     return@launch
                 }
                 
-                // Проверка на спам (не более 1 раза в минуту)
-                val lastInvitation = currentState.lastInvitationSentAt
-                val currentTime = System.currentTimeMillis()
-                if (lastInvitation != null && (currentTime - lastInvitation) < 60_000) {
+                // Проверяем лимит участников
+                val totalParticipants = currentState.participants.size + currentState.selectedFriendsToInvite.size
+                if (totalParticipants > currentState.maxParticipants) {
                     _uiState.update { 
                         it.copy(
-                            error = "Подождите минуту перед отправкой новых приглашений"
+                            isSendingInvitations = false,
+                            error = getApplication<Application>().getString(R.string.error_too_many_participants)
                         )
                     }
                     return@launch
                 }
-                
-                _uiState.update { 
-                    it.copy(
-                        isSendingInvitations = true,
-                        participantsError = null,
-                        error = null
-                    )
-                }
-                
+
                 val currentUserId = authRepository.getCurrentUserId()
                     ?: throw Exception("Пользователь не авторизован")
                 
@@ -558,7 +579,7 @@ class AddEditHabitViewModel @Inject constructor(
                         successMessage = if (successCount > 0) message else null,
                         error = if (errorCount > 0) errors.joinToString("; ") else null,
                         selectedFriendsToInvite = if (successCount > 0) emptyList() else it.selectedFriendsToInvite,
-                        lastInvitationSentAt = currentTime,
+                        lastInvitationSentAt = System.currentTimeMillis(),
                         hasUnsavedChanges = successCount > 0
                     )
                 }
@@ -576,11 +597,15 @@ class AddEditHabitViewModel @Inject constructor(
     
     // Групповые привычки
     override fun onMaxParticipantsChange(maxParticipants: Int) {
-        val validationResult = ValidationUtils.validateMaxParticipants(maxParticipants, _uiState.value.type)
+        // Создаем временную привычку для валидации
+        val tempHabit = createTempHabit().copy(participants = (1..maxParticipants).map { "user$it" })
+        val validationResult = HabitValidation.validateHabit(tempHabit)
+        val participantsError = validationResult.getError(HabitField.PARTICIPANTS)?.message
+        
         _uiState.update { 
             it.copy(
                 maxParticipants = maxParticipants,
-                participantsError = if (validationResult is ValidationResult.Error) validationResult.message else null,
+                participantsError = participantsError,
                 hasUnsavedChanges = true
             )
         }
@@ -588,87 +613,66 @@ class AddEditHabitViewModel @Inject constructor(
     }
     
     /**
-     * Комплексная валидация формы привычки
+     * Создает временную привычку из текущего состояния UI для валидации
+     */
+    private fun createTempHabit(): Habit {
+        val currentState = _uiState.value
+        return Habit(
+            id = currentState.habitId ?: "",
+            title = currentState.title,
+            description = currentState.description,
+            icon = currentState.icon.ifEmpty { "⭐" },
+            color = String.format("#%06X", (0xFFFFFF and currentState.color)),
+            type = currentState.type,
+            frequency = currentState.frequency,
+            reminderTime = currentState.reminderTime,
+            targetValue = currentState.targetValue,
+            unit = currentState.unit,
+            participants = currentState.participants.map { it.id },
+            createdBy = "temp_user",
+            createdAt = Clock.System.now(),
+            updatedAt = Clock.System.now(),
+            inviteCode = currentState.inviteCode
+        )
+    }
+
+    /**
+     * Централизованная валидация всей формы привычки
      */
     private fun validateHabitForm(): GroupHabitValidationResult {
-        val currentState = _uiState.value
+        val tempHabit = createTempHabit()
+        val validationResult = HabitValidation.validateHabit(tempHabit)
         
-        return if (currentState.type == HabitType.GROUP) {
-            // Получаем количество текущих групповых привычек пользователя
-            val currentGroupHabitsCount = 0 // TODO: Получить реальное количество из репозитория
-            
-            ValidationUtils.validateGroupHabitForm(
-                title = currentState.title,
-                description = currentState.description,
-                maxParticipants = currentState.maxParticipants,
-                selectedFriends = currentState.selectedFriendsToInvite,
-                targetValue = currentState.targetValue,
-                unit = currentState.unit,
-                currentGroupHabitsCount = currentGroupHabitsCount
-            )
-        } else {
-            // Для личных привычек используем упрощенную валидацию
-            val errors = mutableListOf<String>()
-            val warnings = mutableListOf<String>()
-            
-            // Валидация названия
-            when (val titleResult = ValidationUtils.validateHabitTitle(currentState.title)) {
-                is ValidationResult.Error -> errors.add(titleResult.message)
-                is ValidationResult.Warning -> warnings.add(titleResult.message)
-                else -> {}
-            }
-            
-            // Валидация описания
-            when (val descResult = ValidationUtils.validateHabitDescription(currentState.description)) {
-                is ValidationResult.Error -> errors.add(descResult.message)
-                is ValidationResult.Warning -> warnings.add(descResult.message)
-                else -> {}
-            }
-            
-            // Валидация целевого значения
-            when (val targetResult = ValidationUtils.validateTargetValue(currentState.targetValue, currentState.unit)) {
-                is ValidationResult.Error -> errors.add(targetResult.message)
-                is ValidationResult.Warning -> warnings.add(targetResult.message)
-                else -> {}
-            }
-            
-            // Валидация времени напоминания
-            currentState.reminderTime?.let { time ->
-                when (val timeResult = ValidationUtils.validateReminderTime(time.hour, time.minute)) {
-                    is ValidationResult.Error -> errors.add(timeResult.message)
-                    is ValidationResult.Warning -> warnings.add(timeResult.message)
-                    else -> {}
-                }
-            }
-            
-            GroupHabitValidationResult(
-                isValid = errors.isEmpty(),
-                errors = errors,
-                warnings = warnings,
-                canProceed = errors.isEmpty()
-            )
+        // Преобразуем HabitValidationResult в GroupHabitValidationResult для совместимости с UI
+        val errors = mutableListOf<String>()
+        val warnings = mutableListOf<String>()
+        
+        validationResult.errors.forEach { error ->
+            errors.add(error.message)
         }
+        
+        return GroupHabitValidationResult(
+            isValid = validationResult.isValid,
+            errors = errors,
+            warnings = warnings,
+            canProceed = validationResult.isValid
+        )
     }
-    
+
     /**
-     * Обновляет состояние валидации в реальном времени
+     * Обновляет состояние валидации в UI
      */
     private fun updateValidationState() {
         val validationResult = validateHabitForm()
-        _uiState.update { state ->
-            state.copy(
-                isFormValid = validationResult.isValid,
-                canSaveHabit = validationResult.canProceed && !state.isLoading,
+        
+        _uiState.update { currentState ->
+            currentState.copy(
                 groupHabitValidationResult = validationResult,
-                titleError = validationResult.errors.find { it.contains("название", ignoreCase = true) },
-                descriptionError = validationResult.errors.find { it.contains("описание", ignoreCase = true) },
-                targetValueError = validationResult.errors.find { 
-                    it.contains("целевое значение", ignoreCase = true) || it.contains("единица", ignoreCase = true) 
-                },
-                participantsError = validationResult.errors.find { 
-                    it.contains("участник", ignoreCase = true) || it.contains("лимит", ignoreCase = true) 
-                }
+                isFormValid = validationResult.isValid,
+                canSaveHabit = validationResult.isValid,
+                showValidationErrors = !validationResult.isValid
             )
         }
     }
+
 }

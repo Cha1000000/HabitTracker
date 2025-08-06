@@ -7,8 +7,7 @@ import com.habittracker.data.local.HabitInvitationDao
 import com.habittracker.data.local.UserDao
 import com.habittracker.data.local.entity.toDomain
 import com.habittracker.data.local.entity.toEntity
-import com.habittracker.data.local.mapper.toDomain
-import com.habittracker.data.local.mapper.toEntity
+import com.habittracker.data.service.FCMApiClient
 import com.habittracker.domain.model.FriendRequest
 import com.habittracker.domain.model.FriendRequestStatus
 import com.habittracker.domain.model.FriendRequestWithUsers
@@ -18,13 +17,9 @@ import com.habittracker.domain.model.FriendshipWithUsers
 import com.habittracker.domain.model.HabitInvitation
 import com.habittracker.domain.model.HabitInvitationStatus
 import com.habittracker.domain.model.User
-import com.habittracker.domain.model.accept
-import com.habittracker.domain.model.block
-import com.habittracker.domain.model.createFriendRequest
-import com.habittracker.domain.model.createFriendship
-import com.habittracker.domain.model.decline
 import com.habittracker.domain.model.isExpired
-import com.habittracker.domain.model.unblock
+import com.habittracker.domain.model.createFriendship
+import com.habittracker.domain.model.accept
 import com.habittracker.domain.repository.SocialRepository
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
@@ -32,18 +27,26 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.tasks.await
 import kotlinx.datetime.Clock
+import kotlinx.datetime.DateTimePeriod
+import kotlinx.datetime.DateTimeUnit
+import kotlinx.datetime.TimeZone
+import kotlinx.datetime.plus
 import java.util.UUID
 import javax.inject.Inject
 import javax.inject.Singleton
-import kotlin.time.Duration.Companion.days
 
+/**
+ * Реализация SocialRepository для работы с социальными функциями
+ * Управляет друзьями, запросами дружбы, приглашениями в привычки и уведомлениями
+ */
 @Singleton
 class SocialRepositoryImpl @Inject constructor(
-    private val firestore: FirebaseFirestore,
     private val userDao: UserDao,
     private val friendshipDao: FriendshipDao,
     private val friendRequestDao: FriendRequestDao,
-    private val habitInvitationDao: HabitInvitationDao
+    private val habitInvitationDao: HabitInvitationDao,
+    private val fcmApiClient: FCMApiClient,
+    private val firestore: FirebaseFirestore
 ) : SocialRepository {
 
     override suspend fun searchUsers(query: String, currentUserId: String): List<User> {
@@ -131,7 +134,16 @@ class SocialRepositoryImpl @Inject constructor(
         message: String?
     ): Result<FriendRequest> {
         return try {
-            val friendRequest = createFriendRequest(fromUserId, toUserId, message)
+            val friendRequest = FriendRequest(
+                id = UUID.randomUUID().toString(),
+                fromUserId = fromUserId,
+                toUserId = toUserId,
+                status = FriendRequestStatus.PENDING,
+                message = message,
+                createdAt = Clock.System.now(),
+                respondedAt = null,
+                updatedAt = Clock.System.now()
+            )
             
             // Сохраняем в Firestore
             firestore.collection("friend_requests")
@@ -153,11 +165,17 @@ class SocialRepositoryImpl @Inject constructor(
             val friendRequest = getFriendRequestById(requestId)
                 ?: return Result.failure(IllegalArgumentException("Запрос не найден"))
 
-            val acceptedRequest = friendRequest.accept()
+            val acceptedRequest = friendRequest.copy(
+                status = FriendRequestStatus.ACCEPTED,
+                respondedAt = Clock.System.now(),
+                updatedAt = Clock.System.now()
+            )
+            
             val friendship = createFriendship(
-                friendRequest.fromUserId,
-                friendRequest.toUserId,
-                friendRequest.fromUserId
+                userId1 = friendRequest.fromUserId,
+                userId2 = friendRequest.toUserId,
+                requestedBy = friendRequest.fromUserId,
+                requestedAt = friendRequest.createdAt
             ).accept()
 
             // Обновляем в Firestore
@@ -171,7 +189,7 @@ class SocialRepositoryImpl @Inject constructor(
                 .set(friendship)
                 .await()
 
-            // Обновляем локально
+            // Сохраняем локально
             friendRequestDao.updateFriendRequest(acceptedRequest.toEntity())
             friendshipDao.insertFriendship(friendship.toEntity())
 
@@ -192,7 +210,11 @@ class SocialRepositoryImpl @Inject constructor(
             val friendRequest = getFriendRequestById(requestId)
                 ?: return Result.failure(IllegalArgumentException("Запрос не найден"))
 
-            val declinedRequest = friendRequest.decline()
+            val declinedRequest = friendRequest.copy(
+                status = FriendRequestStatus.DECLINED,
+                respondedAt = Clock.System.now(),
+                updatedAt = Clock.System.now()
+            )
 
             // Обновляем в Firestore
             firestore.collection("friend_requests")
@@ -334,7 +356,11 @@ class SocialRepositoryImpl @Inject constructor(
             val friendship = getFriendshipBetweenUsers(currentUserId, userIdToBlock)
                 ?: return Result.failure(IllegalStateException("Дружба не найдена"))
 
-            val blockedFriendship = friendship.block(currentUserId)
+            val blockedFriendship = friendship.copy(
+                status = FriendshipStatus.BLOCKED,
+                blockedBy = currentUserId,
+                blockedAt = Clock.System.now()
+            )
 
             // Обновляем в Firestore
             val orderedIds = if (currentUserId < userIdToBlock) Pair(currentUserId, userIdToBlock) else Pair(userIdToBlock, currentUserId)
@@ -357,7 +383,11 @@ class SocialRepositoryImpl @Inject constructor(
             val friendship = getFriendshipBetweenUsers(currentUserId, userIdToUnblock)
                 ?: return Result.failure(IllegalStateException("Дружба не найдена"))
 
-            val unblockedFriendship = friendship.unblock()
+            val unblockedFriendship = friendship.copy(
+                status = FriendshipStatus.ACCEPTED,
+                blockedBy = null,
+                blockedAt = null
+            )
 
             // Обновляем в Firestore
             val orderedIds = if (currentUserId < userIdToUnblock) Pair(currentUserId, userIdToUnblock) else Pair(userIdToUnblock, currentUserId)
@@ -460,7 +490,7 @@ class SocialRepositoryImpl @Inject constructor(
                 status = HabitInvitationStatus.PENDING,
                 createdAt = Clock.System.now(),
                 respondedAt = null,
-                expiresAt = Clock.System.now() + 7.days // Истекает через 7 дней
+                expiresAt = Clock.System.now().plus(DateTimePeriod(days = 7), TimeZone.currentSystemDefault()) // Истекает через 7 дней
             )
 
             // Сохраняем локально
@@ -658,28 +688,20 @@ class SocialRepositoryImpl @Inject constructor(
         data: Map<String, String>
     ) {
         try {
-            // В реальном приложении здесь была бы интеграция с Firebase Cloud Functions
-            // или прямой вызов FCM API через HTTP
+            // Используем FCMApiClient для реальной отправки
+            val result = fcmApiClient.sendPushNotification(fcmToken, title, body, data)
             
-            // Пример структуры данных для FCM:
-            val fcmMessage = mapOf(
-                "to" to fcmToken,
-                "notification" to mapOf(
-                    "title" to title,
-                    "body" to body,
-                    "sound" to "default"
-                ),
-                "data" to data,
-                "priority" to "high"
-            )
-            
-            // TODO: Отправить HTTP запрос к FCM API
-            // Для демонстрации просто логируем
-            println("FCM Message: $fcmMessage")
+            result.onSuccess {
+                // Уведомление успешно отправлено
+            }.onFailure { error ->
+                // Логируем ошибку, но не прерываем выполнение
+                // В production здесь можно добавить retry логику или отправку в аналитику
+                println("Ошибка отправки push-уведомления: ${error.message}")
+            }
             
         } catch (e: Exception) {
             // Логируем ошибку, но не прерываем выполнение
-            println("Ошибка отправки push-уведомления: ${e.message}")
+            println("Исключение при отправке push-уведомления: ${e.message}")
         }
     }
 }

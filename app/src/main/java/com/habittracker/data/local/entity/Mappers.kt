@@ -11,6 +11,8 @@ import com.habittracker.domain.model.FriendshipStatus
 import com.habittracker.domain.model.Habit
 import com.habittracker.domain.model.HabitEntry
 import com.habittracker.domain.model.HabitEntryWithUser
+import com.habittracker.domain.model.HabitInvitation
+import com.habittracker.domain.model.HabitInvitationStatus
 import com.habittracker.domain.model.User
 import kotlinx.datetime.TimeZone
 import kotlinx.serialization.encodeToString
@@ -205,4 +207,33 @@ fun FriendRequest.toEntity(): FriendRequestEntity = FriendRequestEntity(
     createdAt = createdAt,
     respondedAt = respondedAt,
     updatedAt = updatedAt
+)
+
+// HabitInvitation Mappers
+fun HabitInvitationEntity.toDomain(): HabitInvitation = HabitInvitation(
+    id = id,
+    habitId = habitId,
+    habitTitle = habitTitle,
+    fromUserId = fromUserId,
+    fromUserName = fromUserName,
+    toUserId = toUserId,
+    message = message,
+    status = HabitInvitationStatus.valueOf(status),
+    createdAt = kotlinx.datetime.Instant.fromEpochSeconds(createdAt),
+    respondedAt = respondedAt?.let { kotlinx.datetime.Instant.fromEpochSeconds(it) },
+    expiresAt = expiresAt?.let { kotlinx.datetime.Instant.fromEpochSeconds(it) }
+)
+
+fun HabitInvitation.toEntity(): HabitInvitationEntity = HabitInvitationEntity(
+    id = id,
+    habitId = habitId,
+    habitTitle = habitTitle,
+    fromUserId = fromUserId,
+    fromUserName = fromUserName,
+    toUserId = toUserId,
+    message = message,
+    status = status.name,
+    createdAt = createdAt.epochSeconds,
+    respondedAt = respondedAt?.epochSeconds,
+    expiresAt = expiresAt?.epochSeconds
 )

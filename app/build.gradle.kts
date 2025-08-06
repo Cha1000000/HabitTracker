@@ -28,17 +28,35 @@ android {
         vectorDrawables {
             useSupportLibrary = true
         }
+        
+        // FCM Server Key для отправки push-уведомлений
+        // Получен из Google Cloud Console → APIs & Services → Credentials
+        buildConfigField("String", "FCM_SERVER_KEY", "\"AIzaSyCdlPMdBHgJGzTNEKNbTPGuDVJjVrZtk\"")
     }
 
     buildTypes {
+        debug {
+            isMinifyEnabled = false
+            // FCM Server Key для debug сборки
+            buildConfigField("String", "FCM_SERVER_KEY", "\"AIzaSyCdlPMdBHgJGzTNEKNbTPGuDVJjVrZtk\"")
+        }
         release {
             isMinifyEnabled = false
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
+            // FCM Server Key для release сборки
+            // В продакшене рекомендуется использовать переменные окружения
+            buildConfigField("String", "FCM_SERVER_KEY", "\"AIzaSyCdlPMdBHgJGzTNEKNbTPGuDVJjVrZtk\"")
         }
     }
+
+    buildFeatures {
+        compose = true
+        buildConfig = true
+    }
+
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
@@ -118,6 +136,7 @@ dependencies {
     implementation(platform(libs.firebase.bom))
     implementation(libs.firebase.auth)
     implementation(libs.firebase.firestore)
+    implementation(libs.firebase.messaging)
     implementation(libs.firebase.analytics)
     implementation(libs.androidx.credentials)
     implementation(libs.androidx.credentials.play.services.auth)

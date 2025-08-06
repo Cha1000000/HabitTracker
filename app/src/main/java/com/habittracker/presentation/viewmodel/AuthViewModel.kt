@@ -7,6 +7,7 @@ import com.habittracker.domain.usecase.LoginUseCase
 import com.habittracker.domain.usecase.RegisterUseCase
 import com.habittracker.domain.usecase.SignInWithGoogleUseCase
 import com.habittracker.domain.usecase.SignOutUseCase
+import com.habittracker.domain.usecase.notification.ManageFCMTokenUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -46,7 +47,8 @@ class AuthViewModel @Inject constructor(
     private val loginUseCase: LoginUseCase,
     private val registerUseCase: RegisterUseCase,
     private val signInWithGoogleUseCase: SignInWithGoogleUseCase,
-    private val signOutUseCase: SignOutUseCase
+    private val signOutUseCase: SignOutUseCase,
+    private val manageFCMTokenUseCase: ManageFCMTokenUseCase
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(AuthUiState())
@@ -63,25 +65,10 @@ class AuthViewModel @Inject constructor(
         viewModelScope.launch {
             if (FirebaseAuth.getInstance().currentUser != null) {
                 _authState.value = AuthState.Success
+                // Инициализируем FCM токен при успешной аутентификации
+                initializeFCMToken()
             } else {
                 _authState.value = AuthState.Unauthenticated
-            }
-        }
-    }
-    
-    private fun signOut() {
-        viewModelScope.launch {
-            _uiState.update { it.copy(isLoading = true) }
-            _authState.value = AuthState.Loading
-            signOutUseCase().collect { result ->
-                result.onSuccess {
-                    _authState.value = AuthState.Unauthenticated
-                    _uiState.update { it.copy(isLoading = false) }
-                }
-                result.onFailure { error ->
-                    _authState.value = AuthState.Error(error.message ?: "Failed to sign out")
-                    _uiState.update { it.copy(isLoading = false) }
-                }
             }
         }
     }
@@ -122,6 +109,8 @@ class AuthViewModel @Inject constructor(
                 result.onSuccess {
                     _authState.value = AuthState.Success
                     _uiState.update { it.copy(isLoading = false) }
+                    // Инициализируем FCM токен после успешного входа
+                    initializeFCMToken()
                 }
                 result.onFailure { error ->
                     _authState.value = AuthState.Error(error.message ?: "Unknown error")
@@ -139,6 +128,8 @@ class AuthViewModel @Inject constructor(
                 result.onSuccess {
                     _authState.value = AuthState.Success
                     _uiState.update { it.copy(isLoading = false) }
+                    // Инициализируем FCM токен после успешной регистрации
+                    initializeFCMToken()
                 }
                 result.onFailure { error ->
                     _authState.value = AuthState.Error(error.message ?: "Unknown error")
@@ -156,11 +147,58 @@ class AuthViewModel @Inject constructor(
                 result.onSuccess {
                     _authState.value = AuthState.Success
                     _uiState.update { it.copy(isLoading = false) }
+                    // Инициализируем FCM токен после успешного входа через Google
+                    initializeFCMToken()
                 }
                 result.onFailure { error ->
                     _authState.value = AuthState.Error(error.message ?: "Google Sign-In failed")
                     _uiState.update { it.copy(isLoading = false) }
                 }
+            }
+        }
+    }
+
+    private fun signOut() {
+        viewModelScope.launch {
+            _uiState.update { it.copy(isLoading = true) }
+            
+            // Очищаем FCM токен перед выходом
+            clearFCMToken()
+            
+            signOutUseCase().collect { result ->
+                result.onSuccess {
+                    _authState.value = AuthState.Unauthenticated
+                    _uiState.update { AuthUiState() } // Сбрасываем состояние
+                }
+                result.onFailure { error ->
+                    _authState.value = AuthState.Error(error.message ?: "Sign out failed")
+                    _uiState.update { it.copy(isLoading = false) }
+                }
+            }
+        }
+    }
+
+    /**
+     * Инициализирует FCM токен для текущего пользователя
+     */
+    private fun initializeFCMToken() {
+        viewModelScope.launch {
+            manageFCMTokenUseCase.initializeFCMToken().onFailure { error ->
+                // Логируем ошибку, но не показываем пользователю
+                // FCM не критичен для основной функциональности
+                println("Ошибка инициализации FCM токена: ${error.message}")
+            }
+        }
+    }
+
+    /**
+     * Очищает FCM токен при выходе пользователя
+     */
+    private fun clearFCMToken() {
+        viewModelScope.launch {
+            manageFCMTokenUseCase.clearFCMToken().onFailure { error ->
+                // Логируем ошибку, но не блокируем выход
+                println("Ошибка очистки FCM токена: ${error.message}")
             }
         }
     }
