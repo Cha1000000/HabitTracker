@@ -4,6 +4,9 @@ import com.habittracker.domain.model.Challenge
 import kotlinx.coroutines.flow.Flow
 import java.time.LocalDate
 
+/**
+ * Интерфейс ChallengeRepository уже содержит все необходимые методы для Use Cases
+ */
 interface ChallengeRepository {
     
     suspend fun insertChallenge(challenge: Challenge)

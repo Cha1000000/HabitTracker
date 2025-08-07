@@ -681,6 +681,100 @@ class SocialRepositoryImpl @Inject constructor(
         }
     }
 
+    override suspend fun sendChallengeInvitationNotification(toUserId: String, fromUserName: String, challengeTitle: String, habitTitle: String) {
+        val toUser = getUserById(toUserId)
+        if (toUser != null) {
+            val fcmToken = toUser.fcmToken
+            if (fcmToken != null) {
+                sendPushNotification(
+                    fcmToken,
+                    "Приглашение в челлендж",
+                    "$fromUserName приглашает вас к участию в челлендже '$challengeTitle' по привычке '$habitTitle'",
+                    mapOf(
+                        "type" to "challenge_invitation",
+                        "challengeTitle" to challengeTitle,
+                        "habitTitle" to habitTitle
+                    )
+                )
+            }
+        }
+    }
+    
+    override suspend fun sendChallengeJoinedNotification(toUserId: String, joinedUserName: String, challengeTitle: String) {
+        val toUser = getUserById(toUserId)
+        if (toUser != null) {
+            val fcmToken = toUser.fcmToken
+            if (fcmToken != null) {
+                sendPushNotification(
+                    fcmToken,
+                    "Новый участник челленджа",
+                    "$joinedUserName присоединился к челленджу '$challengeTitle'",
+                    mapOf(
+                        "type" to "challenge_joined",
+                        "challengeTitle" to challengeTitle
+                    )
+                )
+            }
+        }
+    }
+    
+    override suspend fun sendChallengeLeftNotification(toUserId: String, leftUserName: String, challengeTitle: String) {
+        val toUser = getUserById(toUserId)
+        if (toUser != null) {
+            val fcmToken = toUser.fcmToken
+            if (fcmToken != null) {
+                sendPushNotification(
+                    fcmToken,
+                    "Участник покинул челлендж",
+                    "$leftUserName покинул челлендж '$challengeTitle'",
+                    mapOf(
+                        "type" to "challenge_left",
+                        "challengeTitle" to challengeTitle
+                    )
+                )
+            }
+        }
+    }
+    
+    override suspend fun sendChallengeCompletedNotification(toUserId: String, challengeTitle: String, message: String, isWinner: Boolean) {
+        val toUser = getUserById(toUserId)
+        if (toUser != null) {
+            val fcmToken = toUser.fcmToken
+            if (fcmToken != null) {
+                val title = if (isWinner) "Поздравляем с победой!" else "Челлендж завершен"
+                sendPushNotification(
+                    fcmToken,
+                    title,
+                    message,
+                    mapOf(
+                        "type" to "challenge_completed",
+                        "challengeTitle" to challengeTitle,
+                        "isWinner" to isWinner.toString()
+                    )
+                )
+            }
+        }
+    }
+    
+    override suspend fun sendChallengeCancelledNotification(toUserId: String, challengeTitle: String, reason: String) {
+        val toUser = getUserById(toUserId)
+        if (toUser != null) {
+            val fcmToken = toUser.fcmToken
+            if (fcmToken != null) {
+                sendPushNotification(
+                    fcmToken,
+                    "Челлендж отменен",
+                    "Челлендж '$challengeTitle' был отменен. $reason",
+                    mapOf(
+                        "type" to "challenge_cancelled",
+                        "challengeTitle" to challengeTitle,
+                        "reason" to reason
+                    )
+                )
+            }
+        }
+    }
+
     override suspend fun sendPushNotification(
         fcmToken: String, 
         title: String, 

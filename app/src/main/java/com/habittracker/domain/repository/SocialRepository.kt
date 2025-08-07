@@ -67,5 +67,13 @@ interface SocialRepository {
     suspend fun sendFriendAcceptedNotification(toUserId: String, acceptedByName: String)
     suspend fun sendHabitInvitationNotification(toUserId: String, fromUserName: String, habitTitle: String)
     suspend fun sendHabitInvitationAcceptedNotification(toUserId: String, acceptedByName: String, habitTitle: String)
+    
+    // Challenge notifications
+    suspend fun sendChallengeInvitationNotification(toUserId: String, fromUserName: String, challengeTitle: String, habitTitle: String)
+    suspend fun sendChallengeJoinedNotification(toUserId: String, joinedUserName: String, challengeTitle: String)
+    suspend fun sendChallengeLeftNotification(toUserId: String, leftUserName: String, challengeTitle: String)
+    suspend fun sendChallengeCompletedNotification(toUserId: String, challengeTitle: String, message: String, isWinner: Boolean)
+    suspend fun sendChallengeCancelledNotification(toUserId: String, challengeTitle: String, reason: String)
+    
     suspend fun sendPushNotification(fcmToken: String, title: String, body: String, data: Map<String, String> = emptyMap())
 }

@@ -18,6 +18,7 @@
     <string name="edit">Редактировать</string>
     <string name="back">Назад</string>
     <string name="clear">Очистить</string>
+    <string name="done">Готово</string>
     
     <!-- Auth Screen -->
     <string name="auth_welcome_title">Добро пожаловать!</string>
@@ -247,7 +248,6 @@
     <string name="group_progress">Прогресс группы</string>
     <string name="not_completed_today">Не выполнено сегодня</string>
     <string name="group_streak_days">дней подряд</string>
-    <string name="completion_rate">процент выполнения</string>
     <string name="participants">Участники (%1$d)</string>
     <string name="tap_to_remove">Нажмите для удаления</string>
     <string name="remove_participant">Удалить участника</string>
@@ -275,5 +275,68 @@
     <string name="error_removing_participant">Ошибка удаления участника</string>
     <string name="left_group_successfully">Вы покинули группу</string>
     <string name="error_leaving_group">Ошибка выхода из группы</string>
+
+    <!-- Challenge strings -->
+    <string name="challenges_title">Челленджи</string>
+    <string name="create_challenge">Создать челлендж</string>
+    <string name="active_challenges">Активные</string>
+    <string name="ending_soon">Скоро завершатся</string>
+    <string name="completed_challenges">Завершенные</string>
+    <string name="join_challenge">Присоединиться к челленджу</string>
+    <string name="join_challenge_confirmation">Вы уверены, что хотите присоединиться к этому челленджу?</string>
+    <string name="join">Присоединиться</string>
+    <string name="leave_challenge">Покинуть челлендж</string>
+    <string name="retry">Повторить</string>
+    <string name="dismiss">Закрыть</string>
+    
+    <!-- Empty states -->
+    <string name="no_active_challenges">Нет активных челленджей</string>
+    <string name="no_active_challenges_description">Создайте свой первый челлендж или присоединитесь к челленджу друзей</string>
+    <string name="no_ending_soon_challenges">Нет челленджей, которые скоро завершатся</string>
+    <string name="no_ending_soon_challenges_description">Челленджи, которые завершаются в ближайшие дни, появятся здесь</string>
+    <string name="no_completed_challenges">Нет завершенных челленджей</string>
+    <string name="no_completed_challenges_description">Завершенные челленджи будут отображаться здесь</string>
+    <string name="create_first_challenge">Создать первый челлендж</string>
+    
+    <!-- Challenge status -->
+    <string name="challenge_pending">Ожидает</string>
+    <string name="challenge_active">Активный</string>
+    <string name="challenge_completed">Завершен</string>
+    <string name="challenge_cancelled">Отменен</string>
+    <string name="challenge_ended">Завершен</string>
+    <string name="one_day_left">1 день</string>
+    <string name="days_left">%d дн.</string>
+    <string name="progress">Прогресс</string>
+    
+    <!-- Challenge types -->
+    <string name="completion_rate">% выполнения</string>
+    <string name="streak_challenge">Серия</string>
+    <string name="total_days">Всего дней</string>
+    <string name="first_to_target">Первый к цели</string>
+    
+    <!-- Create challenge -->
+    <string name="create_challenge_title">Создание челленджа</string>
+    <string name="challenge_name">Название челленджа</string>
+    <string name="challenge_name_hint">Введите название челленджа</string>
+    <string name="challenge_description">Описание</string>
+    <string name="challenge_description_hint">Опишите правила и цели челленджа</string>
+    <string name="select_habit">Выберите привычку</string>
+    <string name="select_participants">Выберите участников</string>
+    <string name="challenge_dates">Даты челленджа</string>
+    <string name="start_date">Дата начала</string>
+    <string name="end_date">Дата окончания</string>
+    <string name="challenge_rules">Правила челленджа</string>
+    <string name="challenge_type">Тип челленджа</string>
+    <string name="target_value">Целевое значение</string>
+    <string name="target_value_hint">Введите целевое значение</string>
+    <string name="reward">Награда</string>
+    <string name="reward_hint">Опишите награду для победителя</string>
+    <string name="create_challenge_button">Создать челлендж</string>
+    
+    <!-- Challenge type descriptions -->
+    <string name="completion_rate_description">Побеждает тот, у кого больший процент выполнения привычки</string>
+    <string name="streak_description">Побеждает тот, у кого самая длинная серия выполнений</string>
+    <string name="total_days_description">Побеждает тот, кто выполнил привычку больше всего дней</string>
+    <string name="first_to_target_description">Побеждает первый, кто достигнет целевого значения</string>
 
 </resources>

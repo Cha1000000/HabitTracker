@@ -101,6 +101,11 @@ class MarkHabitCompletedUseCaseTest {
             override suspend fun sendHabitInvitationNotification(toUserId: String, fromUserName: String, habitTitle: String) = Unit
             override suspend fun sendHabitInvitationAcceptedNotification(toUserId: String, acceptedByName: String, habitTitle: String) = Unit
             override suspend fun sendPushNotification(fcmToken: String, title: String, body: String, data: Map<String, String>) = Unit
+            override suspend fun sendChallengeInvitationNotification(toUserId: String, fromUserName: String, challengeTitle: String, habitTitle: String) = Unit
+            override suspend fun sendChallengeJoinedNotification(toUserId: String, joinedUserName: String, challengeTitle: String) = Unit
+            override suspend fun sendChallengeLeftNotification(toUserId: String, leftUserName: String, challengeTitle: String) = Unit
+            override suspend fun sendChallengeCompletedNotification(toUserId: String, challengeTitle: String, message: String, isWinner: Boolean) = Unit
+            override suspend fun sendChallengeCancelledNotification(toUserId: String, challengeTitle: String, reason: String) = Unit
         }
         
         val sendGroupHabitPushNotificationUseCase = SendGroupHabitPushNotificationUseCase(socialRepository)
