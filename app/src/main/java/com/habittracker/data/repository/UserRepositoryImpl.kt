@@ -1,6 +1,6 @@
 package com.habittracker.data.repository
 
-import com.habittracker.data.local.UserDao
+import com.habittracker.data.local.dao.UserDao
 import com.habittracker.data.local.entity.toDomain
 import com.habittracker.data.local.entity.toEntity
 import com.habittracker.domain.model.User

@@ -1,4 +1,4 @@
-package com.habittracker.data.local
+package com.habittracker.data.local.dao
 
 import androidx.room.Dao
 import androidx.room.Delete
@@ -10,13 +10,14 @@ import com.habittracker.data.local.entity.HabitEntity
 import com.habittracker.domain.model.HabitType
 import kotlinx.coroutines.flow.Flow
 import kotlinx.datetime.Instant
+import kotlinx.datetime.LocalTime
 
 @Dao
 interface HabitDao {
-    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    @Insert(onConflict = OnConflictStrategy.Companion.REPLACE)
     suspend fun insertHabit(habit: HabitEntity)
 
-    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    @Insert(onConflict = OnConflictStrategy.Companion.REPLACE)
     suspend fun insertHabits(habits: List<HabitEntity>)
 
     @Update
@@ -92,7 +93,7 @@ interface HabitDao {
     suspend fun updateHabitReminder(
         habitId: String,
         enabled: Boolean,
-        time: kotlinx.datetime.LocalTime?,
+        time: LocalTime?,
         updatedAt: Instant
     )
 

@@ -1,4 +1,4 @@
-package com.habittracker.data.local
+package com.habittracker.data.local.dao
 
 import androidx.room.Dao
 import androidx.room.Insert
@@ -10,7 +10,7 @@ import kotlinx.coroutines.flow.Flow
 
 @Dao
 interface ChallengeDao {
-    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    @Insert(onConflict = OnConflictStrategy.Companion.REPLACE)
     suspend fun insertChallenge(challenge: ChallengeEntity)
 
     @Update

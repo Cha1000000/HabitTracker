@@ -1,7 +1,7 @@
 package com.habittracker.data.repository
 
-import com.habittracker.data.local.ChallengeDao
-import com.habittracker.data.local.HabitEntryDao
+import com.habittracker.data.local.dao.ChallengeDao
+import com.habittracker.data.local.dao.HabitEntryDao
 import com.habittracker.data.local.entity.toDomain
 import com.habittracker.data.local.entity.toEntity
 import com.habittracker.domain.model.Challenge
@@ -95,7 +95,7 @@ class ChallengeRepositoryImpl @Inject constructor(
     override suspend fun getChallengeLeaderboard(challengeId: String): List<Pair<String, Int>> {
         val challenge = getChallengeById(challengeId) ?: return emptyList()
         return challenge.participants.map { userId ->
-            val score = habitEntryDao.getCompletedEntriesCount(challenge.habitId, userId)
+            val score = habitEntryDao.getCompletedEntriesCountForUserAndHabit(challenge.habitId, userId)
             Pair(userId, score)
         }.sortedByDescending { it.second }
     }

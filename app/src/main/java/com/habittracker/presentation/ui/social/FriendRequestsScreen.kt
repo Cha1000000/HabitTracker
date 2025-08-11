@@ -6,7 +6,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.PersonAdd
@@ -74,7 +74,7 @@ fun FriendRequestsScreen(
                 navigationIcon = {
                     IconButton(onClick = onNavigateBack) {
                         Icon(
-                            imageVector = Icons.Default.ArrowBack,
+                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                             contentDescription = stringResource(R.string.back)
                         )
                     }
@@ -206,7 +206,7 @@ private fun EmptyRequestsState(
         verticalArrangement = Arrangement.Center
     ) {
         Icon(
-            imageVector = Icons.Default.PersonAdd,
+            imageVector = Icons.Filled.PersonAdd,
             contentDescription = null,
             modifier = Modifier.size(64.dp),
             tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
@@ -238,8 +238,7 @@ private fun IncomingRequestCard(
     onDecline: (String) -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val fromUser = requestWithUsers.fromUser
-    if (fromUser == null) return
+    val fromUser = requestWithUsers.fromUser!!
 
     Card(
         modifier = modifier.fillMaxWidth(),
@@ -337,7 +336,7 @@ private fun IncomingRequestCard(
                     )
                 ) {
                     Icon(
-                        imageVector = Icons.Default.Check,
+                        imageVector = Icons.Filled.Check,
                         contentDescription = null,
                         modifier = Modifier.size(16.dp)
                     )
@@ -353,7 +352,7 @@ private fun IncomingRequestCard(
                     )
                 ) {
                     Icon(
-                        imageVector = Icons.Default.Close,
+                        imageVector = Icons.Filled.Close,
                         contentDescription = null,
                         modifier = Modifier.size(16.dp)
                     )
@@ -372,8 +371,7 @@ private fun OutgoingRequestCard(
     onCancel: (String) -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val toUser = requestWithUsers.toUser
-    if (toUser == null) return
+    val toUser = requestWithUsers.toUser!!
 
     Card(
         modifier = modifier.fillMaxWidth(),

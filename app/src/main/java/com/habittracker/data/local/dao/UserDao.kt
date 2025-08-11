@@ -1,4 +1,4 @@
-package com.habittracker.data.local
+package com.habittracker.data.local.dao
 
 import androidx.room.Dao
 import androidx.room.Delete
@@ -12,10 +12,10 @@ import kotlinx.datetime.Instant
 
 @Dao
 interface UserDao {
-    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    @Insert(onConflict = OnConflictStrategy.Companion.REPLACE)
     suspend fun insertUser(user: UserEntity)
 
-    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    @Insert(onConflict = OnConflictStrategy.Companion.REPLACE)
     suspend fun insertUsers(users: List<UserEntity>)
 
     @Update

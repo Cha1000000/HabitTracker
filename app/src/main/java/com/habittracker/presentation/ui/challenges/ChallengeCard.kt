@@ -107,8 +107,10 @@ fun ChallengeCard(
                 Spacer(modifier = Modifier.height(4.dp))
                 
                 LinearProgressIndicator(
-                    progress = progress,
-                    modifier = Modifier.fillMaxWidth(),
+                    progress = { progress },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(8.dp),
                     color = when {
                         daysRemaining <= 1 -> MaterialTheme.colorScheme.error
                         daysRemaining <= 3 -> MaterialTheme.colorScheme.tertiary

@@ -1,6 +1,5 @@
 package com.habittracker.domain.repository
 
-import com.habittracker.data.local.CalendarDayData
 import com.habittracker.domain.model.HabitEntry
 import com.habittracker.domain.model.HabitEntryWithUser
 import kotlinx.coroutines.flow.Flow
@@ -37,8 +36,6 @@ interface HabitEntryRepository {
         startDate: LocalDate,
         endDate: LocalDate
     ): Float
-
-    suspend fun getCalendarData(userId: String, startDate: LocalDate, endDate: LocalDate): List<CalendarDayData>
 
     suspend fun markHabitCompleted(habitId: String, userId: String, date: LocalDate, note: String? = null)
 

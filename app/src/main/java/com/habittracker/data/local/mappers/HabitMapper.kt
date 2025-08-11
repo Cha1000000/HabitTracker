@@ -1,4 +1,4 @@
-package com.habittracker.data.local.mapper
+package com.habittracker.data.local.mappers
 
 import com.habittracker.data.local.entity.HabitEntity
 import com.habittracker.domain.model.Habit

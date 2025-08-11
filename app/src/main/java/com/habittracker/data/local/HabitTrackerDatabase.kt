@@ -7,12 +7,15 @@ import androidx.room.RoomDatabase
 import androidx.room.TypeConverters
 import androidx.room.migration.Migration
 import androidx.sqlite.db.SupportSQLiteDatabase
+import com.habittracker.data.local.dao.*
+import com.habittracker.data.local.entity.AchievementEntity
 import com.habittracker.data.local.entity.ChallengeEntity
 import com.habittracker.data.local.entity.FriendRequestEntity
 import com.habittracker.data.local.entity.FriendshipEntity
 import com.habittracker.data.local.entity.HabitEntity
 import com.habittracker.data.local.entity.HabitEntryEntity
 import com.habittracker.data.local.entity.HabitInvitationEntity
+import com.habittracker.data.local.entity.UserAchievementEntity
 import com.habittracker.data.local.entity.UserEntity
 
 @Database(
@@ -23,9 +26,11 @@ import com.habittracker.data.local.entity.UserEntity
         ChallengeEntity::class,
         FriendshipEntity::class,
         FriendRequestEntity::class,
-        HabitInvitationEntity::class
+        HabitInvitationEntity::class,
+        AchievementEntity::class,
+        UserAchievementEntity::class
     ],
-    version = 3,
+    version = 4,
     exportSchema = false // Для простоты отключаем экспорт схемы
 )
 @TypeConverters(Converters::class)
@@ -38,6 +43,8 @@ abstract class HabitTrackerDatabase : RoomDatabase() {
     abstract fun friendshipDao(): FriendshipDao
     abstract fun friendRequestDao(): FriendRequestDao
     abstract fun habitInvitationDao(): HabitInvitationDao
+    abstract fun achievementDao(): AchievementDao
+    abstract fun userAchievementDao(): UserAchievementDao
 
     companion object {
         const val DATABASE_NAME = "habit_tracker_db"
@@ -55,7 +62,8 @@ abstract class HabitTrackerDatabase : RoomDatabase() {
                 )
                     .addMigrations(
                         MIGRATION_1_2,
-                        MIGRATION_2_3
+                        MIGRATION_2_3,
+                        MIGRATION_3_4
                     )
                     .fallbackToDestructiveMigration() // Только для разработки!
                     .build()
@@ -120,6 +128,50 @@ abstract class HabitTrackerDatabase : RoomDatabase() {
                 db.execSQL("CREATE INDEX IF NOT EXISTS index_habit_invitations_toUserId ON habit_invitations(toUserId)")
                 db.execSQL("CREATE INDEX IF NOT EXISTS index_habit_invitations_status ON habit_invitations(status)")
                 db.execSQL("CREATE INDEX IF NOT EXISTS index_habit_invitations_createdAt ON habit_invitations(createdAt)")
+            }
+        }
+
+        // Миграция с версии 3 на 4 (достижения)
+        val MIGRATION_3_4 = object : Migration(3, 4) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                // Создаем таблицу achievements
+                db.execSQL("""
+                    CREATE TABLE IF NOT EXISTS achievements (
+                        id TEXT NOT NULL PRIMARY KEY,
+                        title TEXT NOT NULL,
+                        description TEXT NOT NULL,
+                        icon TEXT NOT NULL DEFAULT '🏆',
+                        category TEXT NOT NULL,
+                        type TEXT NOT NULL,
+                        conditionMetric TEXT NOT NULL,
+                        conditionTargetValue INTEGER NOT NULL,
+                        conditionTimeframe TEXT,
+                        pointsReward INTEGER NOT NULL,
+                        isSecret INTEGER NOT NULL DEFAULT 0,
+                        isActive INTEGER NOT NULL DEFAULT 1,
+                        createdAt INTEGER NOT NULL
+                    )
+                """)
+                
+                // Создаем таблицу user_achievements
+                db.execSQL("""
+                    CREATE TABLE IF NOT EXISTS user_achievements (
+                        id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+                        userId TEXT NOT NULL,
+                        achievementId TEXT NOT NULL,
+                        progress INTEGER NOT NULL DEFAULT 0,
+                        isUnlocked INTEGER NOT NULL DEFAULT 0,
+                        unlockedAt INTEGER,
+                        createdAt INTEGER NOT NULL,
+                        FOREIGN KEY(userId) REFERENCES users(id) ON DELETE CASCADE,
+                        FOREIGN KEY(achievementId) REFERENCES achievements(id) ON DELETE CASCADE
+                    )
+                """)
+                
+                // Создаем индексы для оптимизации запросов
+                db.execSQL("CREATE INDEX IF NOT EXISTS index_user_achievements_userId ON user_achievements(userId)")
+                db.execSQL("CREATE INDEX IF NOT EXISTS index_user_achievements_achievementId ON user_achievements(achievementId)")
+                db.execSQL("CREATE UNIQUE INDEX IF NOT EXISTS index_user_achievements_user_achievement ON user_achievements(userId, achievementId)")
             }
         }
     }

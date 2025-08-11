@@ -1,6 +1,6 @@
 package com.habittracker.data.repository
 
-import com.habittracker.data.local.FriendshipDao
+import com.habittracker.data.local.dao.FriendshipDao
 import com.habittracker.data.local.entity.toDomain
 import com.habittracker.data.local.entity.toEntity
 import com.habittracker.domain.model.Friendship

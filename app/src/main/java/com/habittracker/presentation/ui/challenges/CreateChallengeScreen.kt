@@ -6,7 +6,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material.icons.filled.CalendarToday
 import androidx.compose.material.icons.filled.Check
@@ -54,7 +54,7 @@ fun CreateChallengeScreen(
             navigationIcon = {
                 IconButton(onClick = onNavigateBack) {
                     Icon(
-                        imageVector = Icons.Default.ArrowBack,
+                        imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                         contentDescription = stringResource(R.string.back)
                     )
                 }
@@ -237,7 +237,7 @@ private fun HabitSelectionCard(
                 }
             }
             Icon(
-                imageVector = Icons.Default.ArrowDropDown,
+                imageVector = Icons.Filled.ArrowDropDown,
                 contentDescription = null
             )
         }
@@ -286,13 +286,13 @@ private fun ParticipantsSelectionCard(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Icon(
-                    imageVector = Icons.Default.Group,
+                    imageVector = Icons.Filled.Group,
                     contentDescription = null,
                     modifier = Modifier.size(20.dp)
                 )
                 Spacer(modifier = Modifier.width(4.dp))
                 Icon(
-                    imageVector = Icons.Default.ArrowDropDown,
+                    imageVector = Icons.Filled.ArrowDropDown,
                     contentDescription = null
                 )
             }
@@ -333,7 +333,7 @@ private fun DateSelectionSection(
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {
                         Icon(
-                            imageVector = Icons.Default.CalendarToday,
+                            imageVector = Icons.Filled.CalendarToday,
                             contentDescription = null,
                             modifier = Modifier.size(20.dp)
                         )
@@ -359,7 +359,7 @@ private fun DateSelectionSection(
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {
                         Icon(
-                            imageVector = Icons.Default.Schedule,
+                            imageVector = Icons.Filled.Schedule,
                             contentDescription = null,
                             modifier = Modifier.size(20.dp)
                         )

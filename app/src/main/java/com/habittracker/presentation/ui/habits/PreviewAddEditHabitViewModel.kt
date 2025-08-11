@@ -207,68 +207,46 @@ class PreviewAddEditHabitViewModel @Inject constructor(
     }
 
     override fun shareInviteCode(inviteCode: String) {
-        // Заглушка для превью
+        // В превью просто показываем сообщение
+        _uiState.update { it.copy(successMessage = "Код '$inviteCode' скопирован (превью)") }
     }
 
     override fun loadAvailableFriends() {
-        // Заглушка с тестовыми данными
-        val currentTime = Clock.System.now()
-        val testFriends = listOf(
-            User(
-                id = "1", 
-                name = "Анна Петрова", 
-                email = "anna@example.com",
-                createdAt = currentTime,
-                lastActiveAt = currentTime
-            ),
-            User(
-                id = "2", 
-                name = "Иван Сидоров", 
-                email = "ivan@example.com",
-                createdAt = currentTime,
-                lastActiveAt = currentTime
-            ),
-            User(
-                id = "3", 
-                name = "Мария Козлова", 
-                email = "maria@example.com",
-                createdAt = currentTime,
-                lastActiveAt = currentTime
-            )
+        val now = Clock.System.now()
+        val friends = listOf(
+            User(id = "friend1", name = "Alice", email = "alice@example.com", avatarUrl = "", level = 1, points = 100, createdAt = now, lastActiveAt = now),
+            User(id = "friend2", name = "Bob", email = "bob@example.com", avatarUrl = "", level = 2, points = 250, createdAt = now, lastActiveAt = now),
+            User(id = "friend3", name = "Charlie", email = "charlie@example.com", avatarUrl = "", level = 3, points = 500, createdAt = now, lastActiveAt = now)
         )
-        _uiState.update { 
-            it.copy(
-                availableFriends = testFriends,
-                isLoadingFriends = false
-            ) 
-        }
-    }
-
-    override fun selectFriend(friend: User) {
-        _uiState.update { state ->
-            val updatedSelected = state.selectedFriendsToInvite + friend
-            state.copy(selectedFriendsToInvite = updatedSelected)
-        }
-    }
-
-    override fun deselectFriend(friend: User) {
-        _uiState.update { state ->
-            val updatedSelected = state.selectedFriendsToInvite.filter { it.id != friend.id }
-            state.copy(selectedFriendsToInvite = updatedSelected)
-        }
+        _uiState.update { it.copy(availableFriends = friends) }
     }
 
     override fun sendInvitations() {
         viewModelScope.launch {
-            _uiState.update { it.copy(isSendingInvitations = true) }
-            delay(1000) // Имитация отправки
+            _uiState.update { it.copy(isLoading = true) }
+            delay(500)
             _uiState.update { 
                 it.copy(
-                    isSendingInvitations = false,
+                    isLoading = false,
+                    successMessage = "Приглашения отправлены (превью)",
                     selectedFriendsToInvite = emptyList(),
-                    successMessage = "Приглашения отправлены (превью)"
+                    showFriendSelector = false
                 ) 
             }
+        }
+    }
+
+    override fun selectFriend(friend: User) {
+        _uiState.update { 
+            val updatedSelection = it.selectedFriendsToInvite + friend
+            it.copy(selectedFriendsToInvite = updatedSelection)
+        }
+    }
+
+    override fun deselectFriend(friend: User) {
+        _uiState.update { 
+            val updatedSelection = it.selectedFriendsToInvite - friend
+            it.copy(selectedFriendsToInvite = updatedSelection)
         }
     }
 
@@ -277,6 +255,7 @@ class PreviewAddEditHabitViewModel @Inject constructor(
      */
     private fun createTempHabit(): Habit {
         val currentState = _uiState.value
+        val now = Clock.System.now()
         return Habit(
             id = currentState.habitId ?: "preview_habit",
             title = currentState.title,
@@ -290,8 +269,8 @@ class PreviewAddEditHabitViewModel @Inject constructor(
             unit = currentState.unit,
             participants = currentState.participants.map { it.id },
             createdBy = "preview_user",
-            createdAt = Clock.System.now(),
-            updatedAt = Clock.System.now(),
+            createdAt = now,
+            updatedAt = now,
             inviteCode = currentState.inviteCode
         )
     }

@@ -1,15 +1,14 @@
 package com.habittracker.di
 
 import android.content.Context
-import androidx.room.Room
 import com.habittracker.data.local.HabitTrackerDatabase
-import com.habittracker.data.local.HabitDao
-import com.habittracker.data.local.HabitEntryDao
-import com.habittracker.data.local.UserDao
-import com.habittracker.data.local.ChallengeDao
-import com.habittracker.data.local.FriendshipDao
-import com.habittracker.data.local.FriendRequestDao
-import com.habittracker.data.local.HabitInvitationDao
+import com.habittracker.data.local.dao.ChallengeDao
+import com.habittracker.data.local.dao.FriendRequestDao
+import com.habittracker.data.local.dao.FriendshipDao
+import com.habittracker.data.local.dao.HabitDao
+import com.habittracker.data.local.dao.HabitEntryDao
+import com.habittracker.data.local.dao.HabitInvitationDao
+import com.habittracker.data.local.dao.UserDao
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn

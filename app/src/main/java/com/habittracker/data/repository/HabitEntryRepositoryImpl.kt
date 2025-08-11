@@ -1,13 +1,13 @@
 package com.habittracker.data.repository
 
-import com.habittracker.data.local.CalendarDayData
-import com.habittracker.data.local.HabitEntryDao
+import com.habittracker.data.local.dao.HabitEntryDao
 import com.habittracker.data.local.entity.toDomain
 import com.habittracker.data.local.entity.toEntity
 import com.habittracker.domain.model.HabitEntry
 import com.habittracker.domain.model.HabitEntryWithUser
 import com.habittracker.domain.repository.HabitEntryRepository
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.datetime.Clock
 import kotlinx.datetime.LocalDate
@@ -28,7 +28,10 @@ class HabitEntryRepositoryImpl @Inject constructor(
     }
 
     override fun getEntryFlow(habitId: String, userId: String, date: LocalDate): Flow<HabitEntry?> {
-        return habitEntryDao.getEntryFlow(habitId, userId, date).map { it?.toDomain() }
+        // Используем flow который будет эмитить изменения записи для конкретной даты
+        return habitEntryDao.getEntriesForUserAndHabit(habitId, userId).map { entries ->
+            entries.find { it.date == date }?.toDomain()
+        }
     }
 
     override suspend fun getEntry(habitId: String, userId: String, date: LocalDate): HabitEntry? {
@@ -59,12 +62,12 @@ class HabitEntryRepositoryImpl @Inject constructor(
         startDate: LocalDate,
         endDate: LocalDate
     ): List<HabitEntry> {
-        return habitEntryDao.getEntriesForUserAndPeriod(habitId, userId, startDate, endDate)
-            .map { it.toDomain() }
+        return habitEntryDao.getEntriesForUserInDateRange(userId, startDate, endDate)
+            .first().filter { it.habitId == habitId }.map { it.toDomain() }
     }
 
     override suspend fun getEntriesWithUsersForHabitAndDate(habitId: String, date: LocalDate): List<HabitEntryWithUser> {
-        return habitEntryDao.getEntriesWithUsersForHabitAndDate(habitId, date).map { it.toDomain() }
+        return habitEntryDao.getEntriesWithUsersForHabitAndDate(habitId, date).first().map { it.toDomain() }
     }
 
     override suspend fun getCompletionRateForHabit(
@@ -77,10 +80,6 @@ class HabitEntryRepositoryImpl @Inject constructor(
         if (entries.isEmpty()) return 0f
         val completedCount = entries.count { it.completed }
         return (completedCount.toFloat() / entries.size)
-    }
-
-    override suspend fun getCalendarData(userId: String, startDate: LocalDate, endDate: LocalDate): List<CalendarDayData> {
-        return habitEntryDao.getCalendarData(userId, startDate, endDate)
     }
 
     override suspend fun markHabitCompleted(habitId: String, userId: String, date: LocalDate, note: String?) {

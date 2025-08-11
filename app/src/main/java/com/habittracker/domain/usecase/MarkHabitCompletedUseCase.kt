@@ -1,16 +1,15 @@
 package com.habittracker.domain.usecase
 
 import com.habittracker.domain.model.HabitEntry
-import com.habittracker.domain.model.isGroupHabit
+import com.habittracker.domain.model.gamification.GamificationEvent
 import com.habittracker.domain.repository.FirestoreRepository
 import com.habittracker.domain.repository.HabitEntryRepository
-import com.habittracker.domain.repository.HabitRepository
-import com.habittracker.domain.repository.SocialRepository
+import com.habittracker.domain.usecase.gamification.UpdateUserPointsUseCase
 import com.habittracker.domain.usecase.notification.SendGroupHabitPushNotificationUseCase
-import kotlinx.coroutines.launch
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.launch
 import kotlinx.datetime.Clock
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.TimeZone
@@ -24,16 +23,22 @@ import javax.inject.Inject
 class MarkHabitCompletedUseCase @Inject constructor(
     private val firestoreRepository: FirestoreRepository,
     private val habitEntryRepository: HabitEntryRepository,
-    private val habitRepository: HabitRepository,
-    private val socialRepository: SocialRepository,
-    private val sendGroupHabitPushNotificationUseCase: SendGroupHabitPushNotificationUseCase
+    private val updateUserPointsUseCase: UpdateUserPointsUseCase,
+    private val sendGroupHabitPushNotificationUseCase: SendGroupHabitPushNotificationUseCase,
+    private val coroutineScope: CoroutineScope
 ) {
+
+    private val backgroundTasksScope = coroutineScope
+
     /**
-     * Отмечает привычку как выполненную за указанную дату
-     * @param habitId ID привычки
-     * @param userId ID пользователя
-     * @param date Дата выполнения (по умолчанию - сегодня)
-     * @param note Заметка о выполнении (опционально)
+     * Отмечает привычку как выполненную для определенной даты.
+     * Сохраняет запись о выполнении в Firestore и локальной базе данных.
+     * Начисляет очки за выполнение и отправляет уведомления для групповых привычек.
+     *
+     * @param habitId ID привычки.
+     * @param userId ID пользователя.
+     * @param date Дата выполнения.
+     * @param note Заметка к выполнению (опционально).
      */
     suspend operator fun invoke(
         habitId: String,
@@ -41,58 +46,35 @@ class MarkHabitCompletedUseCase @Inject constructor(
         date: LocalDate = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault()).date,
         note: String? = null
     ) {
-        val habitEntry = HabitEntry(
-            habitId = habitId,
-            userId = userId,
-            date = date,
-            completed = true,
-            completedAt = Clock.System.now(),
-            note = note,
-            createdAt = Clock.System.now(),
-            updatedAt = Clock.System.now()
-        )
-
         try {
-            // Сначала сохраняем в Firestore
-            firestoreRepository.saveHabitEntry(habitEntry)
-            
-            // Затем сохраняем локально
+            val now = Clock.System.now()
+            val entry = HabitEntry(
+                habitId = habitId,
+                userId = userId,
+                date = date,
+                completed = true,
+                completedAt = now,
+                note = note,
+                createdAt = now,
+                updatedAt = now
+            )
+            // Сначала пробуем сохранить в Firestore
+            firestoreRepository.saveHabitEntry(entry)
+            // Если успешно, сохраняем в локальную базу
             habitEntryRepository.markHabitCompleted(habitId, userId, date, note)
-            
-            // Отправляем push-уведомления для групповых привычек
-            sendGroupNotificationsAsync(habitId, userId)
-            
-        } catch (e: Exception) {
-            // При ошибке Firestore всё равно сохраняем локально
-            habitEntryRepository.markHabitCompleted(habitId, userId, date, note)
-            throw e
-        }
-    }
 
-    /**
-     * Асинхронно отправляет push-уведомления для групповых привычек
-     */
-    private fun sendGroupNotificationsAsync(habitId: String, userId: String) {
-        notificationScope.launch {
-            try {
-                val habit = habitRepository.getHabitById(habitId)
-                if (habit != null && habit.isGroupHabit()) {
-                    val user = socialRepository.getUserById(userId)
-                    if (user != null) {
-                        // Уведомляем других участников о выполнении привычки
-                        sendGroupHabitPushNotificationUseCase.sendParticipantCompletedNotification(
-                            habit = habit,
-                            completedByUser = user,
-                            excludeUserId = userId // Исключаем самого пользователя
-                        )
-                    }
-                }
-            } catch (e: Exception) {
-                // Логируем ошибку, но не прерываем основной процесс
-                // TODO: Добавить логирование
+            // Асинхронно обновляем очки и отправляем уведомления
+            backgroundTasksScope.launch {
+                updateUserPointsUseCase(userId, GamificationEvent.HabitCompleted)
+                sendGroupHabitPushNotificationUseCase.invoke(habitId, userId)
             }
+
+        } catch (e: Exception) {
+            // Если Firestore недоступен, сохраняем только локально
+            habitEntryRepository.markHabitCompleted(habitId, userId, date, note)
+            // Также начисляем очки даже при ошибке сети
+            backgroundTasksScope.launch { updateUserPointsUseCase(userId, GamificationEvent.HabitCompleted) }
+            throw e // Пробрасываем исключение дальше, чтобы вызывающий код мог его обработать
         }
     }
-
-    private val notificationScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 }

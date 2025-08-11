@@ -1,10 +1,10 @@
 package com.habittracker.data.repository
 
 import com.google.firebase.firestore.FirebaseFirestore
-import com.habittracker.data.local.FriendRequestDao
-import com.habittracker.data.local.FriendshipDao
-import com.habittracker.data.local.HabitInvitationDao
-import com.habittracker.data.local.UserDao
+import com.habittracker.data.local.dao.FriendRequestDao
+import com.habittracker.data.local.dao.FriendshipDao
+import com.habittracker.data.local.dao.HabitInvitationDao
+import com.habittracker.data.local.dao.UserDao
 import com.habittracker.data.local.entity.toDomain
 import com.habittracker.data.local.entity.toEntity
 import com.habittracker.data.service.FCMApiClient
@@ -17,9 +17,9 @@ import com.habittracker.domain.model.FriendshipWithUsers
 import com.habittracker.domain.model.HabitInvitation
 import com.habittracker.domain.model.HabitInvitationStatus
 import com.habittracker.domain.model.User
-import com.habittracker.domain.model.isExpired
-import com.habittracker.domain.model.createFriendship
 import com.habittracker.domain.model.accept
+import com.habittracker.domain.model.createFriendship
+import com.habittracker.domain.model.isExpired
 import com.habittracker.domain.repository.SocialRepository
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
@@ -28,7 +28,6 @@ import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.tasks.await
 import kotlinx.datetime.Clock
 import kotlinx.datetime.DateTimePeriod
-import kotlinx.datetime.DateTimeUnit
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.plus
 import java.util.UUID

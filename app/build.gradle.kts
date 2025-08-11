@@ -60,6 +60,7 @@ android {
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
+        isCoreLibraryDesugaringEnabled = true
     }
     kotlinOptions {
         jvmTarget = "17"
@@ -119,7 +120,10 @@ dependencies {
     
     // FlowLayout from Accompanist
     implementation(libs.accompanist.flowlayout)
-    
+
+    // Calendar
+    implementation("com.kizitonwose.calendar:compose:2.5.1")
+
     // WorkManager
     implementation(libs.androidx.work.runtime.ktx)
     
