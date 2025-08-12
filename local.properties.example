@@ -1,0 +1,24 @@
+# Пример файла local.properties для проекта HabitTracker
+# Скопируйте этот файл в local.properties и заполните реальными значениями
+
+## SDK Location
+# Путь к Android SDK (обычно заполняется автоматически Android Studio)
+sdk.dir=/Users/YOUR_USERNAME/Library/Android/sdk
+
+## FCM Configuration  
+# FCM Server Key для отправки push-уведомлений
+# Получите ключ в Google Cloud Console → APIs & Services → Credentials
+# Найдите "Server key" или создайте новый API ключ с ограничениями для FCM API
+FCM_SERVER_KEY=YOUR_ACTUAL_FCM_SERVER_KEY_HERE
+
+## Firebase Configuration
+# Убедитесь что google-services.json находится в app/ директории
+# Скачайте его из Firebase Console → Project Settings → General → Your apps
+
+## Пример настройки переменной окружения в IDE:
+# Android Studio: Run → Edit Configurations → Environment Variables
+# Добавьте: FCM_SERVER_KEY = your_actual_key_here
+
+## Пример для командной строки:
+# export FCM_SERVER_KEY="your_actual_key_here"
+# ./gradlew assembleDebug

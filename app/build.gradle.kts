@@ -1,3 +1,6 @@
+import java.util.Properties
+import java.io.FileInputStream
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
@@ -6,6 +9,13 @@ plugins {
     alias(libs.plugins.kotlin.serialization)
     id("com.google.gms.google-services")
     alias(libs.plugins.kotlin.compose)
+}
+
+// Читаем local.properties файл
+val localProperties = Properties()
+val localPropertiesFile = rootProject.file("local.properties")
+if (localPropertiesFile.exists()) {
+    localProperties.load(FileInputStream(localPropertiesFile))
 }
 
 // Разрешаем использование ksp с Room
@@ -30,15 +40,20 @@ android {
         }
         
         // FCM Server Key для отправки push-уведомлений
-        // Получен из Google Cloud Console → APIs & Services → Credentials
-        buildConfigField("String", "FCM_SERVER_KEY", "\"AIzaSyCdlPMdBHgJGzTNEKNbTPGuDVJjVrZtk\"")
+        // Читаем из local.properties, переменной окружения или используем дефолт
+        val fcmServerKey = localProperties.getProperty("FCM_SERVER_KEY") 
+            ?: System.getenv("FCM_SERVER_KEY") 
+            ?: "YOUR_FCM_SERVER_KEY_HERE"
+        buildConfigField("String", "FCM_SERVER_KEY", "\"$fcmServerKey\"")
+        
+        // Дополнительные Firebase конфигурации из local.properties
+        val firebaseProjectId = localProperties.getProperty("FIREBASE_PROJECT_ID") ?: "habitttracker-505b6"
+        buildConfigField("String", "FIREBASE_PROJECT_ID", "\"$firebaseProjectId\"")
     }
 
     buildTypes {
         debug {
             isMinifyEnabled = false
-            // FCM Server Key для debug сборки
-            buildConfigField("String", "FCM_SERVER_KEY", "\"AIzaSyCdlPMdBHgJGzTNEKNbTPGuDVJjVrZtk\"")
         }
         release {
             isMinifyEnabled = false
@@ -46,9 +61,6 @@ android {
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
-            // FCM Server Key для release сборки
-            // В продакшене рекомендуется использовать переменные окружения
-            buildConfigField("String", "FCM_SERVER_KEY", "\"AIzaSyCdlPMdBHgJGzTNEKNbTPGuDVJjVrZtk\"")
         }
     }
 
