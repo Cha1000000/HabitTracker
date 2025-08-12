@@ -20,6 +20,7 @@ import com.habittracker.domain.model.User
 import com.habittracker.domain.model.accept
 import com.habittracker.domain.model.createFriendship
 import com.habittracker.domain.model.isExpired
+import com.habittracker.domain.repository.HabitRepository
 import com.habittracker.domain.repository.SocialRepository
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
@@ -45,7 +46,8 @@ class SocialRepositoryImpl @Inject constructor(
     private val friendRequestDao: FriendRequestDao,
     private val habitInvitationDao: HabitInvitationDao,
     private val fcmApiClient: FCMApiClient,
-    private val firestore: FirebaseFirestore
+    private val firestore: FirebaseFirestore,
+    private val habitRepository: HabitRepository
 ) : SocialRepository {
 
     override suspend fun searchUsers(query: String, currentUserId: String): List<User> {
@@ -92,10 +94,10 @@ class SocialRepositoryImpl @Inject constructor(
                 doc.toObject(User::class.java)?.copy(id = doc.id)
             } else {
                 // Fallback на локальные данные
-                userDao.getUserById(userId)?.let { it.toDomain() }
+                userDao.getUserById(userId)?.toDomain()
             }
         } catch (e: Exception) {
-            userDao.getUserById(userId)?.let { it.toDomain() }
+            userDao.getUserById(userId)?.toDomain()
         }
     }
 
@@ -253,10 +255,10 @@ class SocialRepositoryImpl @Inject constructor(
             if (doc.exists()) {
                 doc.toObject(FriendRequest::class.java)?.copy(id = doc.id)
             } else {
-                friendRequestDao.getFriendRequestById(requestId)?.let { it.toDomain() }
+                friendRequestDao.getFriendRequestById(requestId)?.toDomain()
             }
         } catch (e: Exception) {
-            friendRequestDao.getFriendRequestById(requestId)?.let { it.toDomain() }
+            friendRequestDao.getFriendRequestById(requestId)?.toDomain()
         }
     }
 
@@ -454,13 +456,48 @@ class SocialRepositoryImpl @Inject constructor(
     }
 
     override suspend fun sendFriendRequestNotification(toUserId: String, fromUserName: String) {
-        // TODO: Реализовать отправку FCM уведомления
-        // Пока заглушка
+        try {
+            val user = getUserById(toUserId)
+            val fcmToken = user?.fcmToken
+            
+            if (fcmToken != null) {
+                fcmApiClient.sendPushNotification(
+                    fcmToken = fcmToken,
+                    title = "Новый запрос дружбы",
+                    body = "$fromUserName хочет добавить вас в друзья",
+                    data = mapOf(
+                        "type" to "friend_request",
+                        "fromUserId" to fromUserName,
+                        "action" to "open_friend_requests"
+                    )
+                )
+            }
+        } catch (e: Exception) {
+            // Логируем ошибку, но не падаем - уведомления не критичны
+            android.util.Log.w("SocialRepository", "Ошибка отправки уведомления о запросе дружбы", e)
+        }
     }
 
     override suspend fun sendFriendAcceptedNotification(toUserId: String, acceptedByName: String) {
-        // TODO: Реализовать отправку FCM уведомления
-        // Пока заглушка
+        try {
+            val user = getUserById(toUserId)
+            val fcmToken = user?.fcmToken
+            
+            if (fcmToken != null) {
+                fcmApiClient.sendPushNotification(
+                    fcmToken = fcmToken,
+                    title = "Запрос дружбы принят",
+                    body = "$acceptedByName принял ваш запрос дружбы",
+                    data = mapOf(
+                        "type" to "friend_accepted",
+                        "friendUserId" to acceptedByName,
+                        "action" to "open_friends"
+                    )
+                )
+            }
+        } catch (e: Exception) {
+            android.util.Log.w("SocialRepository", "Ошибка отправки уведомления о принятии дружбы", e)
+        }
     }
 
     // Habit invitations implementation
@@ -495,8 +532,13 @@ class SocialRepositoryImpl @Inject constructor(
             // Сохраняем локально
             habitInvitationDao.insert(invitation.toEntity())
 
-            // TODO: Сохранить в Firestore для синхронизации
-            // TODO: Отправить FCM уведомление
+            // Сохраняем в Firestore
+            firestore.collection("habit_invitations")
+                .document(invitation.id)
+                .set(invitation)
+                .await()
+
+            // Отправляем FCM уведомление
             sendHabitInvitationNotification(toUserId, fromUserName, habitTitle)
 
             Result.success(invitation)
@@ -525,9 +567,17 @@ class SocialRepositoryImpl @Inject constructor(
 
             habitInvitationDao.update(acceptedInvitation.toEntity())
 
-            // TODO: Добавить пользователя к участникам привычки в HabitRepository
-            // TODO: Сохранить в Firestore
-            // TODO: Отправить FCM уведомление создателю
+            // Обновляем в Firestore
+            firestore.collection("habit_invitations")
+                .document(invitationId)
+                .set(acceptedInvitation)
+                .await()
+
+            // Добавляем пользователя к участникам привычки
+            habitRepository.addParticipantToHabit(invitation.habitId, invitation.toUserId)
+
+            // Отправляем FCM уведомление создателю
+            sendHabitInvitationAcceptedNotification(invitation.fromUserId, invitation.toUserId, invitation.habitTitle)
 
             Result.success(acceptedInvitation)
         } catch (e: Exception) {
@@ -551,7 +601,11 @@ class SocialRepositoryImpl @Inject constructor(
 
             habitInvitationDao.update(declinedInvitation.toEntity())
 
-            // TODO: Сохранить в Firestore
+            // Обновляем в Firestore
+            firestore.collection("habit_invitations")
+                .document(invitationId)
+                .set(declinedInvitation)
+                .await()
 
             Result.success(declinedInvitation)
         } catch (e: Exception) {
@@ -575,7 +629,11 @@ class SocialRepositoryImpl @Inject constructor(
 
             habitInvitationDao.update(cancelledInvitation.toEntity())
 
-            // TODO: Сохранить в Firestore
+            // Обновляем в Firestore
+            firestore.collection("habit_invitations")
+                .document(invitationId)
+                .set(cancelledInvitation)
+                .await()
 
             Result.success(Unit)
         } catch (e: Exception) {
@@ -585,17 +643,31 @@ class SocialRepositoryImpl @Inject constructor(
 
     override suspend fun getHabitInvitationById(invitationId: String): HabitInvitation? {
         return try {
-            habitInvitationDao.getById(invitationId)?.let { it.toDomain() }
+            val doc = firestore.collection("habit_invitations").document(invitationId).get().await()
+            if (doc.exists()) {
+                doc.toObject(HabitInvitation::class.java)?.copy(id = doc.id)
+            } else {
+                habitInvitationDao.getById(invitationId)?.toDomain()
+            }
         } catch (e: Exception) {
-            null
+            habitInvitationDao.getById(invitationId)?.toDomain()
         }
     }
 
     override suspend fun getPendingHabitInvitation(habitId: String, userId: String): HabitInvitation? {
         return try {
-            habitInvitationDao.getPendingInvitation(habitId, userId)?.let { it.toDomain() }
+            val results = firestore.collection("habit_invitations")
+                .whereEqualTo("habitId", habitId)
+                .whereEqualTo("toUserId", userId)
+                .whereEqualTo("status", HabitInvitationStatus.PENDING.name)
+                .get()
+                .await()
+
+            results.documents.firstOrNull()?.let { doc ->
+                doc.toObject(HabitInvitation::class.java)?.copy(id = doc.id)
+            }
         } catch (e: Exception) {
-            null
+            habitInvitationDao.getPendingInvitation(habitId, userId)?.toDomain()
         }
     }
 
@@ -651,32 +723,48 @@ class SocialRepositoryImpl @Inject constructor(
     }
 
     override suspend fun sendHabitInvitationNotification(toUserId: String, fromUserName: String, habitTitle: String) {
-        val toUser = getUserById(toUserId)
-        if (toUser != null) {
-            val fcmToken = toUser.fcmToken
+        try {
+            val toUser = getUserById(toUserId)
+            val fcmToken = toUser?.fcmToken
+            
             if (fcmToken != null) {
-                sendPushNotification(
-                    fcmToken,
-                    "Приглашение к привычке",
-                    "$fromUserName приглашает вас к участию в привычке '$habitTitle'",
-                    mapOf("type" to "habit_invitation")
+                fcmApiClient.sendPushNotification(
+                    fcmToken = fcmToken,
+                    title = "Приглашение к привычке",
+                    body = "$fromUserName приглашает вас к участию в привычке '$habitTitle'",
+                    data = mapOf(
+                        "type" to "habit_invitation",
+                        "habitTitle" to habitTitle,
+                        "fromUserName" to fromUserName,
+                        "action" to "open_habit_invitations"
+                    )
                 )
             }
+        } catch (e: Exception) {
+            android.util.Log.w("SocialRepository", "Ошибка отправки уведомления о приглашении в привычку", e)
         }
     }
 
     override suspend fun sendHabitInvitationAcceptedNotification(toUserId: String, acceptedByName: String, habitTitle: String) {
-        val toUser = getUserById(toUserId)
-        if (toUser != null) {
-            val fcmToken = toUser.fcmToken
+        try {
+            val toUser = getUserById(toUserId)
+            val fcmToken = toUser?.fcmToken
+            
             if (fcmToken != null) {
-                sendPushNotification(
-                    fcmToken,
-                    "Приглашение к привычке",
-                    "$acceptedByName принял(а) ваше приглашение к участию в привычке '$habitTitle'",
-                    mapOf("type" to "habit_invitation_accepted")
+                fcmApiClient.sendPushNotification(
+                    fcmToken = fcmToken,
+                    title = "Приглашение принято",
+                    body = "$acceptedByName принял ваше приглашение к участию в привычке '$habitTitle'",
+                    data = mapOf(
+                        "type" to "habit_invitation_accepted",
+                        "habitTitle" to habitTitle,
+                        "acceptedByName" to acceptedByName,
+                        "action" to "open_habit_details"
+                    )
                 )
             }
+        } catch (e: Exception) {
+            android.util.Log.w("SocialRepository", "Ошибка отправки уведомления о принятии приглашения", e)
         }
     }
 
@@ -685,7 +773,7 @@ class SocialRepositoryImpl @Inject constructor(
         if (toUser != null) {
             val fcmToken = toUser.fcmToken
             if (fcmToken != null) {
-                sendPushNotification(
+                fcmApiClient.sendPushNotification(
                     fcmToken,
                     "Приглашение в челлендж",
                     "$fromUserName приглашает вас к участию в челлендже '$challengeTitle' по привычке '$habitTitle'",
@@ -704,7 +792,7 @@ class SocialRepositoryImpl @Inject constructor(
         if (toUser != null) {
             val fcmToken = toUser.fcmToken
             if (fcmToken != null) {
-                sendPushNotification(
+                fcmApiClient.sendPushNotification(
                     fcmToken,
                     "Новый участник челленджа",
                     "$joinedUserName присоединился к челленджу '$challengeTitle'",
@@ -722,7 +810,7 @@ class SocialRepositoryImpl @Inject constructor(
         if (toUser != null) {
             val fcmToken = toUser.fcmToken
             if (fcmToken != null) {
-                sendPushNotification(
+                fcmApiClient.sendPushNotification(
                     fcmToken,
                     "Участник покинул челлендж",
                     "$leftUserName покинул челлендж '$challengeTitle'",
@@ -741,7 +829,7 @@ class SocialRepositoryImpl @Inject constructor(
             val fcmToken = toUser.fcmToken
             if (fcmToken != null) {
                 val title = if (isWinner) "Поздравляем с победой!" else "Челлендж завершен"
-                sendPushNotification(
+                fcmApiClient.sendPushNotification(
                     fcmToken,
                     title,
                     message,
@@ -760,7 +848,7 @@ class SocialRepositoryImpl @Inject constructor(
         if (toUser != null) {
             val fcmToken = toUser.fcmToken
             if (fcmToken != null) {
-                sendPushNotification(
+                fcmApiClient.sendPushNotification(
                     fcmToken,
                     "Челлендж отменен",
                     "Челлендж '$challengeTitle' был отменен. $reason",
