@@ -1,8 +1,6 @@
 package com.habittracker.data.repository
 
 import com.habittracker.data.local.dao.FriendshipDao
-import com.habittracker.data.local.entity.toDomain
-import com.habittracker.data.local.entity.toEntity
 import com.habittracker.domain.model.Friendship
 import com.habittracker.domain.model.FriendshipStatus
 import com.habittracker.domain.repository.FriendshipRepository
@@ -12,6 +10,8 @@ import kotlinx.coroutines.flow.map
 import kotlinx.datetime.Clock
 import javax.inject.Inject
 import javax.inject.Singleton
+import com.habittracker.data.local.mappers.toDomain as friendshipToDomain
+import com.habittracker.data.local.mappers.toEntity as friendshipToEntity
 
 @Singleton
 class FriendshipRepositoryImpl @Inject constructor(
@@ -19,11 +19,11 @@ class FriendshipRepositoryImpl @Inject constructor(
 ) : FriendshipRepository {
     
     override suspend fun insertFriendship(friendship: Friendship) {
-        friendshipDao.insertFriendship(friendship.toEntity())
+        friendshipDao.insertFriendship(friendship.friendshipToEntity())
     }
     
     override suspend fun updateFriendship(friendship: Friendship) {
-        friendshipDao.updateFriendship(friendship.toEntity())
+        friendshipDao.updateFriendship(friendship.friendshipToEntity())
     }
     
     override suspend fun deleteFriendship(userId1: String, userId2: String) {
@@ -31,28 +31,28 @@ class FriendshipRepositoryImpl @Inject constructor(
     }
 
     override suspend fun getFriendship(userId1: String, userId2: String): Friendship? {
-        return friendshipDao.getFriendshipStatus(userId1, userId2).first()?.toDomain()
+        return friendshipDao.getFriendshipStatus(userId1, userId2).first()?.friendshipToDomain()
     }
     
     override fun getAllFriendships(): Flow<List<Friendship>> {
-        return kotlinx.coroutines.flow.flowOf(emptyList<Friendship>())
+        return kotlinx.coroutines.flow.flowOf(emptyList())
     }
     
     override fun getFriendsForUser(userId: String): Flow<List<Friendship>> {
         return friendshipDao.getFriends(userId).map { entities ->
-            entities.map { it.toDomain() }
+            entities.map { it.friendshipToDomain() }
         }
     }
     
     override fun getPendingFriendRequests(userId: String): Flow<List<Friendship>> {
         return friendshipDao.getPendingFriendRequests(userId).map { entities ->
-            entities.map { it.toDomain() }
+            entities.map { it.friendshipToDomain() }
         }
     }
     
     override fun getSentFriendRequests(userId: String): Flow<List<Friendship>> {
         return friendshipDao.getSentFriendRequests(userId).map { entities ->
-            entities.map { it.toDomain() }
+            entities.map { it.friendshipToDomain() }
         }
     }
     

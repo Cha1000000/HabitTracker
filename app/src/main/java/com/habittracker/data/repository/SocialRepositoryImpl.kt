@@ -5,8 +5,8 @@ import com.habittracker.data.local.dao.FriendRequestDao
 import com.habittracker.data.local.dao.FriendshipDao
 import com.habittracker.data.local.dao.HabitInvitationDao
 import com.habittracker.data.local.dao.UserDao
-import com.habittracker.data.local.entity.toDomain
-import com.habittracker.data.local.entity.toEntity
+import com.habittracker.data.local.mappers.toDomain
+import com.habittracker.data.local.mappers.toEntity
 import com.habittracker.data.service.FCMApiClient
 import com.habittracker.domain.model.FriendRequest
 import com.habittracker.domain.model.FriendRequestStatus
@@ -92,10 +92,10 @@ class SocialRepositoryImpl @Inject constructor(
                 doc.toObject(User::class.java)?.copy(id = doc.id)
             } else {
                 // Fallback на локальные данные
-                userDao.getUserById(userId)?.toDomain()
+                userDao.getUserById(userId)?.let { it.toDomain() }
             }
         } catch (e: Exception) {
-            userDao.getUserById(userId)?.toDomain()
+            userDao.getUserById(userId)?.let { it.toDomain() }
         }
     }
 
@@ -253,10 +253,10 @@ class SocialRepositoryImpl @Inject constructor(
             if (doc.exists()) {
                 doc.toObject(FriendRequest::class.java)?.copy(id = doc.id)
             } else {
-                friendRequestDao.getFriendRequestById(requestId)?.toDomain()
+                friendRequestDao.getFriendRequestById(requestId)?.let { it.toDomain() }
             }
         } catch (e: Exception) {
-            friendRequestDao.getFriendRequestById(requestId)?.toDomain()
+            friendRequestDao.getFriendRequestById(requestId)?.let { it.toDomain() }
         }
     }
 
@@ -585,7 +585,7 @@ class SocialRepositoryImpl @Inject constructor(
 
     override suspend fun getHabitInvitationById(invitationId: String): HabitInvitation? {
         return try {
-            habitInvitationDao.getById(invitationId)?.toDomain()
+            habitInvitationDao.getById(invitationId)?.let { it.toDomain() }
         } catch (e: Exception) {
             null
         }
@@ -593,7 +593,7 @@ class SocialRepositoryImpl @Inject constructor(
 
     override suspend fun getPendingHabitInvitation(habitId: String, userId: String): HabitInvitation? {
         return try {
-            habitInvitationDao.getPendingInvitation(habitId, userId)?.toDomain()
+            habitInvitationDao.getPendingInvitation(habitId, userId)?.let { it.toDomain() }
         } catch (e: Exception) {
             null
         }

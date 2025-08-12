@@ -1,8 +1,8 @@
 package com.habittracker.data.repository
 
 import com.habittracker.data.local.dao.HabitDao
-import com.habittracker.data.local.entity.toDomain
-import com.habittracker.data.local.entity.toEntity
+import com.habittracker.data.local.mappers.toDomain
+import com.habittracker.data.local.mappers.toEntity
 import com.habittracker.domain.model.Habit
 import com.habittracker.domain.repository.HabitRepository
 import kotlinx.coroutines.flow.Flow

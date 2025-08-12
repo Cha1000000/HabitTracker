@@ -2,8 +2,8 @@ package com.habittracker.data.repository
 
 import com.habittracker.data.local.dao.ChallengeDao
 import com.habittracker.data.local.dao.HabitEntryDao
-import com.habittracker.data.local.entity.toDomain
-import com.habittracker.data.local.entity.toEntity
+import com.habittracker.data.local.mappers.toDomain as challengeToDomain
+import com.habittracker.data.local.mappers.toEntity as challengeToEntity
 import com.habittracker.domain.model.Challenge
 import com.habittracker.domain.repository.ChallengeRepository
 import kotlinx.coroutines.flow.Flow
@@ -19,11 +19,11 @@ class ChallengeRepositoryImpl @Inject constructor(
 ) : ChallengeRepository {
     
     override suspend fun insertChallenge(challenge: Challenge) {
-        challengeDao.insertChallenge(challenge.toEntity())
+        challengeDao.insertChallenge(challenge.challengeToEntity())
     }
     
     override suspend fun updateChallenge(challenge: Challenge) {
-        challengeDao.updateChallenge(challenge.toEntity())
+        challengeDao.updateChallenge(challenge.challengeToEntity())
     }
     
     override suspend fun deleteChallenge(challengeId: String) {
@@ -31,35 +31,35 @@ class ChallengeRepositoryImpl @Inject constructor(
     }
     
     override suspend fun getChallengeById(challengeId: String): Challenge? {
-        return challengeDao.getChallengeById(challengeId)?.toDomain()
+        return challengeDao.getChallengeById(challengeId)?.challengeToDomain()
     }
     
     override fun getAllChallenges(): Flow<List<Challenge>> {
         return challengeDao.getAllChallenges().map { entities ->
-            entities.map { it.toDomain() }
+            entities.map { it.challengeToDomain() }
         }
     }
     
     override fun getChallengesForUser(userId: String): Flow<List<Challenge>> {
         return challengeDao.getUserChallenges(userId).map { entities ->
-            entities.map { it.toDomain() }
+            entities.map { it.challengeToDomain() }
         }
     }
     
     override fun getActiveChallenges(): Flow<List<Challenge>> {
         return challengeDao.getChallengesByStatus("ACTIVE").map { entities ->
-            entities.map { it.toDomain() }
+            entities.map { it.challengeToDomain() }
         }
     }
     
     override fun getCompletedChallenges(): Flow<List<Challenge>> {
         return challengeDao.getChallengesByStatus("COMPLETED").map { entities ->
-            entities.map { it.toDomain() }
+            entities.map { it.challengeToDomain() }
         }
     }
     
     override suspend fun getChallengesForHabit(habitId: String): List<Challenge> {
-        return challengeDao.getChallengesForHabit(habitId).first().map { it.toDomain() }
+        return challengeDao.getChallengesForHabit(habitId).first().map { it.challengeToDomain() }
     }
     
     override suspend fun joinChallenge(challengeId: String, userId: String) {
