@@ -28,6 +28,8 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
 import com.habittracker.R
+import com.habittracker.BuildConfig
+import com.habittracker.presentation.navigation.Screen
 import com.habittracker.presentation.viewmodel.AuthViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -98,6 +100,14 @@ fun ProfileScreen(
                     text = (authState as com.habittracker.presentation.viewmodel.AuthState.Error).message,
                     color = MaterialTheme.colorScheme.error
                 )
+            }
+            
+            // Debug button for FCM testing
+            if (BuildConfig.DEBUG) {
+                Spacer(modifier = Modifier.height(16.dp))
+                Button(onClick = { navController.navigate(Screen.FCMTest.route) }) {
+                    Text("🧪 FCM Test")
+                }
             }
         }
     }

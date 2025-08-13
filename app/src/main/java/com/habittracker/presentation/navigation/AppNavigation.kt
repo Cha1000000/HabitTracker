@@ -6,9 +6,9 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
-import com.habittracker.presentation.ui.ProfileScreen
 import com.habittracker.presentation.ui.auth.LoginScreen
 import com.habittracker.presentation.ui.auth.RegisterScreen
+import com.habittracker.presentation.ui.debug.FCMTestScreen
 import com.habittracker.presentation.ui.habits.AddEditHabitScreen
 import com.habittracker.presentation.ui.habits.GroupHabitDetailScreen
 import com.habittracker.presentation.ui.habits.HabitsScreen
@@ -16,6 +16,7 @@ import com.habittracker.presentation.ui.notifications.NotificationsScreen
 import com.habittracker.presentation.ui.social.FriendRequestsScreen
 import com.habittracker.presentation.ui.social.FriendsScreen
 import com.habittracker.presentation.ui.social.SearchFriendsScreen
+import com.habittracker.presentation.ui.ProfileScreen
 
 /**
  * Запечатанный класс для определения маршрутов навигации.
@@ -34,6 +35,8 @@ sealed class Screen(val route: String) {
     object GroupHabitDetail : Screen("group_habit_detail_screen/{habitId}") {
         fun createRoute(habitId: String) = "group_habit_detail_screen/$habitId"
     }
+    // Debug screens (только для debug сборки)
+    object FCMTest : Screen("fcm_test_screen")
     // TODO: Добавить другие экраны по мере их создания
 }
 
@@ -119,6 +122,10 @@ fun AppNavHost() {
                 habitId = habitId,
                 navController = navController
             )
+        }
+        
+        composable(route = Screen.FCMTest.route) {
+            FCMTestScreen()
         }
         // TODO: Определить навигацию для других экранов
     }
