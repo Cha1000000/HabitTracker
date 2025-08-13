@@ -14,16 +14,22 @@ import okhttp3.RequestBody.Companion.toRequestBody
 import java.util.concurrent.TimeUnit
 import javax.inject.Inject
 import javax.inject.Singleton
+import java.io.ByteArrayInputStream
+import com.google.auth.oauth2.GoogleCredentials
+import java.nio.charset.StandardCharsets
 
 /**
- * Клиент для отправки push-уведомлений через FCM REST API
+ * Клиент для отправки push-уведомлений через FCM HTTP v1 API
+ * Использует OAuth 2.0 авторизацию через Service Account
  */
 @Singleton
 class FCMApiClient @Inject constructor() {
 
     companion object {
         private const val TAG = "FCMApiClient"
-        private const val FCM_URL = "https://fcm.googleapis.com/fcm/send"
+        // FCM HTTP v1 API endpoint
+        private const val FCM_URL = "https://fcm.googleapis.com/v1/projects/habitttracker-505b6/messages:send"
+        private const val FCM_SCOPE = "https://www.googleapis.com/auth/firebase.messaging"
     }
 
     private val httpClient = OkHttpClient.Builder()
@@ -37,8 +43,42 @@ class FCMApiClient @Inject constructor() {
         encodeDefaults = true
     }
 
+    // Service Account JSON для OAuth 2.0
+    private val serviceAccountJson = """
+    {
+        "type": "service_account",
+        "project_id": "habitttracker-505b6",
+        "private_key_id": "83f370d2b0510474b8fd937b0e443c1367b12af1",
+        "private_key": "-----BEGIN PRIVATE KEY-----\nMIIEvQIBADANBgkqhkiG9w0BAQEFAASCBKcwggSjAgEAAoIBAQCN9R1NFKgnrQe5\nF5rRJu+NKTi18vIebQEHbQidwzEwhaIeu4rTFeoS5WQ3NkomyHAsYC/9mmn3s3SQ\nFTNE59eDMDjEFZ9dXKFuvOrPVFPom4A9DZAC2v4IK/AyWvJWHEM+gbLkfWkq1QD2\nOZIufwrTPZzqkw4vGXeSmbfu9lwFGb8t2X5Zy9bs5sxQfpRtnMFEvQozf5Ckq36R\nJZnsOy07Z/OETg5xbPXXPu4ZVXUjNLBMntiA2u6IaWR+EWisJ5eyVTDoF2v1zhK1\nKPB/kEzUrEdnsynn7ehj+k5bKDWdG/809HakRq1F0+CLwb6zY2JkSA8/l4MsvbVg\nFMufUr2JAgMBAAECggEAOUreAof9vdWVslwWfacrM1uZqcVddm4j5i1ZNuLabWzh\nm2mxg7PqfqnaInZkwvZOX3qKo924OuJQfv4vbPXtAuNpZaocYX/LH3hbhEXSf6SS\nwxFAOAbOU9n33TrbZ2mMsiOCYblDwqeo9bcSinV3lv3c4MdtCBFNMvubQnRnex7p\nHJzSuvLCX6TIlsIc0s+VR6Bp0/QQ6OCr4hJNj4Fiq7Y0LSS1wRkqPwwExdXAVk/O\ncUwDtjp+7JGr098QXHZg0VPEvQzeIM4/bllTc/j1rqY83clWh/R+Kl6r870ez/58\n0rlgW1HqGUDyMBVK+wBCTOdodxIE7Aw6OjP9P7TVaQKBgQDD4nn9ZXWcl8wqpoHh\nzPq4kyEiX3KnzECZK0+1I+DJI+Sj9ta095ph3ZbtLQesiSMgTe3baPR5Exu9qVSl\n2QD3i2oCWg7dd7VauxUp1fQYTorp5vBlHYfOzELDJ6zRZ7ufT52jIxg2h58rG2oe\nff7IaIMWowg30JXoLCAUHuwYLwKBgQC5heQHru0zq20hRYkPuh9fF8yOQja2geAO\n7msuOdriBQmhyeQb/78mUG6wPkvTrG/w9tPwKQx8FmOKeh4Hc3D73qIHsmPkZ0BX\nOTGqY2qsWWpxk4QbK21MuenF1JAZMDILcptNQVG4FPSBjSakQFtHLl9GK+pBGZgS\nNR2CBTXfxwKBgEfrWRq+K6Zo3V8zbzB2T/+AlYPHQ5N0HKugCU3adGelNAc3U7Fx\nz07rSsSd6dlhKHJt6kzKhigF6gOCrj+OIxrAJxXh9t89WmqLkcOgeFSMUdh7H/wg\nEYLN4B1C7eKckXh2hMwm0HcE6F2tXRMA85ClPqwLA7Nqc/+gY86/Y7OlAoGBAIrH\n1tHMkFKDnUozWxlxsMAQ7ItKiuUx+GsS/QiCbPOAszjc7w/m25YMuxCKOWzp5H9M\nFTTlcBpvIR1YxpfqSo2PeIPrdYBJoL7e4QFGB2lQJik6Iau1a7jmpjLAFN9Sx0z6\n+aPsBfZ/bnxvG4XpQp7X2JuEhGMYg0KzixRVU3zHAoGANVHZUyM0YSXjK0NMiTYv\nhKzHt9xN6JPkDvcpEoTB0rPJ14JuQ6S6gI6YhWfQK8zgZQNRGArqkiSliRhb0/1C\npVrRqNA9ZePwua4NA1UG5rO1K8HuP+8e/blqtvHlBOXldjxY7eh2g5tRjiVMw3I8\nbVrA/TmM+ktKkxuxhdqjSmU=\n-----END PRIVATE KEY-----\n",
+        "client_email": "firebase-adminsdk-fbsvc@habitttracker-505b6.iam.gserviceaccount.com",
+        "client_id": "112428448984284425837",
+        "auth_uri": "https://accounts.google.com/o/oauth2/auth",
+        "token_uri": "https://oauth2.googleapis.com/token",
+        "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
+        "client_x509_cert_url": "https://www.googleapis.com/robot/v1/metadata/x509/firebase-adminsdk-fbsvc%40habitttracker-505b6.iam.gserviceaccount.com",
+        "universe_domain": "googleapis.com"
+    }
+    """.trimIndent()
+
     /**
-     * Отправляет push-уведомление через FCM REST API
+     * Получает OAuth 2.0 access token для FCM API
+     */
+    private fun getAccessToken(): String {
+        return try {
+            val credentials = GoogleCredentials
+                .fromStream(ByteArrayInputStream(serviceAccountJson.toByteArray(StandardCharsets.UTF_8)))
+                .createScoped(listOf(FCM_SCOPE))
+            
+            credentials.refreshIfExpired()
+            credentials.accessToken.tokenValue
+        } catch (e: Exception) {
+            Log.e(TAG, "Ошибка получения access token", e)
+            throw e
+        }
+    }
+
+    /**
+     * Отправляет push-уведомление через FCM HTTP v1 API
      */
     suspend fun sendPushNotification(
         fcmToken: String,
@@ -47,23 +87,23 @@ class FCMApiClient @Inject constructor() {
         data: Map<String, String> = emptyMap()
     ): Result<Unit> = withContext(Dispatchers.IO) {
         try {
-            val serverKey = BuildConfig.FCM_SERVER_KEY
-            if (serverKey.isBlank() || serverKey == "YOUR_FCM_SERVER_KEY_HERE") {
-                Log.w(TAG, "FCM Server Key не настроен. Получите ключ из Firebase Console → Project Settings → Cloud Messaging")
-                return@withContext Result.failure(Exception("FCM Server Key не настроен"))
-            }
+            val accessToken = getAccessToken()
 
-            val fcmMessage = FCMMessage(
-                to = fcmToken,
-                notification = FCMNotification(
-                    title = title,
-                    body = body,
-                    sound = "default",
-                    clickAction = "FLUTTER_NOTIFICATION_CLICK"
-                ),
-                data = data,
-                priority = "high",
-                timeToLive = 3600 // 1 час
+            val fcmMessage = FCMV1Message(
+                message = FCMV1MessageData(
+                    token = fcmToken,
+                    notification = FCMNotification(
+                        title = title,
+                        body = body
+                    ),
+                    data = data,
+                    android = AndroidConfig(
+                        priority = "high",
+                        notification = AndroidNotification(
+                            sound = "default"
+                        )
+                    )
+                )
             )
 
             val requestBody = json.encodeToString(fcmMessage)
@@ -71,32 +111,33 @@ class FCMApiClient @Inject constructor() {
 
             val request = Request.Builder()
                 .url(FCM_URL)
-                .addHeader("Authorization", "key=$serverKey")
+                .addHeader("Authorization", "Bearer $accessToken")
                 .addHeader("Content-Type", "application/json")
                 .post(requestBody)
                 .build()
 
-            Log.d(TAG, "Отправка FCM сообщения: $requestBody")
+            Log.d(TAG, "Отправка FCM HTTP v1 сообщения: $requestBody")
 
             val response = httpClient.newCall(request).execute()
-            
+            val responseBody = response.body?.string() ?: ""
+
+            Log.d(TAG, "FCM HTTP v1 ответ: ${response.code} - $responseBody")
+
             if (response.isSuccessful) {
-                val responseBody = response.body?.string()
-                Log.d(TAG, "FCM ответ: $responseBody")
+                Log.d(TAG, "✅ Push-уведомление успешно отправлено")
                 Result.success(Unit)
             } else {
-                val errorBody = response.body?.string()
-                Log.e(TAG, "Ошибка FCM: ${response.code} - $errorBody")
-                Result.failure(Exception("FCM Error: ${response.code} - $errorBody"))
+                Log.w(TAG, "❌ Ошибка FCM HTTP v1: ${response.code} - $responseBody")
+                Result.failure(Exception("FCM HTTP v1 ошибка: ${response.code} - $responseBody"))
             }
         } catch (e: Exception) {
-            Log.e(TAG, "Исключение при отправке FCM", e)
+            Log.e(TAG, "❌ Критическая ошибка FCM HTTP v1", e)
             Result.failure(e)
         }
     }
 
     /**
-     * Отправляет push-уведомление нескольким пользователям
+     * Отправляет push-уведомления на несколько токенов через FCM HTTP v1 API (батч)
      */
     suspend fun sendToMultipleTokens(
         tokens: List<String>,
@@ -105,87 +146,74 @@ class FCMApiClient @Inject constructor() {
         data: Map<String, String> = emptyMap()
     ): Result<BatchResult> = withContext(Dispatchers.IO) {
         try {
-            val serverKey = BuildConfig.FCM_SERVER_KEY
-            if (serverKey.isBlank() || serverKey == "YOUR_FCM_SERVER_KEY_HERE") {
-                Log.w(TAG, "FCM Server Key не настроен. Получите ключ из Firebase Console → Project Settings → Cloud Messaging")
-                return@withContext Result.failure(Exception("FCM Server Key не настроен"))
-            }
+            val accessToken = getAccessToken()
 
             if (tokens.isEmpty()) {
                 return@withContext Result.success(BatchResult(0, 0, 0))
             }
 
-            var successCount = 0
-            var failureCount = 0
-
-            // Отправляем уведомления пакетами по 1000 (лимит FCM)
-            tokens.chunked(1000).forEach { tokenBatch ->
-                tokenBatch.forEach { token ->
-                    val result = sendPushNotification(token, title, body, data)
-                    if (result.isSuccess) {
-                        successCount++
-                    } else {
-                        failureCount++
-                        Log.w(TAG, "Не удалось отправить уведомление на токен: $token")
-                    }
-                }
-            }
-
-            Log.d(TAG, "Отправка завершена: успешно=$successCount, ошибок=$failureCount")
-            Result.success(BatchResult(tokens.size, successCount, failureCount))
-        } catch (e: Exception) {
-            Log.e(TAG, "Исключение при пакетной отправке push-уведомлений", e)
-            Result.failure(e)
-        }
-    }
-
-    /**
-     * Отправляет уведомление группе пользователей (batch)
-     */
-    suspend fun sendBatchNotification(
-        fcmTokens: List<String>,
-        title: String,
-        body: String,
-        data: Map<String, String> = emptyMap()
-    ): Result<BatchResult> = withContext(Dispatchers.IO) {
-        try {
-            val serverKey = BuildConfig.FCM_SERVER_KEY
-            if (serverKey.isBlank() || serverKey == "YOUR_FCM_SERVER_KEY_HERE") {
-                Log.w(TAG, "FCM Server Key не настроен. Получите ключ из Firebase Console → Project Settings → Cloud Messaging")
-                return@withContext Result.failure(Exception("FCM Server Key не настроен"))
-            }
-
             val results = mutableListOf<SingleResult>()
             
-            // Отправляем уведомления пакетами по 1000 (лимит FCM)
-            fcmTokens.chunked(1000).forEach { tokenBatch ->
-                tokenBatch.forEach { token ->
-                    val result = sendPushNotification(token, title, body, data)
-                    results.add(
-                        SingleResult(
+            // Отправляем по одному сообщению для каждого токена (FCM v1 не поддерживает batch)
+            tokens.forEach { token ->
+                try {
+                    val fcmMessage = FCMV1Message(
+                        message = FCMV1MessageData(
                             token = token,
-                            success = result.isSuccess,
-                            error = result.exceptionOrNull()?.message
+                            notification = FCMNotification(
+                                title = title,
+                                body = body
+                            ),
+                            data = data,
+                            android = AndroidConfig(
+                                priority = "high",
+                                notification = AndroidNotification(
+                                    sound = "default"
+                                )
+                            )
                         )
                     )
+
+                    val requestBody = json.encodeToString(fcmMessage)
+                        .toRequestBody("application/json".toMediaType())
+
+                    val request = Request.Builder()
+                        .url(FCM_URL)
+                        .addHeader("Authorization", "Bearer $accessToken")
+                        .addHeader("Content-Type", "application/json")
+                        .post(requestBody)
+                        .build()
+
+                    val response = httpClient.newCall(request).execute()
+                    val responseBody = response.body?.string() ?: ""
+
+                    if (response.isSuccessful) {
+                        results.add(SingleResult(token, true, null))
+                        Log.d(TAG, "✅ Отправлено на токен: ${token.take(20)}...")
+                    } else {
+                        results.add(SingleResult(token, false, "HTTP ${response.code}: $responseBody"))
+                        Log.w(TAG, "❌ Ошибка для токена ${token.take(20)}...: ${response.code} - $responseBody")
+                    }
+                } catch (e: Exception) {
+                    results.add(SingleResult(token, false, e.message ?: "Unknown error"))
+                    Log.e(TAG, "❌ Исключение для токена ${token.take(20)}...", e)
                 }
             }
-            
+
             val successCount = results.count { it.success }
-            val failureCount = results.count { !it.success }
-            
-            Log.d(TAG, "Batch результат: $successCount успешно, $failureCount ошибок")
-            
-            Result.success(
-                BatchResult(
-                    totalSent = fcmTokens.size,
-                    successCount = successCount,
-                    failureCount = failureCount,
-                    results = results
-                )
+            val failureCount = results.size - successCount
+
+            val batchResult = BatchResult(
+                totalSent = results.size,
+                successCount = successCount,
+                failureCount = failureCount,
+                results = results
             )
+
+            Log.d(TAG, "📊 Батч результат: $successCount успешных, $failureCount ошибок из ${results.size}")
+            Result.success(batchResult)
         } catch (e: Exception) {
-            Log.e(TAG, "Ошибка batch отправки", e)
+            Log.e(TAG, "❌ Критическая ошибка батч отправки", e)
             Result.failure(e)
         }
     }
@@ -200,21 +228,23 @@ class FCMApiClient @Inject constructor() {
         data: Map<String, String> = emptyMap()
     ): Result<Unit> = withContext(Dispatchers.IO) {
         try {
-            val serverKey = BuildConfig.FCM_SERVER_KEY
-            if (serverKey.isBlank() || serverKey == "YOUR_FCM_SERVER_KEY_HERE") {
-                Log.w(TAG, "FCM Server Key не настроен. Получите ключ из Firebase Console → Project Settings → Cloud Messaging")
-                return@withContext Result.failure(Exception("FCM Server Key не настроен"))
-            }
+            val accessToken = getAccessToken()
 
-            val fcmMessage = FCMTopicMessage(
-                to = "/topics/$topic",
-                notification = FCMNotification(
-                    title = title,
-                    body = body,
-                    sound = "default"
-                ),
-                data = data,
-                priority = "high"
+            val fcmMessage = FCMV1Message(
+                message = FCMV1MessageData(
+                    token = "/topics/$topic",
+                    notification = FCMNotification(
+                        title = title,
+                        body = body
+                    ),
+                    data = data,
+                    android = AndroidConfig(
+                        priority = "high",
+                        notification = AndroidNotification(
+                            sound = "default"
+                        )
+                    )
+                )
             )
 
             val requestBody = json.encodeToString(fcmMessage)
@@ -222,7 +252,7 @@ class FCMApiClient @Inject constructor() {
 
             val request = Request.Builder()
                 .url(FCM_URL)
-                .addHeader("Authorization", "key=$serverKey")
+                .addHeader("Authorization", "Bearer $accessToken")
                 .addHeader("Content-Type", "application/json")
                 .post(requestBody)
                 .build()
@@ -245,28 +275,34 @@ class FCMApiClient @Inject constructor() {
 }
 
 @Serializable
-data class FCMMessage(
-    val to: String,
-    val notification: FCMNotification,
-    val data: Map<String, String>,
-    val priority: String,
-    val timeToLive: Int? = null
+data class FCMV1Message(
+    val message: FCMV1MessageData
 )
 
 @Serializable
-data class FCMTopicMessage(
-    val to: String,
+data class FCMV1MessageData(
+    val token: String,
     val notification: FCMNotification,
     val data: Map<String, String>,
-    val priority: String
+    val android: AndroidConfig
+)
+
+@Serializable
+data class AndroidConfig(
+    val priority: String,
+    val notification: AndroidNotification
+)
+
+@Serializable
+data class AndroidNotification(
+    val sound: String = "default"
+    // clickAction больше НЕ поддерживается в FCM v1 API
 )
 
 @Serializable
 data class FCMNotification(
     val title: String,
-    val body: String,
-    val sound: String,
-    val clickAction: String? = null
+    val body: String
 )
 
 data class BatchResult(

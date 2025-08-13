@@ -26,7 +26,6 @@ datetime = "0.6.0"
 appcompat = "1.7.0"
 material3 = "1.2.1"
 uiTestJunit4 = "1.6.8"
-firebaseBom = "34.0.0"
 firebaseAnalytics = "22.0.2"
 playServicesAuth = "21.2.0"
 googleGmsGoogleServices = "4.4.2"
@@ -34,6 +33,9 @@ accompanist = "0.36.0"
 desugarJdkLibs = "2.1.5"
 androidxCredentials = "1.2.2"
 googleid = "1.1.0"
+firebaseBom = "32.7.0"
+calendar = "2.5.1"
+googleAuth = "1.19.0"
 
 [libraries]
 # Core
@@ -88,6 +90,7 @@ kotlinx-coroutines-android = { group = "org.jetbrains.kotlinx", name = "kotlinx-
 retrofit-core = { group = "com.squareup.retrofit2", name = "retrofit", version.ref = "retrofit" }
 retrofit-converter-gson = { group = "com.squareup.retrofit2", name = "converter-gson", version.ref = "retrofit" }
 okhttp-logging = { group = "com.squareup.okhttp3", name = "logging-interceptor", version.ref = "okhttp" }
+okhttp = { group = "com.squareup.okhttp3", name = "okhttp", version.ref = "okhttp" }
 
 # Image Loading
 coil-compose = { group = "io.coil-kt", name = "coil-compose", version.ref = "coil" }
@@ -100,10 +103,17 @@ kotlinx-datetime = { group = "org.jetbrains.kotlinx", name = "kotlinx-datetime",
 
 # Firebase
 firebase-bom = { group = "com.google.firebase", name = "firebase-bom", version.ref = "firebaseBom" }
-firebase-auth = { group = "com.google.firebase", name = "firebase-auth" }
-firebase-firestore = { group = "com.google.firebase", name = "firebase-firestore" }
+firebase-analytics = { group = "com.google.firebase", name = "firebase-analytics" }
+firebase-analytics-ktx = { group = "com.google.firebase", name = "firebase-analytics-ktx" }
 firebase-messaging = { group = "com.google.firebase", name = "firebase-messaging" }
-firebase-analytics = { group = "com.google.firebase", name = "firebase-analytics-ktx", version.ref = "firebaseAnalytics" }
+firebase-firestore = { group = "com.google.firebase", name = "firebase-firestore" }
+firebase-auth = { group = "com.google.firebase", name = "firebase-auth" }
+
+# Google Auth для FCM OAuth 2.0
+google-auth-oauth2 = { group = "com.google.auth", name = "google-auth-library-oauth2-http", version.ref = "googleAuth" }
+
+# Calendar
+calendar-compose = { group = "com.kizitonwose.calendar", name = "compose", version.ref = "calendar" }
 
 # Accompanist
 accompanist-flowlayout = { group = "com.google.accompanist", name = "accompanist-flowlayout", version.ref = "accompanist" }

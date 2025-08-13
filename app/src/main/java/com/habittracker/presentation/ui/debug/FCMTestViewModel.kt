@@ -123,20 +123,26 @@ class FCMTestViewModel @Inject constructor(
     }
 
     /**
-     * Асинхронно получает FCM токен устройства
+     * Асинхронно получает FCM токен устройства с callback
      */
-    fun fetchDeviceFCMToken() {
+    fun fetchDeviceFCMToken(onTokenReceived: (String?) -> Unit) {
         viewModelScope.launch {
+            _uiState.value = _uiState.value.copy(isLoading = true)
+            
             try {
                 addResult("🔄 Получение FCM токена устройства...")
                 
                 val token = FirebaseMessaging.getInstance().token.await()
                 addResult("📱 FCM токен получен: ${token.take(20)}...")
                 
-                // Можно добавить логику автозаполнения токена в UI
+                // Вызываем callback с полученным токеном
+                onTokenReceived(token)
                 
             } catch (e: Exception) {
                 addResult("❌ Ошибка получения FCM токена: ${e.message}")
+                onTokenReceived(null)
+            } finally {
+                _uiState.value = _uiState.value.copy(isLoading = false)
             }
         }
     }

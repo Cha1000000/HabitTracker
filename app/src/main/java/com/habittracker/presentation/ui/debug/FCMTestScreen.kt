@@ -105,10 +105,22 @@ fun FCMTestScreen(
         ) {
             Button(
                 onClick = { 
-                    fcmToken = viewModel.getDeviceFCMToken(context) ?: ""
+                    viewModel.fetchDeviceFCMToken { token ->
+                        if (token != null) {
+                            fcmToken = token
+                        }
+                    }
                 },
-                modifier = Modifier.weight(1f)
+                modifier = Modifier.weight(1f),
+                enabled = !uiState.isLoading
             ) {
+                if (uiState.isLoading) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(16.dp),
+                        strokeWidth = 2.dp
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                }
                 Text("Получить токен устройства")
             }
             

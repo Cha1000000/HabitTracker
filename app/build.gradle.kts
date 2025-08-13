@@ -80,6 +80,15 @@ android {
     packaging {
         resources {
             excludes += "/META-INF/{AL2.0,LGPL2.1}"
+            // Исключаем конфликтующие META-INF файлы
+            excludes += "/META-INF/DEPENDENCIES"
+            excludes += "/META-INF/LICENSE"
+            excludes += "/META-INF/LICENSE.txt"
+            excludes += "/META-INF/license.txt"
+            excludes += "/META-INF/NOTICE"
+            excludes += "/META-INF/NOTICE.txt"
+            excludes += "/META-INF/notice.txt"
+            excludes += "/META-INF/ASL2.0"
         }
     }
 }
@@ -134,7 +143,7 @@ dependencies {
     implementation(libs.accompanist.flowlayout)
 
     // Calendar
-    implementation("com.kizitonwose.calendar:compose:2.5.1")
+    implementation(libs.calendar.compose)
 
     // WorkManager
     implementation(libs.androidx.work.runtime.ktx)
@@ -150,10 +159,15 @@ dependencies {
 
     // Firebase
     implementation(platform(libs.firebase.bom))
-    implementation(libs.firebase.auth)
-    implementation(libs.firebase.firestore)
-    implementation(libs.firebase.messaging)
     implementation(libs.firebase.analytics)
+    implementation(libs.firebase.messaging)
+    implementation(libs.firebase.firestore)
+    implementation(libs.firebase.auth)
+    
+    // Google Auth для FCM OAuth 2.0
+    implementation(libs.google.auth.oauth2)
+    
+    // Credentials (нужны для Auth)
     implementation(libs.androidx.credentials)
     implementation(libs.androidx.credentials.play.services.auth)
     implementation(libs.googleid)
