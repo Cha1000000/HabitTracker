@@ -2,7 +2,6 @@ package com.habittracker.data.local.entity
 
 import androidx.room.Entity
 import androidx.room.PrimaryKey
-import kotlinx.datetime.Instant
 
 @Entity(tableName = "users")
 data class UserEntity(
@@ -17,7 +16,7 @@ data class UserEntity(
     val longestStreak: Int = 0,
     val friendsCount: Int = 0,
     val fcmToken: String? = null,
-    val createdAt: Instant,
-    val lastActiveAt: Instant,
+    val createdAt: Long, // timestamp в миллисекундах
+    val lastActiveAt: Long, // timestamp в миллисекундах
     val timezone: String
 )

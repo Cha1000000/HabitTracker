@@ -8,6 +8,7 @@ import com.habittracker.data.local.dao.UserDao
 import com.habittracker.data.local.mappers.toDomain
 import com.habittracker.data.local.mappers.toEntity
 import com.habittracker.data.service.FCMApiClient
+import com.habittracker.data.firestore.UserFirestoreConverter
 import com.habittracker.domain.model.FriendRequest
 import com.habittracker.domain.model.FriendRequestStatus
 import com.habittracker.domain.model.FriendRequestWithUsers
@@ -77,8 +78,14 @@ class SocialRepositoryImpl @Inject constructor(
                 .distinctBy { it.id }
                 .mapNotNull { doc ->
                     try {
-                        val user = doc.toObject(User::class.java)?.copy(id = doc.id)
-                        android.util.Log.d("SocialRepository", "👤 Found user: id=${user?.id}, name=${user?.name}, email=${user?.email}")
+                        android.util.Log.d("SocialRepository", "🔄 Processing document: id=${doc.id}")
+                        // Используем профессиональный конвертер вместо стандартной десериализации
+                        val user = UserFirestoreConverter.fromFirestore(doc.data ?: emptyMap(), doc.id)
+                        if (user != null) {
+                            android.util.Log.d("SocialRepository", "✅ Successfully converted user: id=${user.id}, name=${user.name}, email=${user.email}")
+                        } else {
+                            android.util.Log.w("SocialRepository", "⚠️ UserFirestoreConverter returned null for document: id=${doc.id}")
+                        }
                         user
                     } catch (e: Exception) {
                         android.util.Log.e("SocialRepository", "❌ Error mapping user document: ${e.message}")
@@ -86,12 +93,9 @@ class SocialRepositoryImpl @Inject constructor(
                     }
                 }
                 .filter { it.id != currentUserId } // Исключаем текущего пользователя
-
-            android.util.Log.d("SocialRepository", "✅ Final results after filtering: ${allResults.size} users")
-            allResults.forEach { user ->
-                android.util.Log.d("SocialRepository", "   - ${user.name} (${user.email})")
-            }
-            
+        
+            android.util.Log.d("SocialRepository", "🎯 Before filtering: ${allResults.size + (if (allResults.any { it.id == currentUserId }) 1 else 0)} users")
+            android.util.Log.d("SocialRepository", "🎯 After filtering (excluding currentUserId=$currentUserId): ${allResults.size} users")
             allResults
         } catch (e: Exception) {
             android.util.Log.e("SocialRepository", "💥 Firestore search failed: ${e.message}")
@@ -110,7 +114,7 @@ class SocialRepositoryImpl @Inject constructor(
         return try {
             val doc = firestore.collection("users").document(userId).get().await()
             if (doc.exists()) {
-                doc.toObject(User::class.java)?.copy(id = doc.id)
+                UserFirestoreConverter.fromFirestore(doc.data ?: emptyMap(), doc.id)
             } else {
                 // Fallback на локальные данные
                 userDao.getUserById(userId)?.toDomain()

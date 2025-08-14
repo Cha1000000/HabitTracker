@@ -17,9 +17,8 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-import kotlinx.datetime.LocalTime
-import kotlinx.datetime.Clock
 import kotlinx.datetime.Instant
+import kotlinx.datetime.LocalTime
 import javax.inject.Inject
 
 /**
@@ -212,7 +211,7 @@ class PreviewAddEditHabitViewModel @Inject constructor(
     }
 
     override fun loadAvailableFriends() {
-        val now = Clock.System.now()
+        val now = System.currentTimeMillis()
         val friends = listOf(
             User(id = "friend1", name = "Alice", email = "alice@example.com", avatarUrl = "", level = 1, points = 100, createdAt = now, lastActiveAt = now),
             User(id = "friend2", name = "Bob", email = "bob@example.com", avatarUrl = "", level = 2, points = 250, createdAt = now, lastActiveAt = now),
@@ -255,23 +254,27 @@ class PreviewAddEditHabitViewModel @Inject constructor(
      */
     private fun createTempHabit(): Habit {
         val currentState = _uiState.value
-        val now = Clock.System.now()
+        val now = System.currentTimeMillis()
         return Habit(
             id = currentState.habitId ?: "preview_habit",
             title = currentState.title,
             description = currentState.description,
-            icon = currentState.icon.ifEmpty { "⭐" },
-            color = String.format("#%06X", (0xFFFFFF and currentState.color)),
-            type = currentState.type,
+            icon = "⭐", // простое значение по умолчанию
+            color = "#2196F3", // простое значение по умолчанию
+            type = HabitType.PERSONAL, // простое значение по умолчанию
             frequency = currentState.frequency,
             reminderTime = currentState.reminderTime,
+            reminderEnabled = false, // простое значение по умолчанию
             targetValue = currentState.targetValue,
             unit = currentState.unit,
-            participants = currentState.participants.map { it.id },
             createdBy = "preview_user",
-            createdAt = now,
-            updatedAt = now,
-            inviteCode = currentState.inviteCode
+            participants = emptyList(), // простое значение по умолчанию
+            maxParticipants = 10,
+            inviteCode = null, // простое значение по умолчанию
+            isPublic = false, // простое значение по умолчанию
+            isActive = true,
+            createdAt = Instant.fromEpochMilliseconds(now),
+            updatedAt = Instant.fromEpochMilliseconds(now)
         )
     }
 

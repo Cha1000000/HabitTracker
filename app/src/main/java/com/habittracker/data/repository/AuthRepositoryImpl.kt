@@ -12,6 +12,7 @@ import com.google.android.libraries.identity.googleid.GoogleIdTokenParsingExcept
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.GoogleAuthProvider
 import com.google.firebase.firestore.FirebaseFirestore
+import com.habittracker.data.firestore.UserFirestoreConverter
 import com.habittracker.domain.model.User
 import com.habittracker.domain.repository.AuthRepository
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -43,8 +44,8 @@ class AuthRepositoryImpl @Inject constructor(
                     id = firebaseUser.uid,
                     name = firebaseUser.displayName ?: "",
                     email = firebaseUser.email ?: "",
-                    createdAt = kotlinx.datetime.Clock.System.now(), // Placeholder
-                    lastActiveAt = kotlinx.datetime.Clock.System.now() // Placeholder
+                    createdAt = System.currentTimeMillis(), // Placeholder
+                    lastActiveAt = System.currentTimeMillis() // Placeholder
                 )
             )
         }
@@ -76,14 +77,15 @@ class AuthRepositoryImpl @Inject constructor(
                     name = firebaseUser.displayName ?: email.substringBefore("@"), // Используем часть email как имя
                     email = email,
                     avatarUrl = firebaseUser.photoUrl?.toString(),
-                    createdAt = kotlinx.datetime.Clock.System.now(),
-                    lastActiveAt = kotlinx.datetime.Clock.System.now()
+                    createdAt = System.currentTimeMillis(),
+                    lastActiveAt = System.currentTimeMillis()
                 )
                 
                 // Сохраняем данные пользователя в Firestore коллекцию "users"
+                val userData = UserFirestoreConverter.toFirestore(user)
                 firestore.collection("users")
                     .document(firebaseUser.uid)
-                    .set(user)
+                    .set(userData)
                     .await()
                 
                 android.util.Log.d("AuthRepository", "✅ User created and saved to Firestore: ${user.email}")

@@ -1,6 +1,5 @@
 package com.habittracker.domain.model
 
-import kotlinx.datetime.Instant
 import kotlinx.datetime.TimeZone
 
 data class User(
@@ -14,8 +13,8 @@ data class User(
     val longestStreak: Int = 0,
     val friendsCount: Int = 0, // количество друзей
     val fcmToken: String? = null, // токен для push-уведомлений
-    val createdAt: Instant = kotlinx.datetime.Clock.System.now(),
-    val lastActiveAt: Instant = kotlinx.datetime.Clock.System.now(),
+    val createdAt: Long = System.currentTimeMillis(), // timestamp в миллисекундах
+    val lastActiveAt: Long = System.currentTimeMillis(), // timestamp в миллисекундах
     val timezone: String? = TimeZone.currentSystemDefault().id
 )
 
@@ -40,20 +39,20 @@ fun User.getLevelTitle(): String = when (level) {
 }
 
 fun User.isOnline(): Boolean {
-    val now = kotlinx.datetime.Clock.System.now()
+    val now = System.currentTimeMillis()
     val timeDiff = now - lastActiveAt
-    return timeDiff.inWholeMinutes < 15 // онлайн если активность была меньше 15 минут назад
+    return timeDiff / 1000 / 60 < 15 // онлайн если активность была меньше 15 минут назад
 }
 
 fun User.getLastActiveText(): String {
-    val now = kotlinx.datetime.Clock.System.now()
+    val now = System.currentTimeMillis()
     val timeDiff = now - lastActiveAt
 
     return when {
-        timeDiff.inWholeMinutes < 1 -> "только что"
-        timeDiff.inWholeMinutes < 60 -> "${timeDiff.inWholeMinutes} мин назад"
-        timeDiff.inWholeHours < 24 -> "${timeDiff.inWholeHours} ч назад"
-        timeDiff.inWholeDays < 7 -> "${timeDiff.inWholeDays} дн назад"
+        timeDiff / 1000 / 60 < 1 -> "только что"
+        timeDiff / 1000 / 60 < 60 -> "${timeDiff / 1000 / 60} мин назад"
+        timeDiff / 1000 / 60 / 60 < 24 -> "${timeDiff / 1000 / 60 / 60} ч назад"
+        timeDiff / 1000 / 60 / 60 / 24 < 7 -> "${timeDiff / 1000 / 60 / 60 / 24} дн назад"
         else -> "давно"
     }
 }
