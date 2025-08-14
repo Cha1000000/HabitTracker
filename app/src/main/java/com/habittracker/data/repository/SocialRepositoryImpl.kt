@@ -52,6 +52,8 @@ class SocialRepositoryImpl @Inject constructor(
 
     override suspend fun searchUsers(query: String, currentUserId: String): List<User> {
         return try {
+            android.util.Log.d("SocialRepository", "🔍 Searching users: query='$query', currentUserId='$currentUserId'")
+            
             // Поиск в Firestore по имени и email
             val nameResults = firestore.collection("users")
                 .whereGreaterThanOrEqualTo("name", query)
@@ -59,6 +61,8 @@ class SocialRepositoryImpl @Inject constructor(
                 .limit(20)
                 .get()
                 .await()
+            
+            android.util.Log.d("SocialRepository", "📝 Name results: ${nameResults.documents.size} documents")
 
             val emailResults = firestore.collection("users")
                 .whereGreaterThanOrEqualTo("email", query)
@@ -66,24 +70,39 @@ class SocialRepositoryImpl @Inject constructor(
                 .limit(20)
                 .get()
                 .await()
+                
+            android.util.Log.d("SocialRepository", "📧 Email results: ${emailResults.documents.size} documents")
 
             val allResults = (nameResults.documents + emailResults.documents)
                 .distinctBy { it.id }
                 .mapNotNull { doc ->
                     try {
-                        doc.toObject(User::class.java)?.copy(id = doc.id)
+                        val user = doc.toObject(User::class.java)?.copy(id = doc.id)
+                        android.util.Log.d("SocialRepository", "👤 Found user: id=${user?.id}, name=${user?.name}, email=${user?.email}")
+                        user
                     } catch (e: Exception) {
+                        android.util.Log.e("SocialRepository", "❌ Error mapping user document: ${e.message}")
                         null
                     }
                 }
                 .filter { it.id != currentUserId } // Исключаем текущего пользователя
 
+            android.util.Log.d("SocialRepository", "✅ Final results after filtering: ${allResults.size} users")
+            allResults.forEach { user ->
+                android.util.Log.d("SocialRepository", "   - ${user.name} (${user.email})")
+            }
+            
             allResults
         } catch (e: Exception) {
+            android.util.Log.e("SocialRepository", "💥 Firestore search failed: ${e.message}")
+            
             // Fallback на локальный поиск
-            userDao.searchUsers("%$query%")
+            val localResults = userDao.searchUsers("%$query%")
                 .map { it.toDomain() }
                 .filter { it.id != currentUserId }
+                
+            android.util.Log.d("SocialRepository", "🗄️ Fallback local results: ${localResults.size} users")
+            localResults
         }
     }
 

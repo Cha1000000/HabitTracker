@@ -4,9 +4,9 @@ import kotlinx.datetime.Instant
 import kotlinx.datetime.TimeZone
 
 data class User(
-    val id: String,
-    val name: String,
-    val email: String,
+    val id: String = "",
+    val name: String = "",
+    val email: String = "",
     val avatarUrl: String? = null,
     val level: Int = 1,
     val points: Int = 0,
@@ -14,8 +14,8 @@ data class User(
     val longestStreak: Int = 0,
     val friendsCount: Int = 0, // количество друзей
     val fcmToken: String? = null, // токен для push-уведомлений
-    val createdAt: Instant,
-    val lastActiveAt: Instant,
+    val createdAt: Instant = kotlinx.datetime.Clock.System.now(),
+    val lastActiveAt: Instant = kotlinx.datetime.Clock.System.now(),
     val timezone: String? = TimeZone.currentSystemDefault().id
 )
 

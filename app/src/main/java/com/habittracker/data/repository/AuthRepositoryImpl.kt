@@ -11,6 +11,7 @@ import com.google.android.libraries.identity.googleid.GoogleIdTokenCredential
 import com.google.android.libraries.identity.googleid.GoogleIdTokenParsingException
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.GoogleAuthProvider
+import com.google.firebase.firestore.FirebaseFirestore
 import com.habittracker.domain.model.User
 import com.habittracker.domain.repository.AuthRepository
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -21,6 +22,7 @@ import javax.inject.Inject
 
 class AuthRepositoryImpl @Inject constructor(
     private val firebaseAuth: FirebaseAuth,
+    private val firestore: FirebaseFirestore,
     @ApplicationContext private val context: Context,
     private val getGoogleIdOption: GetGoogleIdOption
 ) : AuthRepository {
@@ -63,9 +65,33 @@ class AuthRepositoryImpl @Inject constructor(
 
     override suspend fun register(email: String, password: String): Flow<Result<Unit>> = flow {
         try {
-            firebaseAuth.createUserWithEmailAndPassword(email, password).await()
+            // Создаем аккаунт в Firebase Authentication
+            val authResult = firebaseAuth.createUserWithEmailAndPassword(email, password).await()
+            val firebaseUser = authResult.user
+            
+            if (firebaseUser != null) {
+                // Создаем объект пользователя для сохранения в Firestore
+                val user = User(
+                    id = firebaseUser.uid,
+                    name = firebaseUser.displayName ?: email.substringBefore("@"), // Используем часть email как имя
+                    email = email,
+                    avatarUrl = firebaseUser.photoUrl?.toString(),
+                    createdAt = kotlinx.datetime.Clock.System.now(),
+                    lastActiveAt = kotlinx.datetime.Clock.System.now()
+                )
+                
+                // Сохраняем данные пользователя в Firestore коллекцию "users"
+                firestore.collection("users")
+                    .document(firebaseUser.uid)
+                    .set(user)
+                    .await()
+                
+                android.util.Log.d("AuthRepository", "✅ User created and saved to Firestore: ${user.email}")
+            }
+            
             emit(Result.success(Unit))
         } catch (e: Exception) {
+            android.util.Log.e("AuthRepository", "❌ Registration failed: ${e.message}")
             emit(Result.failure(e))
         }
     }

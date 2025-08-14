@@ -177,7 +177,7 @@ fun LoginScreen(
             enabled = !uiState.isLoading
         ) {
             Icon(
-                painter = painterResource(id = android.R.drawable.ic_dialog_info),
+                painter = painterResource(id = R.drawable.ic_google_logo),
                 contentDescription = null,
                 modifier = Modifier.size(20.dp),
                 tint = Color.Unspecified

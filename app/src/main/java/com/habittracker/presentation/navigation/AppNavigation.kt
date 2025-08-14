@@ -13,9 +13,7 @@ import com.habittracker.presentation.ui.habits.AddEditHabitScreen
 import com.habittracker.presentation.ui.habits.GroupHabitDetailScreen
 import com.habittracker.presentation.ui.habits.HabitsScreen
 import com.habittracker.presentation.ui.notifications.NotificationsScreen
-import com.habittracker.presentation.ui.social.FriendRequestsScreen
 import com.habittracker.presentation.ui.social.FriendsScreen
-import com.habittracker.presentation.ui.social.SearchFriendsScreen
 import com.habittracker.presentation.ui.ProfileScreen
 
 /**
@@ -29,8 +27,6 @@ sealed class Screen(val route: String) {
     object Register : Screen("register_screen")
     object Profile : Screen("profile_screen")
     object Friends : Screen("friends_screen")
-    object SearchFriends : Screen("search_friends_screen")
-    object FriendRequests : Screen("friend_requests_screen")
     object Notifications : Screen("notifications_screen")
     object GroupHabitDetail : Screen("group_habit_detail_screen/{habitId}") {
         fun createRoute(habitId: String) = "group_habit_detail_screen/$habitId"
@@ -76,27 +72,8 @@ fun AppNavHost() {
         
         composable(route = Screen.Friends.route) {
             FriendsScreen(
-                onNavigateToSearch = {
-                    navController.navigate(Screen.SearchFriends.route)
-                },
-                onNavigateToRequests = {
-                    navController.navigate(Screen.FriendRequests.route)
-                }
-            )
-        }
-        
-        composable(route = Screen.SearchFriends.route) {
-            SearchFriendsScreen(
-                onNavigateBack = {
-                    navController.popBackStack()
-                }
-            )
-        }
-        
-        composable(route = Screen.FriendRequests.route) {
-            FriendRequestsScreen(
-                onNavigateBack = {
-                    navController.popBackStack()
+                onNavigateToProfile = { userId ->
+                    // TODO: Добавить навигацию к профилю пользователя
                 }
             )
         }
