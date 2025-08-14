@@ -5,7 +5,6 @@ import androidx.room.ForeignKey
 import androidx.room.Index
 import androidx.room.TypeConverters
 import com.habittracker.data.local.Converters
-import kotlinx.datetime.Instant
 
 @Entity(
     tableName = "friendships",
@@ -32,9 +31,9 @@ data class FriendshipEntity(
     val userId2: String,
     val status: String, // "PENDING", "ACCEPTED", "BLOCKED", "DECLINED"
     val requestedBy: String,
-    val requestedAt: Instant,
-    val acceptedAt: Instant?,
+    val requestedAt: Long,
+    val acceptedAt: Long?,
     val blockedBy: String?,
-    val blockedAt: Instant?,
-    val updatedAt: Instant
+    val blockedAt: Long?,
+    val updatedAt: Long
 )

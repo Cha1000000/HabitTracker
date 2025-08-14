@@ -7,7 +7,6 @@ import com.habittracker.domain.repository.FriendshipRepository
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
-import kotlinx.datetime.Clock
 import javax.inject.Inject
 import javax.inject.Singleton
 import com.habittracker.data.local.mappers.toDomain as friendshipToDomain
@@ -57,7 +56,7 @@ class FriendshipRepositoryImpl @Inject constructor(
     }
     
     override suspend fun sendFriendRequest(fromUserId: String, toUserId: String) {
-        val now = Clock.System.now()
+        val now = System.currentTimeMillis()
         val friendship = Friendship(
             userId1 = fromUserId,
             userId2 = toUserId,
@@ -74,8 +73,8 @@ class FriendshipRepositoryImpl @Inject constructor(
         if (friendship != null) {
             val updatedFriendship = friendship.copy(
                 status = FriendshipStatus.ACCEPTED,
-                acceptedAt = Clock.System.now(),
-                updatedAt = Clock.System.now()
+                acceptedAt = System.currentTimeMillis(),
+                updatedAt = System.currentTimeMillis()
             )
             updateFriendship(updatedFriendship)
         }

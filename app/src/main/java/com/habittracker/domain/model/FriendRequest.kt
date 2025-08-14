@@ -2,7 +2,6 @@ package com.habittracker.domain.model
 
 import androidx.room.Entity
 import androidx.room.PrimaryKey
-import kotlinx.datetime.Instant
 
 @Entity(tableName = "friend_requests")
 data class FriendRequest(
@@ -12,9 +11,9 @@ data class FriendRequest(
     val toUserId: String, // кому отправлен запрос
     val status: FriendRequestStatus = FriendRequestStatus.PENDING,
     val message: String? = null, // сообщение при отправке запроса
-    val createdAt: Instant,
-    val respondedAt: Instant? = null, // когда был дан ответ
-    val updatedAt: Instant
+    val createdAt: Long,
+    val respondedAt: Long? = null, // когда был дан ответ
+    val updatedAt: Long
 )
 
 enum class FriendRequestStatus {
@@ -42,24 +41,24 @@ data class FriendRequestWithUsers(
 }
 
 // Extension functions для работы с запросами в друзья
-fun FriendRequest.isPending(): Boolean = status == FriendRequestStatus.PENDING
+fun FriendRequest.isPending() = status == FriendRequestStatus.PENDING
 
-fun FriendRequest.isAccepted(): Boolean = status == FriendRequestStatus.ACCEPTED
+fun FriendRequest.isAccepted() = status == FriendRequestStatus.ACCEPTED
 
-fun FriendRequest.isDeclined(): Boolean = status == FriendRequestStatus.DECLINED
+fun FriendRequest.isDeclined() = status == FriendRequestStatus.DECLINED
 
-fun FriendRequest.isExpired(): Boolean = status == FriendRequestStatus.EXPIRED
+fun FriendRequest.isExpired() = status == FriendRequestStatus.EXPIRED
 
-fun FriendRequest.canBeAccepted(currentUserId: String): Boolean = 
+fun FriendRequest.canBeAccepted(currentUserId: String) = 
     isPending() && toUserId == currentUserId
 
-fun FriendRequest.canBeDeclined(currentUserId: String): Boolean = 
+fun FriendRequest.canBeDeclined(currentUserId: String) = 
     isPending() && toUserId == currentUserId
 
-fun FriendRequest.canBeCancelled(currentUserId: String): Boolean = 
+fun FriendRequest.canBeCancelled(currentUserId: String) = 
     isPending() && fromUserId == currentUserId
 
-fun FriendRequest.getStatusText(): String = when (status) {
+fun FriendRequest.getStatusText() = when (status) {
     FriendRequestStatus.PENDING -> "Ожидает ответа"
     FriendRequestStatus.ACCEPTED -> "Принят"
     FriendRequestStatus.DECLINED -> "Отклонен"
@@ -67,27 +66,27 @@ fun FriendRequest.getStatusText(): String = when (status) {
 }
 
 fun FriendRequest.getTimeText(): String {
-    val now = kotlinx.datetime.Clock.System.now()
-    val timeDiff = now - createdAt
-
+    val timestamp = respondedAt ?: createdAt
+    val now = System.currentTimeMillis()
+    val diffMinutes = (now - timestamp) / (1000 * 60)
+    
     return when {
-        timeDiff.inWholeMinutes < 1 -> "только что"
-        timeDiff.inWholeMinutes < 60 -> "${timeDiff.inWholeMinutes} мин назад"
-        timeDiff.inWholeHours < 24 -> "${timeDiff.inWholeHours} ч назад"
-        timeDiff.inWholeDays < 7 -> "${timeDiff.inWholeDays} дн назад"
-        else -> "давно"
+        diffMinutes < 1 -> "только что"
+        diffMinutes < 60 -> "${diffMinutes}м назад"
+        diffMinutes < 1440 -> "${diffMinutes / 60}ч назад" 
+        else -> "${diffMinutes / 1440}д назад"
     }
 }
 
 fun FriendRequest.getCreatedTimeText(): String {
-    val now = kotlinx.datetime.Clock.System.now()
-    val duration = now - createdAt
+    val now = System.currentTimeMillis()
+    val diffMinutes = (now - createdAt) / (1000 * 60)
     
     return when {
-        duration.inWholeDays > 0 -> "${duration.inWholeDays} дн. назад"
-        duration.inWholeHours > 0 -> "${duration.inWholeHours} ч. назад"
-        duration.inWholeMinutes > 0 -> "${duration.inWholeMinutes} мин. назад"
-        else -> "Только что"
+        diffMinutes < 1 -> "только что"
+        diffMinutes < 60 -> "${diffMinutes}м назад"
+        diffMinutes < 1440 -> "${diffMinutes / 60}ч назад"
+        else -> "${diffMinutes / 1440}д назад"
     }
 }
 
@@ -96,9 +95,9 @@ fun createFriendRequest(
     fromUserId: String,
     toUserId: String,
     message: String? = null,
-    createdAt: Instant = kotlinx.datetime.Clock.System.now()
-): FriendRequest = FriendRequest(
-    id = "${fromUserId}_${toUserId}_${createdAt.epochSeconds}",
+    createdAt: Long = System.currentTimeMillis()
+) = FriendRequest(
+    id = java.util.UUID.randomUUID().toString(),
     fromUserId = fromUserId,
     toUserId = toUserId,
     message = message,
@@ -107,24 +106,24 @@ fun createFriendRequest(
 )
 
 fun FriendRequest.accept(
-    respondedAt: Instant = kotlinx.datetime.Clock.System.now()
-): FriendRequest = copy(
+    respondedAt: Long = System.currentTimeMillis()
+) = copy(
     status = FriendRequestStatus.ACCEPTED,
     respondedAt = respondedAt,
     updatedAt = respondedAt
 )
 
 fun FriendRequest.decline(
-    respondedAt: Instant = kotlinx.datetime.Clock.System.now()
-): FriendRequest = copy(
+    respondedAt: Long = System.currentTimeMillis()
+) = copy(
     status = FriendRequestStatus.DECLINED,
     respondedAt = respondedAt,
     updatedAt = respondedAt
 )
 
 fun FriendRequest.expire(
-    expiredAt: Instant = kotlinx.datetime.Clock.System.now()
-): FriendRequest = copy(
+    expiredAt: Long = System.currentTimeMillis()
+) = copy(
     status = FriendRequestStatus.EXPIRED,
     respondedAt = expiredAt,
     updatedAt = expiredAt

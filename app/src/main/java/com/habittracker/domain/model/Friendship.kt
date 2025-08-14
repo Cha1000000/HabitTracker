@@ -1,7 +1,6 @@
 package com.habittracker.domain.model
 
 import androidx.room.Entity
-import kotlinx.datetime.Instant
 
 @Entity(
     tableName = "friendships",
@@ -12,11 +11,11 @@ data class Friendship(
     val userId2: String, // всегда больший ID
     val status: FriendshipStatus = FriendshipStatus.PENDING,
     val requestedBy: String, // кто отправил запрос
-    val requestedAt: Instant,
-    val acceptedAt: Instant? = null,
+    val requestedAt: Long,
+    val acceptedAt: Long? = null,
     val blockedBy: String? = null, // кто заблокировал (если заблокировано)
-    val blockedAt: Instant? = null,
-    val updatedAt: Instant
+    val blockedAt: Long? = null,
+    val updatedAt: Long
 )
 
 enum class FriendshipStatus {
@@ -106,9 +105,8 @@ fun Friendship.isUserReceiver(currentUserId: String): Boolean =
 
 fun Friendship.getFriendshipDurationDays(): Int {
     return if (acceptedAt != null) {
-        val now = kotlinx.datetime.Clock.System.now()
-        val duration = now - acceptedAt
-        duration.inWholeDays.toInt()
+        val duration = (System.currentTimeMillis() - acceptedAt) / 86400000
+        duration.toInt()
     } else 0
 }
 
@@ -120,11 +118,11 @@ fun Friendship.getStatusText(): String = when (status) {
 }
 
 fun Friendship.getRequestTimeText(): String {
-    val now = kotlinx.datetime.Clock.System.now()
+    val now = System.currentTimeMillis()
     val duration = now - requestedAt
-    val days = duration.inWholeDays
-    val hours = duration.inWholeHours
-    val minutes = duration.inWholeMinutes
+    val days = duration / 86400000
+    val hours = duration / 3600000
+    val minutes = duration / 60000
     
     return when {
         days > 0 -> if (days == 1L) "1 день назад" else "$days дней назад"
@@ -136,13 +134,13 @@ fun Friendship.getRequestTimeText(): String {
 
 fun Friendship.getAcceptedTimeText(): String {
     val acceptedTime = acceptedAt ?: requestedAt
-    val now = kotlinx.datetime.Clock.System.now()
+    val now = System.currentTimeMillis()
     val duration = now - acceptedTime
     
     return when {
-        duration.inWholeDays > 0 -> "${duration.inWholeDays} дн. назад"
-        duration.inWholeHours > 0 -> "${duration.inWholeHours} ч. назад"
-        duration.inWholeMinutes > 0 -> "${duration.inWholeMinutes} мин. назад"
+        duration / 86400000 > 0 -> "${duration / 86400000} дн. назад"
+        duration / 3600000 > 0 -> "${duration / 3600000} ч. назад"
+        duration / 60000 > 0 -> "${duration / 60000} мин. назад"
         else -> "Только что"
     }
 }
@@ -152,7 +150,7 @@ fun createFriendship(
     userId1: String,
     userId2: String,
     requestedBy: String,
-    requestedAt: Instant = kotlinx.datetime.Clock.System.now()
+    requestedAt: Long = System.currentTimeMillis()
 ): Friendship {
     val (smallerId, largerId) = if (userId1 < userId2) userId1 to userId2 else userId2 to userId1
     
@@ -166,7 +164,7 @@ fun createFriendship(
     )
 }
 
-fun Friendship.accept(acceptedAt: Instant = kotlinx.datetime.Clock.System.now()): Friendship {
+fun Friendship.accept(acceptedAt: Long = System.currentTimeMillis()): Friendship {
     return copy(
         status = FriendshipStatus.ACCEPTED,
         acceptedAt = acceptedAt,
@@ -174,7 +172,7 @@ fun Friendship.accept(acceptedAt: Instant = kotlinx.datetime.Clock.System.now())
     )
 }
 
-fun Friendship.decline(updatedAt: Instant = kotlinx.datetime.Clock.System.now()): Friendship {
+fun Friendship.decline(updatedAt: Long = System.currentTimeMillis()): Friendship {
     return copy(
         status = FriendshipStatus.DECLINED,
         updatedAt = updatedAt
@@ -183,7 +181,7 @@ fun Friendship.decline(updatedAt: Instant = kotlinx.datetime.Clock.System.now())
 
 fun Friendship.block(
     blockedBy: String,
-    blockedAt: Instant = kotlinx.datetime.Clock.System.now()
+    blockedAt: Long = System.currentTimeMillis()
 ): Friendship {
     return copy(
         status = FriendshipStatus.BLOCKED,
@@ -193,7 +191,7 @@ fun Friendship.block(
     )
 }
 
-fun Friendship.unblock(updatedAt: Instant = kotlinx.datetime.Clock.System.now()): Friendship {
+fun Friendship.unblock(updatedAt: Long = System.currentTimeMillis()): Friendship {
     return copy(
         status = FriendshipStatus.ACCEPTED,
         blockedBy = null,

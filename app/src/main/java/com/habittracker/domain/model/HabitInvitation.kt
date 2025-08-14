@@ -1,12 +1,5 @@
 package com.habittracker.domain.model
 
-import kotlinx.datetime.Instant
-import kotlinx.datetime.Clock
-import kotlinx.datetime.TimeZone
-import kotlinx.datetime.toLocalDateTime
-import kotlinx.datetime.DateTimeUnit
-import kotlinx.datetime.minus
-
 /**
  * Модель приглашения в групповую привычку
  */
@@ -19,123 +12,102 @@ data class HabitInvitation(
     val toUserId: String,
     val message: String? = null,
     val status: HabitInvitationStatus,
-    val createdAt: Instant,
-    val respondedAt: Instant? = null,
-    val expiresAt: Instant? = null
+    val createdAt: Long,
+    val respondedAt: Long? = null,
+    val expiresAt: Long? = null
 )
 
 /**
  * Статусы приглашения в групповую привычку
  */
 enum class HabitInvitationStatus {
-    PENDING,    // Ожидает ответа
-    ACCEPTED,   // Принято
-    DECLINED,   // Отклонено
-    EXPIRED,    // Истекло
-    CANCELLED   // Отменено отправителем
+    PENDING,    // ожидает ответа
+    ACCEPTED,   // принято
+    DECLINED,   // отклонено
+    EXPIRED,    // истекло
+    CANCELLED   // отменено
 }
 
 /**
  * Extension функции для работы с приглашениями
  */
 
-fun HabitInvitation.isPending(): Boolean = status == HabitInvitationStatus.PENDING
+fun HabitInvitation.isPending() = status == HabitInvitationStatus.PENDING
 
-fun HabitInvitation.isAccepted(): Boolean = status == HabitInvitationStatus.ACCEPTED
+fun HabitInvitation.isAccepted() = status == HabitInvitationStatus.ACCEPTED
 
-fun HabitInvitation.isDeclined(): Boolean = status == HabitInvitationStatus.DECLINED
+fun HabitInvitation.isDeclined() = status == HabitInvitationStatus.DECLINED
 
-fun HabitInvitation.isExpired(): Boolean = 
-    status == HabitInvitationStatus.EXPIRED || 
-    (expiresAt != null && Clock.System.now() > expiresAt)
+fun HabitInvitation.isExpired(): Boolean {
+    val now = System.currentTimeMillis()
+    return status == HabitInvitationStatus.EXPIRED || (expiresAt != null && now > expiresAt)
+}
 
-fun HabitInvitation.canRespond(): Boolean = 
+fun HabitInvitation.canRespond() = 
     isPending() && !isExpired()
 
-fun HabitInvitation.canCancel(userId: String): Boolean = 
-    fromUserId == userId && isPending() && !isExpired()
+fun HabitInvitation.canCancel(userId: String) = 
+    isPending() && fromUserId == userId
 
-/**
- * Получить текст времени создания приглашения
- */
+// Получить текст времени создания приглашения
 fun HabitInvitation.getCreatedTimeText(): String {
-    val now = Clock.System.now()
-    val timeZone = TimeZone.currentSystemDefault()
-    val createdDateTime = createdAt.toLocalDateTime(timeZone)
-    val nowDateTime = now.toLocalDateTime(timeZone)
-    
-    val diffInDays = nowDateTime.date.toEpochDays() - createdDateTime.date.toEpochDays()
-    
+    val now = System.currentTimeMillis()
+    val diffMillis = now - createdAt
+    val diffMinutes = diffMillis / (1000 * 60)
+    val diffHours = diffMillis / (1000 * 60 * 60)
+    val diffDays = diffMillis / (1000 * 60 * 60 * 24)
+
     return when {
-        diffInDays == 0 -> {
-            val diffInHours = (now.epochSeconds - createdAt.epochSeconds) / 3600
-            when {
-                diffInHours < 1 -> "только что"
-                diffInHours < 2 -> "час назад"
-                diffInHours < 5 -> "$diffInHours часа назад"
-                else -> "$diffInHours часов назад"
-            }
-        }
-        diffInDays == 1 -> "вчера"
-        diffInDays < 7 -> "$diffInDays дн. назад"
-        diffInDays < 30 -> "${diffInDays / 7} нед. назад"
-        else -> "${diffInDays / 30} мес. назад"
+        diffMinutes < 1 -> "только что"
+        diffMinutes < 60 -> "${diffMinutes}м назад"
+        diffHours < 24 -> "${diffHours}ч назад"
+        diffDays < 7 -> "${diffDays}д назад"
+        else -> "давно"
     }
 }
 
-/**
- * Получить текст времени ответа на приглашение
- */
-fun HabitInvitation.getRespondedTimeText(): String? {
-    if (respondedAt == null) return null
+// Получить текст времени ответа на приглашение
+fun HabitInvitation.getRespondedTimeText(): String {
+    val responseTime = respondedAt ?: return "не отвечено"
     
-    val now = Clock.System.now()
-    val timeZone = TimeZone.currentSystemDefault()
-    val respondedDateTime = respondedAt.toLocalDateTime(timeZone)
-    val nowDateTime = now.toLocalDateTime(timeZone)
-    
-    val diffInDays = nowDateTime.date.toEpochDays() - respondedDateTime.date.toEpochDays()
-    
+    val now = System.currentTimeMillis()
+    val diffMillis = now - responseTime
+    val diffMinutes = diffMillis / (1000 * 60)
+    val diffHours = diffMillis / (1000 * 60 * 60)
+    val diffDays = diffMillis / (1000 * 60 * 60 * 24)
+
     return when {
-        diffInDays == 0 -> {
-            val diffInHours = (now.epochSeconds - respondedAt.epochSeconds) / 3600
-            when {
-                diffInHours < 1 -> "только что"
-                diffInHours < 2 -> "час назад"
-                diffInHours < 5 -> "$diffInHours часа назад"
-                else -> "$diffInHours часов назад"
-            }
-        }
-        diffInDays == 1 -> "вчера"
-        diffInDays < 7 -> "$diffInDays дн. назад"
-        diffInDays < 30 -> "${diffInDays / 7} нед. назад"
-        else -> "${diffInDays / 30} мес. назад"
+        diffMinutes < 1 -> "только что"
+        diffMinutes < 60 -> "${diffMinutes}м назад"
+        diffHours < 24 -> "${diffHours}ч назад"
+        diffDays < 7 -> "${diffDays}д назад"
+        else -> "давно"
     }
 }
 
-/**
- * Получить статус приглашения в виде текста для UI
- */
-fun HabitInvitation.getStatusText(): String = when (status) {
-    HabitInvitationStatus.PENDING -> "Ожидает ответа"
+// Получить статус приглашения в виде текста для UI
+fun HabitInvitation.getStatusText() = when (status) {
+    HabitInvitationStatus.PENDING -> if (isExpired()) "Истекло" else "Ожидает ответа"
     HabitInvitationStatus.ACCEPTED -> "Принято"
     HabitInvitationStatus.DECLINED -> "Отклонено"
     HabitInvitationStatus.EXPIRED -> "Истекло"
     HabitInvitationStatus.CANCELLED -> "Отменено"
 }
 
-/**
- * Получить время до истечения приглашения
- */
+// Получить время до истечения приглашения
 fun HabitInvitation.getTimeUntilExpiry(): String? {
-    if (expiresAt == null || isExpired()) return null
+    val expiryTime = expiresAt ?: return null
+    val now = System.currentTimeMillis()
     
-    val now = Clock.System.now()
-    val diffInHours = (expiresAt.epochSeconds - now.epochSeconds) / 3600
+    if (now >= expiryTime) return "Истекло"
+    
+    val diffMillis = expiryTime - now
+    val diffHours = diffMillis / (1000 * 60 * 60)
+    val diffDays = diffMillis / (1000 * 60 * 60 * 24)
     
     return when {
-        diffInHours < 1 -> "менее часа"
-        diffInHours < 24 -> "$diffInHours ч."
-        else -> "${diffInHours / 24} дн."
+        diffDays > 0 -> "Истекает через ${diffDays}д"
+        diffHours > 0 -> "Истекает через ${diffHours}ч"
+        else -> "Истекает скоро"
     }
 }

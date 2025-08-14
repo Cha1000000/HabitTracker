@@ -158,16 +158,21 @@ class SocialRepositoryImpl @Inject constructor(
         message: String?
     ): Result<FriendRequest> {
         return try {
+            android.util.Log.d("SocialRepository", "📤 Sending friend request: from=$fromUserId, to=$toUserId")
+            
+            val currentTime = System.currentTimeMillis()
             val friendRequest = FriendRequest(
                 id = UUID.randomUUID().toString(),
                 fromUserId = fromUserId,
                 toUserId = toUserId,
                 status = FriendRequestStatus.PENDING,
                 message = message,
-                createdAt = Clock.System.now(),
+                createdAt = currentTime,
                 respondedAt = null,
-                updatedAt = Clock.System.now()
+                updatedAt = currentTime
             )
+            
+            android.util.Log.d("SocialRepository", "💾 Saving friend request to Firestore: id=${friendRequest.id}")
             
             // Сохраняем в Firestore
             firestore.collection("friend_requests")
@@ -175,11 +180,15 @@ class SocialRepositoryImpl @Inject constructor(
                 .set(friendRequest)
                 .await()
 
+            android.util.Log.d("SocialRepository", "💿 Saving friend request locally")
+            
             // Сохраняем локально
             friendRequestDao.insertFriendRequest(friendRequest.toEntity())
 
+            android.util.Log.d("SocialRepository", "✅ Friend request sent successfully!")
             Result.success(friendRequest)
         } catch (e: Exception) {
+            android.util.Log.e("SocialRepository", "❌ Failed to send friend request: ${e.message}", e)
             Result.failure(e)
         }
     }
@@ -191,8 +200,8 @@ class SocialRepositoryImpl @Inject constructor(
 
             val acceptedRequest = friendRequest.copy(
                 status = FriendRequestStatus.ACCEPTED,
-                respondedAt = Clock.System.now(),
-                updatedAt = Clock.System.now()
+                respondedAt = System.currentTimeMillis(),
+                updatedAt = System.currentTimeMillis()
             )
             
             val friendship = createFriendship(
@@ -236,8 +245,8 @@ class SocialRepositoryImpl @Inject constructor(
 
             val declinedRequest = friendRequest.copy(
                 status = FriendRequestStatus.DECLINED,
-                respondedAt = Clock.System.now(),
-                updatedAt = Clock.System.now()
+                respondedAt = System.currentTimeMillis(),
+                updatedAt = System.currentTimeMillis()
             )
 
             // Обновляем в Firestore
@@ -383,7 +392,7 @@ class SocialRepositoryImpl @Inject constructor(
             val blockedFriendship = friendship.copy(
                 status = FriendshipStatus.BLOCKED,
                 blockedBy = currentUserId,
-                blockedAt = Clock.System.now()
+                blockedAt = System.currentTimeMillis()
             )
 
             // Обновляем в Firestore
@@ -470,7 +479,7 @@ class SocialRepositoryImpl @Inject constructor(
     }
 
     override suspend fun expireOldFriendRequests() {
-        val thirtyDaysAgo = Clock.System.now().epochSeconds - (30 * 24 * 60 * 60)
+        val thirtyDaysAgo = System.currentTimeMillis() - (30 * 24 * 60 * 60 * 1000)
         try {
             friendRequestDao.expireOldRequests(thirtyDaysAgo)
         } catch (e: Exception) {
@@ -547,9 +556,9 @@ class SocialRepositoryImpl @Inject constructor(
                 toUserId = toUserId,
                 message = message,
                 status = HabitInvitationStatus.PENDING,
-                createdAt = Clock.System.now(),
+                createdAt = System.currentTimeMillis(),
                 respondedAt = null,
-                expiresAt = Clock.System.now().plus(DateTimePeriod(days = 7), TimeZone.currentSystemDefault()) // Истекает через 7 дней
+                expiresAt = System.currentTimeMillis() + (7 * 24 * 60 * 60 * 1000) // Истекает через 7 дней
             )
 
             // Сохраняем локально
@@ -585,7 +594,7 @@ class SocialRepositoryImpl @Inject constructor(
 
             val acceptedInvitation = invitation.copy(
                 status = HabitInvitationStatus.ACCEPTED,
-                respondedAt = Clock.System.now()
+                respondedAt = System.currentTimeMillis()
             )
 
             habitInvitationDao.update(acceptedInvitation.toEntity())
@@ -619,7 +628,7 @@ class SocialRepositoryImpl @Inject constructor(
 
             val declinedInvitation = invitation.copy(
                 status = HabitInvitationStatus.DECLINED,
-                respondedAt = Clock.System.now()
+                respondedAt = System.currentTimeMillis()
             )
 
             habitInvitationDao.update(declinedInvitation.toEntity())
@@ -647,7 +656,7 @@ class SocialRepositoryImpl @Inject constructor(
 
             val cancelledInvitation = invitation.copy(
                 status = HabitInvitationStatus.CANCELLED,
-                respondedAt = Clock.System.now()
+                respondedAt = System.currentTimeMillis()
             )
 
             habitInvitationDao.update(cancelledInvitation.toEntity())
@@ -725,10 +734,10 @@ class SocialRepositoryImpl @Inject constructor(
     }
 
     override suspend fun expireOldHabitInvitations() {
-        val currentTime = Clock.System.now().epochSeconds
+        val currentTime = System.currentTimeMillis()
         try {
             habitInvitationDao.expireOldInvitations(currentTime)
-            habitInvitationDao.deleteOldInvitations(currentTime - (30 * 24 * 60 * 60)) // Удаляем старые через 30 дней
+            habitInvitationDao.deleteOldInvitations(currentTime - (30 * 24 * 60 * 60 * 1000)) // Удаляем старые через 30 дней
         } catch (e: Exception) {
             // Игнорируем ошибки
         }

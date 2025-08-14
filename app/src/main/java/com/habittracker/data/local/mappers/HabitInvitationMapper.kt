@@ -3,7 +3,6 @@ package com.habittracker.data.local.mappers
 import com.habittracker.data.local.entity.HabitInvitationEntity
 import com.habittracker.domain.model.HabitInvitation
 import com.habittracker.domain.model.HabitInvitationStatus
-import kotlinx.datetime.Instant
 
 /**
  * Мапперы для преобразования между Entity и Domain моделями приглашений в привычки
@@ -19,9 +18,9 @@ fun HabitInvitationEntity.toDomain(): HabitInvitation {
         toUserId = toUserId,
         message = message,
         status = HabitInvitationStatus.valueOf(status),
-        createdAt = Instant.fromEpochSeconds(createdAt),
-        respondedAt = respondedAt?.let { Instant.fromEpochSeconds(it) },
-        expiresAt = expiresAt?.let { Instant.fromEpochSeconds(it) }
+        createdAt = createdAt,
+        respondedAt = respondedAt,
+        expiresAt = expiresAt
     )
 }
 
@@ -35,9 +34,9 @@ fun HabitInvitation.toEntity(): HabitInvitationEntity {
         toUserId = toUserId,
         message = message,
         status = status.name,
-        createdAt = createdAt.epochSeconds,
-        respondedAt = respondedAt?.epochSeconds,
-        expiresAt = expiresAt?.epochSeconds
+        createdAt = createdAt,
+        respondedAt = respondedAt,
+        expiresAt = expiresAt
     )
 }
 
