@@ -224,6 +224,23 @@ class SocialRepositoryImpl @Inject constructor(
 
             // Сохраняем локально
             friendRequestDao.updateFriendRequest(acceptedRequest.toEntity())
+            
+            // Важно: сначала сохраняем пользователей, чтобы избежать FOREIGN KEY constraint
+            try {
+                val fromUser = searchUsers("", "").find { it.id == friendRequest.fromUserId }
+                val toUser = searchUsers("", "").find { it.id == friendRequest.toUserId }
+                
+                if (fromUser != null) {
+                    userDao.insertUser(fromUser.toEntity())
+                }
+                
+                if (toUser != null) {
+                    userDao.insertUser(toUser.toEntity())
+                }
+            } catch (e: Exception) {
+                // Продолжаем выполнение - пользователи могли уже существовать
+            }
+            
             friendshipDao.insertFriendship(friendship.toEntity())
 
             // Обновляем счетчики друзей
