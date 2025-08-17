@@ -177,7 +177,7 @@ class FakeHabitRepository : HabitRepository {
 }
 
 class FakeSocialRepository : SocialRepository {
-    override suspend fun getUserById(userId: String): User? = User(id = userId, name = "Test User", email = "test@test.com", createdAt = Clock.System.now(), lastActiveAt = Clock.System.now())
+    override suspend fun getUserById(userId: String): User? = User(id = userId, name = "Test User", email = "test@test.com", createdAt = System.currentTimeMillis(), lastActiveAt = System.currentTimeMillis())
     override suspend fun searchUsers(query: String, currentUserId: String): List<User> = emptyList()
     override suspend fun updateUserFcmToken(userId: String, token: String) {}
     override suspend fun updateFriendsCount(userId: String, count: Int) {}
@@ -232,8 +232,8 @@ class FakeUserRepository : UserRepository {
             id = "test-user-id",
             name = "Test User",
             email = "test@test.com",
-            createdAt = Clock.System.now(),
-            lastActiveAt = Clock.System.now()
+            createdAt = System.currentTimeMillis(),
+            lastActiveAt = System.currentTimeMillis()
         )
         users[testUser.id] = testUser
     }

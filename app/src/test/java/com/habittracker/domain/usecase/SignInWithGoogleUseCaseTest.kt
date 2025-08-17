@@ -30,8 +30,8 @@ class SignInWithGoogleUseCaseTest {
         avatarUrl = "https://example.com/avatar.jpg",
         level = 1,
         points = 0,
-        createdAt = kotlinx.datetime.Clock.System.now(),
-        lastActiveAt = kotlinx.datetime.Clock.System.now()
+        createdAt = System.currentTimeMillis(),
+        lastActiveAt = System.currentTimeMillis()
     )
 
     @Before
