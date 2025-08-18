@@ -2,13 +2,19 @@ package com.habittracker.presentation.ui
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.EmojiEvents
+import androidx.compose.material.icons.filled.TrendingUp
 import androidx.compose.material3.Button
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -27,8 +33,8 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
-import com.habittracker.R
 import com.habittracker.BuildConfig
+import com.habittracker.R
 import com.habittracker.presentation.navigation.Screen
 import com.habittracker.presentation.viewmodel.AuthViewModel
 
@@ -78,6 +84,60 @@ fun ProfileScreen(
                 stringResource(R.string.profile_welcome),
                 style = MaterialTheme.typography.headlineSmall
             )
+            
+            Spacer(modifier = Modifier.height(32.dp))
+            
+            // Кнопки геймификации
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                // Кнопка статистики
+                Card(
+                    modifier = Modifier.weight(1f),
+                    onClick = { navController.navigate(Screen.Stats.route) },
+                    elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+                ) {
+                    Column(
+                        modifier = Modifier.padding(16.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.TrendingUp,
+                            contentDescription = stringResource(R.string.cd_stats),
+                            tint = MaterialTheme.colorScheme.primary
+                        )
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Text(
+                            text = stringResource(R.string.profile_stats_button),
+                            style = MaterialTheme.typography.labelLarge
+                        )
+                    }
+                }
+                
+                // Кнопка достижений
+                Card(
+                    modifier = Modifier.weight(1f),
+                    onClick = { navController.navigate(Screen.Achievements.route) },
+                    elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+                ) {
+                    Column(
+                        modifier = Modifier.padding(16.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.EmojiEvents,
+                            contentDescription = stringResource(R.string.cd_achievements),
+                            tint = MaterialTheme.colorScheme.primary
+                        )
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Text(
+                            text = stringResource(R.string.profile_achievements_button),
+                            style = MaterialTheme.typography.labelLarge
+                        )
+                    }
+                }
+            }
             
             Spacer(modifier = Modifier.height(32.dp))
             

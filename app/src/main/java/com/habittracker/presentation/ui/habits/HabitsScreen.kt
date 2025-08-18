@@ -11,9 +11,11 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.EmojiEvents
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.People
 import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.filled.TrendingUp
 import androidx.compose.material3.BadgedBox
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -78,6 +80,25 @@ fun HabitsScreen(
             TopAppBar(
                 title = { Text(stringResource(R.string.habits_title)) },
                 actions = {
+                    // Кнопки геймификации
+                    IconButton(onClick = { 
+                        navController.navigate(Screen.Stats.route) 
+                    }) {
+                        Icon(
+                            imageVector = Icons.Default.TrendingUp,
+                            contentDescription = stringResource(R.string.cd_stats)
+                        )
+                    }
+                    IconButton(onClick = { 
+                        navController.navigate(Screen.Achievements.route) 
+                    }) {
+                        Icon(
+                            imageVector = Icons.Default.EmojiEvents,
+                            contentDescription = stringResource(R.string.cd_achievements)
+                        )
+                    }
+                    
+                    // Существующие кнопки
                     IconButton(onClick = { 
                         navController.navigate(Screen.Profile.route) 
                     }) {

@@ -41,6 +41,8 @@
     <string name="cd_hide_password">Скрыть пароль</string>
     <string name="cd_chosen">Выбрано</string>
     <string name="cd_notifications">Уведомления</string>
+    <string name="cd_stats">Статистика</string>
+    <string name="cd_achievements">Достижения</string>
     <string name="cd_habit_icon">Иконка привычки</string>
     
     <!-- Habits Screen -->
@@ -99,6 +101,8 @@
     <!-- Profile Screen -->
     <string name="profile_title">Профиль</string>
     <string name="profile_welcome">Добро пожаловать в профиль</string>
+    <string name="profile_stats_button">Моя статистика</string>
+    <string name="profile_achievements_button">Мои достижения</string>
     
     <!-- Notifications -->
     <string name="notification_permission_title">Разрешение на уведомления</string>
@@ -193,7 +197,6 @@
     
     <!-- Group Habits Progress -->
     <string name="group_progress_today">Прогресс группы сегодня</string>
-    <string name="completed_today">Выполнено сегодня</string>
     <string name="group_participants">Участники группы</string>
     <string name="participant_streak">Серия: %d дней</string>
     <string name="participant_completion_rate">%d%% за неделю</string>
@@ -338,5 +341,87 @@
     <string name="streak_description">Побеждает тот, у кого самая длинная серия выполнений</string>
     <string name="total_days_description">Побеждает тот, кто выполнил привычку больше всего дней</string>
     <string name="first_to_target_description">Побеждает первый, кто достигнет целевого значения</string>
+    
+    <!-- Stats Screen -->
+    <string name="stats_title">Статистика</string>
+    <string name="stats_refresh">Обновить</string>
+    <string name="stats_error_loading">Не удалось загрузить статистику</string>
+    <string name="stats_error_no_user">Пользователь не авторизован</string>
+    <string name="stats_try_again">Попробовать снова</string>
+    
+    <!-- Level Info -->
+    <string name="level_format">Уровень %1$d</string>
+    <string name="points_format">%1$d / %2$d очков</string>
+    <string name="points_to_next_level">До следующего уровня: %1$d очков</string>
+    
+    <!-- Stats Categories -->
+    <string name="stats_habits">Привычки</string>
+    <string name="stats_streaks">Серии</string>
+    <string name="stats_social">Социальные</string>
+    <string name="stats_challenges">Челленджи</string>
+    <string name="stats_time">Время выполнения</string>
+    
+    <!-- Habit Stats Labels -->
+    <string name="total_habits">Всего привычек</string>
+    <string name="active_habits">Активных привычек</string>
+    <string name="completed_today">Выполнено сегодня</string>
+    <string name="total_completions">Всего выполнений</string>
+    <string name="completions_this_week">За эту неделю</string>
+    <string name="completions_this_month">За этот месяц</string>
+    <string name="average_completion_rate">Средний процент выполнения</string>
+    <string name="perfect_days">Идеальных дней</string>
+    <string name="best_habit">Лучшая привычка</string>
+    
+    <!-- Streak Stats Labels -->
+    <string name="current_streak">Текущая серия</string>
+    <string name="longest_streak">Лучшая серия</string>
+    <string name="average_streak">Средняя серия</string>
+    <string name="active_streaks">Активных серий</string>
+    
+    <!-- Social Stats Labels -->
+    <string name="friends_count_label">Друзей</string>
+    <string name="group_habits_count">Групповых привычек</string>
+    <string name="challenges_participated">Челленджей участвовал</string>
+    <string name="challenges_won">Челленджей выиграл</string>
+    
+    <!-- Challenge Stats Labels -->
+    <string name="total_challenges">Всего челленджей</string>
+    <string name="active_challenges_count">Активных</string>
+    <string name="completed_challenges_count">Завершено</string>
+    <string name="won_challenges">Выиграно</string>
+    <string name="win_rate">Процент побед</string>
+    <string name="created_challenges">Создано</string>
+    
+    <!-- Time Stats Labels -->
+    <string name="morning_completions">Утром (5-11)</string>
+    <string name="afternoon_completions">Днем (12-17)</string>
+    <string name="evening_completions">Вечером (18-22)</string>
+    <string name="consistency_score">Оценка постоянства</string>
+    <string name="average_completion_time">Среднее время</string>
+    <string name="most_productive_hour">Лучший час</string>
+    <string name="hour_format">%1$d:00</string>
+    <string name="percentage_format">%1$d%%</string>
+
+    <!-- Achievements Screen -->
+    <string name="achievements_title">Достижения</string>
+    <string name="achievements_progress">%1$d из %2$d разблокировано</string>
+    <string name="achievements_loading">Загрузка достижений…</string>
+    <string name="achievements_error">Ошибка загрузки</string>
+    <string name="achievements_empty">Достижений пока нет</string>
+    <string name="achievements_empty_description">Начните создавать привычки, чтобы разблокировать достижения</string>
+    
+    <!-- Achievement Categories -->
+    <string name="achievements_habits">Привычки</string>
+    <string name="achievements_streaks">Серии</string>
+    <string name="achievements_social">Социальное</string>
+    <string name="achievements_challenges">Вызовы</string>
+    <string name="achievements_milestones">Рубежи</string>
+    <string name="achievements_special">Особые</string>
+    
+    <!-- Achievement Status -->
+    <string name="achievement_unlocked">Разблокировано</string>
+    <string name="achievement_locked">Заблокировано</string>
+    <string name="achievement_progress">Прогресс</string>
+    <string name="achievement_reward">+%1$d очков</string>
 
 </resources>

@@ -1,0 +1,70 @@
+package com.habittracker.presentation.viewmodel
+
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
+import com.habittracker.domain.model.gamification.UserStats
+import com.habittracker.domain.usecase.gamification.GetUserStatsUseCase
+import com.habittracker.domain.repository.AuthRepository
+import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.launch
+import javax.inject.Inject
+
+@HiltViewModel
+class StatsViewModel @Inject constructor(
+    private val getUserStatsUseCase: GetUserStatsUseCase,
+    private val authRepository: AuthRepository
+) : ViewModel() {
+
+    private val _uiState = MutableStateFlow(StatsUiState())
+    val uiState: StateFlow<StatsUiState> = _uiState.asStateFlow()
+
+    init {
+        loadUserStats()
+    }
+
+    private fun loadUserStats() {
+        viewModelScope.launch {
+            _uiState.value = _uiState.value.copy(isLoading = true)
+            
+            try {
+                authRepository.getCurrentUser().collect { currentUser ->
+                    if (currentUser != null) {
+                        val userStats = getUserStatsUseCase.getUserStats(currentUser.id)
+                        _uiState.value = _uiState.value.copy(
+                            isLoading = false,
+                            userStats = userStats,
+                            error = null
+                        )
+                    } else {
+                        _uiState.value = _uiState.value.copy(
+                            isLoading = false,
+                            error = "Пользователь не авторизован"
+                        )
+                    }
+                }
+            } catch (e: Exception) {
+                _uiState.value = _uiState.value.copy(
+                    isLoading = false,
+                    error = e.message ?: "Ошибка загрузки статистики"
+                )
+            }
+        }
+    }
+
+    fun refresh() {
+        loadUserStats()
+    }
+
+    fun onErrorShown() {
+        _uiState.value = _uiState.value.copy(error = null)
+    }
+}
+
+data class StatsUiState(
+    val isLoading: Boolean = false,
+    val userStats: UserStats? = null,
+    val error: String? = null
+)

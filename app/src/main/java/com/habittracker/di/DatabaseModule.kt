@@ -2,12 +2,14 @@ package com.habittracker.di
 
 import android.content.Context
 import com.habittracker.data.local.HabitTrackerDatabase
+import com.habittracker.data.local.dao.AchievementDao
 import com.habittracker.data.local.dao.ChallengeDao
 import com.habittracker.data.local.dao.FriendRequestDao
 import com.habittracker.data.local.dao.FriendshipDao
 import com.habittracker.data.local.dao.HabitDao
 import com.habittracker.data.local.dao.HabitEntryDao
 import com.habittracker.data.local.dao.HabitInvitationDao
+import com.habittracker.data.local.dao.UserAchievementDao
 import com.habittracker.data.local.dao.UserDao
 import dagger.Module
 import dagger.Provides
@@ -46,4 +48,10 @@ object DatabaseModule {
 
     @Provides
     fun provideHabitInvitationDao(database: HabitTrackerDatabase): HabitInvitationDao = database.habitInvitationDao()
+
+    @Provides
+    fun provideAchievementDao(database: HabitTrackerDatabase): AchievementDao = database.achievementDao()
+
+    @Provides
+    fun provideUserAchievementDao(database: HabitTrackerDatabase): UserAchievementDao = database.userAchievementDao()
 }

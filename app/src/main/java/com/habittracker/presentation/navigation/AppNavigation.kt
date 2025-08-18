@@ -15,6 +15,8 @@ import com.habittracker.presentation.ui.habits.HabitsScreen
 import com.habittracker.presentation.ui.notifications.NotificationsScreen
 import com.habittracker.presentation.ui.social.FriendsScreen
 import com.habittracker.presentation.ui.ProfileScreen
+import com.habittracker.presentation.ui.achievements.AchievementsScreen
+import com.habittracker.presentation.ui.stats.StatsScreen
 
 /**
  * Запечатанный класс для определения маршрутов навигации.
@@ -28,6 +30,8 @@ sealed class Screen(val route: String) {
     object Profile : Screen("profile_screen")
     object Friends : Screen("friends_screen")
     object Notifications : Screen("notifications_screen")
+    object Stats : Screen("stats_screen")
+    object Achievements : Screen("achievements_screen")
     object GroupHabitDetail : Screen("group_habit_detail_screen/{habitId}") {
         fun createRoute(habitId: String) = "group_habit_detail_screen/$habitId"
     }
@@ -98,6 +102,22 @@ fun AppNavHost() {
             GroupHabitDetailScreen(
                 habitId = habitId,
                 navController = navController
+            )
+        }
+        
+        composable(route = Screen.Stats.route) {
+            StatsScreen(
+                onNavigateBack = {
+                    navController.popBackStack()
+                }
+            )
+        }
+        
+        composable(route = Screen.Achievements.route) {
+            AchievementsScreen(
+                onNavigateBack = {
+                    navController.popBackStack()
+                }
             )
         }
         
