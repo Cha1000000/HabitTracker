@@ -1,6 +1,5 @@
 package com.habittracker.domain.model
 
-import kotlinx.datetime.Instant
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.atStartOfDayIn
@@ -11,11 +10,11 @@ data class HabitEntry(
     val userId: String,
     val date: LocalDate,
     val completed: Boolean = false,
-    val completedAt: Instant? = null,
+    val completedAt: Long? = null,
     val value: Int = 1, // сколько раз выполнил (для привычек с targetValue > 1)
     val note: String? = "",
-    val createdAt: Instant,
-    val updatedAt: Instant
+    val createdAt: Long,
+    val updatedAt: Long
 )
 
 // Модель для UI с дополнительной информацией

@@ -63,7 +63,7 @@ class GenerateHabitInviteCodeUseCase @Inject constructor(
             val updatedHabit = habit.copy(
                 inviteCode = inviteCode,
                 isPublic = true, // Делаем привычку доступной по коду
-                updatedAt = Clock.System.now()
+                updatedAt = Clock.System.now().toEpochMilliseconds()
             )
 
             habitRepository.updateHabit(updatedHabit)
@@ -95,7 +95,7 @@ class GenerateHabitInviteCodeUseCase @Inject constructor(
             val updatedHabit = habit.copy(
                 inviteCode = null,
                 isPublic = false,
-                updatedAt = Clock.System.now()
+                updatedAt = Clock.System.now().toEpochMilliseconds()
             )
 
             habitRepository.updateHabit(updatedHabit)

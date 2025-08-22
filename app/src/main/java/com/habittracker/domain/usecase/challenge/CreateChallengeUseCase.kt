@@ -104,8 +104,8 @@ class CreateChallengeUseCase @Inject constructor(
                 reward = reward,
                 status = if (startDate <= today) ChallengeStatus.ACTIVE else ChallengeStatus.PENDING,
                 winnerId = null,
-                createdAt = Clock.System.now(),
-                updatedAt = Clock.System.now()
+                createdAt = Clock.System.now().toEpochMilliseconds(),
+                updatedAt = Clock.System.now().toEpochMilliseconds()
             )
             
             // Сохраняем в репозиторий

@@ -156,8 +156,8 @@ data class EnhancedHabit(
         inviteCode = inviteCode,
         isPublic = privacyLevel == PrivacyLevel.PUBLIC,
         isActive = isActive,
-        createdAt = createdAt,
-        updatedAt = updatedAt
+        createdAt = createdAt.toEpochMilliseconds(),
+        updatedAt = updatedAt.toEpochMilliseconds()
     )
 }
 

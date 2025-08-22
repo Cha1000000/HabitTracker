@@ -54,7 +54,7 @@ class JoinChallengeUseCase @Inject constructor(
             // Добавляем участника
             val updatedChallenge = challenge.copy(
                 participants = challenge.participants + userId,
-                updatedAt = Clock.System.now()
+                updatedAt = Clock.System.now().toEpochMilliseconds()
             )
             
             challengeRepository.updateChallenge(updatedChallenge)

@@ -73,7 +73,7 @@ class HabitRepositoryImpl @Inject constructor(
             val participants = habit.participants.toMutableList()
             if (!participants.contains(userId)) {
                 participants.add(userId)
-                habitDao.updateHabitParticipants(habitId, participants, Clock.System.now())
+                habitDao.updateHabitParticipants(habitId, participants, Clock.System.now().toEpochMilliseconds())
             }
         }
     }
@@ -84,7 +84,7 @@ class HabitRepositoryImpl @Inject constructor(
             val participants = habit.participants.toMutableList()
             if (participants.contains(userId)) {
                 participants.remove(userId)
-                habitDao.updateHabitParticipants(habitId, participants, Clock.System.now())
+                habitDao.updateHabitParticipants(habitId, participants, Clock.System.now().toEpochMilliseconds())
             }
         }
     }

@@ -138,13 +138,21 @@ class AddEditHabitViewModel @Inject constructor(
             try {
                 _uiState.update { it.copy(isLoading = true) }
                 
-                val now = Clock.System.now()
+                val now = System.currentTimeMillis()
                 val currentState = uiState.value
                 
                 if (currentHabit == null) {
                     // Создаем новую привычку
                     val creatorId = authRepository.getCurrentUserId() 
                         ?: throw IllegalStateException("User must be authenticated to create habits")
+                    
+                    // Для личных привычек создатель автоматически становится участником
+                    // Для групповых привычек добавляем создателя к списку участников если его там нет
+                    val participantsIds = currentState.participants.map { it.id }.toMutableList()
+                    if (!participantsIds.contains(creatorId)) {
+                        participantsIds.add(0, creatorId) // Добавляем создателя первым в списке
+                    }
+                    
                     val newHabit = Habit(
                         id = UUID.randomUUID().toString(),
                         title = currentState.title,
@@ -157,7 +165,7 @@ class AddEditHabitViewModel @Inject constructor(
                         targetValue = currentState.targetValue,
                         unit = currentState.unit,
                         createdBy = creatorId,
-                        participants = currentState.participants.map { it.id }, // Конвертируем User в String ID
+                        participants = participantsIds, // Создатель всегда включен в участники
                         maxParticipants = currentState.maxParticipants,
                         inviteCode = currentState.inviteCode,
                         isPublic = currentState.isPublic,
@@ -165,7 +173,10 @@ class AddEditHabitViewModel @Inject constructor(
                         createdAt = now,
                         updatedAt = now
                     )
+                    Log.d("AddEditHabitViewModel", "💾 [saveHabit] Calling addHabitUseCase for habit: ${newHabit.id}")
+                    Log.d("AddEditHabitViewModel", "💾 [saveHabit] Habit details: title='${newHabit.title}', participants=${newHabit.participants}")
                     addHabitUseCase(newHabit)
+                    Log.d("AddEditHabitViewModel", "✅ [saveHabit] Habit saved successfully: ${newHabit.id}")
                     
                     // Планируем напоминание для новой привычки
                     if (newHabit.reminderTime != null) {
@@ -630,8 +641,8 @@ class AddEditHabitViewModel @Inject constructor(
             unit = currentState.unit,
             participants = currentState.participants.map { it.id },
             createdBy = "temp_user",
-            createdAt = Clock.System.now(),
-            updatedAt = Clock.System.now(),
+            createdAt = System.currentTimeMillis(),
+            updatedAt = System.currentTimeMillis(),
             inviteCode = currentState.inviteCode
         )
     }

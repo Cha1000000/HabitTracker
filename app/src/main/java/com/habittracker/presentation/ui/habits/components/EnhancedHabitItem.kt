@@ -227,8 +227,8 @@ private fun EnhancedHabitItemPreview() {
         createdBy = "user1",
         participants = listOf("user1"),
         isActive = true,
-        createdAt = Clock.System.now(),
-        updatedAt = Clock.System.now()
+        createdAt = Clock.System.now().toEpochMilliseconds(),
+        updatedAt = Clock.System.now().toEpochMilliseconds()
     )
     
     val groupHabit = Habit(
@@ -246,8 +246,8 @@ private fun EnhancedHabitItemPreview() {
         participants = listOf("user1", "user2", "user3"),
         maxParticipants = 10,
         isActive = true,
-        createdAt = Clock.System.now(),
-        updatedAt = Clock.System.now()
+        createdAt = Clock.System.now().toEpochMilliseconds(),
+        updatedAt = Clock.System.now().toEpochMilliseconds()
     )
     
     val sampleProgress = listOf(

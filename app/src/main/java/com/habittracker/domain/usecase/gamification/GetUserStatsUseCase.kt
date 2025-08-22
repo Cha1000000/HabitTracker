@@ -19,6 +19,7 @@ import com.habittracker.domain.repository.HabitRepository
 import com.habittracker.domain.repository.SocialRepository
 import com.habittracker.domain.repository.UserRepository
 import kotlinx.coroutines.flow.firstOrNull
+import kotlinx.datetime.Instant
 import kotlinx.datetime.Clock
 import kotlinx.datetime.DateTimeUnit
 import kotlinx.datetime.LocalDate
@@ -27,6 +28,7 @@ import kotlinx.datetime.minus
 import kotlinx.datetime.plus
 import kotlinx.datetime.toLocalDateTime
 import kotlinx.datetime.todayIn
+import kotlinx.datetime.DayOfWeek
 import javax.inject.Inject
 
 /**
@@ -179,22 +181,29 @@ class GetUserStatsUseCase @Inject constructor(
         val completedEntries = entries.filter { it.completed && it.completedAt != null }
 
         val morningEntries = completedEntries.filter { entry ->
-            val hour = entry.completedAt!!.toLocalDateTime(TimeZone.currentSystemDefault()).hour
+            val hour = Instant.fromEpochMilliseconds(entry.completedAt!!)
+                .toLocalDateTime(TimeZone.currentSystemDefault()).hour
             hour in 5..11
         }
 
         val afternoonEntries = completedEntries.filter { entry ->
-            val hour = entry.completedAt!!.toLocalDateTime(TimeZone.currentSystemDefault()).hour
+            val hour = Instant.fromEpochMilliseconds(entry.completedAt!!)
+                .toLocalDateTime(TimeZone.currentSystemDefault()).hour
             hour in 12..17
         }
 
         val eveningEntries = completedEntries.filter { entry ->
-            val hour = entry.completedAt!!.toLocalDateTime(TimeZone.currentSystemDefault()).hour
+            val hour = Instant.fromEpochMilliseconds(entry.completedAt!!)
+                .toLocalDateTime(TimeZone.currentSystemDefault()).hour
             hour in 18..22
         }
 
         val last30Days = today.minus(30, DateTimeUnit.DAY)
         val recentEntries = completedEntries.filter { it.date >= last30Days }
+        val recentWeekendEntries = recentEntries.filter { e ->
+            val dow = e.date.dayOfWeek
+            dow == DayOfWeek.SATURDAY || dow == DayOfWeek.SUNDAY
+        }
 
         return TimeStats(
             morningCompletions = morningEntries.size,
@@ -202,7 +211,8 @@ class GetUserStatsUseCase @Inject constructor(
             eveningCompletions = eveningEntries.size,
             averageCompletionTime = calculateAverageCompletionTime(completedEntries),
             mostProductiveHour = findMostProductiveHour(completedEntries),
-            consistencyScore = calculateConsistencyScore(recentEntries)
+            consistencyScore = calculateConsistencyScore(recentEntries),
+            weekendCompletionsLast30 = recentWeekendEntries.size
         )
     }
 
@@ -330,23 +340,55 @@ class GetUserStatsUseCase @Inject constructor(
      * Рассчитать среднее время выполнения
      */
     private fun calculateAverageCompletionTime(entries: List<HabitEntry>): String? {
-        // TODO: Implement this logic
-        return null
+        if (entries.isEmpty()) return null
+
+        val times = entries.mapNotNull { it.completedAt }
+        if (times.isEmpty()) return null
+
+        val timeZone = TimeZone.currentSystemDefault()
+        val minutesSinceMidnight = times.map { ts ->
+            val ldt = Instant.fromEpochMilliseconds(ts).toLocalDateTime(timeZone)
+            ldt.hour * 60 + ldt.minute
+        }
+
+        val avgMinutes = minutesSinceMidnight.average().toInt()
+        val hours = (avgMinutes / 60).coerceIn(0, 23)
+        val minutes = (avgMinutes % 60).coerceIn(0, 59)
+        val hh = hours.toString().padStart(2, '0')
+        val mm = minutes.toString().padStart(2, '0')
+        return "$hh:$mm"
     }
 
     /**
      * Найти самый продуктивный час
      */
     private fun findMostProductiveHour(entries: List<HabitEntry>): Int? {
-        // TODO: Implement this logic
-        return null
+        if (entries.isEmpty()) return null
+        val timeZone = TimeZone.currentSystemDefault()
+        val counts = IntArray(24)
+        entries.forEach { e ->
+            val ts = e.completedAt ?: return@forEach
+            val hour = Instant.fromEpochMilliseconds(ts).toLocalDateTime(timeZone).hour
+            counts[hour] += 1
+        }
+        val max = counts.maxOrNull() ?: return null
+        if (max == 0) return null
+        // выбрать самый ранний час при равенстве
+        return counts.indexOfFirst { it == max }
     }
 
     /**
      * Рассчитать оценку постоянства (0-100)
      */
     private fun calculateConsistencyScore(entries: List<HabitEntry>): Float {
-        // TODO: Implement this logic
-        return 0f
+        if (entries.isEmpty()) return 0f
+        // entries уже за последние 30 дней
+        val daysWithCompletion = entries
+            .filter { it.completed }
+            .map { it.date }
+            .toSet()
+
+        val totalDays = 30f
+        return if (totalDays > 0) (daysWithCompletion.size / totalDays * 100f) else 0f
     }
 }

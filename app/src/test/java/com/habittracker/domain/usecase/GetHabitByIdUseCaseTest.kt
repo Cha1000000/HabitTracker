@@ -24,6 +24,7 @@ class GetHabitByIdUseCaseTest {
     private lateinit var getHabitByIdUseCase: GetHabitByIdUseCase
 
     private val testHabitId = "test-habit-id"
+    private val nowMillis = Clock.System.now().toEpochMilliseconds()
     private val testHabit = Habit(
         id = testHabitId,
         title = "Test Habit",
@@ -37,8 +38,8 @@ class GetHabitByIdUseCaseTest {
         unit = "раз",
         participants = emptyList(),
         isActive = true,
-        createdAt = Clock.System.now(),
-        updatedAt = Clock.System.now(),
+        createdAt = nowMillis,
+        updatedAt = nowMillis,
         createdBy = "test-user-id"
     )
 

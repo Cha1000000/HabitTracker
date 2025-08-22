@@ -9,6 +9,7 @@ import kotlinx.datetime.LocalDate
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toLocalDateTime
 import kotlinx.datetime.todayIn
+import kotlinx.datetime.Instant
 import javax.inject.Inject
 
 /**
@@ -75,7 +76,8 @@ class CalculatePointsUseCase @Inject constructor() {
         
         // Бонус за раннее выполнение (до 8:00)
         entry.completedAt?.let { completedTime ->
-            val completedLocalTime = completedTime.toLocalDateTime(TimeZone.currentSystemDefault()).time
+            val completedLocalTime = Instant.fromEpochMilliseconds(completedTime)
+                .toLocalDateTime(TimeZone.currentSystemDefault()).time
             if (completedLocalTime.hour < 8) {
                 points += EARLY_BIRD_BONUS
             }
@@ -175,7 +177,10 @@ class CalculatePointsUseCase @Inject constructor() {
         
         // Проверяем, выполняются ли привычки примерно в одно время
         val times = completedEntries.mapNotNull { entry ->
-            entry.completedAt?.toLocalDateTime(TimeZone.currentSystemDefault())?.time
+            entry.completedAt?.let { ts ->
+                Instant.fromEpochMilliseconds(ts)
+                    .toLocalDateTime(TimeZone.currentSystemDefault()).time
+            }
         }
         
         if (times.size < 3) return 0
@@ -183,7 +188,8 @@ class CalculatePointsUseCase @Inject constructor() {
         val averageMinutes = times.map { it.hour * 60 + it.minute }.average()
         val isConsistent = times.all { time ->
             val minutes = time.hour * 60 + time.minute
-            kotlin.math.abs(minutes - averageMinutes) <= timeWindowMinutes
+            val diff = kotlin.math.abs(minutes.toDouble() - averageMinutes)
+            diff <= timeWindowMinutes.toDouble()
         }
         
         return if (isConsistent) CONSISTENCY_BONUS else 0

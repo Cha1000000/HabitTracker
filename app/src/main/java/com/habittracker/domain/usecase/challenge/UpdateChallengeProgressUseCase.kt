@@ -76,7 +76,7 @@ class UpdateChallengeProgressUseCase @Inject constructor(
             val updatedChallenge = challenge.copy(
                 status = ChallengeStatus.COMPLETED,
                 winnerId = winner?.user?.id,
-                updatedAt = Clock.System.now()
+                updatedAt = Clock.System.now().toEpochMilliseconds()
             )
             
             challengeRepository.updateChallenge(updatedChallenge)
@@ -168,7 +168,7 @@ class UpdateChallengeProgressUseCase @Inject constructor(
             val updatedChallenge = challenge.copy(
                 status = ChallengeStatus.COMPLETED,
                 winnerId = winnerId,
-                updatedAt = Clock.System.now()
+                updatedAt = Clock.System.now().toEpochMilliseconds()
             )
             
             challengeRepository.updateChallenge(updatedChallenge)
@@ -209,7 +209,7 @@ class UpdateChallengeProgressUseCase @Inject constructor(
             
             val updatedChallenge = challenge.copy(
                 status = ChallengeStatus.CANCELLED,
-                updatedAt = Clock.System.now()
+                updatedAt = Clock.System.now().toEpochMilliseconds()
             )
             
             challengeRepository.updateChallenge(updatedChallenge)

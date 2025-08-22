@@ -47,16 +47,16 @@ class MarkHabitCompletedUseCase @Inject constructor(
         note: String? = null
     ) {
         try {
-            val now = Clock.System.now()
+            val nowMillis = Clock.System.now().toEpochMilliseconds()
             val entry = HabitEntry(
                 habitId = habitId,
                 userId = userId,
                 date = date,
                 completed = true,
-                completedAt = now,
+                completedAt = nowMillis,
                 note = note,
-                createdAt = now,
-                updatedAt = now
+                createdAt = nowMillis,
+                updatedAt = nowMillis
             )
             // Сначала пробуем сохранить в Firestore
             firestoreRepository.saveHabitEntry(entry)

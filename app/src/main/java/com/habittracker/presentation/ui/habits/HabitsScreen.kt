@@ -67,6 +67,14 @@ fun HabitsScreen(
 
     val authViewModel: AuthViewModel = hiltViewModel()
     
+    // 🔥 ИСПРАВЛЕНИЕ: Принудительная загрузка привычек при открытии экрана
+    LaunchedEffect(Unit) {
+        val currentUserId = com.google.firebase.auth.FirebaseAuth.getInstance().currentUser?.uid
+        if (currentUserId != null) {
+            viewModel.loadHabits(currentUserId)
+        }
+    }
+    
     // Показываем ошибки через Snackbar
     LaunchedEffect(uiState.error) {
         uiState.error?.let { errorMessage ->
@@ -204,8 +212,8 @@ fun EnhancedHabitItemPreview() {
         createdBy = "user1",
         participants = listOf("user1"),
         isActive = true,
-        createdAt = Clock.System.now(),
-        updatedAt = Clock.System.now()
+        createdAt = Clock.System.now().toEpochMilliseconds(),
+        updatedAt = Clock.System.now().toEpochMilliseconds()
     )
     
     Column {

@@ -9,7 +9,6 @@ import androidx.room.Update
 import com.habittracker.data.local.entity.HabitEntity
 import com.habittracker.domain.model.HabitType
 import kotlinx.coroutines.flow.Flow
-import kotlinx.datetime.Instant
 import kotlinx.datetime.LocalTime
 
 @Dao
@@ -80,10 +79,10 @@ interface HabitDao {
     fun getHabitsCreatedByUser(userId: String): Flow<List<HabitEntity>>
 
     @Query("UPDATE habits SET isActive = :isActive, updatedAt = :updatedAt WHERE id = :habitId")
-    suspend fun updateHabitActiveStatus(habitId: String, isActive: Boolean, updatedAt: Instant)
+    suspend fun updateHabitActiveStatus(habitId: String, isActive: Boolean, updatedAt: Long)
 
     @Query("UPDATE habits SET participants = :participants, updatedAt = :updatedAt WHERE id = :habitId")
-    suspend fun updateHabitParticipants(habitId: String, participants: List<String>, updatedAt: Instant)
+    suspend fun updateHabitParticipants(habitId: String, participants: List<String>, updatedAt: Long)
 
     @Query("""
         UPDATE habits 
@@ -94,7 +93,7 @@ interface HabitDao {
         habitId: String,
         enabled: Boolean,
         time: LocalTime?,
-        updatedAt: Instant
+        updatedAt: Long
     )
 
     @Query("DELETE FROM habits WHERE id = :habitId")

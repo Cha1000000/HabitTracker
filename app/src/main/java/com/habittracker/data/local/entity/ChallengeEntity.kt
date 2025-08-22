@@ -4,7 +4,6 @@ import androidx.room.Entity
 import androidx.room.PrimaryKey
 import androidx.room.TypeConverters
 import com.habittracker.data.local.Converters
-import kotlinx.datetime.Instant
 import kotlinx.datetime.LocalDate
 
 @Entity(tableName = "challenges")
@@ -23,6 +22,6 @@ data class ChallengeEntity(
     val reward: String,
     val status: String, // e.g., "ACTIVE", "COMPLETED", "CANCELLED"
     val winnerId: String?,
-    val createdAt: Instant,
-    val updatedAt: Instant
+    val createdAt: Long,
+    val updatedAt: Long
 )

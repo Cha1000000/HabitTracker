@@ -53,12 +53,12 @@ class LeaveChallengeUseCase @Inject constructor(
                 challenge.copy(
                     participants = updatedParticipants,
                     status = ChallengeStatus.CANCELLED,
-                    updatedAt = Clock.System.now()
+                    updatedAt = Clock.System.now().toEpochMilliseconds()
                 )
             } else {
                 challenge.copy(
                     participants = updatedParticipants,
-                    updatedAt = Clock.System.now()
+                    updatedAt = Clock.System.now().toEpochMilliseconds()
                 )
             }
             

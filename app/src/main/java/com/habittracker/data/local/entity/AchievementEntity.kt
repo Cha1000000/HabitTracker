@@ -2,7 +2,6 @@ package com.habittracker.data.local.entity
 
 import androidx.room.Entity
 import androidx.room.PrimaryKey
-import kotlinx.datetime.Instant
 
 @Entity(tableName = "achievements")
 data class AchievementEntity(
@@ -19,5 +18,5 @@ data class AchievementEntity(
     val pointsReward: Int,
     val isSecret: Boolean = false,
     val isActive: Boolean = true,
-    val createdAt: Instant
+    val createdAt: Long
 )

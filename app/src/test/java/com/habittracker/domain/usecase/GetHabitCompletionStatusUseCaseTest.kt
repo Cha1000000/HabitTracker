@@ -26,16 +26,17 @@ class GetHabitCompletionStatusUseCaseTest {
     private val testHabitId = "test-habit-id"
     private val testUserId = "test-user-id"
     private val testDate = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault()).date
+    private val nowMillis = Clock.System.now().toEpochMilliseconds()
 
     private val completedEntry = HabitEntry(
         habitId = testHabitId,
         userId = testUserId,
         date = testDate,
         completed = true,
-        completedAt = Clock.System.now(),
+        completedAt = nowMillis,
         note = "Test note",
-        createdAt = Clock.System.now(),
-        updatedAt = Clock.System.now()
+        createdAt = nowMillis,
+        updatedAt = nowMillis
     )
 
     private val incompleteEntry = HabitEntry(
@@ -45,8 +46,8 @@ class GetHabitCompletionStatusUseCaseTest {
         completed = false,
         completedAt = null,
         note = null,
-        createdAt = Clock.System.now(),
-        updatedAt = Clock.System.now()
+        createdAt = nowMillis,
+        updatedAt = nowMillis
     )
 
     @Before

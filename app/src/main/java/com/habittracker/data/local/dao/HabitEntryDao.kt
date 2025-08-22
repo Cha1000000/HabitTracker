@@ -6,6 +6,7 @@ import androidx.room.Insert
 import androidx.room.OnConflictStrategy
 import androidx.room.Query
 import androidx.room.Update
+import androidx.room.Transaction
 import com.habittracker.data.local.entity.HabitEntryEntity
 import com.habittracker.data.local.entity.tuples.HabitEntryWithUserTuple
 import kotlinx.coroutines.flow.Flow
@@ -41,22 +42,12 @@ interface HabitEntryDao {
     @Query("SELECT * FROM habit_entries WHERE habitId = :habitId AND date = :date")
     fun getEntriesForHabitAndDate(habitId: String, date: LocalDate): Flow<List<HabitEntryEntity>>
     
-    @Query("""
-        SELECT he.*, u.name as userName, u.avatarUrl as userAvatarUrl 
-        FROM habit_entries he 
-        INNER JOIN users u ON he.userId = u.id 
-        WHERE he.habitId = :habitId 
-        ORDER BY he.date DESC
-    """)
+    @Transaction
+    @Query("SELECT * FROM habit_entries WHERE habitId = :habitId ORDER BY date DESC")
     fun getEntriesWithUsersForHabit(habitId: String): Flow<List<HabitEntryWithUserTuple>>
     
-    @Query("""
-        SELECT he.*, u.name as userName, u.avatarUrl as userAvatarUrl 
-        FROM habit_entries he 
-        INNER JOIN users u ON he.userId = u.id 
-        WHERE he.habitId = :habitId AND he.date = :date 
-        ORDER BY he.completedAt ASC
-    """)
+    @Transaction
+    @Query("SELECT * FROM habit_entries WHERE habitId = :habitId AND date = :date ORDER BY completedAt ASC")
     fun getEntriesWithUsersForHabitAndDate(habitId: String, date: LocalDate): Flow<List<HabitEntryWithUserTuple>>
     
     @Query("SELECT * FROM habit_entries WHERE userId = :userId AND date BETWEEN :startDate AND :endDate ORDER BY date DESC")

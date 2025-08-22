@@ -155,8 +155,8 @@ class FakeHabitRepository : HabitRepository {
         id = habitId,
         title = "Test Habit",
         createdBy = "testUserId",
-        createdAt = Clock.System.now(),
-        updatedAt = Clock.System.now(),
+        createdAt = Clock.System.now().toEpochMilliseconds(),
+        updatedAt = Clock.System.now().toEpochMilliseconds(),
         color = "#FFFFFF",
         type = HabitType.PERSONAL
     )

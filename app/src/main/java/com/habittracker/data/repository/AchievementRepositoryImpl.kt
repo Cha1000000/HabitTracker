@@ -61,7 +61,7 @@ class AchievementRepositoryImpl @Inject constructor(
                 existing.copy(
                     progress = progress,
                     isUnlocked = true,
-                    unlockedAt = Clock.System.now()
+                    unlockedAt = Clock.System.now().toEpochMilliseconds()
                 )
             )
         } else {
@@ -71,8 +71,8 @@ class AchievementRepositoryImpl @Inject constructor(
                     achievementId = achievementId,
                     progress = progress,
                     isUnlocked = true,
-                    unlockedAt = Clock.System.now(),
-                    createdAt = Clock.System.now()
+                    unlockedAt = Clock.System.now().toEpochMilliseconds(),
+                    createdAt = Clock.System.now().toEpochMilliseconds()
                 )
             )
         }
@@ -92,7 +92,7 @@ class AchievementRepositoryImpl @Inject constructor(
                     progress = progress,
                     isUnlocked = false,
                     unlockedAt = null,
-                    createdAt = Clock.System.now()
+                    createdAt = Clock.System.now().toEpochMilliseconds()
                 )
             )
         }
@@ -111,7 +111,7 @@ class AchievementRepositoryImpl @Inject constructor(
                 progress = 0,
                 isUnlocked = false,
                 unlockedAt = null,
-                createdAt = Clock.System.now()
+                createdAt = Clock.System.now().toEpochMilliseconds()
             )
         }
         userAchievementDao.insertUserAchievements(userAchievements)

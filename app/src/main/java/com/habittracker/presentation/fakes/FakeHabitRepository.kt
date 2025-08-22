@@ -36,8 +36,8 @@ class FakeHabitRepository : HabitRepository {
                 createdBy = "current_user_id", // TODO: Replace with actual user ID
                 participants = listOf("current_user_id"),
                 isActive = true,
-                createdAt = Clock.System.now(),
-                updatedAt = Clock.System.now()
+                createdAt = Clock.System.now().toEpochMilliseconds(),
+                updatedAt = Clock.System.now().toEpochMilliseconds()
             )
         )
     }

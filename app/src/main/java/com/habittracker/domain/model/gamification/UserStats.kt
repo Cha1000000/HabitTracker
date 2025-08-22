@@ -64,7 +64,8 @@ data class TimeStats(
     val eveningCompletions: Int,
     val averageCompletionTime: String?, // Среднее время выполнения
     val mostProductiveHour: Int?,
-    val consistencyScore: Float // Оценка постоянства (0-1)
+    val consistencyScore: Float, // Оценка постоянства (0-1)
+    val weekendCompletionsLast30: Int // Выполнения в выходные за последние 30 дней
 )
 
 /**

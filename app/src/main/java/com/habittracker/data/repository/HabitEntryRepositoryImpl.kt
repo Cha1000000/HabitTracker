@@ -85,14 +85,14 @@ class HabitEntryRepositoryImpl @Inject constructor(
 
     override suspend fun markHabitCompleted(habitId: String, userId: String, date: LocalDate, note: String?) {
         val existingEntry = getEntry(habitId, userId, date)
-        val now = Clock.System.now()
+        val nowMillis = Clock.System.now().toEpochMilliseconds()
 
         if (existingEntry != null) {
             val updatedEntry = existingEntry.copy(
                 completed = true,
-                completedAt = now,
+                completedAt = nowMillis,
                 note = note,
-                updatedAt = now
+                updatedAt = nowMillis
             )
             updateEntry(updatedEntry)
         } else {
@@ -101,10 +101,10 @@ class HabitEntryRepositoryImpl @Inject constructor(
                 userId = userId,
                 date = date,
                 completed = true,
-                completedAt = now,
+                completedAt = nowMillis,
                 note = note,
-                createdAt = now,
-                updatedAt = now
+                createdAt = nowMillis,
+                updatedAt = nowMillis
             )
             insertEntry(newEntry)
         }
@@ -112,13 +112,13 @@ class HabitEntryRepositoryImpl @Inject constructor(
 
     override suspend fun markHabitIncomplete(habitId: String, userId: String, date: LocalDate) {
         val existingEntry = getEntry(habitId, userId, date)
-        val now = Clock.System.now()
+        val nowMillis = Clock.System.now().toEpochMilliseconds()
 
         if (existingEntry != null) {
             val updatedEntry = existingEntry.copy(
                 completed = false,
                 completedAt = null,
-                updatedAt = now
+                updatedAt = nowMillis
             )
             updateEntry(updatedEntry)
         } else {
@@ -129,8 +129,8 @@ class HabitEntryRepositoryImpl @Inject constructor(
                 completed = false,
                 completedAt = null,
                 note = null,
-                createdAt = now,
-                updatedAt = now
+                createdAt = nowMillis,
+                updatedAt = nowMillis
             )
             insertEntry(newEntry)
         }

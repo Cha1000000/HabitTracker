@@ -35,8 +35,8 @@ class MarkHabitIncompleteUseCase @Inject constructor(
             completed = false,
             completedAt = null,
             note = null,
-            createdAt = Clock.System.now(),
-            updatedAt = Clock.System.now()
+            createdAt = Clock.System.now().toEpochMilliseconds(),
+            updatedAt = Clock.System.now().toEpochMilliseconds()
         )
 
         try {

@@ -9,6 +9,7 @@ import com.habittracker.domain.model.AchievementMetric
 import com.habittracker.domain.model.AchievementTimeframe
 import com.habittracker.domain.model.AchievementType
 import com.habittracker.domain.model.UserAchievement
+import kotlinx.datetime.Instant
 
 // Achievement mappers
 fun AchievementEntity.toDomain(): Achievement {
@@ -27,7 +28,7 @@ fun AchievementEntity.toDomain(): Achievement {
         pointsReward = pointsReward,
         isSecret = isSecret,
         isActive = isActive,
-        createdAt = createdAt
+        createdAt = Instant.fromEpochMilliseconds(createdAt)
     )
 }
 
@@ -45,7 +46,7 @@ fun Achievement.toEntity(): AchievementEntity {
         pointsReward = pointsReward,
         isSecret = isSecret,
         isActive = isActive,
-        createdAt = createdAt
+        createdAt = createdAt.toEpochMilliseconds()
     )
 }
 
@@ -56,8 +57,8 @@ fun UserAchievementEntity.toDomain(): UserAchievement {
         achievementId = achievementId,
         progress = progress,
         isUnlocked = isUnlocked,
-        unlockedAt = unlockedAt,
-        createdAt = createdAt,
+        unlockedAt = unlockedAt?.let { Instant.fromEpochMilliseconds(it) },
+        createdAt = Instant.fromEpochMilliseconds(createdAt),
         tier = tier,
         isNotified = isNotified
     )
@@ -70,8 +71,8 @@ fun UserAchievement.toEntity(): UserAchievementEntity {
         achievementId = achievementId,
         progress = progress,
         isUnlocked = isUnlocked,
-        unlockedAt = unlockedAt,
-        createdAt = createdAt,
+        unlockedAt = unlockedAt?.toEpochMilliseconds(),
+        createdAt = createdAt.toEpochMilliseconds(),
         tier = tier,
         isNotified = isNotified
     )

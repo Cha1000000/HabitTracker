@@ -273,8 +273,8 @@ class PreviewAddEditHabitViewModel @Inject constructor(
             inviteCode = null, // простое значение по умолчанию
             isPublic = false, // простое значение по умолчанию
             isActive = true,
-            createdAt = Instant.fromEpochMilliseconds(now),
-            updatedAt = Instant.fromEpochMilliseconds(now)
+            createdAt = now,
+            updatedAt = now
         )
     }
 

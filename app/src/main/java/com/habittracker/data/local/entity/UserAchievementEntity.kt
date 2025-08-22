@@ -4,7 +4,6 @@ import androidx.room.Entity
 import androidx.room.ForeignKey
 import androidx.room.Index
 import androidx.room.PrimaryKey
-import kotlinx.datetime.Instant
 
 @Entity(
     tableName = "user_achievements",
@@ -35,8 +34,8 @@ data class UserAchievementEntity(
     val achievementId: String,
     val progress: Int = 0, // текущий прогресс (0-100 или абсолютное значение)
     val isUnlocked: Boolean = false,
-    val unlockedAt: Instant? = null,
-    val createdAt: Instant,
+    val unlockedAt: Long? = null,
+    val createdAt: Long,
     val tier: Int = 1,
     val isNotified: Boolean = false
 )

@@ -29,45 +29,60 @@ class FirestoreRepositoryImpl @Inject constructor(
     }
 
     override fun getUserHabits(userId: String): Flow<List<Habit>> = callbackFlow {
-        Log.d(TAG, "Getting habits for user: $userId")
+        Log.d(TAG, "🔄 [getUserHabits] Starting listener for user: $userId")
         
+        // 🚨 ДИАГНОСТИКА #2: МИНИМАЛЬНЫЙ QUERY - проблема в фильтрах, а не в десериализации
         val listener = firestore.collection(HABITS_COLLECTION)
-            .whereArrayContains("participants", userId)
-            .whereEqualTo("isActive", true)
-            .orderBy("createdAt", Query.Direction.DESCENDING)
+            // ВРЕМЕННО УБИРАЕМ ВСЕ ФИЛЬТРЫ для диагностики фильтрации
+            // .whereArrayContains("participants", userId)
+            // .whereEqualTo("isActive", true)
+            // .orderBy("createdAt", Query.Direction.DESCENDING)
             .addSnapshotListener { snapshot, error ->
                 if (error != null) {
-                    Log.e(TAG, "Error getting habits", error)
+                    Log.e(TAG, "❌ [getUserHabits] Error getting habits for user: $userId", error)
+                    Log.e(TAG, "❌ [getUserHabits] Error code: ${error.code}")
+                    Log.e(TAG, "❌ [getUserHabits] Error message: ${error.message}")
                     close(error)
                     return@addSnapshotListener
                 }
 
+                Log.d(TAG, "📊 [getUserHabits] Firestore listener triggered for user: $userId, documents count: ${snapshot?.documents?.size ?: 0}")
+
                 val habits = snapshot?.documents?.mapNotNull { doc ->
                     try {
-                        doc.toObject(Habit::class.java)?.copy(id = doc.id)
+                        val habit = doc.toObject(Habit::class.java)?.copy(id = doc.id)
+                        Log.d(TAG, "📝 [getUserHabits] Parsed habit: ${habit?.title} (id: ${doc.id}), participants: ${habit?.participants}")
+                        habit
                     } catch (e: Exception) {
-                        Log.e(TAG, "Error parsing habit: ${doc.id}", e)
+                        Log.e(TAG, "❌ [getUserHabits] Error parsing habit: ${doc.id}", e)
                         null
                     }
                 } ?: emptyList()
 
-                Log.d(TAG, "Loaded ${habits.size} habits from Firestore")
+                Log.d(TAG, "✅ [getUserHabits] Sending ${habits.size} habits to Flow for user: $userId")
+                habits.forEach { habit ->
+                    Log.d(TAG, "   📋 Habit: ${habit.title} (${habit.id}), participants: ${habit.participants}")
+                }
                 trySend(habits)
             }
 
-        awaitClose { listener.remove() }
+        awaitClose { 
+            Log.d(TAG, "🔒 [getUserHabits] Closing listener for user: $userId")
+            listener.remove() 
+        }
     }
 
     override suspend fun saveHabit(habit: Habit) {
         try {
-            Log.d(TAG, "Saving habit: ${habit.id}")
+            Log.d(TAG, "💾 [saveHabit] Saving habit: ${habit.id}")
+            Log.d(TAG, "💾 [saveHabit] Habit details: title='${habit.title}', participants=${habit.participants}, isActive=${habit.isActive}")
             firestore.collection(HABITS_COLLECTION)
                 .document(habit.id)
                 .set(habit)
                 .await()
-            Log.d(TAG, "Habit saved successfully: ${habit.id}")
+            Log.d(TAG, "✅ [saveHabit] Habit saved successfully: ${habit.id}")
         } catch (e: Exception) {
-            Log.e(TAG, "Error saving habit: ${habit.id}", e)
+            Log.e(TAG, "❌ [saveHabit] Error saving habit: ${habit.id}", e)
             throw e
         }
     }

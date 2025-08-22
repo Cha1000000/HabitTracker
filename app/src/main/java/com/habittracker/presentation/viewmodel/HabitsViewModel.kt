@@ -1,6 +1,7 @@
 package com.habittracker.presentation.viewmodel
 
 import android.app.Application
+import android.util.Log
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.habittracker.R
@@ -54,6 +55,10 @@ class HabitsViewModel @Inject constructor(
     application: Application
 ) : AndroidViewModel(application) {
 
+    companion object {
+        private const val TAG = "HabitsViewModel"
+    }
+
     private val _uiState = MutableStateFlow(HabitsUiState())
     val uiState: StateFlow<HabitsUiState> = _uiState.asStateFlow()
     
@@ -63,20 +68,33 @@ class HabitsViewModel @Inject constructor(
     private val today = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault()).date
 
     init {
-        loadHabits(currentUserId)
+        val userId = authRepository.getCurrentUserId()
+        Log.d(TAG, "🚀 [init] Initializing HabitsViewModel for user: $userId")
+        if (userId != null) {
+            loadHabits(userId)
+        } else {
+            Log.w(TAG, "⚠️ [init] No user ID found, cannot load habits")
+        }
     }
 
     /**
      * Загружает список привычек для пользователя.
      */
-    private fun loadHabits(userId: String) {
+    fun loadHabits(userId: String) {
+        Log.d(TAG, "🔄 [loadHabits] Starting to load habits for user: $userId")
         getHabitsUseCase(userId)
             .onEach { habits ->
+                Log.d(TAG, "📊 [loadHabits] Received ${habits.size} habits from Flow for user: $userId")
+                habits.forEach { habit ->
+                    Log.d(TAG, "   📋 [loadHabits] Habit: ${habit.title} (${habit.id}), participants: ${habit.participants}")
+                }
+                
                 // Загружаем статус выполнения для каждой привычки
                 val habitsWithCompletion = habits.map { habit ->
                     HabitWithCompletion(habit = habit, isLoading = true)
                 }
                 _uiState.value = HabitsUiState(habitsWithCompletion = habitsWithCompletion, isLoading = false)
+                Log.d(TAG, "✅ [loadHabits] Updated UI state with ${habitsWithCompletion.size} habits")
                 
                 // Асинхронно загружаем статус выполнения для каждой привычки
                 loadCompletionStatuses(habits, userId)

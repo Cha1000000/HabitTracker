@@ -8,7 +8,6 @@ import androidx.room.Query
 import androidx.room.Update
 import com.habittracker.data.local.entity.UserEntity
 import kotlinx.coroutines.flow.Flow
-import kotlinx.datetime.Instant
 
 @Dao
 interface UserDao {
@@ -49,7 +48,7 @@ interface UserDao {
     suspend fun updateUserStreaks(userId: String, streak: Int, longestStreak: Int)
 
     @Query("UPDATE users SET lastActiveAt = :timestamp WHERE id = :userId")
-    suspend fun updateLastActive(userId: String, timestamp: Instant)
+    suspend fun updateLastActive(userId: String, timestamp: Long)
 
     @Query("UPDATE users SET avatarUrl = :avatarUrl WHERE id = :userId")
     suspend fun updateUserAvatar(userId: String, avatarUrl: String?)

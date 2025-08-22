@@ -15,6 +15,8 @@ import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
 import kotlinx.datetime.Clock
 import javax.inject.Inject
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.flow
 
 class GetAchievementsUseCase @Inject constructor(
     private val achievementRepository: AchievementRepository,
@@ -30,29 +32,31 @@ class GetAchievementsUseCase @Inject constructor(
         }
         val userAchievementsFlow = achievementRepository.getUserAchievements(userId)
 
-        return userAchievementsFlow.flatMapLatest { userAchievements ->
-            flowOf(getUserStatsUseCase.getUserStats(userId)).flatMapLatest { userStats ->
+        return combine(achievementsFlow, userAchievementsFlow) { achievements, userAchievements ->
+            achievements to userAchievements
+        }.flatMapLatest { (achievements, userAchievements) ->
+            flow {
+                val userStats = getUserStatsUseCase.getUserStats(userId)
                 if (userStats == null) {
-                    return@flatMapLatest flowOf(emptyList<AchievementWithProgress>())
+                    emit(emptyList())
+                    return@flow
                 }
-                achievementsFlow.map { achievements ->
-                    val userAchievementMap = userAchievements.associateBy { it.achievementId }
+                val userAchievementMap = userAchievements.associateBy { it.achievementId }
+                val result = achievements.map { achievement ->
+                    val userAchievement = userAchievementMap[achievement.id]
+                    val currentValue = getMetricValue(userStats, achievement.condition.metric)
+                    val progress = if (achievement.condition.targetValue > 0) {
+                        (currentValue.toFloat() / achievement.condition.targetValue).coerceIn(0f, 1f)
+                    } else 0f
 
-                    achievements.map { achievement ->
-                        val userAchievement = userAchievementMap[achievement.id]
-                        val currentValue = getMetricValue(userStats, achievement.condition.metric)
-                        val progress = if (achievement.condition.targetValue > 0) {
-                            (currentValue.toFloat() / achievement.condition.targetValue).coerceIn(0f, 1f)
-                        } else 0f
-
-                        AchievementWithProgress(
-                            achievement = achievement,
-                            userAchievement = userAchievement,
-                            progress = progress,
-                            isUnlocked = userAchievement?.isUnlocked ?: false
-                        )
-                    }
+                    AchievementWithProgress(
+                        achievement = achievement,
+                        userAchievement = userAchievement,
+                        progress = progress,
+                        isUnlocked = userAchievement?.isUnlocked ?: false
+                    )
                 }
+                emit(result)
             }
         }
     }
@@ -61,29 +65,31 @@ class GetAchievementsUseCase @Inject constructor(
         val allAchievementsFlow = achievementRepository.getAllAchievements()
         val userAchievementsFlow = achievementRepository.getUserAchievements(userId)
 
-        return userAchievementsFlow.flatMapLatest { userAchievements ->
-            flowOf(getUserStatsUseCase.getUserStats(userId)).flatMapLatest { userStats ->
+        return combine(allAchievementsFlow, userAchievementsFlow) { achievements, userAchievements ->
+            achievements to userAchievements
+        }.flatMapLatest { (achievements, userAchievements) ->
+            flow {
+                val userStats = getUserStatsUseCase.getUserStats(userId)
                 if (userStats == null) {
-                    return@flatMapLatest flowOf(emptyList<AchievementWithProgress>())
+                    emit(emptyList())
+                    return@flow
                 }
-                allAchievementsFlow.map { achievements ->
-                    val userAchievementMap = userAchievements.associateBy { it.achievementId }
+                val userAchievementMap = userAchievements.associateBy { it.achievementId }
+                val result = achievements.map { achievement ->
+                    val userAchievement = userAchievementMap[achievement.id]
+                    val currentValue = getMetricValue(userStats, achievement.condition.metric)
+                    val progress = if (achievement.condition.targetValue > 0) {
+                        (currentValue.toFloat() / achievement.condition.targetValue).coerceIn(0f, 1f)
+                    } else 0f
 
-                    achievements.map { achievement ->
-                        val userAchievement = userAchievementMap[achievement.id]
-                        val currentValue = getMetricValue(userStats, achievement.condition.metric)
-                        val progress = if (achievement.condition.targetValue > 0) {
-                            (currentValue.toFloat() / achievement.condition.targetValue).coerceIn(0f, 1f)
-                        } else 0f
-
-                        AchievementWithProgress(
-                            achievement = achievement,
-                            userAchievement = userAchievement,
-                            progress = progress,
-                            isUnlocked = userAchievement?.isUnlocked ?: false
-                        )
-                    }
+                    AchievementWithProgress(
+                        achievement = achievement,
+                        userAchievement = userAchievement,
+                        progress = progress,
+                        isUnlocked = userAchievement?.isUnlocked ?: false
+                    )
                 }
+                emit(result)
             }
         }
     }
@@ -112,19 +118,19 @@ class GetAchievementsUseCase @Inject constructor(
     }
 
     fun getUnlockedAchievements(userId: String): Flow<List<AchievementWithProgress>> {
-        return achievementRepository.getUnlockedAchievements(userId).map { userAchievements ->
-            userAchievements.mapNotNull { userAchievement ->
-                val achievement = achievementRepository.getAchievementById(userAchievement.achievementId)
-                if (achievement != null) {
-                    AchievementWithProgress(
-                        achievement = achievement,
-                        userAchievement = userAchievement,
-                        progress = 1.0f,
-                        isUnlocked = true
-                    )
-                } else {
-                    null
-                }
+        val allAchievementsFlow = achievementRepository.getAllAchievements()
+        val unlockedFlow = achievementRepository.getUnlockedAchievements(userId)
+
+        return combine(allAchievementsFlow, unlockedFlow) { allAchievements, unlocked ->
+            val achievementsById = allAchievements.associateBy { it.id }
+            unlocked.mapNotNull { userAchievement ->
+                val achievement = achievementsById[userAchievement.achievementId] ?: return@mapNotNull null
+                AchievementWithProgress(
+                    achievement = achievement,
+                    userAchievement = userAchievement,
+                    progress = 1.0f,
+                    isUnlocked = true
+                )
             }
         }
     }
@@ -133,29 +139,32 @@ class GetAchievementsUseCase @Inject constructor(
         val allAchievementsFlow = achievementRepository.getAllAchievements()
         val userAchievementsFlow = achievementRepository.getUserAchievements(userId)
 
-        return userAchievementsFlow.flatMapLatest { userAchievements ->
-            flowOf(getUserStatsUseCase.getUserStats(userId)).flatMapLatest { userStats ->
+        return combine(allAchievementsFlow, userAchievementsFlow) { allAchievements, userAchievements ->
+            allAchievements to userAchievements
+        }.flatMapLatest { (allAchievements, userAchievements) ->
+            flow {
+                val userStats = getUserStatsUseCase.getUserStats(userId)
                 if (userStats == null) {
-                    return@flatMapLatest flowOf(emptyList<AchievementWithProgress>())
+                    emit(emptyList())
+                    return@flow
                 }
-                allAchievementsFlow.map { allAchievements ->
-                    val userAchievementIds = userAchievements.map { it.achievementId }.toSet()
+                val userAchievementIds = userAchievements.map { it.achievementId }.toSet()
 
-                    allAchievements
-                        .filter { !userAchievementIds.contains(it.id) && !it.isSecret }
-                        .map { achievement ->
-                            val currentValue = getMetricValue(userStats, achievement.condition.metric)
-                            val progress = if (achievement.condition.targetValue > 0) {
-                                (currentValue.toFloat() / achievement.condition.targetValue).coerceIn(0f, 1f)
-                            } else 0f
-                            AchievementWithProgress(
-                                achievement = achievement,
-                                userAchievement = null,
-                                progress = progress,
-                                isUnlocked = false
-                            )
-                        }
-                }
+                val result = allAchievements
+                    .filter { !userAchievementIds.contains(it.id) && !it.isSecret }
+                    .map { achievement ->
+                        val currentValue = getMetricValue(userStats, achievement.condition.metric)
+                        val progress = if (achievement.condition.targetValue > 0) {
+                            (currentValue.toFloat() / achievement.condition.targetValue).coerceIn(0f, 1f)
+                        } else 0f
+                        AchievementWithProgress(
+                            achievement = achievement,
+                            userAchievement = null,
+                            progress = progress,
+                            isUnlocked = false
+                        )
+                    }
+                emit(result)
             }
         }
     }
@@ -198,12 +207,12 @@ class GetAchievementsUseCase @Inject constructor(
             AchievementMetric.PERFECT_MONTHS -> stats.habitStats.perfectDays / 30
             AchievementMetric.CONSECUTIVE_DAYS -> stats.streakStats.currentStreak
             AchievementMetric.HABIT_VARIETY -> stats.habitStats.activeHabits
-            AchievementMetric.EARLY_BIRD -> 0 // Заглушка, нужна логика в UserStats
-            AchievementMetric.NIGHT_OWL -> 0 // Заглушка, нужна логика в UserStats
-            AchievementMetric.WEEKEND_WARRIOR -> 0 // Заглушка, нужна логика в UserStats
+            AchievementMetric.EARLY_BIRD -> stats.timeStats.morningCompletions
+            AchievementMetric.NIGHT_OWL -> stats.timeStats.eveningCompletions
+            AchievementMetric.WEEKEND_WARRIOR -> stats.timeStats.weekendCompletionsLast30
             AchievementMetric.SOCIAL_BUTTERFLY -> stats.socialStats.friendsCount + stats.socialStats.groupHabitsCount
             AchievementMetric.MENTOR -> stats.socialStats.groupHabitsCount
-            AchievementMetric.CONSISTENCY -> 0 // Заглушка, нужна логика в UserStats
+            AchievementMetric.CONSISTENCY -> stats.timeStats.consistencyScore.toInt()
         }
     }
 }

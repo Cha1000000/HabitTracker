@@ -2,7 +2,6 @@ package com.habittracker.domain.model
 
 import androidx.room.Entity
 import androidx.room.PrimaryKey
-import kotlinx.datetime.Instant
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toLocalDateTime
@@ -22,8 +21,8 @@ data class Challenge(
     val reward: String = "", // описание награды
     val status: ChallengeStatus = ChallengeStatus.PENDING,
     val winnerId: String? = null, // userId победителя
-    val createdAt: Instant,
-    val updatedAt: Instant
+    val createdAt: Long,
+    val updatedAt: Long
 )
 
 data class ChallengeRules(

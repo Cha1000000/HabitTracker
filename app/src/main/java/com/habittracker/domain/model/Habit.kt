@@ -1,11 +1,11 @@
 package com.habittracker.domain.model
 
-import kotlinx.datetime.Instant
+import com.google.firebase.firestore.PropertyName
 import kotlinx.datetime.LocalTime
 
 data class Habit(
-    val id: String,
-    val title: String,
+    val id: String = "",
+    val title: String = "",
     val description: String = "",
     val icon: String = "🎯", // emoji иконка
     val color: String = "#2196F3", // hex цвет для UI
@@ -15,14 +15,15 @@ data class Habit(
     val reminderEnabled: Boolean = false,
     val targetValue: Int = 1, // сколько раз в день нужно выполнить
     val unit: String = "раз", // единица измерения (раз, минут, км и т.д.)
-    val createdBy: String, // userId создателя
+    val createdBy: String = "", // userId создателя
     val participants: List<String> = emptyList(), // список userId участников
     val maxParticipants: Int = 10, // максимальное количество участников (лимит 10)
     val inviteCode: String? = null, // код для быстрого присоединения к групповой привычке
     val isPublic: Boolean = false, // можно ли найти привычку по коду
+    @get:PropertyName("active") // Firestore использует "active" вместо "isActive"
     val isActive: Boolean = true,
-    val createdAt: Instant,
-    val updatedAt: Instant
+    val createdAt: Long = 0L, // timestamp вместо Instant для совместимости с Firestore
+    val updatedAt: Long = 0L  // timestamp вместо Instant для совместимости с Firestore
 )
 
 enum class HabitType {

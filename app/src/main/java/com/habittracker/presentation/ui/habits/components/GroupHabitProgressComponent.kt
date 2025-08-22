@@ -273,8 +273,8 @@ private fun GroupHabitProgressComponentPreview() {
         participants = listOf("user1", "user2", "user3"),
         maxParticipants = 10,
         isActive = true,
-        createdAt = Clock.System.now(),
-        updatedAt = Clock.System.now()
+        createdAt = Clock.System.now().toEpochMilliseconds(),
+        updatedAt = Clock.System.now().toEpochMilliseconds()
     )
     
     val sampleProgress = listOf(

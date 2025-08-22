@@ -6,6 +6,8 @@ import org.junit.Assert.*
 
 class HabitValidationTest {
 
+    private val nowMillis = Clock.System.now().toEpochMilliseconds()
+
     private fun createValidHabit(): Habit = Habit(
         id = "test-id",
         title = "Test Habit",
@@ -24,8 +26,8 @@ class HabitValidationTest {
         inviteCode = null,
         isPublic = false,
         isActive = true,
-        createdAt = Clock.System.now(),
-        updatedAt = Clock.System.now()
+        createdAt = nowMillis,
+        updatedAt = nowMillis
     )
 
     @Test

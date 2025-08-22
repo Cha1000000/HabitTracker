@@ -34,8 +34,8 @@ class SimpleAddHabitUseCaseTest {
         unit = "раз",
         participants = emptyList(),
         isActive = true,
-        createdAt = Clock.System.now(),
-        updatedAt = Clock.System.now(),
+        createdAt = Clock.System.now().toEpochMilliseconds(),
+        updatedAt = Clock.System.now().toEpochMilliseconds(),
         createdBy = "test-user-id"
     )
 
