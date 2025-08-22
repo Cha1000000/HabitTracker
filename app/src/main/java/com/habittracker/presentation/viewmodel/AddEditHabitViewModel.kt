@@ -2,6 +2,7 @@ package com.habittracker.presentation.viewmodel
 
 import android.app.Application
 import android.util.Log
+import androidx.core.graphics.toColorInt
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.viewModelScope
@@ -23,14 +24,12 @@ import com.habittracker.domain.usecase.habit.GenerateHabitInviteCodeUseCase
 import com.habittracker.domain.usecase.habit.SendHabitInvitationUseCase
 import com.habittracker.domain.usecase.social.GetFriendsUseCase
 import com.habittracker.presentation.utils.GroupHabitValidationResult
-import com.habittracker.presentation.utils.ValidationResult
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-import kotlinx.datetime.Clock
 import kotlinx.datetime.LocalTime
 import java.util.UUID
 import javax.inject.Inject
@@ -108,7 +107,7 @@ class AddEditHabitViewModel @Inject constructor(
                             title = habit.title,
                             description = habit.description,
                             icon = habit.icon,
-                            color = habit.color.toInt(), // Конвертируем String в Int
+                            color = habit.color.toColorInt(), // Безопасный парсинг hex-строки в Int
                             type = habit.type,
                             frequency = habit.frequency,
                             reminderTime = habit.reminderTime,
@@ -158,7 +157,7 @@ class AddEditHabitViewModel @Inject constructor(
                         title = currentState.title,
                         description = currentState.description,
                         icon = currentState.icon,
-                        color = currentState.color.toString(), // Конвертируем Int в String для модели
+                        color = "#%06X".format(0xFFFFFF and currentState.color), // Конвертируем Int (ARGB) в hex-строку RGB
                         type = currentState.type,
                         frequency = currentState.frequency,
                         reminderTime = currentState.reminderTime,
@@ -189,7 +188,7 @@ class AddEditHabitViewModel @Inject constructor(
                         title = currentState.title,
                         description = currentState.description,
                         icon = currentState.icon,
-                        color = currentState.color.toString(), // Конвертируем Int в String для модели
+                        color = "#%06X".format(0xFFFFFF and currentState.color), // Конвертируем Int (ARGB) в hex-строку RGB
                         type = currentState.type,
                         frequency = currentState.frequency,
                         targetValue = currentState.targetValue,

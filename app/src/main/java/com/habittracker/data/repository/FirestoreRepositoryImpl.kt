@@ -3,6 +3,7 @@ package com.habittracker.data.repository
 import android.util.Log
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.Query
+import com.google.firebase.firestore.DocumentSnapshot
 import com.habittracker.domain.model.Habit
 import com.habittracker.domain.model.HabitEntry
 import com.habittracker.domain.repository.FirestoreRepository
@@ -28,15 +29,98 @@ class FirestoreRepositoryImpl @Inject constructor(
         private const val TAG = "FirestoreRepository"
     }
 
+    private fun parseHabitSafely(doc: DocumentSnapshot): Habit? {
+        return try {
+            val data = doc.data ?: return null
+
+            val id = doc.id
+            val title = data["title"] as? String ?: ""
+            val description = data["description"] as? String ?: ""
+
+            // icon
+            val icon = data["icon"] as? String ?: "🎯"
+
+            // color может быть числом или строкой
+            val color: String = when (val raw = data["color"]) {
+                is Number -> run {
+                    val intVal = raw.toInt()
+                    "#%06X".format(0xFFFFFF and intVal)
+                }
+                is String -> raw
+                else -> "#2196F3"
+            }
+
+            // type и frequency как строки
+            val typeStr = (data["type"] as? String)?.uppercase() ?: "PERSONAL"
+            val type = try { com.habittracker.domain.model.HabitType.valueOf(typeStr) } catch (_: Exception) { com.habittracker.domain.model.HabitType.PERSONAL }
+
+            val freqStr = (data["frequency"] as? String)?.uppercase() ?: "DAILY"
+            val frequency = try { com.habittracker.domain.model.HabitFrequency.valueOf(freqStr) } catch (_: Exception) { com.habittracker.domain.model.HabitFrequency.DAILY }
+
+            // reminderTime может быть сериализован сложным объектом или картой c hour/minute
+            val reminderTime: kotlinx.datetime.LocalTime? = when (val rt = data["reminderTime"]) {
+                is Map<*, *> -> {
+                    val hour = (rt["hour"] as? Number)?.toInt()
+                    val minute = (rt["minute"] as? Number)?.toInt()
+                    if (hour != null && minute != null) kotlinx.datetime.LocalTime(hour, minute) else null
+                }
+                else -> null
+            }
+
+            val reminderEnabled = data["reminderEnabled"] as? Boolean ?: false
+            val targetValue = (data["targetValue"] as? Number)?.toInt() ?: 1
+            val unit = data["unit"] as? String ?: "раз"
+
+            val createdBy = data["createdBy"] as? String ?: ""
+            @Suppress("UNCHECKED_CAST")
+            val participants = (data["participants"] as? List<*>)?.filterIsInstance<String>() ?: emptyList()
+            val maxParticipants = (data["maxParticipants"] as? Number)?.toInt() ?: 10
+            val inviteCode = data["inviteCode"] as? String
+
+            // Поле активности может называться "active" или "isActive"
+            val isActive = when (val act = data["active"]) {
+                is Boolean -> act
+                else -> data["isActive"] as? Boolean ?: true
+            }
+
+            // timestamps
+            val createdAt = (data["createdAt"] as? Number)?.toLong() ?: 0L
+            val updatedAt = (data["updatedAt"] as? Number)?.toLong() ?: createdAt
+
+            Habit(
+                id = id,
+                title = title,
+                description = description,
+                icon = icon,
+                color = color,
+                type = type,
+                frequency = frequency,
+                reminderTime = reminderTime,
+                reminderEnabled = reminderEnabled,
+                targetValue = targetValue,
+                unit = unit,
+                createdBy = createdBy,
+                participants = participants,
+                maxParticipants = maxParticipants,
+                inviteCode = inviteCode,
+                isPublic = data["public"] as? Boolean ?: false,
+                isActive = isActive,
+                createdAt = createdAt,
+                updatedAt = updatedAt
+            )
+        } catch (e: Exception) {
+            Log.e(TAG, "❌ [parseHabitSafely] Error parsing habit: ${doc.id}", e)
+            null
+        }
+    }
+
     override fun getUserHabits(userId: String): Flow<List<Habit>> = callbackFlow {
         Log.d(TAG, "🔄 [getUserHabits] Starting listener for user: $userId")
         
-        // 🚨 ДИАГНОСТИКА #2: МИНИМАЛЬНЫЙ QUERY - проблема в фильтрах, а не в десериализации
+        // Важно: Firestore не поддерживает простой OR по полям (createdBy OR participants contains).
+        // Берем все документы и фильтруем на клиенте. При желании можно добавить whereEqualTo("active", true),
+        // но поле может называться по-разному ("active"/"isActive") на старых данных, поэтому безопаснее без фильтра.
         val listener = firestore.collection(HABITS_COLLECTION)
-            // ВРЕМЕННО УБИРАЕМ ВСЕ ФИЛЬТРЫ для диагностики фильтрации
-            // .whereArrayContains("participants", userId)
-            // .whereEqualTo("isActive", true)
-            // .orderBy("createdAt", Query.Direction.DESCENDING)
             .addSnapshotListener { snapshot, error ->
                 if (error != null) {
                     Log.e(TAG, "❌ [getUserHabits] Error getting habits for user: $userId", error)
@@ -49,15 +133,11 @@ class FirestoreRepositoryImpl @Inject constructor(
                 Log.d(TAG, "📊 [getUserHabits] Firestore listener triggered for user: $userId, documents count: ${snapshot?.documents?.size ?: 0}")
 
                 val habits = snapshot?.documents?.mapNotNull { doc ->
-                    try {
-                        val habit = doc.toObject(Habit::class.java)?.copy(id = doc.id)
-                        Log.d(TAG, "📝 [getUserHabits] Parsed habit: ${habit?.title} (id: ${doc.id}), participants: ${habit?.participants}")
-                        habit
-                    } catch (e: Exception) {
-                        Log.e(TAG, "❌ [getUserHabits] Error parsing habit: ${doc.id}", e)
-                        null
-                    }
-                } ?: emptyList()
+                    parseHabitSafely(doc)
+                }?.filter { habit ->
+                    // Клиентская фильтрация: активные привычки пользователя (создал сам или участник)
+                    habit.isActive && (habit.createdBy == userId || habit.participants.contains(userId))
+                }?.sortedByDescending { it.createdAt } ?: emptyList()
 
                 Log.d(TAG, "✅ [getUserHabits] Sending ${habits.size} habits to Flow for user: $userId")
                 habits.forEach { habit ->
@@ -125,7 +205,8 @@ class FirestoreRepositoryImpl @Inject constructor(
                 .await()
             
             if (document.exists()) {
-                document.toObject(Habit::class.java)?.copy(id = document.id)
+                // Используем безопасный парсер, чтобы корректно обработать возможные различия форматов
+                parseHabitSafely(document)
             } else {
                 Log.d(TAG, "Habit not found: $habitId")
                 null
