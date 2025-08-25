@@ -28,11 +28,6 @@ import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.material3.Button
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.Checkbox
-import androidx.compose.material3.TopAppBar
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Check
@@ -47,7 +42,11 @@ import androidx.compose.material.icons.filled.Timeline
 import androidx.compose.material.icons.filled.Title
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.AssistChip
+import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -70,6 +69,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TimePicker
 import androidx.compose.material3.TimePickerDefaults
+import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.rememberTimePickerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -97,14 +97,14 @@ import com.habittracker.R
 import com.habittracker.domain.model.HabitFrequency
 import com.habittracker.domain.model.HabitType
 import com.habittracker.domain.model.User
+import com.habittracker.presentation.ui.components.FieldValidationFeedback
+import com.habittracker.presentation.ui.components.LiveValidationIndicator
 import com.habittracker.presentation.ui.habits.components.InviteCodeCard
 import com.habittracker.presentation.ui.permission.NotificationPermissionHandler
 import com.habittracker.presentation.ui.permission.hasNotificationPermission
 import com.habittracker.presentation.viewmodel.AddEditHabitUiState
 import com.habittracker.presentation.viewmodel.AddEditHabitViewModel
 import com.habittracker.presentation.viewmodel.IAddEditHabitViewModel
-import com.habittracker.presentation.ui.components.FieldValidationFeedback
-import com.habittracker.presentation.ui.components.LiveValidationIndicator
 import kotlinx.datetime.LocalTime
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -760,36 +760,23 @@ fun AddEditHabitScreen(
                 label = stringResource(R.string.animation_fab_color)
             )
             
-            FloatingActionButton(
-                onClick = { 
-                    if (isSaveEnabled) {
-                        viewModel.saveHabit()
-                    }
-                },
-                containerColor = fabColor,
-                contentColor = if (!isSaveEnabled || uiState.isLoading)
-                    MaterialTheme.colorScheme.onSurfaceVariant
-                else
-                    MaterialTheme.colorScheme.onPrimary,
-                elevation = FloatingActionButtonDefaults.elevation(
-                    defaultElevation = 4.dp,
-                    pressedElevation = 8.dp
-                ),
-                modifier = Modifier
-                    .padding(16.dp)
-                    .graphicsLayer {
-                        scaleX = fabScale
-                        scaleY = fabScale
-                        alpha = if (isSaveEnabled) 1f else disabledAlpha
-                    }
-            ) {
-                if (uiState.isLoading) {
-                    CircularProgressIndicator(
-                        modifier = Modifier.size(24.dp),
-                        strokeWidth = 2.dp,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                } else {
+            if (isSaveEnabled) {
+                FloatingActionButton(
+                    onClick = { viewModel.saveHabit() },
+                    containerColor = fabColor,
+                    contentColor = MaterialTheme.colorScheme.onPrimary,
+                    elevation = FloatingActionButtonDefaults.elevation(
+                        defaultElevation = 4.dp,
+                        pressedElevation = 8.dp
+                    ),
+                    modifier = Modifier
+                        //.padding(16.dp)
+                        .graphicsLayer {
+                            scaleX = fabScale
+                            scaleY = fabScale
+                            alpha = 1f
+                        }
+                ) {
                     Icon(
                         Icons.Filled.Check,
                         contentDescription = stringResource(R.string.cd_save),
