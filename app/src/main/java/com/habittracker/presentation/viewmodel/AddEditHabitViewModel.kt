@@ -32,6 +32,8 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.datetime.LocalTime
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.CancellationException
 import java.util.UUID
 import javax.inject.Inject
 
@@ -55,6 +57,7 @@ class AddEditHabitViewModel @Inject constructor(
     override val uiState: StateFlow<AddEditHabitUiState> = _uiState.asStateFlow()
 
     private var currentHabit: Habit? = null
+    private var friendsJob: Job? = null
 
     init {
         val habitId: String? = savedStateHandle["habitId"]
@@ -446,7 +449,9 @@ class AddEditHabitViewModel @Inject constructor(
     }
 
     override fun loadAvailableFriends() {
-        viewModelScope.launch {
+        // Обеспечиваем единственную активную подписку
+        friendsJob?.cancel()
+        friendsJob = viewModelScope.launch {
             try {
                 _uiState.update { 
                     it.copy(
@@ -484,6 +489,9 @@ class AddEditHabitViewModel @Inject constructor(
                         )
                     }
                 }
+            } catch (e: CancellationException) {
+                // Нормальная отмена при закрытии диалога — не считаем ошибкой
+                _uiState.update { it.copy(isLoadingFriends = false) }
             } catch (e: Exception) {
                 _uiState.update { 
                     it.copy(
@@ -502,6 +510,13 @@ class AddEditHabitViewModel @Inject constructor(
 
     override fun onShowFriendSelector(show: Boolean) {
         _uiState.update { it.copy(showFriendSelector = show) }
+        if (show) {
+            loadAvailableFriends()
+        } else {
+            // Закрываем подписку при закрытии диалога
+            friendsJob?.cancel()
+            _uiState.update { it.copy(isLoadingFriends = false) }
+        }
     }
 
     override fun selectFriend(friend: User) {
