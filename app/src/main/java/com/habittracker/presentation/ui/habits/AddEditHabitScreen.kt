@@ -776,7 +776,7 @@ fun AddEditHabitScreen(
                     pressedElevation = 8.dp
                 ),
                 modifier = Modifier
-                    //.padding(16.dp)
+                    .padding(16.dp)
                     .graphicsLayer {
                         scaleX = fabScale
                         scaleY = fabScale
