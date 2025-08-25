@@ -743,6 +743,8 @@ fun AddEditHabitScreen(
         },
         floatingActionButton = {
             // Анимированная кнопка сохранения
+            val isSaveEnabled = uiState.title.isNotBlank() && !uiState.isLoading && !uiState.isHabitSaved
+            val disabledAlpha = 0.6f
             val fabScale by animateFloatAsState(
                 targetValue = if (uiState.isLoading) 0.8f else 1f,
                 animationSpec = tween(300),
@@ -750,9 +752,9 @@ fun AddEditHabitScreen(
             )
             
             val fabColor by animateColorAsState(
-                targetValue = if (uiState.isLoading) 
-                    MaterialTheme.colorScheme.surfaceVariant 
-                else 
+                targetValue = if (!isSaveEnabled || uiState.isLoading)
+                    MaterialTheme.colorScheme.surfaceVariant
+                else
                     MaterialTheme.colorScheme.primary,
                 animationSpec = tween(300),
                 label = stringResource(R.string.animation_fab_color)
@@ -760,14 +762,14 @@ fun AddEditHabitScreen(
             
             FloatingActionButton(
                 onClick = { 
-                    if (!uiState.isLoading && !uiState.isHabitSaved) {
+                    if (isSaveEnabled) {
                         viewModel.saveHabit()
                     }
                 },
                 containerColor = fabColor,
-                contentColor = if (uiState.isLoading) 
-                    MaterialTheme.colorScheme.onSurfaceVariant 
-                else 
+                contentColor = if (!isSaveEnabled || uiState.isLoading)
+                    MaterialTheme.colorScheme.onSurfaceVariant
+                else
                     MaterialTheme.colorScheme.onPrimary,
                 elevation = FloatingActionButtonDefaults.elevation(
                     defaultElevation = 4.dp,
@@ -778,6 +780,7 @@ fun AddEditHabitScreen(
                     .graphicsLayer {
                         scaleX = fabScale
                         scaleY = fabScale
+                        alpha = if (isSaveEnabled) 1f else disabledAlpha
                     }
             ) {
                 if (uiState.isLoading) {
