@@ -185,6 +185,8 @@
     <string name="group_habit_settings">Настройки групповой привычки</string>
     <string name="max_participants">Максимум участников</string>
     <string name="participants_limit">из 10</string>
+    <string name="participants_exceeds_limit">Лимит участников превышен</string>
+    <string name="participants_min_limit">В группе должно быть минимум 2 участника</string>
     <string name="public_habit">Публичная привычка</string>
     <string name="invite_code">Код приглашения</string>
     <string name="invite_code_placeholder">Нажмите "Создать" для генерации</string>

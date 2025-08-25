@@ -78,6 +78,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -448,26 +449,53 @@ private fun GroupSettings(
                     tint = MaterialTheme.colorScheme.onSurfaceVariant
                 )
                 
-                OutlinedTextField(
-                    value = uiState.maxParticipants.toString(),
-                    onValueChange = { 
-                        val value = it.toIntOrNull()
-                        if (value != null && value in 2..10) {
-                            viewModel.onMaxParticipantsChange(value)
-                        }
-                    },
-                    label = { Text(stringResource(R.string.max_participants)) },
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                    singleLine = true,
-                    modifier = Modifier.width(120.dp),
-                    enabled = !uiState.isLoading && !uiState.isHabitSaved
-                )
-                
-                Text(
-                    text = stringResource(R.string.participants_limit),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
+                run {
+                    val valueOrNull = uiState.maxParticipantsInput.toIntOrNull()
+                    val exceeds = valueOrNull?.let { it > com.habittracker.presentation.utils.GroupHabitConstants.MAX_PARTICIPANTS } == true
+                    val tooLow = valueOrNull == 1
+
+                    OutlinedTextField(
+                        value = uiState.maxParticipantsInput,
+                        onValueChange = { input ->
+                            // Разрешаем только цифры и ограничиваем длину до 2 символов
+                            val filtered = input.filter { it.isDigit() }.take(2)
+                            if (filtered != uiState.maxParticipantsInput) {
+                                viewModel.onMaxParticipantsInputChange(filtered)
+                            }
+                        },
+                        label = { Text(stringResource(R.string.max_participants)) },
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                        singleLine = true,
+                        modifier = Modifier.width(120.dp),
+                        enabled = !uiState.isLoading && !uiState.isHabitSaved,
+                        isError = exceeds || tooLow
+                    )
+
+                    Text(
+                        text = stringResource(R.string.participants_limit),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+
+                    // Компактное сообщение валидации справа, чтобы не тянуть высоту строки
+                    val validationText = when {
+                        exceeds -> stringResource(R.string.participants_exceeds_limit)
+                        tooLow -> stringResource(R.string.participants_min_limit)
+                        else -> null
+                    }
+                    if (validationText != null) {
+                        Text(
+                            text = validationText,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.error,
+                            maxLines = 2,
+                            overflow = TextOverflow.Ellipsis,
+                            modifier = Modifier.weight(1f)
+                        )
+                    } else {
+                        Spacer(modifier = Modifier.weight(1f))
+                    }
+                }
             }
             
             // Публичная привычка

@@ -24,6 +24,7 @@ import com.habittracker.domain.usecase.habit.GenerateHabitInviteCodeUseCase
 import com.habittracker.domain.usecase.habit.SendHabitInvitationUseCase
 import com.habittracker.domain.usecase.social.GetFriendsUseCase
 import com.habittracker.presentation.utils.GroupHabitValidationResult
+import com.habittracker.presentation.utils.GroupHabitConstants
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -60,7 +61,7 @@ class AddEditHabitViewModel @Inject constructor(
         if (habitId != null) {
             loadHabit(habitId)
         } else {
-            _uiState.update { it.copy(isLoading = false) }
+            _uiState.update { it.copy(isLoading = false, maxParticipantsInput = it.maxParticipants.toString()) }
         }
     }
 
@@ -114,6 +115,7 @@ class AddEditHabitViewModel @Inject constructor(
                             targetValue = habit.targetValue,
                             unit = habit.unit,
                             maxParticipants = habit.maxParticipants,
+                            maxParticipantsInput = habit.maxParticipants.toString(),
                             inviteCode = habit.inviteCode,
                             isPublic = habit.isPublic,
                             participants = emptyList(), // Пока оставляем пустым, позже загрузим User объекты
@@ -121,7 +123,7 @@ class AddEditHabitViewModel @Inject constructor(
                         )
                     }
                 } ?: run {
-                    _uiState.update { it.copy(isLoading = false) }
+                    _uiState.update { it.copy(isLoading = false, maxParticipantsInput = it.maxParticipants.toString()) }
                 }
             } catch (e: Exception) {
                 _uiState.update { it.copy(
@@ -606,6 +608,20 @@ class AddEditHabitViewModel @Inject constructor(
     }
     
     // Групповые привычки
+    override fun onMaxParticipantsInputChange(text: String) {
+        // Всегда сохраняем текст как есть
+        _uiState.update { it.copy(maxParticipantsInput = text, hasUnsavedChanges = true) }
+
+        // Пробуем распарсить и валидируем допустимый диапазон
+        val value = text.toIntOrNull()
+        if (value != null && value in GroupHabitConstants.MIN_PARTICIPANTS..GroupHabitConstants.MAX_PARTICIPANTS) {
+            onMaxParticipantsChange(value)
+        } else {
+            // Если невалидно — не трогаем maxParticipants, только обновили текст; можно обновить подсказки валидации всей формы
+            updateValidationState()
+        }
+    }
+
     override fun onMaxParticipantsChange(maxParticipants: Int) {
         // Создаем временную привычку для валидации
         val tempHabit = createTempHabit().copy(participants = (1..maxParticipants).map { "user$it" })
@@ -615,6 +631,7 @@ class AddEditHabitViewModel @Inject constructor(
         _uiState.update { 
             it.copy(
                 maxParticipants = maxParticipants,
+                maxParticipantsInput = maxParticipants.toString(),
                 participantsError = participantsError,
                 hasUnsavedChanges = true
             )

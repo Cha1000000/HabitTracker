@@ -3,11 +3,12 @@ package com.habittracker.presentation.ui.habits
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.habittracker.domain.model.Habit
-import com.habittracker.domain.model.HabitType
 import com.habittracker.domain.model.HabitFrequency
+import com.habittracker.domain.model.HabitType
 import com.habittracker.domain.model.HabitValidation
 import com.habittracker.domain.model.HabitValidation.HabitField
 import com.habittracker.domain.model.User
+import com.habittracker.presentation.utils.GroupHabitConstants
 import com.habittracker.presentation.utils.GroupHabitValidationResult
 import com.habittracker.presentation.viewmodel.AddEditHabitUiState
 import com.habittracker.presentation.viewmodel.IAddEditHabitViewModel
@@ -17,7 +18,6 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-import kotlinx.datetime.Instant
 import kotlinx.datetime.LocalTime
 import javax.inject.Inject
 
@@ -128,6 +128,18 @@ class PreviewAddEditHabitViewModel @Inject constructor(
         updateValidationState()
     }
 
+    override fun onMaxParticipantsInputChange(text: String) {
+        // Всегда сохраняем введенный текст
+        _uiState.update { it.copy(maxParticipantsInput = text, hasUnsavedChanges = true) }
+
+        val value = text.toIntOrNull()
+        if (value != null && value in GroupHabitConstants.MIN_PARTICIPANTS..GroupHabitConstants.MAX_PARTICIPANTS) {
+            onMaxParticipantsChange(value)
+        } else {
+            updateValidationState()
+        }
+    }
+
     override fun onMaxParticipantsChange(maxParticipants: Int) {
         // Создаем временную привычку для валидации
         val tempHabit = createTempHabit().copy(participants = (1..maxParticipants).map { "user$it" })
@@ -137,6 +149,7 @@ class PreviewAddEditHabitViewModel @Inject constructor(
         _uiState.update { 
             it.copy(
                 maxParticipants = maxParticipants,
+                maxParticipantsInput = maxParticipants.toString(),
                 participantsError = participantsError,
                 hasUnsavedChanges = true
             )
@@ -269,7 +282,7 @@ class PreviewAddEditHabitViewModel @Inject constructor(
             unit = currentState.unit,
             createdBy = "preview_user",
             participants = emptyList(), // простое значение по умолчанию
-            maxParticipants = 10,
+            maxParticipants = GroupHabitConstants.DEFAULT_MAX_PARTICIPANTS,
             inviteCode = null, // простое значение по умолчанию
             isPublic = false, // простое значение по умолчанию
             isActive = true,

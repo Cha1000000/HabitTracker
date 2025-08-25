@@ -4,6 +4,7 @@ import com.habittracker.domain.model.HabitFrequency
 import com.habittracker.domain.model.HabitType
 import com.habittracker.domain.model.User
 import com.habittracker.presentation.utils.GroupHabitValidationResult
+import com.habittracker.presentation.utils.GroupHabitConstants
 import kotlinx.datetime.LocalTime
 
 data class AddEditHabitUiState(
@@ -26,7 +27,10 @@ data class AddEditHabitUiState(
     val unit: String = "раз",
     
     // Групповые привычки
-    val maxParticipants: Int = 10,
+    val maxParticipants: Int = GroupHabitConstants.DEFAULT_MAX_PARTICIPANTS,
+    // Строковое состояние для поля ввода «Максимум участников»
+    // Нужно для корректного ввода и промежуточных значений (например, пустая строка)
+    val maxParticipantsInput: String = GroupHabitConstants.DEFAULT_MAX_PARTICIPANTS.toString(),
     val inviteCode: String? = null,
     val isPublic: Boolean = false,
     val participants: List<User> = emptyList(),

@@ -23,6 +23,8 @@ interface IAddEditHabitViewModel {
     fun loadHabit(habitId: String)
     
     // Методы для групповых привычек
+    // Обработчик текстового ввода для поля «Максимум участников»
+    fun onMaxParticipantsInputChange(text: String)
     fun onMaxParticipantsChange(maxParticipants: Int)
     fun onIsPublicChange(isPublic: Boolean)
     fun onShowFriendSelector(show: Boolean)
