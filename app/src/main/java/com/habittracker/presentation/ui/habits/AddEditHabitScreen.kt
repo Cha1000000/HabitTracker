@@ -881,7 +881,10 @@ fun AddEditHabitScreen(
                     leadingIcon = { Icon(Icons.Default.Title, null) },
                     enabled = !uiState.isLoading && !uiState.isHabitSaved
                 )
-                FieldValidationFeedback(uiState.titleError)
+                FieldValidationFeedback(
+                    errorMessage = uiState.titleError
+                        ?: if (uiState.title.isBlank()) stringResource(R.string.habit_name_required_hint) else null
+                )
             }
 
             item {

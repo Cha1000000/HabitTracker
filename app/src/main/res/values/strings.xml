@@ -72,6 +72,7 @@
     <string name="habit_select_color">Выберите цвет</string>
     <string name="habit_click_to_change_icon">Нажмите, чтобы изменить иконку</string>
     <string name="habit_color_label">Цвет:</string>
+    <string name="habit_name_required_hint">Введите название, чтобы продолжить</string>
     
     <!-- Color Names -->
     <string name="color_blue">Синий</string>
