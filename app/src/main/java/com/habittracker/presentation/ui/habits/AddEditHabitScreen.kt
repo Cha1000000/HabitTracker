@@ -792,7 +792,6 @@ fun AddEditHabitScreen(
         floatingActionButton = {
             // Анимированная кнопка сохранения
             val isSaveEnabled = uiState.title.isNotBlank() && !uiState.isLoading && !uiState.isHabitSaved
-            val disabledAlpha = 0.6f
             val fabScale by animateFloatAsState(
                 targetValue = if (uiState.isLoading) 0.8f else 1f,
                 animationSpec = tween(300),
@@ -839,7 +838,7 @@ fun AddEditHabitScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(paddingValues)
-                .padding(12.dp),
+                .padding(12.dp, 6.dp, 12.dp, 56.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             item {
