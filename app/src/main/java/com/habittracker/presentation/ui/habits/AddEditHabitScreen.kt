@@ -1032,40 +1032,51 @@ fun AddEditHabitScreen(
             }
 
             item {
-                // Общее состояние валидации формы
+                // Общее состояние валидации формы (мягкий вариант показа)
                 uiState.groupHabitValidationResult?.let { validationResult ->
-                    Card(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(vertical = 8.dp),
-                        colors = CardDefaults.cardColors(
-                            containerColor = if (validationResult.isValid) {
-                                MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f)
-                            } else {
-                                MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.3f)
-                            }
-                        )
-                    ) {
-                        Column(
-                            modifier = Modifier.padding(16.dp)
+                    // Не показываем карточку:
+                    // 1) когда все поля корректны (нет варнингов)
+                    // 2) когда единственная ошибка — это ошибка заголовка, уже показанная под полем
+                    val onlyTitleError = validationResult.errors.size == 1 &&
+                            uiState.titleError != null &&
+                            validationResult.errors.first() == uiState.titleError
+
+                    val shouldShowValidationCard = (!validationResult.isValid || validationResult.warnings.isNotEmpty()) && !onlyTitleError
+
+                    if (shouldShowValidationCard) {
+                        Card(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(vertical = 8.dp),
+                            colors = CardDefaults.cardColors(
+                                containerColor = if (validationResult.isValid) {
+                                    MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f)
+                                } else {
+                                    MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.3f)
+                                }
+                            )
                         ) {
-                            Row(
-                                verticalAlignment = Alignment.CenterVertically
+                            Column(
+                                modifier = Modifier.padding(16.dp)
                             ) {
-                                LiveValidationIndicator(
-                                    isValid = validationResult.isValid,
-                                    hasWarnings = validationResult.warnings.isNotEmpty()
-                                )
-                            }
-                            
-                            // Отображение всех ошибок
-                            validationResult.errors.forEach { error ->
-                                FieldValidationFeedback(error)
-                            }
-                            
-                            // Отображение предупреждений
-                            validationResult.warnings.forEach { warning ->
-                                FieldValidationFeedback(warning, isWarning = true)
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    LiveValidationIndicator(
+                                        isValid = validationResult.isValid,
+                                        hasWarnings = validationResult.warnings.isNotEmpty()
+                                    )
+                                }
+
+                                // Отображение всех ошибок
+                                validationResult.errors.forEach { error ->
+                                    FieldValidationFeedback(error)
+                                }
+
+                                // Отображение предупреждений
+                                validationResult.warnings.forEach { warning ->
+                                    FieldValidationFeedback(warning, isWarning = true)
+                                }
                             }
                         }
                     }
