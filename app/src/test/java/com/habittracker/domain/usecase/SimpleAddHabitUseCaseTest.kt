@@ -7,12 +7,15 @@ import com.habittracker.domain.model.HabitType
 import com.habittracker.domain.repository.FirestoreRepository
 import com.habittracker.domain.repository.HabitRepository
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.test.runTest
 import kotlinx.datetime.Clock
-import org.junit.Assert.*
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNotNull
+import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
-import kotlinx.coroutines.flow.*
 
 @ExperimentalCoroutinesApi
 class SimpleAddHabitUseCaseTest {
@@ -112,8 +115,8 @@ class SimpleAddHabitUseCaseTest {
         }
 
         override fun getHabitsByUserId(userId: String) = throw NotImplementedError()
-        override suspend fun getHabitById(id: String): Habit? {
-            return habits.find { it.id == id }
+        override suspend fun getHabitById(habitId: String): Habit? {
+            return habits.find { it.id == habitId }
         }
         
         override suspend fun getHabitByInviteCode(inviteCode: String): Habit? {
