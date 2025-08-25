@@ -78,7 +78,6 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -88,6 +87,7 @@ import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.core.graphics.toColorInt
@@ -281,7 +281,6 @@ private fun FriendSelectorDialog(
     friends: List<User>,
     selectedFriends: List<User>,
     onFriendToggle: (User) -> Unit,
-    onConfirm: () -> Unit,
     onDismiss: () -> Unit
 ) {
     AlertDialog(
@@ -339,17 +338,10 @@ private fun FriendSelectorDialog(
                 }
             }
         },
-        confirmButton = {
-            Button(
-                onClick = onConfirm,
-                enabled = selectedFriends.isNotEmpty()
-            ) {
-                Text(stringResource(R.string.invite_selected, selectedFriends.size))
-            }
-        },
+        confirmButton = {},
         dismissButton = {
             TextButton(onClick = onDismiss) {
-                Text(stringResource(R.string.action_cancel))
+                Text(stringResource(R.string.action_done))
             }
         }
     )
@@ -580,6 +572,37 @@ private fun GroupSettings(
                     }
                 }
             }
+
+            // Кнопка отправки приглашений (Variant B)
+            run {
+                val enabled = uiState.selectedFriendsToInvite.isNotEmpty() && !uiState.isSendingInvitations
+                val wouldExceedLimit = (uiState.participants.size + uiState.selectedFriendsToInvite.size) > uiState.maxParticipants
+
+                Button(
+                    onClick = { viewModel.requestInvitations() },
+                    enabled = enabled,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    if (uiState.isSendingInvitations) {
+                        CircularProgressIndicator(
+                            modifier = Modifier
+                                .size(18.dp)
+                                .padding(end = 8.dp),
+                            strokeWidth = 2.dp
+                        )
+                    }
+                    Text(stringResource(R.string.invite_selected, uiState.selectedFriendsToInvite.size))
+                }
+
+                if (wouldExceedLimit) {
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(
+                        text = stringResource(R.string.participants_exceeds_limit),
+                        color = MaterialTheme.colorScheme.error,
+                        style = MaterialTheme.typography.bodySmall
+                    )
+                }
+            }
         }
     }
 }
@@ -705,9 +728,6 @@ fun AddEditHabitScreen(
                 } else {
                     viewModel.selectFriend(friend)
                 }
-            },
-            onConfirm = { 
-                viewModel.sendInvitations()
             },
             onDismiss = { 
                 viewModel.onShowFriendSelector(false)

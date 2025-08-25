@@ -3,8 +3,8 @@ package com.habittracker.presentation.viewmodel
 import com.habittracker.domain.model.HabitFrequency
 import com.habittracker.domain.model.HabitType
 import com.habittracker.domain.model.User
-import com.habittracker.presentation.utils.GroupHabitValidationResult
 import com.habittracker.presentation.utils.GroupHabitConstants
+import com.habittracker.presentation.utils.GroupHabitValidationResult
 import kotlinx.datetime.LocalTime
 
 data class AddEditHabitUiState(
@@ -63,5 +63,7 @@ data class AddEditHabitUiState(
     
     // Индикаторы состояния
     val hasUnsavedChanges: Boolean = false,
-    val isFormValid: Boolean = true
+    val isFormValid: Boolean = true,
+    // Флаг намерения отправить приглашения после сохранения (Variant B)
+    val sendInvitesAfterSave: Boolean = false
 )

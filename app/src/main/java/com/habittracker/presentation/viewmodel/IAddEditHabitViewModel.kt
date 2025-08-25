@@ -33,6 +33,7 @@ interface IAddEditHabitViewModel {
     fun shareInviteCode(inviteCode: String)
     fun loadAvailableFriends()
     fun sendInvitations()
+    fun requestInvitations()
     fun selectFriend(friend: User)
     fun deselectFriend(friend: User)
     

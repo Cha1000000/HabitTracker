@@ -196,7 +196,8 @@
     <string name="remove">Удалить</string>
     <string name="select_friends_to_invite">Выберите друзей для приглашения</string>
     <string name="no_friends_available">Нет доступных друзей</string>
-    <string name="invite_selected">Пригласить (%d)</string>
+    <string name="invite_selected">Отправить приглашения (%d)</string>
+    <string name="save_to_send_invitations">Сохраните привычку, чтобы отправить приглашения</string>
     
     <!-- Group Habits Progress -->
     <string name="group_progress_today">Прогресс группы сегодня</string>

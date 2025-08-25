@@ -186,6 +186,13 @@ class PreviewAddEditHabitViewModel @Inject constructor(
                     hasUnsavedChanges = false
                 ) 
             }
+
+            // Имитация автосенд после сохранения при активном флаге
+            val state = uiState.value
+            if (state.sendInvitesAfterSave && state.selectedFriendsToInvite.isNotEmpty()) {
+                _uiState.update { it.copy(sendInvitesAfterSave = false) }
+                sendInvitations()
+            }
         }
     }
 
@@ -245,6 +252,16 @@ class PreviewAddEditHabitViewModel @Inject constructor(
                     showFriendSelector = false
                 ) 
             }
+        }
+    }
+
+    override fun requestInvitations() {
+        val state = _uiState.value
+        val canSendNow = state.habitId != null && state.selectedFriendsToInvite.isNotEmpty()
+        if (canSendNow) {
+            sendInvitations()
+        } else {
+            _uiState.update { it.copy(sendInvitesAfterSave = true, successMessage = "Сохраните привычку, чтобы отправить приглашения (превью)") }
         }
     }
 

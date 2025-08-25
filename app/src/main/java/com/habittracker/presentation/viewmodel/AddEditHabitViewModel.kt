@@ -23,17 +23,17 @@ import com.habittracker.domain.usecase.UpdateHabitUseCase
 import com.habittracker.domain.usecase.habit.GenerateHabitInviteCodeUseCase
 import com.habittracker.domain.usecase.habit.SendHabitInvitationUseCase
 import com.habittracker.domain.usecase.social.GetFriendsUseCase
-import com.habittracker.presentation.utils.GroupHabitValidationResult
 import com.habittracker.presentation.utils.GroupHabitConstants
+import com.habittracker.presentation.utils.GroupHabitValidationResult
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.datetime.LocalTime
-import kotlinx.coroutines.Job
-import kotlinx.coroutines.CancellationException
 import java.util.UUID
 import javax.inject.Inject
 
@@ -140,12 +140,13 @@ class AddEditHabitViewModel @Inject constructor(
     override fun saveHabit() {
         viewModelScope.launch {
             try {
+                val isNew = currentHabit == null
                 _uiState.update { it.copy(isLoading = true) }
                 
                 val now = System.currentTimeMillis()
                 val currentState = uiState.value
                 
-                if (currentHabit == null) {
+                if (isNew) {
                     // Создаем новую привычку
                     val creatorId = authRepository.getCurrentUserId() 
                         ?: throw IllegalStateException("User must be authenticated to create habits")
@@ -181,6 +182,8 @@ class AddEditHabitViewModel @Inject constructor(
                     Log.d("AddEditHabitViewModel", "💾 [saveHabit] Habit details: title='${newHabit.title}', participants=${newHabit.participants}")
                     addHabitUseCase(newHabit)
                     Log.d("AddEditHabitViewModel", "✅ [saveHabit] Habit saved successfully: ${newHabit.id}")
+                    // Важно: установить текущую привычку для дальнейших операций (например, отправки приглашений)
+                    currentHabit = newHabit
                     
                     // Планируем напоминание для новой привычки
                     if (newHabit.reminderTime != null) {
@@ -209,13 +212,27 @@ class AddEditHabitViewModel @Inject constructor(
                     // Обновляем напоминание для существующей привычки
                     updateHabitReminderUseCase(updatedHabit)
                     Log.d("AddEditHabitViewModel", "Напоминание обновлено для существующей привычки")
+                    // Обновим ссылку на текущую привычку
+                    currentHabit = updatedHabit
                 }
                 
                 _uiState.update { it.copy(
                     isHabitSaved = true, 
                     isLoading = false,
-                    successMessage = if (currentHabit == null) getApplication<Application>().getString(R.string.habit_created) else getApplication<Application>().getString(R.string.habit_updated)
+                    successMessage = if (isNew) getApplication<Application>().getString(R.string.habit_created) else getApplication<Application>().getString(R.string.habit_updated)
                 )}
+
+                // Если пользователь просил отправить приглашения после сохранения — делаем это сейчас
+                val stateAfterSave = _uiState.value
+                if (stateAfterSave.sendInvitesAfterSave &&
+                    stateAfterSave.selectedFriendsToInvite.isNotEmpty() &&
+                    stateAfterSave.type == HabitType.GROUP &&
+                    currentHabit?.id != null
+                ) {
+                    // Сбрасываем флаг перед отправкой, чтобы не зациклиться при последующих сохранениях
+                    _uiState.update { it.copy(sendInvitesAfterSave = false) }
+                    sendInvitations()
+                }
             } catch (e: Exception) {
                 _uiState.update { it.copy(
                     isLoading = false,
@@ -533,6 +550,28 @@ class AddEditHabitViewModel @Inject constructor(
     override fun deselectFriend(friend: User) {
         _uiState.update { state ->
             state.copy(selectedFriendsToInvite = state.selectedFriendsToInvite - friend)
+        }
+    }
+
+    override fun requestInvitations() {
+        val state = _uiState.value
+        // Если можно отправить прямо сейчас — отправляем
+        val canSendNow = state.type == HabitType.GROUP &&
+                currentHabit?.id != null &&
+                state.selectedFriendsToInvite.isNotEmpty() &&
+                (state.participants.size + state.selectedFriendsToInvite.size) <= state.maxParticipants
+
+        if (canSendNow) {
+            sendInvitations()
+            return
+        }
+
+        // Иначе отмечаем намерение и просим сохранить привычку
+        _uiState.update {
+            it.copy(
+                sendInvitesAfterSave = true,
+                successMessage = getApplication<Application>().getString(R.string.save_to_send_invitations)
+            )
         }
     }
 
