@@ -1056,22 +1056,6 @@ fun AddEditHabitScreen(
                                     isValid = validationResult.isValid,
                                     hasWarnings = validationResult.warnings.isNotEmpty()
                                 )
-                                Spacer(modifier = Modifier.width(8.dp))
-                                Text(
-                                    text = when {
-                                        validationResult.isValid && validationResult.warnings.isEmpty() -> 
-                                            stringResource(R.string.validation_all_good)
-                                        validationResult.isValid && validationResult.warnings.isNotEmpty() -> 
-                                            stringResource(R.string.validation_has_warnings)
-                                        else -> stringResource(R.string.validation_has_errors)
-                                    },
-                                    style = MaterialTheme.typography.titleSmall,
-                                    color = if (validationResult.isValid) {
-                                        MaterialTheme.colorScheme.primary
-                                    } else {
-                                        MaterialTheme.colorScheme.error
-                                    }
-                                )
                             }
                             
                             // Отображение всех ошибок
