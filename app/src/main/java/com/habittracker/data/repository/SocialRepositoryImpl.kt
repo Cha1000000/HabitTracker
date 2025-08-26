@@ -24,6 +24,12 @@ import com.habittracker.domain.model.isExpired
 import com.habittracker.domain.repository.HabitRepository
 import com.habittracker.domain.repository.SocialRepository
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.callbackFlow
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.cancel
+import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.runBlocking
@@ -694,7 +700,8 @@ class SocialRepositoryImpl @Inject constructor(
         return try {
             val doc = firestore.collection("habit_invitations").document(invitationId).get().await()
             if (doc.exists()) {
-                doc.toObject(HabitInvitation::class.java)?.copy(id = doc.id)
+                doc.toObject(com.habittracker.data.remote.model.HabitInvitationRemote::class.java)
+                    ?.toDomain(doc.id)
             } else {
                 habitInvitationDao.getById(invitationId)?.toDomain()
             }
@@ -713,7 +720,8 @@ class SocialRepositoryImpl @Inject constructor(
                 .await()
 
             results.documents.firstOrNull()?.let { doc ->
-                doc.toObject(HabitInvitation::class.java)?.copy(id = doc.id)
+                doc.toObject(com.habittracker.data.remote.model.HabitInvitationRemote::class.java)
+                    ?.toDomain(doc.id)
             }
         } catch (e: Exception) {
             habitInvitationDao.getPendingInvitation(habitId, userId)?.toDomain()
@@ -721,8 +729,44 @@ class SocialRepositoryImpl @Inject constructor(
     }
 
     override fun getIncomingHabitInvitations(userId: String): Flow<List<HabitInvitation>> {
-        return habitInvitationDao.getIncomingInvitations(userId).map { entities ->
-            entities.map { it.toDomain() }
+        // Реальное время: слушаем Firestore и мержим в локальный Room, отдаём Flow из Room
+        return callbackFlow {
+            // Отдельный scope для DAO-коллекции внутри callbackFlow
+            val scope = CoroutineScope(Dispatchers.IO)
+
+            // 1) Стартуем слушатель Firestore
+            val registration = firestore.collection("habit_invitations")
+                .whereEqualTo("toUserId", userId)
+                .addSnapshotListener { snapshot, error ->
+                    if (error != null) {
+                        // Игнорируем ошибку, оставляем локальные данные
+                        return@addSnapshotListener
+                    }
+                    val list = snapshot?.documents?.mapNotNull { doc ->
+                        doc.toObject(com.habittracker.data.remote.model.HabitInvitationRemote::class.java)
+                            ?.toDomain(doc.id)
+                    } ?: emptyList()
+
+                    // Апсертим локально для консистентности (и для счётчиков)
+                    scope.launch {
+                        try {
+                            habitInvitationDao.insertAll(list.map { it.toEntity() })
+                        } catch (_: Exception) {}
+                    }
+                }
+
+            // 2) Ретранслируем локальный Flow из Room
+            val job = scope.launch {
+                habitInvitationDao.getIncomingInvitations(userId).collect { entities ->
+                    trySend(entities.map { it.toDomain() })
+                }
+            }
+
+            awaitClose {
+                registration?.remove()
+                job.cancel()
+                scope.cancel()
+            }
         }
     }
 

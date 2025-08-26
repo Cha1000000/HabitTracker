@@ -89,6 +89,9 @@ android {
             excludes += "/META-INF/NOTICE.txt"
             excludes += "/META-INF/notice.txt"
             excludes += "/META-INF/ASL2.0"
+            excludes += "/META-INF/LICENSE.md"
+            excludes += "/META-INF/NOTICE.md"
+            excludes += "/META-INF/LICENSE-notice.md"
         }
     }
 }
@@ -182,6 +185,7 @@ dependencies {
     androidTestImplementation(libs.androidx.espresso.core)
     androidTestImplementation(platform(libs.androidx.compose.bom))
     androidTestImplementation(libs.androidx.ui.test.junit4)
+    androidTestImplementation(libs.mockk.android)
 
     debugImplementation(libs.androidx.ui.tooling)
     debugImplementation(libs.androidx.ui.test.manifest)

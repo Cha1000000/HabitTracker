@@ -57,6 +57,9 @@ class AuthViewModel @Inject constructor(
     private val _authState = MutableStateFlow<AuthState>(AuthState.Unauthenticated)
     val authState = _authState.asStateFlow()
 
+    // Single-shot guard to avoid duplicate FCM init from multiple success flows
+    private var fcmInitialized: Boolean = false
+
     init {
         checkUserAuthentication()
     }
@@ -65,8 +68,6 @@ class AuthViewModel @Inject constructor(
         viewModelScope.launch {
             if (FirebaseAuth.getInstance().currentUser != null) {
                 _authState.value = AuthState.Success
-                // Инициализируем FCM токен при успешной аутентификации
-                initializeFCMToken()
             } else {
                 _authState.value = AuthState.Unauthenticated
             }
@@ -109,8 +110,8 @@ class AuthViewModel @Inject constructor(
                 result.onSuccess {
                     _authState.value = AuthState.Success
                     _uiState.update { it.copy(isLoading = false) }
-                    // Инициализируем FCM токен после успешного входа
-                    initializeFCMToken()
+                    // Единоразовая инициализация FCM токена после первого успешного входа
+                    ensureInitializeFcmOnce()
                 }
                 result.onFailure { error ->
                     _authState.value = AuthState.Error(error.message ?: "Unknown error")
@@ -128,8 +129,8 @@ class AuthViewModel @Inject constructor(
                 result.onSuccess {
                     _authState.value = AuthState.Success
                     _uiState.update { it.copy(isLoading = false) }
-                    // Инициализируем FCM токен после успешной регистрации
-                    initializeFCMToken()
+                    // Единоразовая инициализация FCM токена после первого успешного входа
+                    ensureInitializeFcmOnce()
                 }
                 result.onFailure { error ->
                     _authState.value = AuthState.Error(error.message ?: "Unknown error")
@@ -147,8 +148,8 @@ class AuthViewModel @Inject constructor(
                 result.onSuccess {
                     _authState.value = AuthState.Success
                     _uiState.update { it.copy(isLoading = false) }
-                    // Инициализируем FCM токен после успешного входа через Google
-                    initializeFCMToken()
+                    // Единоразовая инициализация FCM токена после первого успешного входа
+                    ensureInitializeFcmOnce()
                 }
                 result.onFailure { error ->
                     _authState.value = AuthState.Error(error.message ?: "Google Sign-In failed")
@@ -176,6 +177,16 @@ class AuthViewModel @Inject constructor(
                 }
             }
         }
+    }
+
+    /**
+     * Ensures FCM token is initialized only once per app session from ViewModel.
+     * Application-level init also runs on startup; this is a safety net for first successful login.
+     */
+    private fun ensureInitializeFcmOnce() {
+        if (fcmInitialized) return
+        fcmInitialized = true
+        initializeFCMToken()
     }
 
     /**

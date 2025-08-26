@@ -9,6 +9,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -31,12 +32,43 @@ fun NotificationsScreen(
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val snackbarHostState = remember { SnackbarHostState() }
+    val context = LocalContext.current
     
     // Обработка сообщений об ошибках
     LaunchedEffect(uiState.error) {
         uiState.error?.let { error ->
             snackbarHostState.showSnackbar(
                 message = error,
+                duration = SnackbarDuration.Long
+            )
+            viewModel.onErrorShown()
+        }
+    }
+    // Ошибки по ресурсам (общие)
+    LaunchedEffect(uiState.errorResId) {
+        uiState.errorResId?.let { resId ->
+            snackbarHostState.showSnackbar(
+                message = context.getString(resId),
+                duration = SnackbarDuration.Long
+            )
+            viewModel.onErrorShown()
+        }
+    }
+    // Ошибки секции приглашений
+    LaunchedEffect(uiState.invitesError) {
+        uiState.invitesError?.let { error ->
+            snackbarHostState.showSnackbar(
+                message = error,
+                duration = SnackbarDuration.Long
+            )
+            viewModel.onErrorShown()
+        }
+    }
+    // Ошибки секции приглашений по ресурсам
+    LaunchedEffect(uiState.invitesErrorResId) {
+        uiState.invitesErrorResId?.let { resId ->
+            snackbarHostState.showSnackbar(
+                message = context.getString(resId),
                 duration = SnackbarDuration.Long
             )
             viewModel.onErrorShown()
@@ -53,6 +85,16 @@ fun NotificationsScreen(
             viewModel.onSuccessMessageShown()
         }
     }
+    // Успехи по ресурсам
+    LaunchedEffect(uiState.successResId) {
+        uiState.successResId?.let { resId ->
+            snackbarHostState.showSnackbar(
+                message = context.getString(resId),
+                duration = SnackbarDuration.Short
+            )
+            viewModel.onSuccessMessageShown()
+        }
+    }
     
     Scaffold(
         topBar = {
@@ -64,28 +106,42 @@ fun NotificationsScreen(
         },
         snackbarHost = { SnackbarHost(snackbarHostState) }
     ) { paddingValues ->
-        Box(
+        Column(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(paddingValues)
         ) {
-            when {
-                uiState.isLoading -> {
-                    CircularProgressIndicator(
-                        modifier = Modifier.align(Alignment.Center)
-                    )
-                }
-                
-                else -> {
-                    NotificationsList(
-                        notifications = uiState.notifications,
-                        onNotificationClick = { notification ->
-                            viewModel.onNotificationClick(notification)
-                        },
-                        onMarkAsRead = { notificationId ->
-                            viewModel.markAsRead(notificationId)
-                        }
-                    )
+            // Секция приглашений к привычкам
+            InvitationsSection(
+                invitations = uiState.invitations,
+                isLoading = uiState.isInvitesLoading,
+                processingIds = uiState.processingInvitationIds,
+                onAccept = { viewModel.acceptInvitation(it) },
+                onDecline = { viewModel.declineInvitation(it) }
+            )
+
+            // Разделитель
+            HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
+
+            // Список уведомлений
+            Box(modifier = Modifier.weight(1f)) {
+                when {
+                    uiState.isLoading -> {
+                        CircularProgressIndicator(
+                            modifier = Modifier.align(Alignment.Center)
+                        )
+                    }
+                    else -> {
+                        NotificationsList(
+                            notifications = uiState.notifications,
+                            onNotificationClick = { notification ->
+                                viewModel.onNotificationClick(notification)
+                            },
+                            onMarkAsRead = { notificationId ->
+                                viewModel.markAsRead(notificationId)
+                            }
+                        )
+                    }
                 }
             }
         }

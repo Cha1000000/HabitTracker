@@ -3,10 +3,16 @@ package com.habittracker.presentation.viewmodel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.habittracker.domain.repository.AuthRepository
+import com.habittracker.domain.usecase.habit.GetHabitInvitationsUseCase
+import com.habittracker.domain.usecase.habit.AcceptHabitInvitationUseCase
+import com.habittracker.domain.usecase.habit.DeclineHabitInvitationUseCase
+import com.habittracker.domain.model.HabitInvitation
 import com.habittracker.domain.usecase.notification.GroupHabitNotification
 import com.habittracker.domain.usecase.notification.GroupHabitNotificationUseCase
+import com.habittracker.R
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -22,17 +28,23 @@ import javax.inject.Inject
 @HiltViewModel
 class NotificationsViewModel @Inject constructor(
     private val groupHabitNotificationUseCase: GroupHabitNotificationUseCase,
-    private val authRepository: AuthRepository
+    private val authRepository: AuthRepository,
+    private val getHabitInvitationsUseCase: GetHabitInvitationsUseCase,
+    private val acceptHabitInvitationUseCase: AcceptHabitInvitationUseCase,
+    private val declineHabitInvitationUseCase: DeclineHabitInvitationUseCase
 ) : ViewModel() {
     
     private val _uiState = MutableStateFlow(NotificationsUiState())
     val uiState: StateFlow<NotificationsUiState> = _uiState.asStateFlow()
     
-    /**
-     * Flow для количества непрочитанных уведомлений (для badge в UI)
-     */
-    val unreadNotificationsCount: StateFlow<Int> = _uiState
-        .map { it.unreadCount }
+    // Количество ожидающих приглашений (Room+Firestore синхронизация обеспечена на уровне репозитория)
+    private val pendingInvitationsCount = MutableStateFlow(0)
+
+    // Итоговый бейдж: непрочитанные системные уведомления + приглашения к привычкам
+    val badgeCount: StateFlow<Int> = combine(
+        _uiState.map { it.unreadCount },
+        pendingInvitationsCount
+    ) { unread, invites -> unread + invites }
         .stateIn(
             scope = viewModelScope,
             started = SharingStarted.WhileSubscribed(5000),
@@ -41,6 +53,8 @@ class NotificationsViewModel @Inject constructor(
     
     init {
         loadNotifications()
+        observeInvitationsCount()
+        loadInvitations()
     }
     
     /**
@@ -66,12 +80,45 @@ class NotificationsViewModel @Inject constructor(
                         }
                     }
             } catch (e: Exception) {
-                _uiState.update { 
-                    it.copy(
-                        isLoading = false,
-                        error = "Не удалось загрузить уведомления: ${e.message}"
-                    )
-                }
+                _uiState.update { it.copy(isLoading = false, errorResId = R.string.error_loading_notifications) }
+            }
+        }
+    }
+
+    /**
+     * Наблюдает количество ожидающих приглашений к привычкам для бейджа
+     */
+    private fun observeInvitationsCount() {
+        viewModelScope.launch {
+            try {
+                val currentUserId = authRepository.getCurrentUserId()
+                    ?: return@launch
+                getHabitInvitationsUseCase.getPendingInvitationsCount(currentUserId)
+                    .collect { count -> pendingInvitationsCount.value = count }
+            } catch (_: Exception) { /* no-op */ }
+        }
+    }
+
+    /**
+     * Загружает поток входящих приглашений пользователя
+     */
+    private fun loadInvitations() {
+        viewModelScope.launch {
+            try {
+                _uiState.update { it.copy(isInvitesLoading = true, invitesError = null) }
+                val currentUserId = authRepository.getCurrentUserId() ?: return@launch
+                getHabitInvitationsUseCase.getIncomingInvitations(currentUserId)
+                    .collect { invitations ->
+                        _uiState.update {
+                            it.copy(
+                                invitations = invitations,
+                                isInvitesLoading = false,
+                                invitesError = null
+                            )
+                        }
+                    }
+            } catch (e: Exception) {
+                _uiState.update { it.copy(isInvitesLoading = false, invitesErrorResId = R.string.error_loading_invitations) }
             }
         }
     }
@@ -91,9 +138,7 @@ class NotificationsViewModel @Inject constructor(
                 // Например, открыть экран детали привычки или экран прогресса группы
                 
             } catch (e: Exception) {
-                _uiState.update { 
-                    it.copy(error = "Ошибка обработки уведомления: ${e.message}")
-                }
+                _uiState.update { it.copy(errorResId = R.string.error_processing_notification) }
             }
         }
     }
@@ -121,14 +166,10 @@ class NotificationsViewModel @Inject constructor(
                         )
                     }
                 }.onFailure { error ->
-                    _uiState.update { 
-                        it.copy(error = "Не удалось отметить уведомление: ${error.message}")
-                    }
+                    _uiState.update { it.copy(errorResId = R.string.error_mark_notification) }
                 }
             } catch (e: Exception) {
-                _uiState.update { 
-                    it.copy(error = "Ошибка отметки уведомления: ${e.message}")
-                }
+                _uiState.update { it.copy(errorResId = R.string.error_mark_notification) }
             }
         }
     }
@@ -152,18 +193,55 @@ class NotificationsViewModel @Inject constructor(
                         state.copy(
                             notifications = updatedNotifications,
                             unreadCount = 0,
-                            successMessage = "Все уведомления отмечены как прочитанные"
+                            successResId = R.string.success_all_marked_read
                         )
                     }
                 }.onFailure { error ->
-                    _uiState.update { 
-                        it.copy(error = "Не удалось отметить все уведомления: ${error.message}")
-                    }
+                    _uiState.update { it.copy(errorResId = R.string.error_mark_all_notifications) }
                 }
             } catch (e: Exception) {
-                _uiState.update { 
-                    it.copy(error = "Ошибка массовой отметки: ${e.message}")
+                _uiState.update { it.copy(errorResId = R.string.error_mark_all_notifications) }
+            }
+        }
+    }
+    
+    /** Принять приглашение */
+    fun acceptInvitation(invitationId: String) {
+        viewModelScope.launch {
+            try {
+                val userId = authRepository.getCurrentUserId() ?: return@launch
+                // Добавляем в прогресс
+                _uiState.update { it.copy(processingInvitationIds = it.processingInvitationIds + invitationId) }
+                val result = acceptHabitInvitationUseCase(invitationId, userId)
+                result.onSuccess {
+                    _uiState.update { it.copy(successResId = R.string.success_invitation_accepted) }
+                }.onFailure { e ->
+                    _uiState.update { it.copy(invitesErrorResId = R.string.error_accept_invitation) }
                 }
+            } catch (e: Exception) {
+                _uiState.update { it.copy(invitesErrorResId = R.string.error_accept_invitation) }
+            } finally {
+                _uiState.update { it.copy(processingInvitationIds = it.processingInvitationIds - invitationId) }
+            }
+        }
+    }
+
+    /** Отклонить приглашение */
+    fun declineInvitation(invitationId: String) {
+        viewModelScope.launch {
+            try {
+                val userId = authRepository.getCurrentUserId() ?: return@launch
+                _uiState.update { it.copy(processingInvitationIds = it.processingInvitationIds + invitationId) }
+                val result = declineHabitInvitationUseCase(invitationId, userId)
+                result.onSuccess {
+                    _uiState.update { it.copy(successResId = R.string.success_invitation_declined) }
+                }.onFailure { e ->
+                    _uiState.update { it.copy(invitesErrorResId = R.string.error_decline_invitation) }
+                }
+            } catch (e: Exception) {
+                _uiState.update { it.copy(invitesErrorResId = R.string.error_decline_invitation) }
+            } finally {
+                _uiState.update { it.copy(processingInvitationIds = it.processingInvitationIds - invitationId) }
             }
         }
     }
@@ -173,20 +251,21 @@ class NotificationsViewModel @Inject constructor(
      */
     fun refreshNotifications() {
         loadNotifications()
+        loadInvitations()
     }
     
     /**
      * Очищает сообщение об ошибке
      */
     fun onErrorShown() {
-        _uiState.update { it.copy(error = null) }
+        _uiState.update { it.copy(error = null, invitesError = null, errorResId = null, invitesErrorResId = null) }
     }
     
     /**
      * Очищает сообщение об успехе
      */
     fun onSuccessMessageShown() {
-        _uiState.update { it.copy(successMessage = null) }
+        _uiState.update { it.copy(successMessage = null, successResId = null) }
     }
 }
 
@@ -198,5 +277,13 @@ data class NotificationsUiState(
     val unreadCount: Int = 0,
     val isLoading: Boolean = false,
     val error: String? = null,
-    val successMessage: String? = null
+    val successMessage: String? = null,
+    val errorResId: Int? = null,
+    val invitesErrorResId: Int? = null,
+    val successResId: Int? = null,
+    // Invitations section
+    val invitations: List<HabitInvitation> = emptyList(),
+    val isInvitesLoading: Boolean = false,
+    val invitesError: String? = null,
+    val processingInvitationIds: Set<String> = emptySet()
 )

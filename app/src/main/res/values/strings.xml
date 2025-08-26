@@ -240,6 +240,24 @@
     <string name="notification_invitation_accepted">%1$s принял(а) приглашение в \"%2$s\"</string>
     <string name="notification_participant_joined">%1$s присоединился к \"%2$s\"</string>
     <string name="notification_habit_reminder">Время выполнить \"%1$s\"</string>
+    <!-- Invitations in Notifications -->
+    <string name="invitations_title">Приглашения к привычкам</string>
+    <string name="no_invitations">Нет входящих приглашений</string>
+    <string name="accept_invitation">Принять</string>
+    <string name="decline_invitation">Отклонить</string>
+    <string name="invitation_from_format">От: %1$s</string>
+    
+    <!-- Snackbar messages (Notifications screen) -->
+    <string name="error_loading_notifications">Не удалось загрузить уведомления</string>
+    <string name="error_loading_invitations">Не удалось загрузить приглашения</string>
+    <string name="error_processing_notification">Ошибка обработки уведомления</string>
+    <string name="error_mark_notification">Не удалось отметить уведомление</string>
+    <string name="success_all_marked_read">Все уведомления отмечены как прочитанные</string>
+    <string name="error_mark_all_notifications">Не удалось отметить все уведомления</string>
+    <string name="success_invitation_accepted">Приглашение принято</string>
+    <string name="error_accept_invitation">Ошибка принятия приглашения</string>
+    <string name="success_invitation_declined">Приглашение отклонено</string>
+    <string name="error_decline_invitation">Ошибка отклонения приглашения</string>
 
     <!-- Validation Messages -->
     <string name="validation_all_good">Все поля заполнены корректно</string>

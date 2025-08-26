@@ -19,3 +19,13 @@
 # If you keep the line number information, uncomment this to
 # hide the original source file name.
 #-renamesourcefileattribute SourceFile
+
+# --- HabitTracker Firestore DTO and enums keep rules ---
+# Keep DTO used by Firestore to ensure field names remain
+-keep class com.habittracker.data.remote.model.HabitInvitationRemote { *; }
+
+# Keep enum names for status mapping
+-keepclassmembers enum com.habittracker.domain.model.HabitInvitationStatus { *; }
+
+# (Optional) Keep domain model constructors/fields if used by reflection elsewhere
+#-keepclassmembers class com.habittracker.domain.model.HabitInvitation { *; }

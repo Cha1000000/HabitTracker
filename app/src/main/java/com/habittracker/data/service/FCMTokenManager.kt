@@ -1,12 +1,14 @@
 package com.habittracker.data.service
 
 import android.util.Log
+import kotlinx.coroutines.CancellationException
 import com.google.firebase.messaging.FirebaseMessaging
 import com.habittracker.domain.repository.AuthRepository
 import com.habittracker.domain.repository.SocialRepository
 import kotlinx.coroutines.tasks.await
 import javax.inject.Inject
 import javax.inject.Singleton
+import java.util.concurrent.atomic.AtomicBoolean
 
 /**
  * Менеджер для управления FCM токенами
@@ -21,10 +23,18 @@ class FCMTokenManager @Inject constructor(
         private const val TAG = "FCMTokenManager"
     }
 
+    // Guard to avoid concurrent refreshes
+    private val isRefreshing = AtomicBoolean(false)
+
     /**
      * Получает текущий FCM токен и сохраняет его в базе данных
      */
     suspend fun refreshToken(): Result<String> {
+        if (!isRefreshing.compareAndSet(false, true)) {
+            // Already refreshing; avoid duplicate work
+            Log.d(TAG, "Refresh already in progress, skipping")
+            return Result.failure(IllegalStateException("FCM refresh in progress"))
+        }
         return try {
             val currentUserId = authRepository.getCurrentUserId()
                 ?: return Result.failure(Exception("Пользователь не авторизован"))
@@ -40,9 +50,15 @@ class FCMTokenManager @Inject constructor(
             Log.d(TAG, "FCM токен успешно сохранен для пользователя: $currentUserId")
             
             Result.success(token)
+        } catch (e: CancellationException) {
+            // Coroutine was cancelled (e.g., scope disposed). Not a hard error.
+            Log.d(TAG, "Получение FCM токена отменено: ${'$'}{e.message}")
+            Result.failure(e)
         } catch (e: Exception) {
             Log.e(TAG, "Ошибка получения FCM токена", e)
             Result.failure(e)
+        } finally {
+            isRefreshing.set(false)
         }
     }
 

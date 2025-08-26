@@ -63,7 +63,7 @@ fun HabitsScreen(
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val snackbarHostState = remember { SnackbarHostState() }
-    val unreadNotificationsCount by notificationsViewModel.unreadNotificationsCount.collectAsState()
+    val badgeCount by notificationsViewModel.badgeCount.collectAsState()
 
     val authViewModel: AuthViewModel = hiltViewModel()
     
@@ -125,7 +125,7 @@ fun HabitsScreen(
                     }
                     BadgedBox(
                         badge = {
-                            NotificationBadge(count = unreadNotificationsCount)
+                            NotificationBadge(count = badgeCount)
                         }
                     ) {
                         IconButton(onClick = { 
