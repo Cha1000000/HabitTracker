@@ -6,17 +6,17 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.TrendingUp
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.EmojiEvents
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.People
 import androidx.compose.material.icons.filled.Person
-import androidx.compose.material.icons.automirrored.filled.TrendingUp
-import androidx.compose.foundation.layout.offset
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
@@ -48,7 +48,6 @@ import com.habittracker.domain.model.isGroupHabit
 import com.habittracker.presentation.navigation.Screen
 import com.habittracker.presentation.ui.habits.components.EnhancedHabitItem
 import com.habittracker.presentation.ui.notifications.NotificationBadge
-import com.habittracker.presentation.viewmodel.AuthViewModel
 import com.habittracker.presentation.viewmodel.HabitWithCompletion
 import com.habittracker.presentation.viewmodel.HabitsViewModel
 import com.habittracker.presentation.viewmodel.NotificationsViewModel
@@ -64,10 +63,8 @@ fun HabitsScreen(
     val uiState by viewModel.uiState.collectAsState()
     val snackbarHostState = remember { SnackbarHostState() }
     val badgeCount by notificationsViewModel.badgeCount.collectAsState()
-
-    val authViewModel: AuthViewModel = hiltViewModel()
     
-    // 🔥 ИСПРАВЛЕНИЕ: Принудительная загрузка привычек при открытии экрана
+    // Принудительная загрузка привычек при открытии экрана
     LaunchedEffect(Unit) {
         val currentUserId = com.google.firebase.auth.FirebaseAuth.getInstance().currentUser?.uid
         if (currentUserId != null) {
@@ -136,7 +133,7 @@ fun HabitsScreen(
                             count = badgeCount,
                             modifier = Modifier
                                 .align(Alignment.TopEnd)
-                                .offset(x = (-6).dp, y = 6.dp)
+                                .offset(x = (-8).dp, y = 6.dp)
                         )
                     }
                 }
