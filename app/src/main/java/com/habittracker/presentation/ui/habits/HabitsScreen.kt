@@ -16,7 +16,7 @@ import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.People
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.automirrored.filled.TrendingUp
-import androidx.compose.material3.BadgedBox
+import androidx.compose.foundation.layout.offset
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
@@ -123,19 +123,21 @@ fun HabitsScreen(
                             contentDescription = stringResource(R.string.cd_friends)
                         )
                     }
-                    BadgedBox(
-                        badge = {
-                            NotificationBadge(count = badgeCount)
-                        }
-                    ) {
-                        IconButton(onClick = { 
-                            navController.navigate(Screen.Notifications.route) 
+                    Box {
+                        IconButton(onClick = {
+                            navController.navigate(Screen.Notifications.route)
                         }) {
                             Icon(
                                 imageVector = Icons.Default.Notifications,
                                 contentDescription = stringResource(R.string.cd_notifications)
                             )
                         }
+                        NotificationBadge(
+                            count = badgeCount,
+                            modifier = Modifier
+                                .align(Alignment.TopEnd)
+                                .offset(x = (-6).dp, y = 6.dp)
+                        )
                     }
                 }
             )
