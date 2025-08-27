@@ -192,7 +192,7 @@ fun InvitationItem(
                 ) {
                     Icon(
                         imageVector = Icons.Default.Mail,
-                        contentDescription = null,
+                        contentDescription = stringResource(R.string.cd_invitation_icon),
                         tint = MaterialTheme.colorScheme.primary
                     )
                 }

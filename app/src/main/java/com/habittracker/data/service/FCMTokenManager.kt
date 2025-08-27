@@ -1,14 +1,15 @@
 package com.habittracker.data.service
 
 import android.util.Log
-import kotlinx.coroutines.CancellationException
 import com.google.firebase.messaging.FirebaseMessaging
+import com.habittracker.BuildConfig
 import com.habittracker.domain.repository.AuthRepository
 import com.habittracker.domain.repository.SocialRepository
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.tasks.await
+import java.util.concurrent.atomic.AtomicBoolean
 import javax.inject.Inject
 import javax.inject.Singleton
-import java.util.concurrent.atomic.AtomicBoolean
 
 /**
  * Менеджер для управления FCM токенами
@@ -39,20 +40,23 @@ class FCMTokenManager @Inject constructor(
             val currentUserId = authRepository.getCurrentUserId()
                 ?: return Result.failure(Exception("Пользователь не авторизован"))
 
-            // Получаем токен от Firebase
             val token = FirebaseMessaging.getInstance().token.await()
-            
-            Log.d(TAG, "Получен FCM токен: $token")
-            
-            // Сохраняем токен в базе данных
+            if (BuildConfig.DEBUG) {
+                val masked = if (token.length > 8) "${token.take(4)}****${token.takeLast(4)}" else "****"
+                Log.d(TAG, "Получен FCM токен (masked): $masked")
+            }
             socialRepository.updateUserFcmToken(currentUserId, token)
             
-            Log.d(TAG, "FCM токен успешно сохранен для пользователя: $currentUserId")
+            if (BuildConfig.DEBUG) {
+                Log.d(TAG, "FCM токен успешно сохранен для пользователя: $currentUserId")
+            }
             
             Result.success(token)
         } catch (e: CancellationException) {
             // Coroutine was cancelled (e.g., scope disposed). Not a hard error.
-            Log.d(TAG, "Получение FCM токена отменено: ${'$'}{e.message}")
+            if (BuildConfig.DEBUG) {
+                Log.d(TAG, "Получение FCM токена отменено: ${e.message}")
+            }
             Result.failure(e)
         } catch (e: Exception) {
             Log.e(TAG, "Ошибка получения FCM токена", e)
