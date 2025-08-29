@@ -374,29 +374,83 @@ class SocialRepositoryImpl @Inject constructor(
     }
 
     override fun getIncomingFriendRequests(userId: String): Flow<List<FriendRequestWithUsers>> {
-        return friendRequestDao.getIncomingFriendRequests(userId).map { requests ->
-            requests.mapNotNull { requestEntity ->
-                val request = requestEntity.toDomain()
-                val fromUser = getUserById(request.fromUserId)
-                val toUser = getUserById(request.toUserId)
-                
-                if (fromUser != null && toUser != null) {
-                    FriendRequestWithUsers(request, fromUser, toUser)
-                } else null
+        return callbackFlow {
+            val scope = CoroutineScope(Dispatchers.IO)
+            // Слушаем входящие friend_requests для текущего пользователя
+            val registration = firestore.collection("friend_requests")
+                .whereEqualTo("toUserId", userId)
+                .addSnapshotListener { snapshot, error ->
+                    if (error != null) return@addSnapshotListener
+                    val docs = snapshot?.documents ?: emptyList()
+                    scope.launch {
+                        docs.forEach { doc ->
+                            try {
+                                val fr = doc.toObject(FriendRequest::class.java)?.copy(id = doc.id)
+                                if (fr != null) {
+                                    friendRequestDao.insertFriendRequest(fr.toEntity())
+                                }
+                            } catch (_: Exception) { /* ignore single doc errors */ }
+                        }
+                    }
+                }
+
+            val job = scope.launch {
+                friendRequestDao.getIncomingFriendRequests(userId).collect { requests ->
+                    val list = requests.mapNotNull { requestEntity ->
+                        val request = requestEntity.toDomain()
+                        val fromUser = getUserById(request.fromUserId)
+                        val toUser = getUserById(request.toUserId)
+                        if (fromUser != null && toUser != null) FriendRequestWithUsers(request, fromUser, toUser) else null
+                    }
+                    trySend(list)
+                }
+            }
+
+            awaitClose {
+                registration?.remove()
+                job.cancel()
+                scope.cancel()
             }
         }
     }
 
     override fun getOutgoingFriendRequests(userId: String): Flow<List<FriendRequestWithUsers>> {
-        return friendRequestDao.getOutgoingFriendRequests(userId).map { requests ->
-            requests.mapNotNull { requestEntity ->
-                val request = requestEntity.toDomain()
-                val fromUser = getUserById(request.fromUserId)
-                val toUser = getUserById(request.toUserId)
-                
-                if (fromUser != null && toUser != null) {
-                    FriendRequestWithUsers(request, fromUser, toUser)
-                } else null
+        return callbackFlow {
+            val scope = CoroutineScope(Dispatchers.IO)
+            // Слушаем исходящие friend_requests от текущего пользователя
+            val registration = firestore.collection("friend_requests")
+                .whereEqualTo("fromUserId", userId)
+                .addSnapshotListener { snapshot, error ->
+                    if (error != null) return@addSnapshotListener
+                    val docs = snapshot?.documents ?: emptyList()
+                    scope.launch {
+                        docs.forEach { doc ->
+                            try {
+                                val fr = doc.toObject(FriendRequest::class.java)?.copy(id = doc.id)
+                                if (fr != null) {
+                                    friendRequestDao.insertFriendRequest(fr.toEntity())
+                                }
+                            } catch (_: Exception) { /* ignore single doc errors */ }
+                        }
+                    }
+                }
+
+            val job = scope.launch {
+                friendRequestDao.getOutgoingFriendRequests(userId).collect { requests ->
+                    val list = requests.mapNotNull { requestEntity ->
+                        val request = requestEntity.toDomain()
+                        val fromUser = getUserById(request.fromUserId)
+                        val toUser = getUserById(request.toUserId)
+                        if (fromUser != null && toUser != null) FriendRequestWithUsers(request, fromUser, toUser) else null
+                    }
+                    trySend(list)
+                }
+            }
+
+            awaitClose {
+                registration?.remove()
+                job.cancel()
+                scope.cancel()
             }
         }
     }
@@ -501,20 +555,63 @@ class SocialRepositoryImpl @Inject constructor(
     }
 
     override fun getFriends(userId: String): Flow<List<FriendshipWithUsers>> {
-        return friendshipDao.getFriendsForUser(userId).map { friendshipEntities ->
-            friendshipEntities.mapNotNull { friendshipEntity ->
-                val friendship = friendshipEntity.toDomain()
-                try {
-                    val user1 = runBlocking { getUserById(friendship.userId1) }
-                    val user2 = runBlocking { getUserById(friendship.userId2) }
-                    
-                    if (user1 != null && user2 != null) {
-                        FriendshipWithUsers(friendship, user1, user2)
-                    } else null
-                } catch (e: Exception) {
-                    null
+        return callbackFlow {
+            val scope = CoroutineScope(Dispatchers.IO)
+            // Два слушателя: userId как userId1 и как userId2
+            val reg1 = firestore.collection("friendships")
+                .whereEqualTo("userId1", userId)
+                .addSnapshotListener { snapshot, error ->
+                    if (error != null) return@addSnapshotListener
+                    val docs = snapshot?.documents ?: emptyList()
+                    scope.launch {
+                        docs.forEach { doc ->
+                            try {
+                                val fs = doc.toObject(Friendship::class.java)
+                                if (fs != null) {
+                                    friendshipDao.insertFriendship(fs.toEntity())
+                                }
+                            } catch (_: Exception) { /* ignore single doc errors */ }
+                        }
+                    }
                 }
-            }.filter { it.friendship.status == FriendshipStatus.ACCEPTED }
+
+            val reg2 = firestore.collection("friendships")
+                .whereEqualTo("userId2", userId)
+                .addSnapshotListener { snapshot, error ->
+                    if (error != null) return@addSnapshotListener
+                    val docs = snapshot?.documents ?: emptyList()
+                    scope.launch {
+                        docs.forEach { doc ->
+                            try {
+                                val fs = doc.toObject(Friendship::class.java)
+                                if (fs != null) {
+                                    friendshipDao.insertFriendship(fs.toEntity())
+                                }
+                            } catch (_: Exception) { /* ignore single doc errors */ }
+                        }
+                    }
+                }
+
+            val job = scope.launch {
+                friendshipDao.getFriendsForUser(userId).collect { friendshipEntities ->
+                    val list = friendshipEntities.mapNotNull { friendshipEntity ->
+                        val friendship = friendshipEntity.toDomain()
+                        try {
+                            val user1 = runBlocking { getUserById(friendship.userId1) }
+                            val user2 = runBlocking { getUserById(friendship.userId2) }
+                            if (user1 != null && user2 != null) FriendshipWithUsers(friendship, user1, user2) else null
+                        } catch (_: Exception) { null }
+                    }.filter { it.friendship.status == FriendshipStatus.ACCEPTED }
+                    trySend(list)
+                }
+            }
+
+            awaitClose {
+                reg1?.remove()
+                reg2?.remove()
+                job.cancel()
+                scope.cancel()
+            }
         }
     }
 
