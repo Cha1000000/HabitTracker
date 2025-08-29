@@ -10,6 +10,7 @@ import com.habittracker.data.local.dao.HabitDao
 import com.habittracker.data.local.dao.HabitEntryDao
 import com.habittracker.data.local.dao.HabitInvitationDao
 import com.habittracker.data.local.dao.UserAchievementDao
+import com.habittracker.data.local.dao.SyncOutboxDao
 import com.habittracker.data.local.dao.UserDao
 import dagger.Module
 import dagger.Provides
@@ -54,4 +55,7 @@ object DatabaseModule {
 
     @Provides
     fun provideUserAchievementDao(database: HabitTrackerDatabase): UserAchievementDao = database.userAchievementDao()
+
+    @Provides
+    fun provideSyncOutboxDao(database: HabitTrackerDatabase): SyncOutboxDao = database.syncOutboxDao()
 }
