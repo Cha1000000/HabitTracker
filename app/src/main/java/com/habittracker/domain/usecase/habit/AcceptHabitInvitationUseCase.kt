@@ -71,27 +71,7 @@ class AcceptHabitInvitationUseCase @Inject constructor(
 
             // Принимаем приглашение через SocialRepository
             val acceptedInvitation = socialRepository.acceptHabitInvitation(invitationId)
-            
-            if (acceptedInvitation.isSuccess) {
-                // Добавляем пользователя к участникам привычки
-                try {
-                    habitRepository.addParticipantToHabit(
-                        habitId = invitation.habitId,
-                        userId = userId
-                    )
-                    
-                    // Отправляем уведомление создателю привычки
-                    socialRepository.sendHabitInvitationAcceptedNotification(
-                        toUserId = invitation.fromUserId,
-                        acceptedByName = user.name,
-                        habitTitle = invitation.habitTitle
-                    )
-                } catch (e: Exception) {
-                    // Если не удалось добавить участника, откатываем приглашение
-                    // TODO: Реализовать откат статуса приглашения
-                    return Result.failure(Exception("Не удалось добавить участника в привычку: ${e.message}"))
-                }
-            }
+            // Побочные эффекты (добавление участника, пуш-уведомления) выполняются на уровне репозитория
             
             acceptedInvitation
         } catch (e: Exception) {

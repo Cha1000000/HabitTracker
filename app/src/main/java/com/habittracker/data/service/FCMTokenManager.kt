@@ -67,24 +67,20 @@ class FCMTokenManager @Inject constructor(
     }
 
     /**
-     * Удаляет FCM токен при выходе пользователя
+     * Раньше удаляли FCM токен при выходе. Это приводило к пропуску важных пушей для инвайтера,
+     * если приглашение принималось, пока он был разлогинен. Теперь НЕ очищаем токен, чтобы
+     * устройство могло продолжать получать адресные уведомления. Фильтрация по recipientUserId
+     * на клиенте предотвратит показ неактуальных уведомлений не тому пользователю.
      */
     suspend fun clearToken(): Result<Unit> {
         return try {
             val currentUserId = authRepository.getCurrentUserId()
-                ?: return Result.failure(Exception("Пользователь не авторизован"))
-
-            // Удаляем токен из Firebase
-            FirebaseMessaging.getInstance().deleteToken().await()
-            
-            // Очищаем токен в базе данных
-            socialRepository.updateUserFcmToken(currentUserId, "")
-            
-            Log.d(TAG, "FCM токен успешно удален для пользователя: $currentUserId")
-            
+            if (BuildConfig.DEBUG) {
+                Log.d(TAG, "clearToken(): skip deleting token to keep receiving critical notifications. user=$currentUserId")
+            }
             Result.success(Unit)
         } catch (e: Exception) {
-            Log.e(TAG, "Ошибка удаления FCM токена", e)
+            Log.e(TAG, "Ошибка при clearToken()", e)
             Result.failure(e)
         }
     }

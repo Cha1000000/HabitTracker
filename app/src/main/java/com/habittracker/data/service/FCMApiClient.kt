@@ -5,6 +5,7 @@ import com.habittracker.BuildConfig
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.SerialName
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import okhttp3.MediaType.Companion.toMediaType
@@ -30,6 +31,8 @@ class FCMApiClient @Inject constructor() {
         // FCM HTTP v1 API endpoint
         private const val FCM_URL = "https://fcm.googleapis.com/v1/projects/habitttracker-505b6/messages:send"
         private const val FCM_SCOPE = "https://www.googleapis.com/auth/firebase.messaging"
+        private const val DEFAULT_TTL = "3600s" // 1 час на доставку
+        private const val CHANNEL_ID = "habit_tracker_notifications"
     }
 
     private val httpClient = OkHttpClient.Builder()
@@ -92,15 +95,19 @@ class FCMApiClient @Inject constructor() {
             val fcmMessage = FCMV1Message(
                 message = FCMV1MessageData(
                     token = fcmToken,
-                    notification = FCMNotification(
-                        title = title,
-                        body = body
+                    // notification не указываем — отправляем data-only
+                    notification = null,
+                    data = data + mapOf(
+                        // передаем заголовок/текст в data, клиент сам строит уведомление
+                        "title" to title,
+                        "body" to body
                     ),
-                    data = data,
                     android = AndroidConfig(
                         priority = "high",
+                        ttl = DEFAULT_TTL,
                         notification = AndroidNotification(
-                            sound = "default"
+                            sound = "default",
+                            channelId = CHANNEL_ID
                         )
                     )
                 )
@@ -160,15 +167,17 @@ class FCMApiClient @Inject constructor() {
                     val fcmMessage = FCMV1Message(
                         message = FCMV1MessageData(
                             token = token,
-                            notification = FCMNotification(
-                                title = title,
-                                body = body
+                            notification = null,
+                            data = data + mapOf(
+                                "title" to title,
+                                "body" to body
                             ),
-                            data = data,
                             android = AndroidConfig(
                                 priority = "high",
+                                ttl = DEFAULT_TTL,
                                 notification = AndroidNotification(
-                                    sound = "default"
+                                    sound = "default",
+                                    channelId = CHANNEL_ID
                                 )
                             )
                         )
@@ -233,11 +242,11 @@ class FCMApiClient @Inject constructor() {
             val fcmMessage = FCMV1Message(
                 message = FCMV1MessageData(
                     token = "/topics/$topic",
-                    notification = FCMNotification(
-                        title = title,
-                        body = body
+                    notification = null,
+                    data = data + mapOf(
+                        "title" to title,
+                        "body" to body
                     ),
-                    data = data,
                     android = AndroidConfig(
                         priority = "high",
                         notification = AndroidNotification(
@@ -282,7 +291,8 @@ data class FCMV1Message(
 @Serializable
 data class FCMV1MessageData(
     val token: String,
-    val notification: FCMNotification,
+    // Делаем notification опциональным, чтобы отправлять data-only
+    val notification: FCMNotification? = null,
     val data: Map<String, String>,
     val android: AndroidConfig
 )
@@ -290,12 +300,14 @@ data class FCMV1MessageData(
 @Serializable
 data class AndroidConfig(
     val priority: String,
+    val ttl: String? = null,
     val notification: AndroidNotification
 )
 
 @Serializable
 data class AndroidNotification(
-    val sound: String = "default"
+    val sound: String = "default",
+    @SerialName("channel_id") val channelId: String? = null
     // clickAction больше НЕ поддерживается в FCM v1 API
 )
 

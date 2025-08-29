@@ -1,6 +1,9 @@
 package com.habittracker.data.repository
 
+import android.util.Log
+import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.FirebaseFirestore
+import com.habittracker.data.firestore.UserFirestoreConverter
 import com.habittracker.data.local.dao.FriendRequestDao
 import com.habittracker.data.local.dao.FriendshipDao
 import com.habittracker.data.local.dao.HabitInvitationDao
@@ -8,7 +11,6 @@ import com.habittracker.data.local.dao.UserDao
 import com.habittracker.data.local.mappers.toDomain
 import com.habittracker.data.local.mappers.toEntity
 import com.habittracker.data.service.FCMApiClient
-import com.habittracker.data.firestore.UserFirestoreConverter
 import com.habittracker.domain.model.FriendRequest
 import com.habittracker.domain.model.FriendRequestStatus
 import com.habittracker.domain.model.FriendRequestWithUsers
@@ -23,21 +25,17 @@ import com.habittracker.domain.model.createFriendship
 import com.habittracker.domain.model.isExpired
 import com.habittracker.domain.repository.HabitRepository
 import com.habittracker.domain.repository.SocialRepository
-import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.callbackFlow
-import kotlinx.coroutines.launch
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.channels.awaitClose
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.callbackFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.tasks.await
-import kotlinx.datetime.Clock
-import kotlinx.datetime.DateTimePeriod
-import kotlinx.datetime.TimeZone
-import kotlinx.datetime.plus
 import java.util.UUID
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -57,9 +55,15 @@ class SocialRepositoryImpl @Inject constructor(
     private val habitRepository: HabitRepository
 ) : SocialRepository {
 
+    // Helper to mask sensitive token values in logs
+    private fun maskToken(token: String?): String {
+        if (token.isNullOrBlank()) return "(null)"
+        return if (token.length > 8) "${token.take(4)}****${token.takeLast(4)}" else "****"
+    }
+
     override suspend fun searchUsers(query: String, currentUserId: String): List<User> {
         return try {
-            android.util.Log.d("SocialRepository", "🔍 Searching users: query='$query', currentUserId='$currentUserId'")
+            Log.d("SocialRepository", "🔍 Searching users: query='$query', currentUserId='$currentUserId'")
             
             // Поиск в Firestore по имени и email
             val nameResults = firestore.collection("users")
@@ -69,7 +73,7 @@ class SocialRepositoryImpl @Inject constructor(
                 .get()
                 .await()
             
-            android.util.Log.d("SocialRepository", "📝 Name results: ${nameResults.documents.size} documents")
+            Log.d("SocialRepository", "📝 Name results: ${nameResults.documents.size} documents")
 
             val emailResults = firestore.collection("users")
                 .whereGreaterThanOrEqualTo("email", query)
@@ -78,40 +82,40 @@ class SocialRepositoryImpl @Inject constructor(
                 .get()
                 .await()
                 
-            android.util.Log.d("SocialRepository", "📧 Email results: ${emailResults.documents.size} documents")
+            Log.d("SocialRepository", "📧 Email results: ${emailResults.documents.size} documents")
 
             val allResults = (nameResults.documents + emailResults.documents)
                 .distinctBy { it.id }
                 .mapNotNull { doc ->
                     try {
-                        android.util.Log.d("SocialRepository", "🔄 Processing document: id=${doc.id}")
+                        Log.d("SocialRepository", "🔄 Processing document: id=${doc.id}")
                         // Используем профессиональный конвертер вместо стандартной десериализации
                         val user = UserFirestoreConverter.fromFirestore(doc.data ?: emptyMap(), doc.id)
                         if (user != null) {
-                            android.util.Log.d("SocialRepository", "✅ Successfully converted user: id=${user.id}, name=${user.name}, email=${user.email}")
+                            Log.d("SocialRepository", "✅ Successfully converted user: id=${user.id}, name=${user.name}, email=${user.email}")
                         } else {
-                            android.util.Log.w("SocialRepository", "⚠️ UserFirestoreConverter returned null for document: id=${doc.id}")
+                            Log.w("SocialRepository", "⚠️ UserFirestoreConverter returned null for document: id=${doc.id}")
                         }
                         user
                     } catch (e: Exception) {
-                        android.util.Log.e("SocialRepository", "❌ Error mapping user document: ${e.message}")
+                        Log.e("SocialRepository", "❌ Error mapping user document: ${e.message}")
                         null
                     }
                 }
                 .filter { it.id != currentUserId } // Исключаем текущего пользователя
         
-            android.util.Log.d("SocialRepository", "🎯 Before filtering: ${allResults.size + (if (allResults.any { it.id == currentUserId }) 1 else 0)} users")
-            android.util.Log.d("SocialRepository", "🎯 After filtering (excluding currentUserId=$currentUserId): ${allResults.size} users")
+            Log.d("SocialRepository", "🎯 Before filtering: ${allResults.size + (if (allResults.any { it.id == currentUserId }) 1 else 0)} users")
+            Log.d("SocialRepository", "🎯 After filtering (excluding currentUserId=$currentUserId): ${allResults.size} users")
             allResults
         } catch (e: Exception) {
-            android.util.Log.e("SocialRepository", "💥 Firestore search failed: ${e.message}")
+            Log.e("SocialRepository", "💥 Firestore search failed: ${e.message}")
             
             // Fallback на локальный поиск
             val localResults = userDao.searchUsers("%$query%")
                 .map { it.toDomain() }
                 .filter { it.id != currentUserId }
                 
-            android.util.Log.d("SocialRepository", "🗄️ Fallback local results: ${localResults.size} users")
+            Log.d("SocialRepository", "🗄️ Fallback local results: ${localResults.size} users")
             localResults
         }
     }
@@ -132,11 +136,46 @@ class SocialRepositoryImpl @Inject constructor(
 
     override suspend fun updateUserFcmToken(userId: String, token: String) {
         try {
+            // 1) Удаляем этот токен из всех других пользователей (перемещение токена между аккаунтами)
+            try {
+                // Поиск в массивах fcmTokens (array-contains)
+                val tokensQuery = firestore.collection("users")
+                    .whereArrayContains("fcmTokens", token)
+                    .get().await()
+                tokensQuery.documents.forEach { doc ->
+                    if (doc.id != userId) {
+                        firestore.collection("users").document(doc.id)
+                            .update("fcmTokens", FieldValue.arrayRemove(token))
+                            .await()
+                    }
+                }
+
+                // Поиск в legacy поле fcmToken
+                val legacyQuery = firestore.collection("users")
+                    .whereEqualTo("fcmToken", token)
+                    .get().await()
+                legacyQuery.documents.forEach { doc ->
+                    if (doc.id != userId) {
+                        firestore.collection("users").document(doc.id)
+                            .update("fcmToken", FieldValue.delete())
+                            .await()
+                    }
+                }
+            } catch (_: Exception) {
+                // Не критично: в худшем случае токен временно будет подвязан к двум аккаунтам
+            }
+
+            // 2) Добавляем токен текущему пользователю (массив + legacy)
             firestore.collection("users").document(userId)
-                .update("fcmToken", token)
+                .update(
+                    mapOf(
+                        "fcmTokens" to FieldValue.arrayUnion(token),
+                        "fcmToken" to token
+                    )
+                )
                 .await()
         } catch (e: Exception) {
-            // Обновляем локально
+            // Обновляем локально (сохраним единственный токен в legacy поле)
             val user = userDao.getUserById(userId)
             user?.let {
                 userDao.updateUser(it.copy(fcmToken = token))
@@ -164,7 +203,7 @@ class SocialRepositoryImpl @Inject constructor(
         message: String?
     ): Result<FriendRequest> {
         return try {
-            android.util.Log.d("SocialRepository", "📤 Sending friend request: from=$fromUserId, to=$toUserId")
+            Log.d("SocialRepository", "📤 Sending friend request: from=$fromUserId, to=$toUserId")
             
             val currentTime = System.currentTimeMillis()
             val friendRequest = FriendRequest(
@@ -178,7 +217,7 @@ class SocialRepositoryImpl @Inject constructor(
                 updatedAt = currentTime
             )
             
-            android.util.Log.d("SocialRepository", "💾 Saving friend request to Firestore: id=${friendRequest.id}")
+            Log.d("SocialRepository", "💾 Saving friend request to Firestore: id=${friendRequest.id}")
             
             // Сохраняем в Firestore
             firestore.collection("friend_requests")
@@ -186,15 +225,15 @@ class SocialRepositoryImpl @Inject constructor(
                 .set(friendRequest)
                 .await()
 
-            android.util.Log.d("SocialRepository", "💿 Saving friend request locally")
+            Log.d("SocialRepository", "💿 Saving friend request locally")
             
             // Сохраняем локально
             friendRequestDao.insertFriendRequest(friendRequest.toEntity())
 
-            android.util.Log.d("SocialRepository", "✅ Friend request sent successfully!")
+            Log.d("SocialRepository", "✅ Friend request sent successfully!")
             Result.success(friendRequest)
         } catch (e: Exception) {
-            android.util.Log.e("SocialRepository", "❌ Failed to send friend request: ${e.message}", e)
+            Log.e("SocialRepository", "❌ Failed to send friend request: ${e.message}", e)
             Result.failure(e)
         }
     }
@@ -512,46 +551,73 @@ class SocialRepositoryImpl @Inject constructor(
 
     override suspend fun sendFriendRequestNotification(toUserId: String, fromUserName: String) {
         try {
-            val user = getUserById(toUserId)
-            val fcmToken = user?.fcmToken
-            
-            if (fcmToken != null) {
-                fcmApiClient.sendPushNotification(
-                    fcmToken = fcmToken,
-                    title = "Новый запрос дружбы",
-                    body = "$fromUserName хочет добавить вас в друзья",
-                    data = mapOf(
-                        "type" to "friend_request",
-                        "fromUserId" to fromUserName,
-                        "action" to "open_friend_requests"
-                    )
-                )
+            // Получаем все актуальные токены получателя: массив fcmTokens + fallback fcmToken
+            val userDoc = firestore.collection("users").document(toUserId).get().await()
+            val tokensFromArray = (userDoc.get("fcmTokens") as? List<*>)?.mapNotNull { it as? String } ?: emptyList()
+            val legacyToken = userDoc.getString("fcmToken")
+            val allTokens = (tokensFromArray + listOfNotNull(legacyToken)).toSet().toList()
+
+            if (allTokens.isEmpty()) {
+                Log.w("SocialRepository", "FCM skip: friend_request -> to=$toUserId, tokens_absent")
+                return
             }
+
+            Log.d(
+                "SocialRepository",
+                "FCM send: friend_request -> to=$toUserId, tokens_count=${allTokens.size}, tokens=${allTokens.map { maskToken(it) }}"
+            )
+
+            // Отправка одной операцией на все токены
+            fcmApiClient.sendToMultipleTokens(
+                tokens = allTokens,
+                title = "Новый запрос дружбы",
+                body = "$fromUserName хочет добавить вас в друзья",
+                data = mapOf(
+                    "type" to "friend_request",
+                    "fromUserName" to fromUserName,
+                    "action" to "open_friend_requests",
+                    // таргет для фильтрации на клиенте
+                    "recipientUserId" to toUserId
+                )
+            )
         } catch (e: Exception) {
             // Логируем ошибку, но не падаем - уведомления не критичны
-            android.util.Log.w("SocialRepository", "Ошибка отправки уведомления о запросе дружбы", e)
+            Log.w("SocialRepository", "Ошибка отправки уведомления о запросе дружбы", e)
         }
     }
 
     override suspend fun sendFriendAcceptedNotification(toUserId: String, acceptedByName: String) {
         try {
-            val user = getUserById(toUserId)
-            val fcmToken = user?.fcmToken
-            
-            if (fcmToken != null) {
-                fcmApiClient.sendPushNotification(
-                    fcmToken = fcmToken,
-                    title = "Запрос дружбы принят",
-                    body = "$acceptedByName принял ваш запрос дружбы",
-                    data = mapOf(
-                        "type" to "friend_accepted",
-                        "friendUserId" to acceptedByName,
-                        "action" to "open_friends"
-                    )
-                )
+            // Получаем все актуальные токены получателя: массив fcmTokens + fallback fcmToken
+            val userDoc = firestore.collection("users").document(toUserId).get().await()
+            val tokensFromArray = (userDoc.get("fcmTokens") as? List<*>)?.mapNotNull { it as? String } ?: emptyList()
+            val legacyToken = userDoc.getString("fcmToken")
+            val allTokens = (tokensFromArray + listOfNotNull(legacyToken)).toSet().toList()
+
+            if (allTokens.isEmpty()) {
+                Log.w("SocialRepository", "FCM skip: friend_accepted -> to=$toUserId, tokens_absent")
+                return
             }
+
+            Log.d(
+                "SocialRepository",
+                "FCM send: friend_accepted -> to=$toUserId, tokens_count=${allTokens.size}, tokens=${allTokens.map { maskToken(it) }}, acceptedBy=$acceptedByName"
+            )
+
+            fcmApiClient.sendToMultipleTokens(
+                tokens = allTokens,
+                title = "Запрос дружбы принят",
+                body = "$acceptedByName принял ваш запрос дружбы",
+                data = mapOf(
+                    "type" to "friend_accepted",
+                    "acceptedByName" to acceptedByName,
+                    "action" to "open_friends",
+                    // таргет для фильтрации на клиенте
+                    "recipientUserId" to toUserId
+                )
+            )
         } catch (e: Exception) {
-            android.util.Log.w("SocialRepository", "Ошибка отправки уведомления о принятии дружбы", e)
+            Log.w("SocialRepository", "Ошибка отправки уведомления о принятии дружбы", e)
         }
     }
 
@@ -628,11 +694,33 @@ class SocialRepositoryImpl @Inject constructor(
                 .set(acceptedInvitation)
                 .await()
 
-            // Добавляем пользователя к участникам привычки
+            // Добавляем пользователя к участникам привычки локально
             habitRepository.addParticipantToHabit(invitation.habitId, invitation.toUserId)
-
-            // Отправляем FCM уведомление создателю
-            sendHabitInvitationAcceptedNotification(invitation.fromUserId, invitation.toUserId, invitation.habitTitle)
+            try {
+                firestore.collection("habits")
+                    .document(invitation.habitId)
+                    .update(
+                        mapOf(
+                            "participants" to FieldValue.arrayUnion(invitation.toUserId),
+                            "updatedAt" to System.currentTimeMillis()
+                        )
+                    )
+                    .await()
+            } catch (_: Exception) {
+                // Не валим процесс принятия, но логично оставить локальный апдейт; Firestore подтянется при следующей синхронизации
+            }
+            // Отправляем FCM уведомление создателю привычки
+            val acceptedUserName = try {
+                getUserById(invitation.toUserId)?.name ?: invitation.toUserId
+            }
+            catch (_: Exception) {
+                invitation.toUserId
+            }
+            sendHabitInvitationAcceptedNotification(
+                toUserId = invitation.fromUserId,
+                acceptedByName = acceptedUserName,
+                habitTitle = invitation.habitTitle
+            )
 
             Result.success(acceptedInvitation)
         } catch (e: Exception) {
@@ -817,47 +905,77 @@ class SocialRepositoryImpl @Inject constructor(
 
     override suspend fun sendHabitInvitationNotification(toUserId: String, fromUserName: String, habitTitle: String) {
         try {
-            val toUser = getUserById(toUserId)
-            val fcmToken = toUser?.fcmToken
-            
-            if (fcmToken != null) {
+            // Получаем все актуальные токены получателя: массив fcmTokens + fallback fcmToken
+            val userDoc = firestore.collection("users").document(toUserId).get().await()
+            val tokensFromArray = (userDoc.get("fcmTokens") as? List<*>)?.mapNotNull { it as? String } ?: emptyList()
+            val legacyToken = userDoc.getString("fcmToken")
+            val allTokens = (tokensFromArray + listOfNotNull(legacyToken)).toSet()
+
+            if (allTokens.isEmpty()) {
+                Log.w("SocialRepository", "FCM skip: habit_invitation -> to=$toUserId, tokens_absent")
+                return
+            }
+
+            Log.d(
+                "SocialRepository",
+                "FCM send: habit_invitation -> to=$toUserId, tokens_count=${allTokens.size}, tokens=${allTokens.map { maskToken(it) }}"
+            )
+
+            allTokens.forEach { token ->
                 fcmApiClient.sendPushNotification(
-                    fcmToken = fcmToken,
+                    fcmToken = token,
                     title = "Приглашение к привычке",
                     body = "$fromUserName приглашает вас к участию в привычке '$habitTitle'",
                     data = mapOf(
                         "type" to "habit_invitation",
                         "habitTitle" to habitTitle,
                         "fromUserName" to fromUserName,
-                        "action" to "open_habit_invitations"
+                        "action" to "open_habit_invitations",
+                        // нужен таргет для фильтрации на клиенте
+                        "recipientUserId" to toUserId
                     )
                 )
             }
         } catch (e: Exception) {
-            android.util.Log.w("SocialRepository", "Ошибка отправки уведомления о приглашении в привычку", e)
+            Log.w("SocialRepository", "Ошибка отправки уведомления о приглашении в привычку", e)
         }
     }
 
     override suspend fun sendHabitInvitationAcceptedNotification(toUserId: String, acceptedByName: String, habitTitle: String) {
         try {
-            val toUser = getUserById(toUserId)
-            val fcmToken = toUser?.fcmToken
-            
-            if (fcmToken != null) {
+            // Получаем все актуальные токены получателя: массив fcmTokens + fallback fcmToken
+            val userDoc = firestore.collection("users").document(toUserId).get().await()
+            val tokensFromArray = (userDoc.get("fcmTokens") as? List<*>)?.mapNotNull { it as? String } ?: emptyList()
+            val legacyToken = userDoc.getString("fcmToken")
+            val allTokens = (tokensFromArray + listOfNotNull(legacyToken)).toSet()
+
+            if (allTokens.isEmpty()) {
+                Log.w("SocialRepository", "FCM skip: habit_invitation_accepted -> to=$toUserId, tokens_absent")
+                return
+            }
+
+            Log.d(
+                "SocialRepository",
+                "FCM send: habit_invitation_accepted -> to=$toUserId, tokens_count=${allTokens.size}, tokens=${allTokens.map { maskToken(it) }}, recipientUserId=$toUserId, acceptedBy=$acceptedByName, habit='$habitTitle'"
+            )
+
+            allTokens.forEach { token ->
                 fcmApiClient.sendPushNotification(
-                    fcmToken = fcmToken,
+                    fcmToken = token,
                     title = "Приглашение принято",
                     body = "$acceptedByName принял ваше приглашение к участию в привычке '$habitTitle'",
                     data = mapOf(
                         "type" to "habit_invitation_accepted",
                         "habitTitle" to habitTitle,
                         "acceptedByName" to acceptedByName,
-                        "action" to "open_habit_details"
+                        "action" to "open_habit_details",
+                        // нужен таргет для фильтрации на клиенте
+                        "recipientUserId" to toUserId
                     )
                 )
             }
         } catch (e: Exception) {
-            android.util.Log.w("SocialRepository", "Ошибка отправки уведомления о принятии приглашения", e)
+            Log.w("SocialRepository", "Ошибка отправки уведомления о принятии приглашения", e)
         }
     }
 

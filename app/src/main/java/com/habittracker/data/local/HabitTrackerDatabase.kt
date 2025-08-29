@@ -15,6 +15,7 @@ import com.habittracker.data.local.entity.FriendshipEntity
 import com.habittracker.data.local.entity.HabitEntity
 import com.habittracker.data.local.entity.HabitEntryEntity
 import com.habittracker.data.local.entity.HabitInvitationEntity
+import com.habittracker.data.local.entity.PendingNotificationEntity
 import com.habittracker.data.local.entity.UserAchievementEntity
 import com.habittracker.data.local.entity.UserEntity
 
@@ -28,9 +29,10 @@ import com.habittracker.data.local.entity.UserEntity
         FriendRequestEntity::class,
         HabitInvitationEntity::class,
         AchievementEntity::class,
-        UserAchievementEntity::class
+        UserAchievementEntity::class,
+        PendingNotificationEntity::class
     ],
-    version = 4,
+    version = 5,
     exportSchema = false // Для простоты отключаем экспорт схемы
 )
 @TypeConverters(Converters::class)
@@ -45,6 +47,7 @@ abstract class HabitTrackerDatabase : RoomDatabase() {
     abstract fun habitInvitationDao(): HabitInvitationDao
     abstract fun achievementDao(): AchievementDao
     abstract fun userAchievementDao(): UserAchievementDao
+    abstract fun pendingNotificationDao(): PendingNotificationDao
 
     companion object {
         const val DATABASE_NAME = "habit_tracker_db"
@@ -63,7 +66,8 @@ abstract class HabitTrackerDatabase : RoomDatabase() {
                     .addMigrations(
                         MIGRATION_1_2,
                         MIGRATION_2_3,
-                        MIGRATION_3_4
+                        MIGRATION_3_4,
+                        MIGRATION_4_5
                     )
                     .fallbackToDestructiveMigration() // Только для разработки!
                     .build()
@@ -172,6 +176,30 @@ abstract class HabitTrackerDatabase : RoomDatabase() {
                 db.execSQL("CREATE INDEX IF NOT EXISTS index_user_achievements_userId ON user_achievements(userId)")
                 db.execSQL("CREATE INDEX IF NOT EXISTS index_user_achievements_achievementId ON user_achievements(achievementId)")
                 db.execSQL("CREATE UNIQUE INDEX IF NOT EXISTS index_user_achievements_user_achievement ON user_achievements(userId, achievementId)")
+            }
+        }
+
+        // Миграция с версии 4 на 5 (локальная очередь уведомлений)
+        val MIGRATION_4_5 = object : Migration(4, 5) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
+                    """
+                    CREATE TABLE IF NOT EXISTS pending_notifications (
+                        id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+                        recipientUserId TEXT NOT NULL,
+                        type TEXT NOT NULL,
+                        title TEXT NOT NULL,
+                        body TEXT NOT NULL,
+                        dataJson TEXT NOT NULL,
+                        receivedAt INTEGER NOT NULL,
+                        ttlSeconds INTEGER,
+                        dedupKey TEXT
+                    )
+                    """
+                )
+                db.execSQL("CREATE INDEX IF NOT EXISTS index_pending_notifications_recipientUserId ON pending_notifications(recipientUserId)")
+                db.execSQL("CREATE INDEX IF NOT EXISTS index_pending_notifications_receivedAt ON pending_notifications(receivedAt)")
+                db.execSQL("CREATE INDEX IF NOT EXISTS index_pending_notifications_dedupKey ON pending_notifications(dedupKey)")
             }
         }
     }

@@ -232,7 +232,12 @@ class SendGroupHabitPushNotificationUseCase @Inject constructor(
                     fcmToken = fcmToken,
                     title = title,
                     body = body,
-                    data = data + mapOf("notification_type" to type)
+                    data = data + mapOf(
+                        // единый ключ типа уведомления
+                        "type" to type,
+                        // для клиентской фильтрации уведомлений
+                        "recipientUserId" to toUserId
+                    )
                 )
             }
             Result.success(Unit)
