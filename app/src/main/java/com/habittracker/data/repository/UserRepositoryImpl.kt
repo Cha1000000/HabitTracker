@@ -89,7 +89,7 @@ class UserRepositoryImpl @Inject constructor(
             "id" to user.id,
             "name" to user.name,
             "email" to user.email,
-            "avatarUrl" to user.avatarUrl,
+            // nullable fields will be added below only if non-null
             "level" to user.level,
             "points" to user.points,
             "streak" to user.streak,
@@ -100,6 +100,9 @@ class UserRepositoryImpl @Inject constructor(
             "timezone" to user.timezone,
             "updatedAt" to now
         )
+        // Only include optional fields if present to avoid overwriting with null
+        user.avatarUrl?.let { payload["avatarUrl"] = it }
+        user.avatarThumbnailUrl?.let { payload["avatarThumbnailUrl"] = it }
 
         try {
             // merge=true для UPSERT

@@ -1,5 +1,7 @@
 package com.habittracker.presentation.ui
 
+import android.graphics.BitmapFactory
+import android.util.Base64
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedVisibility
@@ -8,6 +10,7 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.background
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -48,6 +51,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -110,21 +114,84 @@ fun ProfileScreen(
                 val imagePicker = rememberLauncherForActivityResult(
                     contract = ActivityResultContracts.GetContent()
                 ) { uri -> profileViewModel.onAvatarPicked(uri) }
-                AsyncImage(
-                    model = ImageRequest.Builder(LocalContext.current)
-                        .data(
-                            uiState.pendingAvatarUri
-                                ?: (uiState.user?.avatarThumbnailUrl ?: uiState.user?.avatarUrl)
+
+                val displayData: Any? = uiState.pendingAvatarUri
+                    ?: uiState.user?.avatarThumbnailUrl?.takeIf { it.isNotBlank() }
+                    ?: uiState.user?.avatarUrl?.takeIf { it.isNotBlank() }
+
+                if (displayData != null) {
+                    // Поддержка data:image/* base64 без Coil
+                    val isDataUrl = (displayData as? String)?.startsWith("data:image") == true
+                    if (isDataUrl) {
+                        val base64 = (displayData as String).substringAfter(',')
+                        val bytes = try { Base64.decode(base64, Base64.DEFAULT) } catch (_: Exception) { null }
+                        val bmp = bytes?.let { BitmapFactory.decodeByteArray(it, 0, it.size) }
+                        if (bmp != null) {
+                            Image(
+                                bitmap = bmp.asImageBitmap(),
+                                contentDescription = null,
+                                modifier = Modifier
+                                    .size(avatarSize)
+                                    .clip(CircleShape)
+                                    .background(MaterialTheme.colorScheme.surfaceVariant),
+                                contentScale = ContentScale.Crop
+                            )
+                        } else {
+                            // fallback на AsyncImage (вдруг Coil сможет)
+                            AsyncImage(
+                                model = ImageRequest.Builder(LocalContext.current)
+                                    .data(displayData)
+                                    .crossfade(true)
+                                    .build(),
+                                contentDescription = null,
+                                modifier = Modifier
+                                    .size(avatarSize)
+                                    .clip(CircleShape)
+                                    .background(MaterialTheme.colorScheme.surfaceVariant),
+                                contentScale = ContentScale.Crop
+                            )
+                        }
+                    } else {
+                        AsyncImage(
+                            model = ImageRequest.Builder(LocalContext.current)
+                                .data(displayData)
+                                .crossfade(true)
+                                .build(),
+                            contentDescription = null,
+                            modifier = Modifier
+                                .size(avatarSize)
+                                .clip(CircleShape)
+                                .background(MaterialTheme.colorScheme.surfaceVariant),
+                            contentScale = ContentScale.Crop
                         )
-                        .crossfade(true)
-                        .build(),
-                    contentDescription = null,
-                    modifier = Modifier
-                        .size(avatarSize)
-                        .clip(CircleShape)
-                        .background(MaterialTheme.colorScheme.surfaceVariant),
-                    contentScale = ContentScale.Crop
-                )
+                    }
+                } else {
+                    // Placeholder with initials
+                    val initials = run {
+                        val u = uiState.user
+                        val name = u?.name?.ifBlank { u.email.substringBefore("@") } ?: ""
+                        name.trim().split(" ")
+                            .filter { it.isNotBlank() }
+                            .take(2)
+                            .map { it.first().uppercaseChar() }
+                            .joinToString("")
+                            .ifBlank { "?" }
+                    }
+                    Box(
+                        modifier = Modifier
+                            .size(avatarSize)
+                            .clip(CircleShape)
+                            .background(MaterialTheme.colorScheme.surfaceVariant),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = initials,
+                            style = MaterialTheme.typography.titleLarge,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            maxLines = 1
+                        )
+                    }
+                }
                 if (uiState.isOwnProfile) {
                     IconButton(
                         onClick = { imagePicker.launch("image/*") },
@@ -143,8 +210,6 @@ fun ProfileScreen(
                 }
             }
 
-            // Backfill dev dialog removed
-            
             Spacer(modifier = Modifier.height(32.dp))
             
             // Username row
@@ -166,7 +231,7 @@ fun ProfileScreen(
                         val displayName = uiState.user?.let { u -> u.name.ifBlank { u.email.substringBefore("@") } } ?: ""
                         Text(
                             text = displayName,
-                            style = MaterialTheme.typography.titleMedium,
+                            style = MaterialTheme.typography.titleLarge,
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis
                         )

@@ -1,6 +1,7 @@
 package com.habittracker.di
 
 import android.content.Context
+import com.google.firebase.FirebaseApp
 import com.google.android.libraries.identity.googleid.GetGoogleIdOption
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.messaging.FirebaseMessaging
@@ -32,7 +33,13 @@ object FirebaseModule {
     @Provides
     @Singleton
     fun provideFirebaseStorage(): FirebaseStorage {
-        return FirebaseStorage.getInstance()
+        // Resolve bucket from FirebaseApp options to support both appspot.com and firebasestorage.app
+        val bucket = try { FirebaseApp.getInstance().options.storageBucket } catch (_: Exception) { null }
+        return if (!bucket.isNullOrBlank()) {
+            FirebaseStorage.getInstance("gs://${'$'}bucket")
+        } else {
+            FirebaseStorage.getInstance()
+        }
     }
 
     @Provides
