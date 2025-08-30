@@ -2,10 +2,13 @@ package com.habittracker.di
 
 import android.content.Context
 import com.google.firebase.FirebaseApp
+import com.google.firebase.appcheck.FirebaseAppCheck
+import com.google.firebase.appcheck.debug.DebugAppCheckProviderFactory
 import com.google.android.libraries.identity.googleid.GetGoogleIdOption
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.messaging.FirebaseMessaging
 import com.google.firebase.storage.FirebaseStorage
+import com.habittracker.BuildConfig
 import com.habittracker.R
 import dagger.Module
 import dagger.Provides
@@ -40,6 +43,17 @@ object FirebaseModule {
         } else {
             FirebaseStorage.getInstance()
         }
+    }
+
+    @Provides
+    @Singleton
+    fun provideFirebaseAppCheck(@ApplicationContext context: Context): FirebaseAppCheck {
+        val appCheck = FirebaseAppCheck.getInstance()
+        if (BuildConfig.DEBUG) {
+            // В debug-сборках используем Debug App Check провайдер, чтобы не блокировались запросы с эмулятора/теста
+            appCheck.installAppCheckProviderFactory(DebugAppCheckProviderFactory.getInstance())
+        }
+        return appCheck
     }
 
     @Provides

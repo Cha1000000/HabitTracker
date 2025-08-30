@@ -167,6 +167,8 @@ dependencies {
     implementation(libs.firebase.firestore)
     implementation(libs.firebase.auth)
     implementation(libs.firebase.storage)
+    // App Check (Debug provider for dev/testing)
+    debugImplementation("com.google.firebase:firebase-appcheck-debug")
     
     // Google Auth для FCM OAuth 2.0
     implementation(libs.google.auth.oauth2)
