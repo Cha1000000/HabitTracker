@@ -28,6 +28,9 @@ sealed class Screen(val route: String) {
     object Login : Screen("login_screen")
     object Register : Screen("register_screen")
     object Profile : Screen("profile_screen")
+    object ProfileUser : Screen("profile_screen/{userId}") {
+        fun createRoute(userId: String) = "profile_screen/$userId"
+    }
     object Friends : Screen("friends_screen")
     object Notifications : Screen("notifications_screen")
     object Stats : Screen("stats_screen")
@@ -73,12 +76,25 @@ fun AppNavHost() {
         composable(route = Screen.Profile.route) {
             ProfileScreen(navController = navController)
         }
+        composable(
+            route = Screen.ProfileUser.route,
+            arguments = listOf(navArgument("userId") {
+                type = NavType.StringType
+                nullable = false
+            })
+        ) { backStackEntry ->
+            // Пока используем тот же экран профиля текущего пользователя.
+            // В будущем можно читать userId = backStackEntry.arguments?.getString("userId")
+            // и отображать профиль другого пользователя.
+            ProfileScreen(navController = navController)
+        }
         
         composable(route = Screen.Friends.route) {
             FriendsScreen(
                 onNavigateToProfile = { userId ->
-                    // TODO: Добавить навигацию к профилю пользователя
-                }
+                    navController.navigate(Screen.ProfileUser.createRoute(userId))
+                },
+                onNavigateBack = { navController.popBackStack() }
             )
         }
         

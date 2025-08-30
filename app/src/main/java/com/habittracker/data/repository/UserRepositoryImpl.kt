@@ -1,11 +1,22 @@
 package com.habittracker.data.repository
 
+import com.google.firebase.firestore.FieldValue
+import com.google.firebase.firestore.FirebaseFirestore
+import com.google.firebase.firestore.SetOptions
+import com.habittracker.data.firestore.UserFirestoreConverter
 import com.habittracker.data.local.dao.UserDao
 import com.habittracker.domain.model.User
 import com.habittracker.domain.repository.UserRepository
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.cancel
+import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.callbackFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.tasks.await
 import javax.inject.Inject
 import javax.inject.Singleton
 import com.habittracker.data.local.mappers.toDomain as userToDomain
@@ -13,7 +24,8 @@ import com.habittracker.data.local.mappers.toEntity as userToEntity
 
 @Singleton
 class UserRepositoryImpl @Inject constructor(
-    private val userDao: UserDao
+    private val userDao: UserDao,
+    private val firestore: FirebaseFirestore
 ) : UserRepository {
     
     override suspend fun insertUser(user: User) {
@@ -64,5 +76,104 @@ class UserRepositoryImpl @Inject constructor(
     
     override suspend fun updateUserLevel(userId: String, level: Int, points: Int) {
         userDao.updateUserPoints(userId, points, level)
+    }
+
+    override suspend fun upsertUserRemoteAndLocal(user: User, fcmToken: String?) {
+        // Room-first: чтобы UI мгновенно получил пользователя
+        userDao.insertUser(user.userToEntity())
+
+        val now = System.currentTimeMillis()
+        val userDoc = firestore.collection("users").document(user.id)
+
+        val payload = hashMapOf(
+            "id" to user.id,
+            "name" to user.name,
+            "email" to user.email,
+            "avatarUrl" to user.avatarUrl,
+            "level" to user.level,
+            "points" to user.points,
+            "streak" to user.streak,
+            "longestStreak" to user.longestStreak,
+            "friendsCount" to user.friendsCount,
+            "createdAt" to user.createdAt,
+            "lastActiveAt" to now,
+            "timezone" to user.timezone,
+            "updatedAt" to now
+        )
+
+        try {
+            // merge=true для UPSERT
+            userDoc.set(payload, SetOptions.merge()).await()
+
+            if (!fcmToken.isNullOrBlank()) {
+                // обновляем массив токенов атомарно
+                userDoc.update(mapOf(
+                    "fcmTokens" to FieldValue.arrayUnion(fcmToken),
+                    "updatedAt" to now
+                )).await()
+            }
+        } catch (_: Exception) {
+            // не падаем; WorkManager/повтор можно добавить отдельно при необходимости
+        }
+    }
+
+    override fun observeUser(userId: String): Flow<User?> = callbackFlow {
+        val scope = CoroutineScope(Dispatchers.IO)
+
+        val registration = firestore.collection("users")
+            .document(userId)
+            .addSnapshotListener { snapshot, error ->
+                if (error != null) return@addSnapshotListener
+                val data = snapshot?.data
+                val remote = if (data != null) UserFirestoreConverter.fromFirestore(data, snapshot.id) else null
+                if (remote != null) {
+                    scope.launch {
+                        try { userDao.insertUser(remote.userToEntity()) } catch (_: Exception) {}
+                    }
+                }
+            }
+
+        val job = scope.launch {
+            userDao.getUserByIdFlow(userId).collect { entity ->
+                trySend(entity?.userToDomain())
+            }
+        }
+
+        awaitClose {
+            registration.remove()
+            job.cancel()
+            scope.cancel()
+        }
+    }
+
+    override suspend fun backfillAvatarThumbnails(): Result<Int> {
+        return try {
+            val snapshot = firestore.collection("users").get().await()
+            var updated = 0
+            val now = System.currentTimeMillis()
+            for (doc in snapshot.documents) {
+                val data = doc.data ?: continue
+                val id = doc.id
+                val avatarUrl = data["avatarUrl"] as? String
+                val avatarThumb = data["avatarThumbnailUrl"] as? String
+                if (!avatarUrl.isNullOrBlank() && avatarThumb.isNullOrBlank()) {
+                    try {
+                        // Remote update
+                        doc.reference.update(mapOf(
+                            "avatarThumbnailUrl" to avatarUrl,
+                            "updatedAt" to now
+                        )).await()
+                        // Local update
+                        userDao.updateUserAvatarThumbnail(id, avatarUrl)
+                        updated++
+                    } catch (_: Exception) {
+                        // safely skip failed doc
+                    }
+                }
+            }
+            Result.success(updated)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
     }
 }

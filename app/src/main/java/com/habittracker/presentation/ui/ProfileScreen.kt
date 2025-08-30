@@ -1,6 +1,15 @@
 package com.habittracker.presentation.ui
 
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -8,18 +17,25 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.EmojiEvents
 import androidx.compose.material.icons.automirrored.filled.TrendingUp
+import androidx.compose.material.icons.filled.CameraAlt
+import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.EmojiEvents
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
@@ -29,22 +45,31 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
+import coil.compose.AsyncImage
+import coil.request.ImageRequest
 import com.habittracker.BuildConfig
 import com.habittracker.R
 import com.habittracker.presentation.navigation.Screen
 import com.habittracker.presentation.viewmodel.AuthViewModel
+import com.habittracker.presentation.viewmodel.ProfileViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ProfileScreen(
     navController: NavController,
-    viewModel: AuthViewModel = hiltViewModel()
+    authViewModel: AuthViewModel = hiltViewModel(),
+    profileViewModel: ProfileViewModel = hiltViewModel()
 ) {
-    val authState by viewModel.authState.collectAsState()
+    val authState by authViewModel.authState.collectAsState()
+    val uiState by profileViewModel.state.collectAsState()
     
     // Handle navigation after successful sign out
     LaunchedEffect(authState) {
@@ -77,16 +102,133 @@ fun ProfileScreen(
                 .padding(padding)
                 .padding(16.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.Center
+            verticalArrangement = Arrangement.Top
         ) {
-            // User information would go here
-            Text(
-                stringResource(R.string.profile_welcome),
-                style = MaterialTheme.typography.headlineSmall
-            )
+            // Avatar + name section
+            Box(contentAlignment = Alignment.BottomEnd) {
+                val avatarSize = 112.dp
+                val imagePicker = rememberLauncherForActivityResult(
+                    contract = ActivityResultContracts.GetContent()
+                ) { uri -> profileViewModel.onAvatarPicked(uri) }
+                AsyncImage(
+                    model = ImageRequest.Builder(LocalContext.current)
+                        .data(
+                            uiState.pendingAvatarUri
+                                ?: (uiState.user?.avatarThumbnailUrl ?: uiState.user?.avatarUrl)
+                        )
+                        .crossfade(true)
+                        .build(),
+                    contentDescription = null,
+                    modifier = Modifier
+                        .size(avatarSize)
+                        .clip(CircleShape)
+                        .background(MaterialTheme.colorScheme.surfaceVariant),
+                    contentScale = ContentScale.Crop
+                )
+                if (uiState.isOwnProfile) {
+                    IconButton(
+                        onClick = { imagePicker.launch("image/*") },
+                        modifier = Modifier
+                            .size(40.dp)
+                            .clip(CircleShape)
+                            .background(MaterialTheme.colorScheme.primary)
+                            .align(Alignment.BottomEnd)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Filled.CameraAlt,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.onPrimary
+                        )
+                    }
+                }
+            }
+
+            // Backfill dev dialog removed
             
             Spacer(modifier = Modifier.height(32.dp))
             
+            // Username row
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(text = stringResource(id = R.string.profile_username_label), style = MaterialTheme.typography.labelMedium)
+                    if (uiState.isEditingName) {
+                        OutlinedTextField(
+                            value = uiState.editableName,
+                            onValueChange = profileViewModel::onNameChange,
+                            singleLine = true,
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                    } else {
+                        val displayName = uiState.user?.let { u -> u.name.ifBlank { u.email.substringBefore("@") } } ?: ""
+                        Text(
+                            text = displayName,
+                            style = MaterialTheme.typography.titleMedium,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                    }
+                }
+                if (uiState.isOwnProfile) {
+                    IconButton(onClick = { profileViewModel.onToggleEditName() }) {
+                        Icon(imageVector = Icons.Filled.Edit, contentDescription = null)
+                    }
+                }
+            }
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            // Friendship actions when viewing someone else's profile
+            if (!uiState.isOwnProfile) {
+                when {
+                    uiState.isFriend -> {
+                        OutlinedButton(
+                            onClick = { profileViewModel.removeFriend() },
+                            enabled = !uiState.isActionInProgress,
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Text(text = stringResource(id = R.string.remove_friend))
+                        }
+                    }
+                    uiState.isRequestSent -> {
+                        Button(
+                            onClick = { },
+                            enabled = false,
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Text(text = stringResource(id = R.string.friend_request_sent))
+                        }
+                    }
+                    else -> {
+                        Button(
+                            onClick = { profileViewModel.addFriend() },
+                            enabled = !uiState.isActionInProgress,
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Text(text = stringResource(id = R.string.add_friend))
+                        }
+                    }
+                }
+                Spacer(modifier = Modifier.height(12.dp))
+            }
+
+            // Level read-only
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Text(text = stringResource(id = R.string.profile_level_label), style = MaterialTheme.typography.labelMedium)
+                Text(text = (uiState.user?.level ?: 1).toString(), style = MaterialTheme.typography.titleMedium)
+            }
+
+            Spacer(modifier = Modifier.height(24.dp))
+            HorizontalDivider()
+            Spacer(modifier = Modifier.height(24.dp))
+
             // Кнопки геймификации
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -141,10 +283,35 @@ fun ProfileScreen(
             
             Spacer(modifier = Modifier.height(32.dp))
             
+            // Save button (animated visibility on changes)
+            AnimatedVisibility(
+                visible = uiState.hasChanges,
+                enter = fadeIn() + slideInVertically(initialOffsetY = { it / 3 }),
+                exit = fadeOut() + slideOutVertically(targetOffsetY = { it / 3 })
+            ) {
+                Column(modifier = Modifier.fillMaxWidth()) {
+                    Spacer(modifier = Modifier.height(16.dp))
+                    Button(
+                        onClick = { profileViewModel.saveChanges() },
+                        enabled = !uiState.isSaving,
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        if (uiState.isSaving) {
+                            CircularProgressIndicator(color = MaterialTheme.colorScheme.onPrimary)
+                        } else {
+                            Text(text = stringResource(id = R.string.action_save))
+                        }
+                    }
+                }
+            }
+            
+            Spacer(modifier = Modifier.height(24.dp))
+
             // Sign out button
             Button(
-                onClick = { viewModel.onEvent(com.habittracker.presentation.viewmodel.AuthEvent.SignOut) },
-                enabled = authState !is com.habittracker.presentation.viewmodel.AuthState.Loading
+                onClick = { authViewModel.onEvent(com.habittracker.presentation.viewmodel.AuthEvent.SignOut) },
+                enabled = authState !is com.habittracker.presentation.viewmodel.AuthState.Loading,
+                modifier = Modifier.fillMaxWidth()
             ) {
                 if (authState is com.habittracker.presentation.viewmodel.AuthState.Loading) {
                     CircularProgressIndicator(color = MaterialTheme.colorScheme.onPrimary)

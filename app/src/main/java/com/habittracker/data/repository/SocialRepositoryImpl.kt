@@ -11,6 +11,7 @@ import com.habittracker.data.local.dao.UserDao
 import com.habittracker.data.local.mappers.toDomain
 import com.habittracker.data.local.mappers.toEntity
 import com.habittracker.data.service.FCMApiClient
+import com.habittracker.data.sync.SyncManager
 import com.habittracker.domain.model.FriendRequest
 import com.habittracker.domain.model.FriendRequestStatus
 import com.habittracker.domain.model.FriendRequestWithUsers
@@ -39,6 +40,7 @@ import kotlinx.coroutines.tasks.await
 import java.util.UUID
 import javax.inject.Inject
 import javax.inject.Singleton
+import org.json.JSONObject
 
 /**
  * Реализация SocialRepository для работы с социальными функциями
@@ -52,7 +54,8 @@ class SocialRepositoryImpl @Inject constructor(
     private val habitInvitationDao: HabitInvitationDao,
     private val fcmApiClient: FCMApiClient,
     private val firestore: FirebaseFirestore,
-    private val habitRepository: HabitRepository
+    private val habitRepository: HabitRepository,
+    private val syncManager: SyncManager
 ) : SocialRepository {
 
     // Helper to mask sensitive token values in logs
@@ -216,21 +219,27 @@ class SocialRepositoryImpl @Inject constructor(
                 respondedAt = null,
                 updatedAt = currentTime
             )
-            
-            Log.d("SocialRepository", "💾 Saving friend request to Firestore: id=${friendRequest.id}")
-            
-            // Сохраняем в Firestore
-            firestore.collection("friend_requests")
-                .document(friendRequest.id)
-                .set(friendRequest)
-                .await()
-
-            Log.d("SocialRepository", "💿 Saving friend request locally")
-            
-            // Сохраняем локально
+            // Room-first
             friendRequestDao.insertFriendRequest(friendRequest.toEntity())
 
-            Log.d("SocialRepository", "✅ Friend request sent successfully!")
+            // Enqueue remote UPSERT
+            val payload = JSONObject()
+                .put("fromUserId", friendRequest.fromUserId)
+                .put("toUserId", friendRequest.toUserId)
+                .put("status", friendRequest.status.name)
+                .put("message", friendRequest.message)
+                .put("createdAt", friendRequest.createdAt)
+                .put("respondedAt", friendRequest.respondedAt)
+                .put("updatedAt", friendRequest.updatedAt)
+                .toString()
+            syncManager.enqueueUpsert(
+                entityType = "friend_request",
+                entityId = friendRequest.id,
+                payloadJson = payload,
+                updatedAt = friendRequest.updatedAt
+            )
+
+            Log.d("SocialRepository", "✅ Friend request enqueued successfully!")
             Result.success(friendRequest)
         } catch (e: Exception) {
             Log.e("SocialRepository", "❌ Failed to send friend request: ${e.message}", e)
@@ -256,18 +265,7 @@ class SocialRepositoryImpl @Inject constructor(
                 requestedAt = friendRequest.createdAt
             ).accept()
 
-            // Обновляем в Firestore
-            firestore.collection("friend_requests")
-                .document(requestId)
-                .set(acceptedRequest)
-                .await()
-
-            firestore.collection("friendships")
-                .document(friendship.userId1 + "_" + friendship.userId2)
-                .set(friendship)
-                .await()
-
-            // Сохраняем локально
+            // Room-first
             friendRequestDao.updateFriendRequest(acceptedRequest.toEntity())
             
             // Важно: сначала сохраняем пользователей, чтобы избежать FOREIGN KEY constraint
@@ -287,6 +285,42 @@ class SocialRepositoryImpl @Inject constructor(
             }
             
             friendshipDao.insertFriendship(friendship.toEntity())
+
+            // Enqueue remote UPSERTs
+            val frPayload = JSONObject()
+                .put("fromUserId", acceptedRequest.fromUserId)
+                .put("toUserId", acceptedRequest.toUserId)
+                .put("status", acceptedRequest.status.name)
+                .put("message", acceptedRequest.message)
+                .put("createdAt", acceptedRequest.createdAt)
+                .put("respondedAt", acceptedRequest.respondedAt)
+                .put("updatedAt", acceptedRequest.updatedAt)
+                .toString()
+            syncManager.enqueueUpsert(
+                entityType = "friend_request",
+                entityId = acceptedRequest.id,
+                payloadJson = frPayload,
+                updatedAt = acceptedRequest.updatedAt
+            )
+
+            val ordered = if (friendship.userId1 < friendship.userId2) Pair(friendship.userId1, friendship.userId2) else Pair(friendship.userId2, friendship.userId1)
+            val fsPayload = JSONObject()
+                .put("userId1", ordered.first)
+                .put("userId2", ordered.second)
+                .put("status", friendship.status.name)
+                .put("requestedBy", friendship.requestedBy)
+                .put("requestedAt", friendship.requestedAt)
+                .put("acceptedAt", friendship.acceptedAt)
+                .put("blockedBy", friendship.blockedBy)
+                .put("blockedAt", friendship.blockedAt)
+                .put("updatedAt", friendship.updatedAt)
+                .toString()
+            syncManager.enqueueUpsert(
+                entityType = "friendship",
+                entityId = "${ordered.first}_${ordered.second}",
+                payloadJson = fsPayload,
+                updatedAt = friendship.updatedAt
+            )
 
             // Обновляем счетчики друзей
             val user1FriendsCount = friendshipDao.getFriendsCount(friendship.userId1).first()
@@ -311,14 +345,25 @@ class SocialRepositoryImpl @Inject constructor(
                 updatedAt = System.currentTimeMillis()
             )
 
-            // Обновляем в Firestore
-            firestore.collection("friend_requests")
-                .document(requestId)
-                .set(declinedRequest)
-                .await()
-
-            // Обновляем локально
+            // Room-first
             friendRequestDao.updateFriendRequest(declinedRequest.toEntity())
+
+            // Enqueue remote UPSERT
+            val payload = JSONObject()
+                .put("fromUserId", declinedRequest.fromUserId)
+                .put("toUserId", declinedRequest.toUserId)
+                .put("status", declinedRequest.status.name)
+                .put("message", declinedRequest.message)
+                .put("createdAt", declinedRequest.createdAt)
+                .put("respondedAt", declinedRequest.respondedAt)
+                .put("updatedAt", declinedRequest.updatedAt)
+                .toString()
+            syncManager.enqueueUpsert(
+                entityType = "friend_request",
+                entityId = declinedRequest.id,
+                payloadJson = payload,
+                updatedAt = declinedRequest.updatedAt
+            )
 
             Result.success(declinedRequest)
         } catch (e: Exception) {
@@ -328,14 +373,15 @@ class SocialRepositoryImpl @Inject constructor(
 
     override suspend fun cancelFriendRequest(requestId: String): Result<Unit> {
         return try {
-            // Удаляем из Firestore
-            firestore.collection("friend_requests")
-                .document(requestId)
-                .delete()
-                .await()
-
-            // Удаляем локально
+            // Room-first delete
             friendRequestDao.deleteFriendRequestById(requestId)
+
+            // Enqueue remote DELETE
+            syncManager.enqueueDelete(
+                entityType = "friend_request",
+                entityId = requestId,
+                updatedAt = System.currentTimeMillis()
+            )
 
             Result.success(Unit)
         } catch (e: Exception) {
@@ -482,11 +528,15 @@ class SocialRepositoryImpl @Inject constructor(
             val orderedIds = if (currentUserId < friendId) Pair(currentUserId, friendId) else Pair(friendId, currentUserId)
             val docId = "${orderedIds.first}_${orderedIds.second}"
 
-            // Удаляем из Firestore
-            firestore.collection("friendships").document(docId).delete().await()
-
-            // Удаляем локально
+            // Room-first delete
             friendshipDao.deleteFriendshipBetweenUsers(currentUserId, friendId)
+
+            // Enqueue remote DELETE
+            syncManager.enqueueDelete(
+                entityType = "friendship",
+                entityId = docId,
+                updatedAt = System.currentTimeMillis()
+            )
 
             // Обновляем счетчики друзей
             val user1FriendsCount = friendshipDao.getFriendsCount(currentUserId).first()
@@ -511,15 +561,28 @@ class SocialRepositoryImpl @Inject constructor(
                 blockedAt = System.currentTimeMillis()
             )
 
-            // Обновляем в Firestore
-            val orderedIds = if (currentUserId < userIdToBlock) Pair(currentUserId, userIdToBlock) else Pair(userIdToBlock, currentUserId)
-            firestore.collection("friendships")
-                .document("${orderedIds.first}_${orderedIds.second}")
-                .set(blockedFriendship)
-                .await()
-
-            // Обновляем локально
+            // Room-first
             friendshipDao.updateFriendship(blockedFriendship.toEntity())
+
+            // Enqueue UPSERT
+            val orderedIds = if (currentUserId < userIdToBlock) Pair(currentUserId, userIdToBlock) else Pair(userIdToBlock, currentUserId)
+            val payload = JSONObject()
+                .put("userId1", orderedIds.first)
+                .put("userId2", orderedIds.second)
+                .put("status", blockedFriendship.status.name)
+                .put("requestedBy", blockedFriendship.requestedBy)
+                .put("requestedAt", blockedFriendship.requestedAt)
+                .put("acceptedAt", blockedFriendship.acceptedAt)
+                .put("blockedBy", blockedFriendship.blockedBy)
+                .put("blockedAt", blockedFriendship.blockedAt)
+                .put("updatedAt", blockedFriendship.updatedAt)
+                .toString()
+            syncManager.enqueueUpsert(
+                entityType = "friendship",
+                entityId = "${orderedIds.first}_${orderedIds.second}",
+                payloadJson = payload,
+                updatedAt = blockedFriendship.updatedAt
+            )
 
             Result.success(blockedFriendship)
         } catch (e: Exception) {
@@ -538,15 +601,28 @@ class SocialRepositoryImpl @Inject constructor(
                 blockedAt = null
             )
 
-            // Обновляем в Firestore
-            val orderedIds = if (currentUserId < userIdToUnblock) Pair(currentUserId, userIdToUnblock) else Pair(userIdToUnblock, currentUserId)
-            firestore.collection("friendships")
-                .document("${orderedIds.first}_${orderedIds.second}")
-                .set(unblockedFriendship)
-                .await()
-
-            // Обновляем локально
+            // Room-first
             friendshipDao.updateFriendship(unblockedFriendship.toEntity())
+
+            // Enqueue UPSERT
+            val orderedIds = if (currentUserId < userIdToUnblock) Pair(currentUserId, userIdToUnblock) else Pair(userIdToUnblock, currentUserId)
+            val payload = JSONObject()
+                .put("userId1", orderedIds.first)
+                .put("userId2", orderedIds.second)
+                .put("status", unblockedFriendship.status.name)
+                .put("requestedBy", unblockedFriendship.requestedBy)
+                .put("requestedAt", unblockedFriendship.requestedAt)
+                .put("acceptedAt", unblockedFriendship.acceptedAt)
+                .put("blockedBy", unblockedFriendship.blockedBy)
+                .put("blockedAt", unblockedFriendship.blockedAt)
+                .put("updatedAt", unblockedFriendship.updatedAt)
+                .toString()
+            syncManager.enqueueUpsert(
+                entityType = "friendship",
+                entityId = "${orderedIds.first}_${orderedIds.second}",
+                payloadJson = payload,
+                updatedAt = unblockedFriendship.updatedAt
+            )
 
             Result.success(unblockedFriendship)
         } catch (e: Exception) {
@@ -747,14 +823,29 @@ class SocialRepositoryImpl @Inject constructor(
                 expiresAt = System.currentTimeMillis() + (7 * 24 * 60 * 60 * 1000) // Истекает через 7 дней
             )
 
-            // Сохраняем локально
+            // Room-first
             habitInvitationDao.insert(invitation.toEntity())
 
-            // Сохраняем в Firestore
-            firestore.collection("habit_invitations")
-                .document(invitation.id)
-                .set(invitation)
-                .await()
+            // Enqueue UPSERT to Firestore via Outbox
+            val payload = JSONObject()
+                .put("habitId", invitation.habitId)
+                .put("habitTitle", invitation.habitTitle)
+                .put("fromUserId", invitation.fromUserId)
+                .put("fromUserName", invitation.fromUserName)
+                .put("toUserId", invitation.toUserId)
+                .put("message", invitation.message)
+                .put("status", invitation.status.name)
+                .put("createdAt", invitation.createdAt)
+                .put("respondedAt", invitation.respondedAt)
+                .put("expiresAt", invitation.expiresAt)
+                .put("updatedAt", invitation.createdAt)
+                .toString()
+            syncManager.enqueueUpsert(
+                entityType = "habit_invitation",
+                entityId = invitation.id,
+                payloadJson = payload,
+                updatedAt = invitation.createdAt
+            )
 
             // Отправляем FCM уведомление
             sendHabitInvitationNotification(toUserId, fromUserName, habitTitle)
@@ -783,13 +874,29 @@ class SocialRepositoryImpl @Inject constructor(
                 respondedAt = System.currentTimeMillis()
             )
 
+            // Room-first update
             habitInvitationDao.update(acceptedInvitation.toEntity())
 
-            // Обновляем в Firestore
-            firestore.collection("habit_invitations")
-                .document(invitationId)
-                .set(acceptedInvitation)
-                .await()
+            // Enqueue UPSERT for invitation status
+            val payload = JSONObject()
+                .put("habitId", acceptedInvitation.habitId)
+                .put("habitTitle", acceptedInvitation.habitTitle)
+                .put("fromUserId", acceptedInvitation.fromUserId)
+                .put("fromUserName", acceptedInvitation.fromUserName)
+                .put("toUserId", acceptedInvitation.toUserId)
+                .put("message", acceptedInvitation.message)
+                .put("status", acceptedInvitation.status.name)
+                .put("createdAt", acceptedInvitation.createdAt)
+                .put("respondedAt", acceptedInvitation.respondedAt)
+                .put("expiresAt", acceptedInvitation.expiresAt)
+                .put("updatedAt", System.currentTimeMillis())
+                .toString()
+            syncManager.enqueueUpsert(
+                entityType = "habit_invitation",
+                entityId = invitationId,
+                payloadJson = payload,
+                updatedAt = System.currentTimeMillis()
+            )
 
             // Добавляем пользователя к участникам привычки локально
             habitRepository.addParticipantToHabit(invitation.habitId, invitation.toUserId)
@@ -839,13 +946,29 @@ class SocialRepositoryImpl @Inject constructor(
                 respondedAt = System.currentTimeMillis()
             )
 
+            // Room-first update
             habitInvitationDao.update(declinedInvitation.toEntity())
 
-            // Обновляем в Firestore
-            firestore.collection("habit_invitations")
-                .document(invitationId)
-                .set(declinedInvitation)
-                .await()
+            // Enqueue UPSERT for invitation status
+            val payload = JSONObject()
+                .put("habitId", declinedInvitation.habitId)
+                .put("habitTitle", declinedInvitation.habitTitle)
+                .put("fromUserId", declinedInvitation.fromUserId)
+                .put("fromUserName", declinedInvitation.fromUserName)
+                .put("toUserId", declinedInvitation.toUserId)
+                .put("message", declinedInvitation.message)
+                .put("status", declinedInvitation.status.name)
+                .put("createdAt", declinedInvitation.createdAt)
+                .put("respondedAt", declinedInvitation.respondedAt)
+                .put("expiresAt", declinedInvitation.expiresAt)
+                .put("updatedAt", System.currentTimeMillis())
+                .toString()
+            syncManager.enqueueUpsert(
+                entityType = "habit_invitation",
+                entityId = invitationId,
+                payloadJson = payload,
+                updatedAt = System.currentTimeMillis()
+            )
 
             Result.success(declinedInvitation)
         } catch (e: Exception) {
@@ -867,13 +990,29 @@ class SocialRepositoryImpl @Inject constructor(
                 respondedAt = System.currentTimeMillis()
             )
 
+            // Room-first update
             habitInvitationDao.update(cancelledInvitation.toEntity())
 
-            // Обновляем в Firestore
-            firestore.collection("habit_invitations")
-                .document(invitationId)
-                .set(cancelledInvitation)
-                .await()
+            // Enqueue UPSERT for invitation status
+            val payload = JSONObject()
+                .put("habitId", cancelledInvitation.habitId)
+                .put("habitTitle", cancelledInvitation.habitTitle)
+                .put("fromUserId", cancelledInvitation.fromUserId)
+                .put("fromUserName", cancelledInvitation.fromUserName)
+                .put("toUserId", cancelledInvitation.toUserId)
+                .put("message", cancelledInvitation.message)
+                .put("status", cancelledInvitation.status.name)
+                .put("createdAt", cancelledInvitation.createdAt)
+                .put("respondedAt", cancelledInvitation.respondedAt)
+                .put("expiresAt", cancelledInvitation.expiresAt)
+                .put("updatedAt", System.currentTimeMillis())
+                .toString()
+            syncManager.enqueueUpsert(
+                entityType = "habit_invitation",
+                entityId = invitationId,
+                payloadJson = payload,
+                updatedAt = System.currentTimeMillis()
+            )
 
             Result.success(Unit)
         } catch (e: Exception) {
@@ -956,14 +1095,76 @@ class SocialRepositoryImpl @Inject constructor(
     }
 
     override fun getOutgoingHabitInvitations(userId: String): Flow<List<HabitInvitation>> {
-        return habitInvitationDao.getOutgoingInvitations(userId).map { entities ->
-            entities.map { it.toDomain() }
+        return callbackFlow {
+            val scope = CoroutineScope(Dispatchers.IO)
+
+            // Firestore listener: исходящие приглашения от пользователя
+            val registration = firestore.collection("habit_invitations")
+                .whereEqualTo("fromUserId", userId)
+                .addSnapshotListener { snapshot, error ->
+                    if (error != null) {
+                        return@addSnapshotListener
+                    }
+                    val list = snapshot?.documents?.mapNotNull { doc ->
+                        doc.toObject(com.habittracker.data.remote.model.HabitInvitationRemote::class.java)
+                            ?.toDomain(doc.id)
+                    } ?: emptyList()
+
+                    scope.launch {
+                        try {
+                            habitInvitationDao.insertAll(list.map { it.toEntity() })
+                        } catch (_: Exception) {}
+                    }
+                }
+
+            val job = scope.launch {
+                habitInvitationDao.getOutgoingInvitations(userId).collect { entities ->
+                    trySend(entities.map { it.toDomain() })
+                }
+            }
+
+            awaitClose {
+                registration?.remove()
+                job.cancel()
+                scope.cancel()
+            }
         }
     }
 
     override fun getHabitInvitations(habitId: String): Flow<List<HabitInvitation>> {
-        return habitInvitationDao.getHabitInvitations(habitId).map { entities ->
-            entities.map { it.toDomain() }
+        return callbackFlow {
+            val scope = CoroutineScope(Dispatchers.IO)
+
+            // Firestore listener: все приглашения для конкретной привычки
+            val registration = firestore.collection("habit_invitations")
+                .whereEqualTo("habitId", habitId)
+                .addSnapshotListener { snapshot, error ->
+                    if (error != null) {
+                        return@addSnapshotListener
+                    }
+                    val list = snapshot?.documents?.mapNotNull { doc ->
+                        doc.toObject(com.habittracker.data.remote.model.HabitInvitationRemote::class.java)
+                            ?.toDomain(doc.id)
+                    } ?: emptyList()
+
+                    scope.launch {
+                        try {
+                            habitInvitationDao.insertAll(list.map { it.toEntity() })
+                        } catch (_: Exception) {}
+                    }
+                }
+
+            val job = scope.launch {
+                habitInvitationDao.getHabitInvitations(habitId).collect { entities ->
+                    trySend(entities.map { it.toDomain() })
+                }
+            }
+
+            awaitClose {
+                registration?.remove()
+                job.cancel()
+                scope.cancel()
+            }
         }
     }
 

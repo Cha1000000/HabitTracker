@@ -11,10 +11,10 @@ import com.google.android.libraries.identity.googleid.GoogleIdTokenCredential
 import com.google.android.libraries.identity.googleid.GoogleIdTokenParsingException
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.GoogleAuthProvider
-import com.google.firebase.firestore.FirebaseFirestore
-import com.habittracker.data.firestore.UserFirestoreConverter
+import com.google.firebase.messaging.FirebaseMessaging
 import com.habittracker.domain.model.User
 import com.habittracker.domain.repository.AuthRepository
+import com.habittracker.domain.usecase.auth.UpsertSignedInUserUseCase
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
@@ -23,7 +23,8 @@ import javax.inject.Inject
 
 class AuthRepositoryImpl @Inject constructor(
     private val firebaseAuth: FirebaseAuth,
-    private val firestore: FirebaseFirestore,
+    private val firebaseMessaging: FirebaseMessaging,
+    private val upsertSignedInUser: UpsertSignedInUserUseCase,
     @ApplicationContext private val context: Context,
     private val getGoogleIdOption: GetGoogleIdOption
 ) : AuthRepository {
@@ -44,6 +45,8 @@ class AuthRepositoryImpl @Inject constructor(
                     id = firebaseUser.uid,
                     name = firebaseUser.displayName ?: "",
                     email = firebaseUser.email ?: "",
+                    avatarUrl = firebaseUser.photoUrl?.toString(),
+                    avatarThumbnailUrl = firebaseUser.photoUrl?.toString(),
                     createdAt = System.currentTimeMillis(), // Placeholder
                     lastActiveAt = System.currentTimeMillis() // Placeholder
                 )
@@ -71,24 +74,18 @@ class AuthRepositoryImpl @Inject constructor(
             val firebaseUser = authResult.user
             
             if (firebaseUser != null) {
-                // Создаем объект пользователя для сохранения в Firestore
                 val user = User(
                     id = firebaseUser.uid,
-                    name = firebaseUser.displayName ?: email.substringBefore("@"), // Используем часть email как имя
+                    name = firebaseUser.displayName ?: email.substringBefore("@"),
                     email = email,
                     avatarUrl = firebaseUser.photoUrl?.toString(),
+                    avatarThumbnailUrl = firebaseUser.photoUrl?.toString(),
                     createdAt = System.currentTimeMillis(),
                     lastActiveAt = System.currentTimeMillis()
                 )
-                
-                // Сохраняем данные пользователя в Firestore коллекцию "users"
-                val userData = UserFirestoreConverter.toFirestore(user)
-                firestore.collection("users")
-                    .document(firebaseUser.uid)
-                    .set(userData)
-                    .await()
-                
-                android.util.Log.d("AuthRepository", "✅ User created and saved to Firestore: ${user.email}")
+
+                val token = try { firebaseMessaging.token.await() } catch (e: Exception) { null }
+                upsertSignedInUser(user, token)
             }
             
             emit(Result.success(Unit))
@@ -116,7 +113,21 @@ class AuthRepositoryImpl @Inject constructor(
                             val googleIdTokenCredential = GoogleIdTokenCredential.createFrom(credential.data)
                             val idToken = googleIdTokenCredential.idToken
                             val firebaseCredential = GoogleAuthProvider.getCredential(idToken, null)
-                            firebaseAuth.signInWithCredential(firebaseCredential).await()
+                            val result = firebaseAuth.signInWithCredential(firebaseCredential).await()
+                            val firebaseUser = result.user
+                            if (firebaseUser != null) {
+                                val user = User(
+                                    id = firebaseUser.uid,
+                                    name = firebaseUser.displayName ?: firebaseUser.email?.substringBefore("@") ?: "",
+                                    email = firebaseUser.email ?: "",
+                                    avatarUrl = firebaseUser.photoUrl?.toString(),
+                                    avatarThumbnailUrl = firebaseUser.photoUrl?.toString(),
+                                    createdAt = System.currentTimeMillis(),
+                                    lastActiveAt = System.currentTimeMillis()
+                                )
+                                val token = try { firebaseMessaging.token.await() } catch (e: Exception) { null }
+                                upsertSignedInUser(user, token)
+                            }
                             emit(Result.success(null)) // No Intent needed with new API
                         } catch (e: GoogleIdTokenParsingException) {
                             emit(Result.failure(Exception("Failed to parse Google ID token", e)))

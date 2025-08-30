@@ -34,7 +34,7 @@ import com.habittracker.data.local.entity.UserEntity
         PendingNotificationEntity::class,
         SyncOutboxEntity::class
     ],
-    version = 6,
+    version = 7,
     exportSchema = false // Для простоты отключаем экспорт схемы
 )
 @TypeConverters(Converters::class)
@@ -71,7 +71,8 @@ abstract class HabitTrackerDatabase : RoomDatabase() {
                         MIGRATION_2_3,
                         MIGRATION_3_4,
                         MIGRATION_4_5,
-                        MIGRATION_5_6
+                        MIGRATION_5_6,
+                        MIGRATION_6_7
                     )
                     .fallbackToDestructiveMigration() // Только для разработки!
                     .build()
@@ -230,6 +231,14 @@ abstract class HabitTrackerDatabase : RoomDatabase() {
                 db.execSQL("CREATE INDEX IF NOT EXISTS index_sync_outbox_updatedAt ON sync_outbox(updatedAt)")
                 db.execSQL("CREATE INDEX IF NOT EXISTS index_sync_outbox_entity ON sync_outbox(entityType, entityId)")
                 db.execSQL("CREATE UNIQUE INDEX IF NOT EXISTS index_sync_outbox_operationId ON sync_outbox(operationId)")
+            }
+        }
+
+        // Миграция с версии 6 на 7 (миниатюры аватаров)
+        val MIGRATION_6_7 = object : Migration(6, 7) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                // Добавляем новое поле avatarThumbnailUrl в таблицу users
+                db.execSQL("ALTER TABLE users ADD COLUMN avatarThumbnailUrl TEXT")
             }
         }
     }

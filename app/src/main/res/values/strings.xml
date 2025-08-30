@@ -35,12 +35,13 @@
     <string name="cd_back">Назад</string>
     <string name="cd_profile">Профиль</string>
     <string name="cd_add_habit">Добавить привычку</string>
-    <string name="cd_friends">Друзья</string>
+    
     <string name="cd_save">Сохранить</string>
     <string name="cd_show_password">Показать пароль</string>
     <string name="cd_hide_password">Скрыть пароль</string>
     <string name="cd_chosen">Выбрано</string>
     <string name="cd_notifications">Уведомления</string>
+    <string name="cd_friends">Друзья</string>
     <string name="cd_stats">Статистика</string>
     <string name="cd_achievements">Достижения</string>
     <string name="cd_habit_icon">Иконка привычки</string>
@@ -105,6 +106,9 @@
     <string name="profile_welcome">Добро пожаловать в профиль</string>
     <string name="profile_stats_button">Моя статистика</string>
     <string name="profile_achievements_button">Мои достижения</string>
+    <string name="profile_username_label">Имя пользователя</string>
+    <string name="profile_level_label">Уровень</string>
+    <string name="friends_title">Мои друзья</string>
     
     <!-- Notifications -->
     <string name="notification_permission_title">Разрешение на уведомления</string>
@@ -150,12 +154,26 @@
     <string name="send_request">Отправить запрос</string>
     <string name="incoming_requests">Входящие запросы</string>
     <string name="outgoing_requests">Исходящие запросы</string>
+    <string name="incoming_requests_count">📥 Входящие запросы (%1$d)</string>
+    <string name="outgoing_requests_count">📤 Отправленные запросы (%1$d)</string>
     <string name="no_friends">У вас пока нет друзей</string>
     <string name="no_friend_requests">Нет запросов в друзья</string>
     <string name="no_search_results">Пользователи не найдены</string>
     <string name="search_hint">Введите имя или email</string>
     <string name="friends_count">Друзей: %1$d</string>
     <string name="requests_count">Запросов: %1$d</string>
+    <string name="requests_label">Запросов</string>
+    <string name="friends_empty_hint_search">Найдите друзей во вкладке &quot;Поиск&quot;</string>
+    <string name="no_requests_title">Нет запросов</string>
+    <string name="no_requests_subtitle">Здесь будут отображаться запросы дружбы</string>
+    <string name="search_placeholder_friends">Найти друзей по имени...</string>
+    <string name="search_nothing_found_title">Ничего не найдено</string>
+    <string name="search_try_different_query">Попробуйте изменить поисковый запрос</string>
+    <string name="search_enter_name_prompt">Введите имя пользователя для поиска</string>
+    <string name="level_points_format">Уровень %1$d • %2$d очков</string>
+    <string name="cd_more">Еще</string>
+    <string name="wants_to_add_you">Хочет добавить вас в друзья</string>
+    <string name="request_sent">Запрос отправлен</string>
     
     <!-- Social Success Messages -->
     <string name="friend_request_sent">Запрос в друзья отправлен</string>

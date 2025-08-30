@@ -7,6 +7,7 @@ data class User(
     val name: String = "",
     val email: String = "",
     val avatarUrl: String? = null,
+    val avatarThumbnailUrl: String? = null,
     val level: Int = 1,
     val points: Int = 0,
     val streak: Int = 0, // текущая серия выполненных дней

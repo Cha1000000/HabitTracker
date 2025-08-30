@@ -53,6 +53,12 @@ interface UserDao {
     @Query("UPDATE users SET avatarUrl = :avatarUrl WHERE id = :userId")
     suspend fun updateUserAvatar(userId: String, avatarUrl: String?)
 
+    @Query("UPDATE users SET avatarThumbnailUrl = :avatarThumbnailUrl WHERE id = :userId")
+    suspend fun updateUserAvatarThumbnail(userId: String, avatarThumbnailUrl: String?)
+
+    @Query("UPDATE users SET avatarUrl = :avatarUrl, avatarThumbnailUrl = :avatarThumbnailUrl WHERE id = :userId")
+    suspend fun updateUserAvatars(userId: String, avatarUrl: String?, avatarThumbnailUrl: String?)
+
     @Query("SELECT * FROM users WHERE name LIKE :query OR email LIKE :query ORDER BY name ASC LIMIT 20")
     suspend fun searchUsers(query: String): List<UserEntity>
 }

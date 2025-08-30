@@ -166,6 +166,7 @@ dependencies {
     implementation(libs.firebase.messaging)
     implementation(libs.firebase.firestore)
     implementation(libs.firebase.auth)
+    implementation(libs.firebase.storage)
     
     // Google Auth для FCM OAuth 2.0
     implementation(libs.google.auth.oauth2)

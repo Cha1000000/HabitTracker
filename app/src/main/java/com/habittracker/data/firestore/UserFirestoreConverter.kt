@@ -17,21 +17,32 @@ object UserFirestoreConverter {
      * Конвертирует User в Map для сохранения в Firestore
      */
     fun toFirestore(user: User): Map<String, Any> {
-        return mapOf(
+        val base = mutableMapOf<String, Any>(
             "id" to user.id,
             "name" to user.name,
             "email" to user.email,
             "avatarUrl" to (user.avatarUrl ?: ""),
+            // thumbnail хранится отдельно, пустые строки не сохраняем
+            // добавим позже условно, чтобы не записывать пустое значение
             "level" to user.level,
             "points" to user.points,
             "streak" to user.streak,
             "longestStreak" to user.longestStreak,
             "friendsCount" to user.friendsCount,
-            "fcmToken" to (user.fcmToken ?: ""),
             "createdAt" to user.createdAt, // Long timestamp
             "lastActiveAt" to user.lastActiveAt, // Long timestamp
             "timezone" to (user.timezone ?: "")
         )
+        user.avatarThumbnailUrl?.takeIf { it.isNotBlank() }?.let { thumb ->
+            base["avatarThumbnailUrl"] = thumb
+        }
+        // Backward compatibility: сохраняем старое поле, но избегаем пустой строки
+        user.fcmToken?.takeIf { it.isNotBlank() }?.let { token ->
+            base["fcmToken"] = token
+            // Новый формат: массив токенов
+            base["fcmTokens"] = listOf(token)
+        }
+        return base
     }
     
     /**
@@ -40,17 +51,25 @@ object UserFirestoreConverter {
      */
     fun fromFirestore(data: Map<String, Any>, documentId: String): User? {
         return try {
+            val tokens = extractStringList(data, key = "fcmTokens")
+            val singleToken = extractString(data, "fcmToken")
+            val resolvedToken = when {
+                !tokens.isNullOrEmpty() -> tokens.firstOrNull()
+                !singleToken.isNullOrBlank() -> singleToken
+                else -> null
+            }
             User(
                 id = documentId,
                 name = extractString(data, "name") ?: "",
                 email = extractString(data, "email") ?: "",
                 avatarUrl = extractString(data, "avatarUrl"),
+                avatarThumbnailUrl = extractString(data, "avatarThumbnailUrl"),
                 level = extractInt(data, "level") ?: 1,
                 points = extractInt(data, "points") ?: 0,
                 streak = extractInt(data, "streak") ?: 0,
                 longestStreak = extractInt(data, "longestStreak") ?: 0,
                 friendsCount = extractInt(data, "friendsCount") ?: 0,
-                fcmToken = extractString(data, "fcmToken"),
+                fcmToken = resolvedToken,
                 createdAt = extractTimestamp(data, "createdAt") ?: System.currentTimeMillis(),
                 lastActiveAt = extractTimestamp(data, "lastActiveAt") ?: System.currentTimeMillis(),
                 timezone = extractString(data, "timezone")
@@ -80,6 +99,22 @@ object UserFirestoreConverter {
             is Number -> value.toInt()
             is String -> value.toIntOrNull()
             null -> null
+            else -> null
+        }
+    }
+
+    /**
+     * Извлекает список строк из произвольного массива/коллекции.
+     */
+    private fun extractStringList(data: Map<String, Any>, key: String): List<String>? {
+        return when (val value = data[key]) {
+            is List<*> -> value.mapNotNull {
+                when (it) {
+                    is String -> it
+                    is Number -> it.toString()
+                    else -> null
+                }
+            }.filter { it.isNotBlank() }.takeIf { it.isNotEmpty() }
             else -> null
         }
     }

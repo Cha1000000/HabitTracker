@@ -1,64 +1,129 @@
 package com.habittracker.presentation.ui.social
 
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.animation.slideInVertically
-import androidx.compose.animation.slideOutVertically
+import androidx.compose.animation.Crossfade
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.*
-import androidx.compose.material.icons.outlined.*
-import androidx.compose.material3.*
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.Clear
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.MoreVert
+import androidx.compose.material.icons.filled.People
+import androidx.compose.material.icons.filled.PersonAdd
+import androidx.compose.material.icons.filled.PersonRemove
+import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.outlined.People
+import androidx.compose.material.icons.outlined.PersonAdd
+import androidx.compose.material.icons.outlined.Search
+import androidx.compose.material.icons.outlined.SearchOff
+import androidx.compose.material3.Badge
+import androidx.compose.material3.BadgedBox
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FilledTonalButton
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Tab
+import androidx.compose.material3.TabRow
+import androidx.compose.material3.TabRowDefaults
 import androidx.compose.material3.TabRowDefaults.tabIndicatorOffset
-import androidx.compose.runtime.*
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.material3.TopAppBar
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import coil.compose.AsyncImage
+import coil.request.CachePolicy
 import coil.request.ImageRequest
-import com.habittracker.domain.model.User
+import com.habittracker.R
 import com.habittracker.domain.model.FriendRequestWithUsers
+import com.habittracker.domain.model.User
 import com.habittracker.presentation.viewmodel.FriendsViewModel
 
 /**
  * 👥 Экран друзей - центральный hub социальных взаимодействий
- * 
- * Дизайн принципы:
- * - Material 3 Design System
- * - Intuitive navigation с вкладками
- * - Smooth animations для лучшего UX
- * - Clean, modern aesthetics
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun FriendsScreen(
     onNavigateToProfile: (String) -> Unit,
+    onNavigateBack: () -> Unit = {},
     viewModel: FriendsViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
     var selectedTab by remember { mutableIntStateOf(0) }
-    val tabs = listOf("Друзья", "Запросы", "Поиск")
+    val tabs = listOf(
+        stringResource(id = R.string.friends),
+        stringResource(id = R.string.friend_requests),
+        stringResource(id = R.string.search_friends)
+    )
 
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(MaterialTheme.colorScheme.background)
-    ) {
+    Scaffold(
+        topBar = {
+            TopAppBar(
+                title = { Text(text = stringResource(id = R.string.friends_title)) },
+                navigationIcon = {
+                    IconButton(onClick = onNavigateBack) {
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                            contentDescription = stringResource(id = R.string.cd_back)
+                        )
+                    }
+                }
+            )
+        }
+    ) { padding ->
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(padding)
+                .background(MaterialTheme.colorScheme.background)
+        ) {
         // 🎨 Modern Header с статистикой
         FriendsHeader(
             friendsCount = uiState.friends.size,
@@ -107,13 +172,12 @@ fun FriendsScreen(
             }
         }
         
-        // 📄 Tab Content с анимациями
-        AnimatedVisibility(
-            visible = true,
-            enter = fadeIn() + slideInVertically(),
-            exit = fadeOut() + slideOutVertically()
-        ) {
-            when (selectedTab) {
+        // 📄 Tab Content с плавным переключением
+        Crossfade(
+            targetState = selectedTab,
+            animationSpec = tween(durationMillis = 200)
+        ) { tab ->
+            when (tab) {
                 0 -> FriendsTab(
                     friends = uiState.friends,
                     onFriendClick = onNavigateToProfile,
@@ -134,6 +198,7 @@ fun FriendsScreen(
                     onSendFriendRequest = { userId -> viewModel.sendFriendRequest(userId, "") }
                 )
             }
+        }
         }
     }
 }
@@ -158,8 +223,8 @@ private fun FriendsTab(
             item {
                 EmptyStateCard(
                     icon = Icons.Outlined.People,
-                    title = "Пока нет друзей",
-                    subtitle = "Найдите друзей во вкладке \"Поиск\""
+                    title = stringResource(id = R.string.no_friends),
+                    subtitle = stringResource(id = R.string.friends_empty_hint_search)
                 )
             }
         } else {
@@ -196,7 +261,7 @@ private fun RequestsTab(
         if (incomingRequests.isNotEmpty()) {
             item {
                 Text(
-                    text = "📥 Входящие запросы (${incomingRequests.size})",
+                    text = stringResource(id = R.string.incoming_requests_count, incomingRequests.size),
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.primary,
@@ -218,7 +283,7 @@ private fun RequestsTab(
             item {
                 Spacer(modifier = Modifier.height(8.dp))
                 Text(
-                    text = "📤 Отправленные запросы (${outgoingRequests.size})",
+                    text = stringResource(id = R.string.outgoing_requests_count, outgoingRequests.size),
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.secondary,
@@ -239,8 +304,8 @@ private fun RequestsTab(
             item {
                 EmptyStateCard(
                     icon = Icons.Outlined.PersonAdd,
-                    title = "Нет запросов",
-                    subtitle = "Здесь будут отображаться запросы дружбы"
+                    title = stringResource(id = R.string.no_requests_title),
+                    subtitle = stringResource(id = R.string.no_requests_subtitle)
                 )
             }
         }
@@ -269,14 +334,14 @@ private fun SearchTab(
             value = searchQuery,
             onValueChange = onSearchQueryChange,
             modifier = Modifier.fillMaxWidth(),
-            placeholder = { Text("Найти друзей по имени...") },
+            placeholder = { Text(stringResource(id = R.string.search_placeholder_friends)) },
             leadingIcon = {
                 Icon(Icons.Default.Search, contentDescription = null)
             },
             trailingIcon = {
                 if (searchQuery.isNotEmpty()) {
                     IconButton(onClick = { onSearchQueryChange("") }) {
-                        Icon(Icons.Default.Clear, contentDescription = "Очистить")
+                        Icon(Icons.Default.Clear, contentDescription = stringResource(id = R.string.clear))
                     }
                 }
             },
@@ -308,14 +373,14 @@ private fun SearchTab(
         } else if (searchQuery.isNotEmpty()) {
             EmptyStateCard(
                 icon = Icons.Outlined.SearchOff,
-                title = "Ничего не найдено",
-                subtitle = "Попробуйте изменить поисковый запрос"
+                title = stringResource(id = R.string.search_nothing_found_title),
+                subtitle = stringResource(id = R.string.search_try_different_query)
             )
         } else {
             EmptyStateCard(
                 icon = Icons.Outlined.Search,
-                title = "Поиск друзей",
-                subtitle = "Введите имя пользователя для поиска"
+                title = stringResource(id = R.string.search_friends),
+                subtitle = stringResource(id = R.string.search_enter_name_prompt)
             )
         }
     }
@@ -344,7 +409,7 @@ private fun FriendsHeader(
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             Text(
-                text = "Мои друзья",
+                text = stringResource(id = R.string.friends_title),
                 style = MaterialTheme.typography.headlineSmall,
                 fontWeight = FontWeight.Bold,
                 color = MaterialTheme.colorScheme.onPrimaryContainer
@@ -359,14 +424,14 @@ private fun FriendsHeader(
                 StatCard(
                     icon = Icons.Default.People,
                     count = friendsCount,
-                    label = "Друзей"
+                    label = stringResource(id = R.string.friends_count_label)
                 )
                 
                 // Статистика запросов
                 StatCard(
                     icon = Icons.Default.PersonAdd,
                     count = pendingRequestsCount,
-                    label = "Запросов"
+                    label = stringResource(id = R.string.requests_label)
                 )
             }
         }
@@ -436,7 +501,11 @@ private fun FriendCard(
             // Аватар
             AsyncImage(
                 model = ImageRequest.Builder(LocalContext.current)
-                    .data(friend.avatarUrl ?: "")
+                    .data(friend.avatarThumbnailUrl ?: friend.avatarUrl ?: "")
+                    .placeholder(R.drawable.ic_avatar_placeholder)
+                    .error(R.drawable.ic_avatar_placeholder)
+                    .diskCachePolicy(CachePolicy.ENABLED)
+                    .memoryCachePolicy(CachePolicy.ENABLED)
                     .crossfade(true)
                     .build(),
                 contentDescription = friend.name,
@@ -460,7 +529,7 @@ private fun FriendCard(
                 )
                 
                 Text(
-                    text = "Уровень ${friend.level} • ${friend.points} очков",
+                    text = stringResource(id = R.string.level_points_format, friend.level, friend.points),
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
                 )
@@ -477,7 +546,7 @@ private fun FriendCard(
                     )
                     Spacer(modifier = Modifier.width(6.dp))
                     Text(
-                        text = "Активен",
+                        text = stringResource(id = R.string.online),
                         style = MaterialTheme.typography.bodySmall,
                         color = Color.Green
                     )
@@ -489,7 +558,7 @@ private fun FriendCard(
                 IconButton(onClick = { showMenu = true }) {
                     Icon(
                         Icons.Default.MoreVert,
-                        contentDescription = "Еще"
+                        contentDescription = stringResource(id = R.string.cd_more)
                     )
                 }
                 
@@ -498,7 +567,7 @@ private fun FriendCard(
                     onDismissRequest = { showMenu = false }
                 ) {
                     DropdownMenuItem(
-                        text = { Text("Удалить из друзей") },
+                        text = { Text(stringResource(id = R.string.remove_friend)) },
                         onClick = {
                             onRemove()
                             showMenu = false
@@ -593,7 +662,11 @@ private fun IncomingRequestCard(
                 // Аватар отправителя
                 AsyncImage(
                     model = ImageRequest.Builder(LocalContext.current)
-                        .data(request.fromUser.avatarUrl ?: "")
+                        .data(request.fromUser.avatarThumbnailUrl ?: request.fromUser.avatarUrl ?: "")
+                        .placeholder(R.drawable.ic_avatar_placeholder)
+                        .error(R.drawable.ic_avatar_placeholder)
+                        .diskCachePolicy(CachePolicy.ENABLED)
+                        .memoryCachePolicy(CachePolicy.ENABLED)
                         .crossfade(true)
                         .build(),
                     contentDescription = request.fromUser.name,
@@ -613,7 +686,7 @@ private fun IncomingRequestCard(
                         fontWeight = FontWeight.Bold
                     )
                     Text(
-                        text = "Хочет добавить вас в друзья",
+                        text = stringResource(id = R.string.wants_to_add_you),
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
                     )
@@ -639,7 +712,7 @@ private fun IncomingRequestCard(
                         modifier = Modifier.size(16.dp)
                     )
                     Spacer(modifier = Modifier.width(4.dp))
-                    Text("Принять")
+                    Text(stringResource(id = R.string.accept_request))
                 }
                 
                 // Отклонить
@@ -657,7 +730,7 @@ private fun IncomingRequestCard(
                         modifier = Modifier.size(16.dp)
                     )
                     Spacer(modifier = Modifier.width(4.dp))
-                    Text("Отклонить")
+                    Text(stringResource(id = R.string.decline_request))
                 }
             }
         }
@@ -689,7 +762,11 @@ private fun OutgoingRequestCard(
             // Аватар получателя
             AsyncImage(
                 model = ImageRequest.Builder(LocalContext.current)
-                    .data(request.toUser.avatarUrl ?: "")
+                    .data(request.toUser.avatarThumbnailUrl ?: request.toUser.avatarUrl ?: "")
+                    .placeholder(R.drawable.ic_avatar_placeholder)
+                    .error(R.drawable.ic_avatar_placeholder)
+                    .diskCachePolicy(CachePolicy.ENABLED)
+                    .memoryCachePolicy(CachePolicy.ENABLED)
                     .crossfade(true)
                     .build(),
                 contentDescription = request.toUser.name,
@@ -709,7 +786,7 @@ private fun OutgoingRequestCard(
                     fontWeight = FontWeight.Bold
                 )
                 Text(
-                    text = "Запрос отправлен",
+                    text = stringResource(id = R.string.request_sent),
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
                 )
@@ -722,7 +799,7 @@ private fun OutgoingRequestCard(
                     contentColor = MaterialTheme.colorScheme.error
                 )
             ) {
-                Text("Отменить")
+                Text(stringResource(id = R.string.cancel))
             }
         }
     }
@@ -753,7 +830,11 @@ private fun SearchResultCard(
             // Аватар
             AsyncImage(
                 model = ImageRequest.Builder(LocalContext.current)
-                    .data(user.avatarUrl ?: "")
+                    .data(user.avatarThumbnailUrl ?: user.avatarUrl ?: "")
+                    .placeholder(R.drawable.ic_avatar_placeholder)
+                    .error(R.drawable.ic_avatar_placeholder)
+                    .diskCachePolicy(CachePolicy.ENABLED)
+                    .memoryCachePolicy(CachePolicy.ENABLED)
                     .crossfade(true)
                     .build(),
                 contentDescription = user.name,
@@ -775,7 +856,7 @@ private fun SearchResultCard(
                     overflow = TextOverflow.Ellipsis
                 )
                 Text(
-                    text = "Уровень ${user.level} • ${user.points} очков",
+                    text = stringResource(id = R.string.level_points_format, user.level, user.points),
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
                 )
@@ -792,7 +873,7 @@ private fun SearchResultCard(
                     modifier = Modifier.size(16.dp)
                 )
                 Spacer(modifier = Modifier.width(4.dp))
-                Text("Добавить")
+                Text(stringResource(id = R.string.add_friend))
             }
         }
     }

@@ -1,13 +1,20 @@
 package com.habittracker.data.repository
 
+import com.google.firebase.firestore.FirebaseFirestore
 import com.habittracker.data.local.dao.HabitEntryDao
 import com.habittracker.data.local.mappers.toDomain
 import com.habittracker.domain.model.HabitEntry
 import com.habittracker.domain.model.HabitEntryWithUser
 import com.habittracker.domain.repository.HabitEntryRepository
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.cancel
+import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.callbackFlow
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.launch
 import kotlinx.datetime.Clock
 import kotlinx.datetime.LocalDate
 import javax.inject.Inject
@@ -17,7 +24,8 @@ import com.habittracker.data.local.mappers.toEntity as habitEntryToEntity
 
 @Singleton
 class HabitEntryRepositoryImpl @Inject constructor(
-    private val habitEntryDao: HabitEntryDao
+    private val habitEntryDao: HabitEntryDao,
+    private val firestore: FirebaseFirestore
 ) : HabitEntryRepository {
 
     override suspend fun insertEntry(entry: HabitEntry) {
@@ -40,20 +48,90 @@ class HabitEntryRepositoryImpl @Inject constructor(
     }
 
     override fun getEntriesForHabit(habitId: String): Flow<List<HabitEntry>> {
-        return habitEntryDao.getEntriesForHabit(habitId).map { entities ->
-            entities.map { it.habitEntryToDomain() }
+        return callbackFlow {
+            val scope = CoroutineScope(Dispatchers.IO)
+
+            val registration = firestore.collection("habit_entries")
+                .whereEqualTo("habitId", habitId)
+                .addSnapshotListener { snapshot, _ ->
+                    val list = snapshot?.documents?.mapNotNull { doc ->
+                        try { doc.toObject(HabitEntry::class.java) } catch (_: Exception) { null }
+                    } ?: emptyList()
+                    scope.launch {
+                        try { habitEntryDao.insertEntries(list.map { it.habitEntryToEntity() }) } catch (_: Exception) {}
+                    }
+                }
+
+            val job = scope.launch {
+                habitEntryDao.getEntriesForHabit(habitId).collect { entities ->
+                    trySend(entities.map { it.habitEntryToDomain() })
+                }
+            }
+
+            awaitClose {
+                registration?.remove()
+                job.cancel()
+                scope.cancel()
+            }
         }
     }
 
     override fun getEntriesForUser(userId: String): Flow<List<HabitEntry>> {
-        return habitEntryDao.getEntriesForUser(userId).map { entities ->
-            entities.map { it.habitEntryToDomain() }
+        return callbackFlow {
+            val scope = CoroutineScope(Dispatchers.IO)
+
+            val registration = firestore.collection("habit_entries")
+                .whereEqualTo("userId", userId)
+                .addSnapshotListener { snapshot, _ ->
+                    val list = snapshot?.documents?.mapNotNull { doc ->
+                        try { doc.toObject(HabitEntry::class.java) } catch (_: Exception) { null }
+                    } ?: emptyList()
+                    scope.launch {
+                        try { habitEntryDao.insertEntries(list.map { it.habitEntryToEntity() }) } catch (_: Exception) {}
+                    }
+                }
+
+            val job = scope.launch {
+                habitEntryDao.getEntriesForUser(userId).collect { entities ->
+                    trySend(entities.map { it.habitEntryToDomain() })
+                }
+            }
+
+            awaitClose {
+                registration?.remove()
+                job.cancel()
+                scope.cancel()
+            }
         }
     }
 
     override fun getEntriesForUserAndHabit(userId: String, habitId: String): Flow<List<HabitEntry>> {
-        return habitEntryDao.getEntriesForUserAndHabit(userId, habitId).map { entities ->
-            entities.map { it.habitEntryToDomain() }
+        return callbackFlow {
+            val scope = CoroutineScope(Dispatchers.IO)
+
+            val registration = firestore.collection("habit_entries")
+                .whereEqualTo("habitId", habitId)
+                .whereEqualTo("userId", userId)
+                .addSnapshotListener { snapshot, _ ->
+                    val list = snapshot?.documents?.mapNotNull { doc ->
+                        try { doc.toObject(HabitEntry::class.java) } catch (_: Exception) { null }
+                    } ?: emptyList()
+                    scope.launch {
+                        try { habitEntryDao.insertEntries(list.map { it.habitEntryToEntity() }) } catch (_: Exception) {}
+                    }
+                }
+
+            val job = scope.launch {
+                habitEntryDao.getEntriesForUserAndHabit(habitId, userId).collect { entities ->
+                    trySend(entities.map { it.habitEntryToDomain() })
+                }
+            }
+
+            awaitClose {
+                registration?.remove()
+                job.cancel()
+                scope.cancel()
+            }
         }
     }
 
