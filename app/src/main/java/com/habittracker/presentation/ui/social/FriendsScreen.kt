@@ -1,8 +1,11 @@
 package com.habittracker.presentation.ui.social
 
+import android.graphics.BitmapFactory
+import android.util.Base64
 import androidx.compose.animation.Crossfade
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -20,6 +23,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.Image
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Check
@@ -69,8 +73,10 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -248,6 +254,91 @@ fun FriendsScreen(
                     Text(text = stringResource(id = R.string.cancel))
                 }
             }
+        )
+    }
+}
+
+/**
+ * Унифицированный компонент аватара пользователя с поддержкой data:image base64,
+ * как на `ProfileScreen`.
+ */
+@Composable
+private fun AvatarImage(
+    data: String?,
+    contentDescription: String?,
+    sizeDp: androidx.compose.ui.unit.Dp,
+    placeholderColor: Color,
+    modifier: Modifier = Modifier
+) {
+    val displayData: Any? = data?.takeIf { it.isNotBlank() }
+
+    if (displayData != null) {
+        val isDataUrl = (displayData as? String)?.startsWith("data:image") == true
+        if (isDataUrl) {
+            val base64 = (displayData as String).substringAfter(',')
+            val bytes = try { Base64.decode(base64, Base64.DEFAULT) } catch (_: Exception) { null }
+            val bmp = bytes?.let { BitmapFactory.decodeByteArray(it, 0, it.size) }
+            if (bmp != null) {
+                Image(
+                    bitmap = bmp.asImageBitmap(),
+                    contentDescription = contentDescription,
+                    modifier = modifier
+                        .size(sizeDp)
+                        .clip(CircleShape)
+                        .background(placeholderColor),
+                    contentScale = ContentScale.Crop
+                )
+            } else {
+                AsyncImage(
+                    model = ImageRequest.Builder(LocalContext.current)
+                        .data(displayData)
+                        .crossfade(true)
+                        .diskCachePolicy(CachePolicy.ENABLED)
+                        .memoryCachePolicy(CachePolicy.ENABLED)
+                        .build(),
+                    contentDescription = contentDescription,
+                    modifier = modifier
+                        .size(sizeDp)
+                        .clip(CircleShape)
+                        .background(placeholderColor),
+                    contentScale = ContentScale.Crop,
+                    placeholder = painterResource(id = R.drawable.ic_avatar_placeholder),
+                    error = painterResource(id = R.drawable.ic_avatar_placeholder)
+                )
+            }
+        } else {
+            AsyncImage(
+                model = ImageRequest.Builder(LocalContext.current)
+                    .data(displayData)
+                    .crossfade(true)
+                    .diskCachePolicy(CachePolicy.ENABLED)
+                    .memoryCachePolicy(CachePolicy.ENABLED)
+                    .build(),
+                contentDescription = contentDescription,
+                modifier = modifier
+                    .size(sizeDp)
+                    .clip(CircleShape)
+                    .background(placeholderColor),
+                contentScale = ContentScale.Crop,
+                placeholder = painterResource(id = R.drawable.ic_avatar_placeholder),
+                error = painterResource(id = R.drawable.ic_avatar_placeholder)
+            )
+        }
+    } else {
+        // Плейсхолдер (иконка)
+        AsyncImage(
+            model = ImageRequest.Builder(LocalContext.current)
+                .data("")
+                .crossfade(true)
+                .build(),
+            contentDescription = contentDescription,
+            modifier = modifier
+                .size(sizeDp)
+                .clip(CircleShape)
+                .background(placeholderColor),
+            contentScale = ContentScale.Crop,
+            placeholder = painterResource(id = R.drawable.ic_avatar_placeholder),
+            error = painterResource(id = R.drawable.ic_avatar_placeholder)
         )
     }
 }
@@ -551,21 +642,12 @@ private fun FriendCard(
             verticalAlignment = Alignment.CenterVertically
         ) {
             // Аватар
-            AsyncImage(
-                model = ImageRequest.Builder(LocalContext.current)
-                    .data(friend.avatarThumbnailUrl ?: friend.avatarUrl ?: "")
-                    .placeholder(R.drawable.ic_avatar_placeholder)
-                    .error(R.drawable.ic_avatar_placeholder)
-                    .diskCachePolicy(CachePolicy.ENABLED)
-                    .memoryCachePolicy(CachePolicy.ENABLED)
-                    .crossfade(true)
-                    .build(),
+            AvatarImage(
+                data = (friend.avatarThumbnailUrl?.takeIf { it.isNotBlank() }
+                    ?: friend.avatarUrl?.takeIf { it.isNotBlank() }),
                 contentDescription = friend.name,
-                modifier = Modifier
-                    .size(56.dp)
-                    .clip(CircleShape)
-                    .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.1f)),
-                contentScale = ContentScale.Crop
+                sizeDp = 56.dp,
+                placeholderColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.1f)
             )
             
             Spacer(modifier = Modifier.width(16.dp))
@@ -704,7 +786,7 @@ private fun IncomingRequestCard(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f)
+            containerColor = MaterialTheme.colorScheme.surfaceVariant
         ),
         elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
     ) {
@@ -715,21 +797,12 @@ private fun IncomingRequestCard(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 // Аватар отправителя
-                AsyncImage(
-                    model = ImageRequest.Builder(LocalContext.current)
-                        .data(request.fromUser.avatarThumbnailUrl ?: request.fromUser.avatarUrl ?: "")
-                        .placeholder(R.drawable.ic_avatar_placeholder)
-                        .error(R.drawable.ic_avatar_placeholder)
-                        .diskCachePolicy(CachePolicy.ENABLED)
-                        .memoryCachePolicy(CachePolicy.ENABLED)
-                        .crossfade(true)
-                        .build(),
+                AvatarImage(
+                    data = (request.fromUser.avatarThumbnailUrl?.takeIf { it.isNotBlank() }
+                        ?: request.fromUser.avatarUrl?.takeIf { it.isNotBlank() }),
                     contentDescription = request.fromUser.name,
-                    modifier = Modifier
-                        .size(48.dp)
-                        .clip(CircleShape)
-                        .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.1f)),
-                    contentScale = ContentScale.Crop
+                    sizeDp = 48.dp,
+                    placeholderColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.1f)
                 )
                 
                 Spacer(modifier = Modifier.width(12.dp))
@@ -804,7 +877,7 @@ private fun OutgoingRequestCard(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.3f)
+            containerColor = MaterialTheme.colorScheme.surfaceVariant
         ),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
@@ -815,21 +888,12 @@ private fun OutgoingRequestCard(
             verticalAlignment = Alignment.CenterVertically
         ) {
             // Аватар получателя
-            AsyncImage(
-                model = ImageRequest.Builder(LocalContext.current)
-                    .data(request.toUser.avatarThumbnailUrl ?: request.toUser.avatarUrl ?: "")
-                    .placeholder(R.drawable.ic_avatar_placeholder)
-                    .error(R.drawable.ic_avatar_placeholder)
-                    .diskCachePolicy(CachePolicy.ENABLED)
-                    .memoryCachePolicy(CachePolicy.ENABLED)
-                    .crossfade(true)
-                    .build(),
+            AvatarImage(
+                data = (request.toUser.avatarThumbnailUrl?.takeIf { it.isNotBlank() }
+                    ?: request.toUser.avatarUrl?.takeIf { it.isNotBlank() }),
                 contentDescription = request.toUser.name,
-                modifier = Modifier
-                    .size(48.dp)
-                    .clip(CircleShape)
-                    .background(MaterialTheme.colorScheme.secondary.copy(alpha = 0.1f)),
-                contentScale = ContentScale.Crop
+                sizeDp = 48.dp,
+                placeholderColor = MaterialTheme.colorScheme.secondary.copy(alpha = 0.1f)
             )
             
             Spacer(modifier = Modifier.width(12.dp))
@@ -848,9 +912,11 @@ private fun OutgoingRequestCard(
             }
             
             // Кнопка отмены
-            TextButton(
+            OutlinedButton(
                 onClick = onCancel,
-                colors = ButtonDefaults.textButtonColors(
+                shape = RoundedCornerShape(12.dp),
+                border = BorderStroke(1.dp, MaterialTheme.colorScheme.error),
+                colors = ButtonDefaults.outlinedButtonColors(
                     contentColor = MaterialTheme.colorScheme.error
                 )
             ) {
@@ -883,21 +949,12 @@ private fun SearchResultCard(
             verticalAlignment = Alignment.CenterVertically
         ) {
             // Аватар
-            AsyncImage(
-                model = ImageRequest.Builder(LocalContext.current)
-                    .data(user.avatarThumbnailUrl ?: user.avatarUrl ?: "")
-                    .placeholder(R.drawable.ic_avatar_placeholder)
-                    .error(R.drawable.ic_avatar_placeholder)
-                    .diskCachePolicy(CachePolicy.ENABLED)
-                    .memoryCachePolicy(CachePolicy.ENABLED)
-                    .crossfade(true)
-                    .build(),
+            AvatarImage(
+                data = (user.avatarThumbnailUrl?.takeIf { it.isNotBlank() }
+                    ?: user.avatarUrl?.takeIf { it.isNotBlank() }),
                 contentDescription = user.name,
-                modifier = Modifier
-                    .size(48.dp)
-                    .clip(CircleShape)
-                    .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.1f)),
-                contentScale = ContentScale.Crop
+                sizeDp = 48.dp,
+                placeholderColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.1f)
             )
             
             Spacer(modifier = Modifier.width(12.dp))

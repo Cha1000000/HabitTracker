@@ -446,7 +446,7 @@ fun NotificationBadge(
             containerColor = MaterialTheme.colorScheme.error
         ) {
             Text(
-                text = if (count > 99) "99+" else count.toString(),
+                text = if (count > 9) "9+" else count.toString(),
                 style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.onError
             )

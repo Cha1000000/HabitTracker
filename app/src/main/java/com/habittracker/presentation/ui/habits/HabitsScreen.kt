@@ -51,6 +51,7 @@ import com.habittracker.presentation.ui.notifications.NotificationBadge
 import com.habittracker.presentation.viewmodel.HabitWithCompletion
 import com.habittracker.presentation.viewmodel.HabitsViewModel
 import com.habittracker.presentation.viewmodel.NotificationsViewModel
+import com.habittracker.presentation.viewmodel.FriendsViewModel
 import kotlinx.datetime.Clock
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -58,11 +59,14 @@ import kotlinx.datetime.Clock
 fun HabitsScreen(
     navController: NavController,
     viewModel: HabitsViewModel = hiltViewModel(),
-    notificationsViewModel: NotificationsViewModel = hiltViewModel()
+    notificationsViewModel: NotificationsViewModel = hiltViewModel(),
+    friendsViewModel: FriendsViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val snackbarHostState = remember { SnackbarHostState() }
     val badgeCount by notificationsViewModel.badgeCount.collectAsState()
+    val friendsUiState by friendsViewModel.uiState.collectAsState()
+    val friendRequestsBadgeCount = friendsUiState.incomingRequests.size
     
     // Принудительная загрузка привычек при открытии экрана
     LaunchedEffect(Unit) {
@@ -112,12 +116,20 @@ fun HabitsScreen(
                             contentDescription = stringResource(R.string.cd_profile)
                         )
                     }
-                    IconButton(onClick = { 
-                        navController.navigate(Screen.Friends.route) 
-                    }) {
-                        Icon(
-                            imageVector = Icons.Default.People,
-                            contentDescription = stringResource(R.string.cd_friends)
+                    Box {
+                        IconButton(onClick = { 
+                            navController.navigate(Screen.Friends.route) 
+                        }) {
+                            Icon(
+                                imageVector = Icons.Default.People,
+                                contentDescription = stringResource(R.string.cd_friends)
+                            )
+                        }
+                        NotificationBadge(
+                            count = friendRequestsBadgeCount,
+                            modifier = Modifier
+                                .align(Alignment.TopEnd)
+                                .offset(x = (-8).dp, y = 6.dp)
                         )
                     }
                     Box {
