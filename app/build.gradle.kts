@@ -56,19 +56,37 @@ android {
     val releaseStorePassword = localProperties.getProperty("RELEASE_STORE_PASSWORD") ?: System.getenv("RELEASE_STORE_PASSWORD")
     val releaseKeyAlias = localProperties.getProperty("RELEASE_KEY_ALIAS") ?: System.getenv("RELEASE_KEY_ALIAS")
     val releaseKeyPassword = localProperties.getProperty("RELEASE_KEY_PASSWORD") ?: System.getenv("RELEASE_KEY_PASSWORD")
-    val hasReleaseSigning = !releaseStoreFile.isNullOrBlank() &&
+    // Resolve keystore path robustly (supports absolute and relative to root/app)
+    val resolvedStoreFile = run {
+        if (releaseStoreFile.isNullOrBlank()) null else {
+            val candidates = listOf(
+                // As provided
+                file(releaseStoreFile),
+                // Relative to app module
+                File(projectDir, releaseStoreFile),
+                // Relative to root project
+                File(rootProject.projectDir, releaseStoreFile),
+                // If mistakenly starts with '/', try trimming it relative to root and app
+                File(rootProject.projectDir, releaseStoreFile.removePrefix("/")),
+                File(projectDir, releaseStoreFile.removePrefix("/"))
+            )
+            candidates.firstOrNull { it.exists() }
+        }
+    }
+    val hasReleaseSigning = resolvedStoreFile != null &&
             !releaseStorePassword.isNullOrBlank() &&
             !releaseKeyAlias.isNullOrBlank() &&
             !releaseKeyPassword.isNullOrBlank()
 
     signingConfigs {
-        if (hasReleaseSigning) {
-            create("release") {
-                storeFile = file(releaseStoreFile!!)
-                storePassword = releaseStorePassword
-                keyAlias = releaseKeyAlias
-                keyPassword = releaseKeyPassword
+        create("release") {
+            if (!hasReleaseSigning) {
+                throw GradleException("Release signing is not configured. Please set RELEASE_* in local.properties or env and ensure keystore path is correct.")
             }
+            storeFile = resolvedStoreFile
+            storePassword = releaseStorePassword
+            keyAlias = releaseKeyAlias
+            keyPassword = releaseKeyPassword
         }
     }
 
@@ -84,12 +102,8 @@ android {
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
-            // Use prod keystore if provided, otherwise fall back to debug for local install
-            signingConfig = if (hasReleaseSigning) {
-                signingConfigs.getByName("release")
-            } else {
-                signingConfigs.getByName("debug")
-            }
+            // Strictly use release signing
+            signingConfig = signingConfigs.getByName("release")
         }
     }
 
