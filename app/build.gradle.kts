@@ -1,5 +1,5 @@
-import java.util.Properties
 import java.io.FileInputStream
+import java.util.Properties
 
 plugins {
     alias(libs.plugins.android.application)
@@ -54,6 +54,8 @@ android {
     buildTypes {
         debug {
             isMinifyEnabled = false
+            // Keep same applicationId to match google-services.json, but change label
+            resValue("string", "app_name", "HabitTracker Debug")
         }
         release {
             isMinifyEnabled = false
@@ -61,6 +63,8 @@ android {
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
+            // Sign release with debug keystore for emulator testing
+            signingConfig = signingConfigs.getByName("debug")
         }
     }
 
@@ -168,7 +172,7 @@ dependencies {
     implementation(libs.firebase.auth)
     implementation(libs.firebase.storage)
     // App Check (Debug provider for dev/testing)
-    debugImplementation("com.google.firebase:firebase-appcheck-debug")
+    debugImplementation(libs.firebase.appcheck.debug)
     
     // Google Auth для FCM OAuth 2.0
     implementation(libs.google.auth.oauth2)

@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+
+    <!-- Base progress ring (teal, low opacity) -->
+    <path
+        android:name="base_ring"
+        android:pathData="M54,54 m-30,0 a30,30 0 1,0 60,0 a30,30 0 1,0 -60,0"
+        android:strokeColor="#3806B6D4"
+        android:strokeAlpha="0.25"
+        android:strokeWidth="8"
+        android:fillColor="@android:color/transparent"
+        android:strokeLineCap="round"/>
+
+    <!-- Progress arc (~65%) -->
+    <path
+        android:name="progress_arc"
+        android:pathData="M84,54 A30,30 0 1,1 54,24"
+        android:strokeColor="#06B6D4"
+        android:strokeWidth="8"
+        android:fillColor="@android:color/transparent"
+        android:strokeLineCap="round"/>
+
+    <!-- Center hole to create donut look (same as background color) -->
+    <path
+        android:name="center_hole"
+        android:pathData="M54,54 m-24,0 a24,24 0 1,0 48,0 a24,24 0 1,0 -48,0"
+        android:fillColor="#0B1020"/>
+
+    <!-- Checkmark -->
+    <path
+        android:name="check"
+        android:pathData="M42,56 L50,64 L70,44"
+        android:strokeColor="#FFFFFF"
+        android:strokeWidth="6"
+        android:fillColor="@android:color/transparent"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round"/>
+</vector>

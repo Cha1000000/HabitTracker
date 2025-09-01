@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
+  <!-- Palette: Sage & Graphite -->
+  <!-- Primary: #A7F3D0, Accent: #22C55E, Bg: #111827 -->
+  <circle cx="512" cy="512" r="472" fill="#111827"/>
+  <circle cx="512" cy="512" r="300" fill="none" stroke="#A7F3D0" stroke-width="80" opacity="0.22"/>
+  <path d="M812 512 A300 300 0 1 1 620 236" fill="none" stroke="#22C55E" stroke-width="80" stroke-linecap="round"/>
+  <circle cx="512" cy="512" r="240" fill="#111827"/>
+  <path d="M452 528 L496 572 L596 472" fill="none" stroke="#FFFFFF" stroke-width="40" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>
