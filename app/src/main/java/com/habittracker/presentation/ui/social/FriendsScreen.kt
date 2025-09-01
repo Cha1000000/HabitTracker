@@ -212,9 +212,10 @@ fun FriendsScreen(
     }
     // Диалог подтверждения удаления друга
     if (showRemoveDialog) {
+        val pendingName = pendingRemoveFriendId?.let { id -> uiState.friends.firstOrNull { it.id == id }?.name } ?: ""
         androidx.compose.material3.AlertDialog(
             onDismissRequest = { showRemoveDialog = false },
-            title = { Text(text = stringResource(id = R.string.confirm_remove_friend_title)) },
+            title = { Text(text = stringResource(id = R.string.confirm_remove_friend_title, pendingName)) },
             text = {
                 Column {
                     Text(text = stringResource(id = R.string.confirm_remove_friend_message))

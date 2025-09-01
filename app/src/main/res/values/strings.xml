@@ -148,7 +148,7 @@
     <string name="friend_requests">Запросы в друзья</string>
     <string name="add_friend">Добавить в друзья</string>
     <string name="remove_friend">Удалить из друзей</string>
-    <string name="confirm_remove_friend_title">Удалить из друзей?</string>
+    <string name="confirm_remove_friend_title">Удалить %1$s из друзей?</string>
     <string name="confirm_remove_friend_message">Это действие удалит дружбу у обоих пользователей. Вы уверены?</string>
     <string name="also_leave_group_habits">Также выйти из совместных привычек</string>
     <string name="accept_request">Принять</string>
