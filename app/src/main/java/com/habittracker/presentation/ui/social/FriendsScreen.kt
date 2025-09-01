@@ -97,6 +97,10 @@ fun FriendsScreen(
 ) {
     val uiState by viewModel.uiState.collectAsState()
     var selectedTab by remember { mutableIntStateOf(0) }
+    // Состояния диалога удаления друга
+    var showRemoveDialog by remember { mutableStateOf(false) }
+    var pendingRemoveFriendId by remember { mutableStateOf<String?>(null) }
+    var alsoLeaveGroupHabits by remember { mutableStateOf(false) }
     val tabs = listOf(
         stringResource(id = R.string.friends),
         stringResource(id = R.string.friend_requests),
@@ -180,8 +184,13 @@ fun FriendsScreen(
             when (tab) {
                 0 -> FriendsTab(
                     friends = uiState.friends,
+                    removingIds = uiState.removingIds,
                     onFriendClick = onNavigateToProfile,
-                    onRemoveFriend = { viewModel.removeFriend(it) }
+                    onRemoveFriend = { id ->
+                        pendingRemoveFriendId = id
+                        alsoLeaveGroupHabits = false
+                        showRemoveDialog = true
+                    }
                 )
                 1 -> RequestsTab(
                     incomingRequests = uiState.incomingRequests,
@@ -201,6 +210,45 @@ fun FriendsScreen(
         }
         }
     }
+    // Диалог подтверждения удаления друга
+    if (showRemoveDialog) {
+        androidx.compose.material3.AlertDialog(
+            onDismissRequest = { showRemoveDialog = false },
+            title = { Text(text = stringResource(id = R.string.confirm_remove_friend_title)) },
+            text = {
+                Column {
+                    Text(text = stringResource(id = R.string.confirm_remove_friend_message))
+                    Spacer(modifier = Modifier.height(12.dp))
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        androidx.compose.material3.Checkbox(
+                            checked = alsoLeaveGroupHabits,
+                            onCheckedChange = { alsoLeaveGroupHabits = it }
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(text = stringResource(id = R.string.also_leave_group_habits))
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        val id = pendingRemoveFriendId
+                        if (id != null) {
+                            viewModel.onRemoveFriendClicked(id, alsoLeaveGroupHabits)
+                        }
+                        showRemoveDialog = false
+                    }
+                ) {
+                    Text(text = stringResource(id = R.string.delete))
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showRemoveDialog = false }) {
+                    Text(text = stringResource(id = R.string.cancel))
+                }
+            }
+        )
+    }
 }
 
 /**
@@ -209,6 +257,7 @@ fun FriendsScreen(
 @Composable
 private fun FriendsTab(
     friends: List<User>,
+    removingIds: Set<String>,
     onFriendClick: (String) -> Unit,
     onRemoveFriend: (String) -> Unit
 ) {
@@ -231,6 +280,7 @@ private fun FriendsTab(
             items(friends, key = { it.id }) { friend ->
                 FriendCard(
                     friend = friend,
+                    isRemoving = removingIds.contains(friend.id),
                     onClick = { onFriendClick(friend.id) },
                     onRemove = { onRemoveFriend(friend.id) }
                 )
@@ -477,6 +527,7 @@ private fun StatCard(
 @Composable
 private fun FriendCard(
     friend: User,
+    isRemoving: Boolean = false,
     onClick: () -> Unit,
     onRemove: () -> Unit
 ) {
@@ -485,7 +536,7 @@ private fun FriendCard(
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .clickable { onClick() },
+            .let { base -> if (!isRemoving) base.clickable { onClick() } else base },
         shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surfaceVariant
@@ -553,33 +604,36 @@ private fun FriendCard(
                 }
             }
             
-            // Меню действий
+            // Меню действий / Лоадер
             Box {
-                IconButton(onClick = { showMenu = true }) {
-                    Icon(
-                        Icons.Default.MoreVert,
-                        contentDescription = stringResource(id = R.string.cd_more)
-                    )
-                }
-                
-                DropdownMenu(
-                    expanded = showMenu,
-                    onDismissRequest = { showMenu = false }
-                ) {
-                    DropdownMenuItem(
-                        text = { Text(stringResource(id = R.string.remove_friend)) },
-                        onClick = {
-                            onRemove()
-                            showMenu = false
-                        },
-                        leadingIcon = {
-                            Icon(
-                                Icons.Default.PersonRemove,
-                                contentDescription = null,
-                                tint = MaterialTheme.colorScheme.error
-                            )
-                        }
-                    )
+                if (isRemoving) {
+                    CircularProgressIndicator(modifier = Modifier.size(24.dp))
+                } else {
+                    IconButton(onClick = { showMenu = true }, enabled = !isRemoving) {
+                        Icon(
+                            Icons.Default.MoreVert,
+                            contentDescription = stringResource(id = R.string.cd_more)
+                        )
+                    }
+                    DropdownMenu(
+                        expanded = showMenu,
+                        onDismissRequest = { showMenu = false }
+                    ) {
+                        DropdownMenuItem(
+                            text = { Text(stringResource(id = R.string.remove_friend)) },
+                            onClick = {
+                                onRemove()
+                                showMenu = false
+                            },
+                            leadingIcon = {
+                                Icon(
+                                    Icons.Default.PersonRemove,
+                                    contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.error
+                                )
+                            }
+                        )
+                    }
                 }
             }
         }

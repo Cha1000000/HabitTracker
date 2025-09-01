@@ -47,6 +47,9 @@ class FriendsViewModel @Inject constructor(
     // Состояние поиска
     private val _isSearching = MutableStateFlow(false)
 
+    // Идентификаторы друзей, для которых идёт операция удаления (для дизейбла UI)
+    private val _removingIds = MutableStateFlow<Set<String>>(emptySet())
+
     init {
         // Получаем текущего пользователя асинхронно
         viewModelScope.launch {
@@ -66,30 +69,31 @@ class FriendsViewModel @Inject constructor(
     }
 
     // UI состояние экрана - объединяем социальные данные и поиск
-    val uiState: StateFlow<FriendsUiState> = combine(
+    private val baseUiState = combine(
         _currentUserId,
-        _currentUserId.flatMapLatest { userId -> 
+        _currentUserId.flatMapLatest { userId ->
             if (userId.isNotEmpty()) socialRepository.getFriends(userId) else flowOf(emptyList())
         },
-        _currentUserId.flatMapLatest { userId -> 
+        _currentUserId.flatMapLatest { userId ->
             if (userId.isNotEmpty()) socialRepository.getIncomingFriendRequests(userId) else flowOf(emptyList())
         },
-        _currentUserId.flatMapLatest { userId -> 
+        _currentUserId.flatMapLatest { userId ->
             if (userId.isNotEmpty()) socialRepository.getOutgoingFriendRequests(userId) else flowOf(emptyList())
         },
         searchState
     ) { currentUserId, friendships, incomingRequests, outgoingRequests, searchData ->
-        
         FriendsUiState(
-            friends = friendships.mapNotNull { friendship ->
-                friendship.getOtherUser(currentUserId) 
-            },
+            friends = friendships.mapNotNull { friendship -> friendship.getOtherUser(currentUserId) },
             incomingRequests = incomingRequests,
             outgoingRequests = outgoingRequests,
             searchQuery = searchData.first,
             searchResults = searchData.second,
             isSearching = searchData.third
         )
+    }
+
+    val uiState: StateFlow<FriendsUiState> = combine(baseUiState, _removingIds) { state, removing ->
+        state.copy(removingIds = removing)
     }.stateIn(
         scope = viewModelScope,
         started = SharingStarted.WhileSubscribed(5000),
@@ -209,6 +213,30 @@ class FriendsViewModel @Inject constructor(
             )
         }
     }
+
+    /**
+     * 🗑️ Удаление друга с опцией выхода из совместных привычек
+     */
+    fun onRemoveFriendClicked(friendId: String, leaveGroupHabits: Boolean) {
+        viewModelScope.launch {
+            _removingIds.value = _removingIds.value + friendId
+            try {
+                socialRepository.removeFriend(_currentUserId.value, friendId).fold(
+                    onSuccess = {
+                        // Опциональный выход из совместных привычек: реализуем отдельно в use case (todo)
+                        if (leaveGroupHabits) {
+                            // TODO: trigger bulk leave from shared habits with this friend
+                        }
+                    },
+                    onFailure = { _ ->
+                        // Ошибку можно отобразить через отдельный механизм (snackbar/диалог)
+                    }
+                )
+            } finally {
+                _removingIds.value = _removingIds.value - friendId
+            }
+        }
+    }
 }
 
 /**
@@ -222,5 +250,6 @@ data class FriendsUiState(
     val searchResults: List<User> = emptyList(),
     val isSearching: Boolean = false,
     val isLoading: Boolean = false,
-    val error: String? = null
+    val error: String? = null,
+    val removingIds: Set<String> = emptySet()
 )
