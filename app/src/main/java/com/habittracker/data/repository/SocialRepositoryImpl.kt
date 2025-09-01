@@ -10,8 +10,11 @@ import com.habittracker.data.local.dao.HabitInvitationDao
 import com.habittracker.data.local.dao.UserDao
 import com.habittracker.data.local.mappers.toDomain
 import com.habittracker.data.local.mappers.toEntity
+import com.habittracker.data.remote.mappers.toDomain
+import com.habittracker.data.remote.model.FriendRequestRemote
 import com.habittracker.data.service.FCMApiClient
 import com.habittracker.data.sync.SyncManager
+import com.habittracker.data.sync.SyncWorkScheduler
 import com.habittracker.domain.model.FriendRequest
 import com.habittracker.domain.model.FriendRequestStatus
 import com.habittracker.domain.model.FriendRequestWithUsers
@@ -33,14 +36,13 @@ import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
 import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.tasks.await
+import org.json.JSONObject
 import java.util.UUID
 import javax.inject.Inject
 import javax.inject.Singleton
-import org.json.JSONObject
 
 /**
  * Реализация SocialRepository для работы с социальными функциями
@@ -55,7 +57,8 @@ class SocialRepositoryImpl @Inject constructor(
     private val fcmApiClient: FCMApiClient,
     private val firestore: FirebaseFirestore,
     private val habitRepository: HabitRepository,
-    private val syncManager: SyncManager
+    private val syncManager: SyncManager,
+    private val syncWorkScheduler: SyncWorkScheduler
 ) : SocialRepository {
 
     // Helper to mask sensitive token values in logs
@@ -238,6 +241,10 @@ class SocialRepositoryImpl @Inject constructor(
                 payloadJson = payload,
                 updatedAt = friendRequest.updatedAt
             )
+            // Форсируем немедленный дренаж outbox, чтобы запись быстрее попала в Firestore
+            try {
+                syncWorkScheduler.scheduleOneTimeSync()
+            } catch (_: Exception) { /* ignore */ }
 
             Log.d("SocialRepository", "✅ Friend request enqueued successfully!")
             Result.success(friendRequest)
@@ -302,6 +309,7 @@ class SocialRepositoryImpl @Inject constructor(
                 payloadJson = frPayload,
                 updatedAt = acceptedRequest.updatedAt
             )
+            try { syncWorkScheduler.scheduleOneTimeSync() } catch (_: Exception) { }
 
             val ordered = if (friendship.userId1 < friendship.userId2) Pair(friendship.userId1, friendship.userId2) else Pair(friendship.userId2, friendship.userId1)
             val fsPayload = JSONObject()
@@ -321,6 +329,7 @@ class SocialRepositoryImpl @Inject constructor(
                 payloadJson = fsPayload,
                 updatedAt = friendship.updatedAt
             )
+            try { syncWorkScheduler.scheduleOneTimeSync() } catch (_: Exception) { }
 
             // Обновляем счетчики друзей
             val user1FriendsCount = friendshipDao.getFriendsCount(friendship.userId1).first()
@@ -364,6 +373,7 @@ class SocialRepositoryImpl @Inject constructor(
                 payloadJson = payload,
                 updatedAt = declinedRequest.updatedAt
             )
+            try { syncWorkScheduler.scheduleOneTimeSync() } catch (_: Exception) { }
 
             Result.success(declinedRequest)
         } catch (e: Exception) {
@@ -382,6 +392,7 @@ class SocialRepositoryImpl @Inject constructor(
                 entityId = requestId,
                 updatedAt = System.currentTimeMillis()
             )
+            try { syncWorkScheduler.scheduleOneTimeSync() } catch (_: Exception) { }
 
             Result.success(Unit)
         } catch (e: Exception) {
@@ -393,7 +404,13 @@ class SocialRepositoryImpl @Inject constructor(
         return try {
             val doc = firestore.collection("friend_requests").document(requestId).get().await()
             if (doc.exists()) {
-                doc.toObject(FriendRequest::class.java)?.copy(id = doc.id)
+                try {
+                    val remote = doc.toObject(com.habittracker.data.remote.model.FriendRequestRemote::class.java)
+                    remote?.toDomain(doc.id)
+                } catch (_: Exception) {
+                    // fallback к Room, если маппинг не удался
+                    friendRequestDao.getFriendRequestById(requestId)?.toDomain()
+                }
             } else {
                 friendRequestDao.getFriendRequestById(requestId)?.toDomain()
             }
@@ -412,7 +429,12 @@ class SocialRepositoryImpl @Inject constructor(
                 .await()
 
             results.documents.firstOrNull()?.let { doc ->
-                doc.toObject(FriendRequest::class.java)?.copy(id = doc.id)
+                try {
+                    val remote = doc.toObject(com.habittracker.data.remote.model.FriendRequestRemote::class.java)
+                    remote?.toDomain(doc.id)
+                } catch (_: Exception) {
+                    null
+                }
             }
         } catch (e: Exception) {
             friendRequestDao.getFriendRequestBetweenUsers(fromUserId, toUserId)?.toDomain()
@@ -425,18 +447,41 @@ class SocialRepositoryImpl @Inject constructor(
             // Слушаем входящие friend_requests для текущего пользователя
             val registration = firestore.collection("friend_requests")
                 .whereEqualTo("toUserId", userId)
+                .whereEqualTo("status", FriendRequestStatus.PENDING.name)
                 .addSnapshotListener { snapshot, error ->
-                    if (error != null) return@addSnapshotListener
+                    if (error != null) {
+                        Log.w("SocialRepository", "Incoming FR listener error: ${error.message}", error)
+                        return@addSnapshotListener
+                    }
                     val docs = snapshot?.documents ?: emptyList()
+                    Log.d("SocialRepository", "Incoming FR listener: toUserId=$userId, docs=${docs.size}")
                     scope.launch {
+                        val remoteIds = docs.map { it.id }.toSet()
                         docs.forEach { doc ->
                             try {
-                                val fr = doc.toObject(FriendRequest::class.java)?.copy(id = doc.id)
+                                val remote = doc.toObject(FriendRequestRemote::class.java)
+                                val fr = remote?.toDomain(doc.id)
                                 if (fr != null) {
                                     friendRequestDao.insertFriendRequest(fr.toEntity())
+                                    // Prefetch users to avoid UI dropping item due to null users
+                                    try {
+                                        getUserById(fr.fromUserId)?.let { userDao.insertUser(it.toEntity()) }
+                                        getUserById(fr.toUserId)?.let { userDao.insertUser(it.toEntity()) }
+                                    } catch (_: Exception) { }
                                 }
-                            } catch (_: Exception) { /* ignore single doc errors */ }
+                            } catch (e: Exception) {
+                                Log.w("SocialRepository", "Incoming FR map/insert error: ${e.message}")
+                            }
                         }
+                        // Reconcile: удаляем локальные PENDING входящие, которых нет в снапшоте
+                        try {
+                            val local = friendRequestDao.getIncomingFriendRequests(userId).first()
+                            val toDelete = local.filter { it.id !in remoteIds }
+                            if (toDelete.isNotEmpty()) {
+                                Log.d("SocialRepository", "Incoming FR reconcile: deleting ${toDelete.size} stale records")
+                                toDelete.forEach { fr -> friendRequestDao.deleteFriendRequestById(fr.id) }
+                            }
+                        } catch (_: Exception) { }
                     }
                 }
 
@@ -466,18 +511,41 @@ class SocialRepositoryImpl @Inject constructor(
             // Слушаем исходящие friend_requests от текущего пользователя
             val registration = firestore.collection("friend_requests")
                 .whereEqualTo("fromUserId", userId)
+                .whereEqualTo("status", FriendRequestStatus.PENDING.name)
                 .addSnapshotListener { snapshot, error ->
-                    if (error != null) return@addSnapshotListener
+                    if (error != null) {
+                        Log.w("SocialRepository", "Outgoing FR listener error: ${error.message}", error)
+                        return@addSnapshotListener
+                    }
                     val docs = snapshot?.documents ?: emptyList()
+                    Log.d("SocialRepository", "Outgoing FR listener: fromUserId=$userId, docs=${docs.size}")
                     scope.launch {
+                        val remoteIds = docs.map { it.id }.toSet()
                         docs.forEach { doc ->
                             try {
-                                val fr = doc.toObject(FriendRequest::class.java)?.copy(id = doc.id)
+                                val remote = doc.toObject(FriendRequestRemote::class.java)
+                                val fr = remote?.toDomain(doc.id)
                                 if (fr != null) {
                                     friendRequestDao.insertFriendRequest(fr.toEntity())
+                                    // Prefetch users to avoid UI dropping item due to null users
+                                    try {
+                                        getUserById(fr.fromUserId)?.let { userDao.insertUser(it.toEntity()) }
+                                        getUserById(fr.toUserId)?.let { userDao.insertUser(it.toEntity()) }
+                                    } catch (_: Exception) { }
                                 }
-                            } catch (_: Exception) { /* ignore single doc errors */ }
+                            } catch (e: Exception) {
+                                Log.w("SocialRepository", "Outgoing FR map/insert error: ${e.message}")
+                            }
                         }
+                        // Reconcile: удаляем локальные PENDING исходящие, которых нет в снапшоте
+                        try {
+                            val local = friendRequestDao.getOutgoingFriendRequests(userId).first()
+                            val toDelete = local.filter { it.id !in remoteIds }
+                            if (toDelete.isNotEmpty()) {
+                                Log.d("SocialRepository", "Outgoing FR reconcile: deleting ${toDelete.size} stale records")
+                                toDelete.forEach { fr -> friendRequestDao.deleteFriendRequestById(fr.id) }
+                            }
+                        } catch (_: Exception) { }
                     }
                 }
 
@@ -637,15 +705,35 @@ class SocialRepositoryImpl @Inject constructor(
             val reg1 = firestore.collection("friendships")
                 .whereEqualTo("userId1", userId)
                 .addSnapshotListener { snapshot, error ->
-                    if (error != null) return@addSnapshotListener
+                    if (error != null) { Log.w("SocialRepository", "Friends listener1 error: ${error.message}", error); return@addSnapshotListener }
                     val docs = snapshot?.documents ?: emptyList()
+                    Log.d("SocialRepository", "Friends listener1: userId1=$userId, docs=${docs.size}")
                     scope.launch {
                         docs.forEach { doc ->
                             try {
-                                val fs = doc.toObject(Friendship::class.java)
-                                if (fs != null) {
-                                    friendshipDao.insertFriendship(fs.toEntity())
-                                }
+                                val data = doc.data ?: emptyMap<String, Any?>()
+                                val userId1 = data["userId1"] as? String ?: return@forEach
+                                val userId2 = data["userId2"] as? String ?: return@forEach
+                                val status = (data["status"] as? String)?.let { runCatching { FriendshipStatus.valueOf(it) }.getOrNull() } ?: FriendshipStatus.PENDING
+                                val requestedBy = data["requestedBy"] as? String ?: userId1
+                                val requestedAt = (data["requestedAt"] as? Number)?.toLong() ?: System.currentTimeMillis()
+                                val acceptedAt = (data["acceptedAt"] as? Number)?.toLong()
+                                val blockedBy = data["blockedBy"] as? String
+                                val blockedAt = (data["blockedAt"] as? Number)?.toLong()
+                                val updatedAt = (data["updatedAt"] as? Number)?.toLong() ?: requestedAt
+
+                                val fs = Friendship(
+                                    userId1 = userId1,
+                                    userId2 = userId2,
+                                    status = status,
+                                    requestedBy = requestedBy,
+                                    requestedAt = requestedAt,
+                                    acceptedAt = acceptedAt,
+                                    blockedBy = blockedBy,
+                                    blockedAt = blockedAt,
+                                    updatedAt = updatedAt
+                                )
+                                friendshipDao.insertFriendship(fs.toEntity())
                             } catch (_: Exception) { /* ignore single doc errors */ }
                         }
                     }
@@ -654,15 +742,35 @@ class SocialRepositoryImpl @Inject constructor(
             val reg2 = firestore.collection("friendships")
                 .whereEqualTo("userId2", userId)
                 .addSnapshotListener { snapshot, error ->
-                    if (error != null) return@addSnapshotListener
+                    if (error != null) { Log.w("SocialRepository", "Friends listener2 error: ${error.message}", error); return@addSnapshotListener }
                     val docs = snapshot?.documents ?: emptyList()
+                    Log.d("SocialRepository", "Friends listener2: userId2=$userId, docs=${docs.size}")
                     scope.launch {
                         docs.forEach { doc ->
                             try {
-                                val fs = doc.toObject(Friendship::class.java)
-                                if (fs != null) {
-                                    friendshipDao.insertFriendship(fs.toEntity())
-                                }
+                                val data = doc.data ?: emptyMap<String, Any?>()
+                                val userId1 = data["userId1"] as? String ?: return@forEach
+                                val userId2 = data["userId2"] as? String ?: return@forEach
+                                val status = (data["status"] as? String)?.let { runCatching { FriendshipStatus.valueOf(it) }.getOrNull() } ?: FriendshipStatus.PENDING
+                                val requestedBy = data["requestedBy"] as? String ?: userId1
+                                val requestedAt = (data["requestedAt"] as? Number)?.toLong() ?: System.currentTimeMillis()
+                                val acceptedAt = (data["acceptedAt"] as? Number)?.toLong()
+                                val blockedBy = data["blockedBy"] as? String
+                                val blockedAt = (data["blockedAt"] as? Number)?.toLong()
+                                val updatedAt = (data["updatedAt"] as? Number)?.toLong() ?: requestedAt
+
+                                val fs = Friendship(
+                                    userId1 = userId1,
+                                    userId2 = userId2,
+                                    status = status,
+                                    requestedBy = requestedBy,
+                                    requestedAt = requestedAt,
+                                    acceptedAt = acceptedAt,
+                                    blockedBy = blockedBy,
+                                    blockedAt = blockedAt,
+                                    updatedAt = updatedAt
+                                )
+                                friendshipDao.insertFriendship(fs.toEntity())
                             } catch (_: Exception) { /* ignore single doc errors */ }
                         }
                     }

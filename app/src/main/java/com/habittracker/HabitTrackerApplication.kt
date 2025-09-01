@@ -4,7 +4,6 @@ import android.app.Application
 import android.util.Log
 import androidx.hilt.work.HiltWorkerFactory
 import androidx.work.Configuration
-import com.habittracker.BuildConfig
 import com.habittracker.data.sync.SyncWorkScheduler
 import com.habittracker.domain.usecase.notification.ManageFCMTokenUseCase
 import dagger.hilt.android.HiltAndroidApp
