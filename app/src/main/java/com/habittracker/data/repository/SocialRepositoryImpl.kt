@@ -582,9 +582,29 @@ class SocialRepositoryImpl @Inject constructor(
                 .await()
 
             if (doc.exists()) {
-                doc.toObject(Friendship::class.java)
+                val data = doc.data ?: return null
+                val u1 = data["userId1"] as? String ?: return null
+                val u2 = data["userId2"] as? String ?: return null
+                val status = (data["status"] as? String)?.let { runCatching { FriendshipStatus.valueOf(it) }.getOrNull() } ?: FriendshipStatus.PENDING
+                val requestedBy = data["requestedBy"] as? String ?: u1
+                val requestedAt = (data["requestedAt"] as? Number)?.toLong() ?: System.currentTimeMillis()
+                val acceptedAt = (data["acceptedAt"] as? Number)?.toLong()
+                val blockedBy = data["blockedBy"] as? String
+                val blockedAt = (data["blockedAt"] as? Number)?.toLong()
+                val updatedAt = (data["updatedAt"] as? Number)?.toLong() ?: requestedAt
+                return Friendship(
+                    userId1 = u1,
+                    userId2 = u2,
+                    status = status,
+                    requestedBy = requestedBy,
+                    requestedAt = requestedAt,
+                    acceptedAt = acceptedAt,
+                    blockedBy = blockedBy,
+                    blockedAt = blockedAt,
+                    updatedAt = updatedAt
+                )
             } else {
-                friendshipDao.getFriendshipBetweenUsers(userId1, userId2)?.toDomain()
+                return friendshipDao.getFriendshipBetweenUsers(userId1, userId2)?.toDomain()
             }
         } catch (e: Exception) {
             friendshipDao.getFriendshipBetweenUsers(userId1, userId2)?.toDomain()
@@ -701,6 +721,25 @@ class SocialRepositoryImpl @Inject constructor(
     override fun getFriends(userId: String): Flow<List<FriendshipWithUsers>> {
         return callbackFlow {
             val scope = CoroutineScope(Dispatchers.IO)
+            // Накопление ключей из обоих слушателей для reconcile
+            var lastKeys1: Set<String> = emptySet()
+            var lastKeys2: Set<String> = emptySet()
+            suspend fun reconcileFriends() {
+                val combined = (lastKeys1 + lastKeys2).toSet()
+                try {
+                    val local = friendshipDao.getFriendsForUser(userId).first()
+                    val toDelete = local.filter { entity ->
+                        val key = "${entity.userId1}_${entity.userId2}"
+                        key !in combined
+                    }
+                    if (toDelete.isNotEmpty()) {
+                        Log.d("SocialRepository", "Friends reconcile: deleting ${toDelete.size} stale friendships for user=$userId")
+                        toDelete.forEach { entity ->
+                            friendshipDao.deleteFriendshipBetweenUsers(entity.userId1, entity.userId2)
+                        }
+                    }
+                } catch (_: Exception) { }
+            }
             // Два слушателя: userId как userId1 и как userId2
             val reg1 = firestore.collection("friendships")
                 .whereEqualTo("userId1", userId)
@@ -709,6 +748,13 @@ class SocialRepositoryImpl @Inject constructor(
                     val docs = snapshot?.documents ?: emptyList()
                     Log.d("SocialRepository", "Friends listener1: userId1=$userId, docs=${docs.size}")
                     scope.launch {
+                        // Текущий набор ключей из этого снапшота
+                        lastKeys1 = docs.mapNotNull { d ->
+                            val data = d.data ?: return@mapNotNull null
+                            val u1 = data["userId1"] as? String ?: return@mapNotNull null
+                            val u2 = data["userId2"] as? String ?: return@mapNotNull null
+                            "${u1}_${u2}"
+                        }.toSet()
                         docs.forEach { doc ->
                             try {
                                 val data = doc.data ?: emptyMap<String, Any?>()
@@ -736,6 +782,8 @@ class SocialRepositoryImpl @Inject constructor(
                                 friendshipDao.insertFriendship(fs.toEntity())
                             } catch (_: Exception) { /* ignore single doc errors */ }
                         }
+                        // Reconcile после обработки снапшота
+                        reconcileFriends()
                     }
                 }
 
@@ -746,6 +794,13 @@ class SocialRepositoryImpl @Inject constructor(
                     val docs = snapshot?.documents ?: emptyList()
                     Log.d("SocialRepository", "Friends listener2: userId2=$userId, docs=${docs.size}")
                     scope.launch {
+                        // Текущий набор ключей из этого снапшота
+                        lastKeys2 = docs.mapNotNull { d ->
+                            val data = d.data ?: return@mapNotNull null
+                            val u1 = data["userId1"] as? String ?: return@mapNotNull null
+                            val u2 = data["userId2"] as? String ?: return@mapNotNull null
+                            "${u1}_${u2}"
+                        }.toSet()
                         docs.forEach { doc ->
                             try {
                                 val data = doc.data ?: emptyMap<String, Any?>()
@@ -773,6 +828,8 @@ class SocialRepositoryImpl @Inject constructor(
                                 friendshipDao.insertFriendship(fs.toEntity())
                             } catch (_: Exception) { /* ignore single doc errors */ }
                         }
+                        // Reconcile после обработки снапшота
+                        reconcileFriends()
                     }
                 }
 
