@@ -625,6 +625,11 @@ class SocialRepositoryImpl @Inject constructor(
                 entityId = docId,
                 updatedAt = System.currentTimeMillis()
             )
+            // Force outbox drain to propagate deletion to Firestore immediately
+            try {
+                Log.d("SocialRepository", "removeFriend: scheduled one-time sync for delete friendship doc=$docId")
+                syncWorkScheduler.scheduleOneTimeSync()
+            } catch (_: Exception) { /* ignore */ }
 
             // Обновляем счетчики друзей
             val user1FriendsCount = friendshipDao.getFriendsCount(currentUserId).first()
