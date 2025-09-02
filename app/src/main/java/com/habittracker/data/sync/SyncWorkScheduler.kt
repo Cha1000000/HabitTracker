@@ -5,9 +5,11 @@ import androidx.work.Constraints
 import androidx.work.ExistingPeriodicWorkPolicy
 import androidx.work.ExistingWorkPolicy
 import androidx.work.NetworkType
+import androidx.work.OneTimeWorkRequest
 import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.PeriodicWorkRequestBuilder
 import androidx.work.WorkManager
+import androidx.work.OutOfQuotaPolicy
 import java.util.concurrent.TimeUnit
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -18,6 +20,8 @@ class SyncWorkScheduler @Inject constructor(
 ) {
     companion object {
         private const val UNIQUE_PERIODIC_SYNC = "periodic_sync_outbox"
+        private const val UNIQUE_ONE_TIME_SYNC = "one_time_sync_outbox"
+        private const val TAG_OUTBOX_SYNC = "tag_outbox_sync"
     }
 
     private val constraints = Constraints.Builder()
@@ -38,13 +42,18 @@ class SyncWorkScheduler @Inject constructor(
     }
 
     fun scheduleOneTimeSync() {
-        val request = OneTimeWorkRequestBuilder<SyncWorker>()
+        val builder = OneTimeWorkRequestBuilder<SyncWorker>()
             .setConstraints(constraints)
             .setBackoffCriteria(BackoffPolicy.LINEAR, 30, TimeUnit.SECONDS)
+            .addTag(TAG_OUTBOX_SYNC)
+
+        // Стартуем как expedited, если есть квота; иначе автоматически как non-expedited
+        val request: OneTimeWorkRequest = builder
+            .setExpedited(OutOfQuotaPolicy.RUN_AS_NON_EXPEDITED_WORK_REQUEST)
             .build()
 
         workManager.enqueueUniqueWork(
-            "one_time_sync_outbox",
+            UNIQUE_ONE_TIME_SYNC,
             ExistingWorkPolicy.REPLACE,
             request
         )

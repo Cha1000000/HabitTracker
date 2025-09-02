@@ -7,6 +7,7 @@ import com.habittracker.domain.usecase.habit.GetHabitInvitationsUseCase
 import com.habittracker.domain.usecase.habit.AcceptHabitInvitationUseCase
 import com.habittracker.domain.usecase.habit.DeclineHabitInvitationUseCase
 import com.habittracker.domain.model.HabitInvitation
+import com.habittracker.domain.model.HabitInvitationStatus
 import com.habittracker.domain.usecase.notification.GroupHabitNotification
 import com.habittracker.domain.usecase.notification.GroupHabitNotificationUseCase
 import com.habittracker.R
@@ -109,9 +110,11 @@ class NotificationsViewModel @Inject constructor(
                 val currentUserId = authRepository.getCurrentUserId() ?: return@launch
                 getHabitInvitationsUseCase.getIncomingInvitations(currentUserId)
                     .collect { invitations ->
+                        // Показываем только PENDING приглашения в списке
+                        val pending = invitations.filter { it.status == HabitInvitationStatus.PENDING }
                         _uiState.update {
                             it.copy(
-                                invitations = invitations,
+                                invitations = pending,
                                 isInvitesLoading = false,
                                 invitesError = null
                             )

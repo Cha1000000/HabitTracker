@@ -34,7 +34,7 @@ import com.habittracker.data.local.entity.UserEntity
         PendingNotificationEntity::class,
         SyncOutboxEntity::class
     ],
-    version = 7,
+    version = 8,
     exportSchema = false // Для простоты отключаем экспорт схемы
 )
 @TypeConverters(Converters::class)

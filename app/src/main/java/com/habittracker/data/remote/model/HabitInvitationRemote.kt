@@ -17,7 +17,8 @@ data class HabitInvitationRemote(
     val status: String? = null, // enum as String
     val createdAt: Long? = null,
     val respondedAt: Long? = null,
-    val expiresAt: Long? = null
+    val expiresAt: Long? = null,
+    val updatedAt: Long? = null
 ) {
     fun toDomain(id: String): HabitInvitation? {
         val s = when (status) {

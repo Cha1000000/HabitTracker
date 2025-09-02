@@ -1,5 +1,6 @@
 package com.habittracker.data.sync
 
+import android.util.Log
 import com.google.firebase.firestore.FirebaseFirestore
 import com.habittracker.data.local.dao.SyncOutboxDao
 import com.habittracker.data.local.entity.SyncOutboxEntity
@@ -30,6 +31,10 @@ class SyncManager @Inject constructor(
         updatedAt: Long,
         operationId: String = UUID.randomUUID().toString()
     ) = withContext(Dispatchers.IO) {
+        Log.d(
+            "SyncManager",
+            "[enqueueUpsert] type=$entityType id=$entityId opId=$operationId updatedAt=$updatedAt payloadSize=${payloadJson.length}"
+        )
         outboxDao.insert(
             SyncOutboxEntity(
                 operationId = operationId,
@@ -48,6 +53,10 @@ class SyncManager @Inject constructor(
         updatedAt: Long,
         operationId: String = UUID.randomUUID().toString()
     ) = withContext(Dispatchers.IO) {
+        Log.d(
+            "SyncManager",
+            "[enqueueDelete] type=$entityType id=$entityId opId=$operationId updatedAt=$updatedAt"
+        )
         outboxDao.insert(
             SyncOutboxEntity(
                 operationId = operationId,
@@ -63,17 +72,28 @@ class SyncManager @Inject constructor(
     // Дренаж очереди: вызывать WorkManager'ом периодически и вручную при старте/онбординге
     suspend fun drainPending(maxBatch: Int = 50) = withContext(Dispatchers.IO) {
         val batch = outboxDao.getByState("PENDING", maxBatch)
+        Log.d("SyncManager", "[drainPending] fetched=${batch.size}")
         for (item in batch) {
             try {
+                Log.d(
+                    "SyncManager",
+                    "[drainPending] process id=${item.id} op=${item.opType} type=${item.entityType} entity=${item.entityId} updatedAt=${item.updatedAt}"
+                )
                 outboxDao.updateState(item.id, "IN_PROGRESS")
                 when (item.opType) {
                     "UPSERT" -> pushUpsert(item)
                     "DELETE" -> pushDelete(item)
                 }
                 outboxDao.deleteById(item.id)
+                Log.d("SyncManager", "[drainPending] done id=${item.id}")
             } catch (e: Exception) {
                 val now = System.currentTimeMillis()
                 outboxDao.markRetry(item.id, e.message, "FAILED", now)
+                Log.w(
+                    "SyncManager",
+                    "[drainPending] failed id=${item.id} type=${item.entityType} entity=${item.entityId}: ${e.message}",
+                    e
+                )
             }
         }
     }
@@ -82,18 +102,22 @@ class SyncManager @Inject constructor(
     private suspend fun pushUpsert(item: SyncOutboxEntity) {
         val (collection, docId) = route(item.entityType, item.entityId)
         val map = jsonToMap(item.payloadJson)
+        Log.d("SyncManager", "[pushUpsert] ${item.entityType} -> $collection/$docId")
         firestore.collection(collection)
             .document(docId)
             .set(map, com.google.firebase.firestore.SetOptions.merge())
             .awaitUnit()
+        Log.d("SyncManager", "[pushUpsert] DONE ${item.entityType} -> $collection/$docId")
     }
 
     private suspend fun pushDelete(item: SyncOutboxEntity) {
         val (collection, docId) = route(item.entityType, item.entityId)
+        Log.d("SyncManager", "[pushDelete] ${item.entityType} -> $collection/$docId")
         firestore.collection(collection)
             .document(docId)
             .delete()
             .awaitUnit()
+        Log.d("SyncManager", "[pushDelete] DONE ${item.entityType} -> $collection/$docId")
     }
 
     private fun route(entityType: String, entityId: String): Pair<String, String> = when (entityType) {

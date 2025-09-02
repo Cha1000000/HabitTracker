@@ -229,6 +229,10 @@ class AddEditHabitViewModel @Inject constructor(
                     stateAfterSave.type == HabitType.GROUP &&
                     currentHabit?.id != null
                 ) {
+                    Log.d(
+                        "AddEditHabitViewModel",
+                        "[saveHabit] Trigger sendInvitations() after save: habitId=${currentHabit?.id}, selected=${stateAfterSave.selectedFriendsToInvite.size}"
+                    )
                     // Сбрасываем флаг перед отправкой, чтобы не зациклиться при последующих сохранениях
                     _uiState.update { it.copy(sendInvitesAfterSave = false) }
                     sendInvitations()
@@ -579,6 +583,7 @@ class AddEditHabitViewModel @Inject constructor(
         viewModelScope.launch {
             try {
                 _uiState.update { it.copy(isSendingInvitations = true, error = null) }
+                Log.d("AddEditHabitViewModel", "[sendInvitations] start")
                 
                 val currentState = _uiState.value
                 
@@ -609,6 +614,10 @@ class AddEditHabitViewModel @Inject constructor(
                     ?: throw Exception("Пользователь не авторизован")
                 
                 val habitId = currentHabit?.id ?: throw Exception("Привычка не найдена")
+                Log.d(
+                    "AddEditHabitViewModel",
+                    "[sendInvitations] will send: habitId=$habitId, from=$currentUserId, friends=${currentState.selectedFriendsToInvite.map { it.id }}"
+                )
                 
                 // Отправляем приглашения по одному для лучшего контроля
                 var successCount = 0
@@ -617,16 +626,20 @@ class AddEditHabitViewModel @Inject constructor(
                 
                 for (friend in currentState.selectedFriendsToInvite) {
                     try {
+                        Log.d("AddEditHabitViewModel", "[sendInvitations] -> to=${friend.id} (${friend.name})")
                         val result = sendHabitInvitationUseCase(habitId, currentUserId, friend.id)
                         result.onSuccess {
                             successCount++
+                            Log.d("AddEditHabitViewModel", "[sendInvitations] <- SUCCESS to=${friend.id}")
                         }.onFailure { error: Throwable ->
                             errorCount++
                             errors.add("${friend.name}: ${error.message}")
+                            Log.w("AddEditHabitViewModel", "[sendInvitations] <- FAILURE to=${friend.id}: ${error.message}", error)
                         }
                     } catch (e: Exception) {
                         errorCount++
                         errors.add("${friend.name}: ${e.message}")
+                        Log.w("AddEditHabitViewModel", "[sendInvitations] <- EXCEPTION to=${friend.id}: ${e.message}", e)
                     }
                 }
                 
@@ -649,6 +662,7 @@ class AddEditHabitViewModel @Inject constructor(
                         hasUnsavedChanges = successCount > 0
                     )
                 }
+                Log.d("AddEditHabitViewModel", "[sendInvitations] done: success=$successCount errors=$errorCount")
                 
             } catch (e: Exception) {
                 _uiState.update { 
@@ -657,6 +671,7 @@ class AddEditHabitViewModel @Inject constructor(
                         error = "Ошибка отправки приглашений: ${e.message}"
                     )
                 }
+                Log.w("AddEditHabitViewModel", "[sendInvitations] FAILED: ${e.message}", e)
             }
         }
     }

@@ -31,6 +31,8 @@ import com.habittracker.domain.repository.HabitRepository
 import com.habittracker.domain.repository.SocialRepository
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.NonCancellable
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
@@ -39,6 +41,7 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.tasks.await
+import kotlinx.coroutines.withContext
 import org.json.JSONObject
 import java.util.UUID
 import javax.inject.Inject
@@ -60,6 +63,9 @@ class SocialRepositoryImpl @Inject constructor(
     private val syncManager: SyncManager,
     private val syncWorkScheduler: SyncWorkScheduler
 ) : SocialRepository {
+
+    // Repository-level scope for fire-and-forget background tasks (safe: singleton)
+    private val repoScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
     // Helper to mask sensitive token values in logs
     private fun maskToken(token: String?): String {
@@ -127,16 +133,19 @@ class SocialRepositoryImpl @Inject constructor(
     }
 
     override suspend fun getUserById(userId: String): User? {
+        // Local-first: быстрее и устойчивее к отменам корутин
+        val local = try { userDao.getUserById(userId)?.toDomain() } catch (_: Exception) { null }
+        if (local != null) return local
+
         return try {
             val doc = firestore.collection("users").document(userId).get().await()
             if (doc.exists()) {
                 UserFirestoreConverter.fromFirestore(doc.data ?: emptyMap(), doc.id)
             } else {
-                // Fallback на локальные данные
-                userDao.getUserById(userId)?.toDomain()
+                null
             }
-        } catch (e: Exception) {
-            userDao.getUserById(userId)?.toDomain()
+        } catch (_: Exception) {
+            null
         }
     }
 
@@ -910,8 +919,8 @@ class SocialRepositoryImpl @Inject constructor(
                 "FCM send: friend_request -> to=$toUserId, tokens_count=${allTokens.size}, tokens=${allTokens.map { maskToken(it) }}"
             )
 
-            // Отправка одной операцией на все токены
-            fcmApiClient.sendToMultipleTokens(
+            // Отправка на все токены и очистка невалидных (UNREGISTERED)
+            val batchResult = fcmApiClient.sendToMultipleTokens(
                 tokens = allTokens,
                 title = "Новый запрос дружбы",
                 body = "$fromUserName хочет добавить вас в друзья",
@@ -923,6 +932,15 @@ class SocialRepositoryImpl @Inject constructor(
                     "recipientUserId" to toUserId
                 )
             )
+            batchResult.onSuccess { result ->
+                result.results.filter { !it.success && (it.error?.contains("UNREGISTERED", ignoreCase = true) == true) }
+                    .forEach { bad ->
+                        Log.w("SocialRepository", "FCM UNREGISTERED (friend_request) -> remove token ${maskToken(bad.token)} for user=$toUserId")
+                        safelyRemoveInvalidFcmToken(toUserId, bad.token)
+                    }
+            }.onFailure { e ->
+                Log.w("SocialRepository", "Ошибка отправки friend_request batch: ${e.message}")
+            }
         } catch (e: Exception) {
             // Логируем ошибку, но не падаем - уведомления не критичны
             Log.w("SocialRepository", "Ошибка отправки уведомления о запросе дружбы", e)
@@ -947,7 +965,7 @@ class SocialRepositoryImpl @Inject constructor(
                 "FCM send: friend_accepted -> to=$toUserId, tokens_count=${allTokens.size}, tokens=${allTokens.map { maskToken(it) }}, acceptedBy=$acceptedByName"
             )
 
-            fcmApiClient.sendToMultipleTokens(
+            val batchResult = fcmApiClient.sendToMultipleTokens(
                 tokens = allTokens,
                 title = "Запрос дружбы принят",
                 body = "$acceptedByName принял ваш запрос дружбы",
@@ -959,6 +977,15 @@ class SocialRepositoryImpl @Inject constructor(
                     "recipientUserId" to toUserId
                 )
             )
+            batchResult.onSuccess { result ->
+                result.results.filter { !it.success && (it.error?.contains("UNREGISTERED", ignoreCase = true) == true) }
+                    .forEach { bad ->
+                        Log.w("SocialRepository", "FCM UNREGISTERED (friend_accepted) -> remove token ${maskToken(bad.token)} for user=$toUserId")
+                        safelyRemoveInvalidFcmToken(toUserId, bad.token)
+                    }
+            }.onFailure { e ->
+                Log.w("SocialRepository", "Ошибка отправки friend_accepted batch: ${e.message}")
+            }
         } catch (e: Exception) {
             Log.w("SocialRepository", "Ошибка отправки уведомления о принятии дружбы", e)
         }
@@ -994,7 +1021,9 @@ class SocialRepositoryImpl @Inject constructor(
             )
 
             // Room-first
+            Log.d("SocialRepository", "[sendHabitInvitation] insert Room: invitationId=${invitation.id}, habitId=${invitation.habitId}, toUserId=${invitation.toUserId}")
             habitInvitationDao.insert(invitation.toEntity())
+            Log.d("SocialRepository", "[sendHabitInvitation] insert Room: DONE invitationId=${invitation.id}")
 
             // Enqueue UPSERT to Firestore via Outbox
             val payload = JSONObject()
@@ -1010,15 +1039,42 @@ class SocialRepositoryImpl @Inject constructor(
                 .put("expiresAt", invitation.expiresAt)
                 .put("updatedAt", invitation.createdAt)
                 .toString()
+            Log.d(
+                "SocialRepository",
+                "[sendHabitInvitation] enqueueUpsert Outbox: type=habit_invitation, id=${invitation.id}, payloadSize=${payload.length}"
+            )
             syncManager.enqueueUpsert(
                 entityType = "habit_invitation",
                 entityId = invitation.id,
                 payloadJson = payload,
                 updatedAt = invitation.createdAt
             )
+            // Форсируем немедленный дренаж outbox, чтобы приглашение быстрее появилось в Firestore
+            try {
+                Log.d("SocialRepository", "[sendHabitInvitation] scheduleOneTimeSync() -> start")
+                syncWorkScheduler.scheduleOneTimeSync()
+                Log.d("SocialRepository", "[sendHabitInvitation] scheduleOneTimeSync() -> enqueued")
+            } catch (e: Exception) {
+                Log.w("SocialRepository", "[sendHabitInvitation] scheduleOneTimeSync() failed: ${e.message}", e)
+            }
+            // Дополнительно: мгновенный дренаж в бекграунде (устойчив к задержкам WorkManager)
+            repoScope.launch {
+                try {
+                    Log.d("SocialRepository", "[sendHabitInvitation] inline drainPending() -> start")
+                    syncManager.drainPending(maxBatch = 10)
+                    Log.d("SocialRepository", "[sendHabitInvitation] inline drainPending() -> done")
+                } catch (e: Exception) {
+                    Log.w("SocialRepository", "[sendHabitInvitation] inline drainPending() failed: ${e.message}", e)
+                }
+            }
 
             // Отправляем FCM уведомление
+            Log.d(
+                "SocialRepository",
+                "[sendHabitInvitation] sendHabitInvitationNotification -> to=$toUserId, from=$fromUserName, habitTitle=$habitTitle"
+            )
             sendHabitInvitationNotification(toUserId, fromUserName, habitTitle)
+            Log.d("SocialRepository", "[sendHabitInvitation] sendHabitInvitationNotification -> DONE")
 
             Result.success(invitation)
         } catch (e: Exception) {
@@ -1045,7 +1101,9 @@ class SocialRepositoryImpl @Inject constructor(
             )
 
             // Room-first update
+            Log.d("SocialRepository", "[acceptHabitInvitation] update Room -> ACCEPTED: invitationId=$invitationId")
             habitInvitationDao.update(acceptedInvitation.toEntity())
+            Log.d("SocialRepository", "[acceptHabitInvitation] update Room DONE: invitationId=$invitationId")
 
             // Enqueue UPSERT for invitation status
             val payload = JSONObject()
@@ -1061,12 +1119,31 @@ class SocialRepositoryImpl @Inject constructor(
                 .put("expiresAt", acceptedInvitation.expiresAt)
                 .put("updatedAt", System.currentTimeMillis())
                 .toString()
+            Log.d("SocialRepository", "[acceptHabitInvitation] enqueueUpsert Outbox: type=habit_invitation, id=$invitationId")
             syncManager.enqueueUpsert(
                 entityType = "habit_invitation",
                 entityId = invitationId,
                 payloadJson = payload,
                 updatedAt = System.currentTimeMillis()
             )
+            // Форсируем немедленный дренаж outbox для обновления статуса приглашения
+            try {
+                Log.d("SocialRepository", "[acceptHabitInvitation] scheduleOneTimeSync() -> start")
+                syncWorkScheduler.scheduleOneTimeSync()
+                Log.d("SocialRepository", "[acceptHabitInvitation] scheduleOneTimeSync() -> enqueued")
+            } catch (e: Exception) {
+                Log.w("SocialRepository", "[acceptHabitInvitation] scheduleOneTimeSync() failed: ${e.message}", e)
+            }
+            // Дополнительно: мгновенный дренаж в бекграунде
+            repoScope.launch {
+                try {
+                    Log.d("SocialRepository", "[acceptHabitInvitation] inline drainPending() -> start")
+                    syncManager.drainPending(maxBatch = 10)
+                    Log.d("SocialRepository", "[acceptHabitInvitation] inline drainPending() -> done")
+                } catch (e: Exception) {
+                    Log.w("SocialRepository", "[acceptHabitInvitation] inline drainPending() failed: ${e.message}", e)
+                }
+            }
 
             // Добавляем пользователя к участникам привычки локально
             habitRepository.addParticipantToHabit(invitation.habitId, invitation.toUserId)
@@ -1090,11 +1167,16 @@ class SocialRepositoryImpl @Inject constructor(
             catch (_: Exception) {
                 invitation.toUserId
             }
+            Log.d(
+                "SocialRepository",
+                "[acceptHabitInvitation] sendHabitInvitationAcceptedNotification -> to=${invitation.fromUserId}, acceptedBy=$acceptedUserName, habit=${invitation.habitTitle}"
+            )
             sendHabitInvitationAcceptedNotification(
                 toUserId = invitation.fromUserId,
                 acceptedByName = acceptedUserName,
                 habitTitle = invitation.habitTitle
             )
+            Log.d("SocialRepository", "[acceptHabitInvitation] sendHabitInvitationAcceptedNotification -> DONE")
 
             Result.success(acceptedInvitation)
         } catch (e: Exception) {
@@ -1117,7 +1199,9 @@ class SocialRepositoryImpl @Inject constructor(
             )
 
             // Room-first update
+            Log.d("SocialRepository", "[declineHabitInvitation] update Room -> DECLINED: invitationId=$invitationId")
             habitInvitationDao.update(declinedInvitation.toEntity())
+            Log.d("SocialRepository", "[declineHabitInvitation] update Room DONE: invitationId=$invitationId")
 
             // Enqueue UPSERT for invitation status
             val payload = JSONObject()
@@ -1139,6 +1223,22 @@ class SocialRepositoryImpl @Inject constructor(
                 payloadJson = payload,
                 updatedAt = System.currentTimeMillis()
             )
+            // Форсируем немедленный дренаж outbox для обновления статуса приглашения
+            try {
+                Log.d("SocialRepository", "[declineHabitInvitation] scheduleOneTimeSync() -> start")
+                syncWorkScheduler.scheduleOneTimeSync()
+                Log.d("SocialRepository", "[declineHabitInvitation] scheduleOneTimeSync() -> enqueued")
+            } catch (_: Exception) { }
+            // Дополнительно: мгновенный дренаж в бекграунде
+            repoScope.launch {
+                try {
+                    Log.d("SocialRepository", "[declineHabitInvitation] inline drainPending() -> start")
+                    syncManager.drainPending(maxBatch = 10)
+                    Log.d("SocialRepository", "[declineHabitInvitation] inline drainPending() -> done")
+                } catch (e: Exception) {
+                    Log.w("SocialRepository", "[declineHabitInvitation] inline drainPending() failed: ${e.message}", e)
+                }
+            }
 
             Result.success(declinedInvitation)
         } catch (e: Exception) {
@@ -1161,7 +1261,9 @@ class SocialRepositoryImpl @Inject constructor(
             )
 
             // Room-first update
+            Log.d("SocialRepository", "[cancelHabitInvitation] update Room -> CANCELLED: invitationId=$invitationId")
             habitInvitationDao.update(cancelledInvitation.toEntity())
+            Log.d("SocialRepository", "[cancelHabitInvitation] update Room DONE: invitationId=$invitationId")
 
             // Enqueue UPSERT for invitation status
             val payload = JSONObject()
@@ -1177,12 +1279,31 @@ class SocialRepositoryImpl @Inject constructor(
                 .put("expiresAt", cancelledInvitation.expiresAt)
                 .put("updatedAt", System.currentTimeMillis())
                 .toString()
+            Log.d("SocialRepository", "[cancelHabitInvitation] enqueueUpsert Outbox: type=habit_invitation, id=$invitationId")
             syncManager.enqueueUpsert(
                 entityType = "habit_invitation",
                 entityId = invitationId,
                 payloadJson = payload,
                 updatedAt = System.currentTimeMillis()
             )
+            // Форсируем немедленный дренаж outbox для обновления статуса приглашения
+            try {
+                Log.d("SocialRepository", "[cancelHabitInvitation] scheduleOneTimeSync() -> start")
+                syncWorkScheduler.scheduleOneTimeSync()
+                Log.d("SocialRepository", "[cancelHabitInvitation] scheduleOneTimeSync() -> enqueued")
+            } catch (e: Exception) {
+                Log.w("SocialRepository", "[cancelHabitInvitation] scheduleOneTimeSync() failed: ${e.message}", e)
+            }
+            // Дополнительно: мгновенный дренаж в бекграунде
+            repoScope.launch {
+                try {
+                    Log.d("SocialRepository", "[cancelHabitInvitation] inline drainPending() -> start")
+                    syncManager.drainPending(maxBatch = 10)
+                    Log.d("SocialRepository", "[cancelHabitInvitation] inline drainPending() -> done")
+                } catch (e: Exception) {
+                    Log.w("SocialRepository", "[cancelHabitInvitation] inline drainPending() failed: ${e.message}", e)
+                }
+            }
 
             Result.success(Unit)
         } catch (e: Exception) {
@@ -1233,10 +1354,25 @@ class SocialRepositoryImpl @Inject constructor(
                 .whereEqualTo("toUserId", userId)
                 .addSnapshotListener { snapshot, error ->
                     if (error != null) {
-                        // Игнорируем ошибку, оставляем локальные данные
+                        // Игнорируем ошибку, оставляем локальные данные, но логируем
+                        try {
+                            android.util.Log.w(
+                                "SocialRepository",
+                                "[getIncomingHabitInvitations] Firestore listener error: ${error.message}",
+                                error
+                            )
+                        } catch (_: Exception) {}
                         return@addSnapshotListener
                     }
-                    val list = snapshot?.documents?.mapNotNull { doc ->
+                    val docs = snapshot?.documents ?: emptyList()
+                    try {
+                        android.util.Log.d(
+                            "SocialRepository",
+                            "[getIncomingHabitInvitations] snapshot size=${docs.size}, docIds=${docs.map { it.id }}"
+                        )
+                    } catch (_: Exception) {}
+
+                    val list = docs.mapNotNull { doc ->
                         doc.toObject(com.habittracker.data.remote.model.HabitInvitationRemote::class.java)
                             ?.toDomain(doc.id)
                     } ?: emptyList()
@@ -1244,8 +1380,24 @@ class SocialRepositoryImpl @Inject constructor(
                     // Апсертим локально для консистентности (и для счётчиков)
                     scope.launch {
                         try {
+                            android.util.Log.d(
+                                "SocialRepository",
+                                "[getIncomingHabitInvitations] insertAll -> size=${list.size}"
+                            )
                             habitInvitationDao.insertAll(list.map { it.toEntity() })
-                        } catch (_: Exception) {}
+                            android.util.Log.d(
+                                "SocialRepository",
+                                "[getIncomingHabitInvitations] insertAll DONE"
+                            )
+                        } catch (e: Exception) {
+                            try {
+                                android.util.Log.w(
+                                    "SocialRepository",
+                                    "[getIncomingHabitInvitations] insertAll failed: ${e.message}",
+                                    e
+                                )
+                            } catch (_: Exception) {}
+                        }
                     }
                 }
 
@@ -1373,77 +1525,136 @@ class SocialRepositoryImpl @Inject constructor(
 
     override suspend fun sendHabitInvitationNotification(toUserId: String, fromUserName: String, habitTitle: String) {
         try {
-            // Получаем все актуальные токены получателя: массив fcmTokens + fallback fcmToken
-            val userDoc = firestore.collection("users").document(toUserId).get().await()
-            val tokensFromArray = (userDoc.get("fcmTokens") as? List<*>)?.mapNotNull { it as? String } ?: emptyList()
-            val legacyToken = userDoc.getString("fcmToken")
-            val allTokens = (tokensFromArray + listOfNotNull(legacyToken)).toSet()
+            // Отправляем асинхронно и неотменяемо, включая загрузку токенов
+            repoScope.launch {
+                withContext(NonCancellable + Dispatchers.IO) {
+                    val userDoc = firestore.collection("users").document(toUserId).get().await()
+                    val tokensFromArray = (userDoc.get("fcmTokens") as? List<*>)?.mapNotNull { it as? String } ?: emptyList()
+                    val legacyToken = userDoc.getString("fcmToken")
+                    val allTokens = (tokensFromArray + listOfNotNull(legacyToken)).toSet()
 
-            if (allTokens.isEmpty()) {
-                Log.w("SocialRepository", "FCM skip: habit_invitation -> to=$toUserId, tokens_absent")
-                return
-            }
+                    if (allTokens.isEmpty()) {
+                        Log.w("SocialRepository", "FCM skip: habit_invitation -> to=$toUserId, tokens_absent")
+                        return@withContext
+                    }
 
-            Log.d(
-                "SocialRepository",
-                "FCM send: habit_invitation -> to=$toUserId, tokens_count=${allTokens.size}, tokens=${allTokens.map { maskToken(it) }}"
-            )
-
-            allTokens.forEach { token ->
-                fcmApiClient.sendPushNotification(
-                    fcmToken = token,
-                    title = "Приглашение к привычке",
-                    body = "$fromUserName приглашает вас к участию в привычке '$habitTitle'",
-                    data = mapOf(
-                        "type" to "habit_invitation",
-                        "habitTitle" to habitTitle,
-                        "fromUserName" to fromUserName,
-                        "action" to "open_habit_invitations",
-                        // нужен таргет для фильтрации на клиенте
-                        "recipientUserId" to toUserId
+                    Log.d(
+                        "SocialRepository",
+                        "FCM send: habit_invitation -> to=$toUserId, tokens_count=${allTokens.size}, tokens=${allTokens.map { maskToken(it) }}"
                     )
-                )
+
+                    allTokens.forEach { token ->
+                        val result = fcmApiClient.sendPushNotification(
+                            fcmToken = token,
+                            title = "Приглашение к привычке",
+                            body = "$fromUserName приглашает вас к участию в привычке '$habitTitle'",
+                            data = mapOf(
+                                "type" to "habit_invitation",
+                                "habitTitle" to habitTitle,
+                                "fromUserName" to fromUserName,
+                                "action" to "open_habit_invitations",
+                                "recipientUserId" to toUserId
+                            )
+                        )
+                        result.onFailure { e ->
+                            val msg = e.message ?: ""
+                            if (msg.contains("UNREGISTERED", ignoreCase = true)) {
+                                Log.w("SocialRepository", "FCM UNREGISTERED -> remove token ${maskToken(token)} for user=$toUserId")
+                                safelyRemoveInvalidFcmToken(toUserId, token)
+                            } else {
+                                Log.w("SocialRepository", "FCM send failed for token ${maskToken(token)}: ${e.message}")
+                            }
+                        }
+                    }
+                }
             }
         } catch (e: Exception) {
-            Log.w("SocialRepository", "Ошибка отправки уведомления о приглашении в привычку", e)
+            Log.w("SocialRepository", "Ошибка подготовки уведомления о приглашении в привычку (outer)", e)
         }
     }
 
     override suspend fun sendHabitInvitationAcceptedNotification(toUserId: String, acceptedByName: String, habitTitle: String) {
         try {
-            // Получаем все актуальные токены получателя: массив fcmTokens + fallback fcmToken
-            val userDoc = firestore.collection("users").document(toUserId).get().await()
-            val tokensFromArray = (userDoc.get("fcmTokens") as? List<*>)?.mapNotNull { it as? String } ?: emptyList()
-            val legacyToken = userDoc.getString("fcmToken")
-            val allTokens = (tokensFromArray + listOfNotNull(legacyToken)).toSet()
+            repoScope.launch {
+                withContext(NonCancellable + Dispatchers.IO) {
+                    val userDoc = firestore.collection("users").document(toUserId).get().await()
+                    val tokensFromArray = (userDoc.get("fcmTokens") as? List<*>)?.mapNotNull { it as? String } ?: emptyList()
+                    val legacyToken = userDoc.getString("fcmToken")
+                    val allTokens = (tokensFromArray + listOfNotNull(legacyToken)).toSet()
 
-            if (allTokens.isEmpty()) {
-                Log.w("SocialRepository", "FCM skip: habit_invitation_accepted -> to=$toUserId, tokens_absent")
-                return
-            }
+                    if (allTokens.isEmpty()) {
+                        Log.w("SocialRepository", "FCM skip: habit_invitation_accepted -> to=$toUserId, tokens_absent")
+                        return@withContext
+                    }
 
-            Log.d(
-                "SocialRepository",
-                "FCM send: habit_invitation_accepted -> to=$toUserId, tokens_count=${allTokens.size}, tokens=${allTokens.map { maskToken(it) }}, recipientUserId=$toUserId, acceptedBy=$acceptedByName, habit='$habitTitle'"
-            )
-
-            allTokens.forEach { token ->
-                fcmApiClient.sendPushNotification(
-                    fcmToken = token,
-                    title = "Приглашение принято",
-                    body = "$acceptedByName принял ваше приглашение к участию в привычке '$habitTitle'",
-                    data = mapOf(
-                        "type" to "habit_invitation_accepted",
-                        "habitTitle" to habitTitle,
-                        "acceptedByName" to acceptedByName,
-                        "action" to "open_habit_details",
-                        // нужен таргет для фильтрации на клиенте
-                        "recipientUserId" to toUserId
+                    Log.d(
+                        "SocialRepository",
+                        "FCM send: habit_invitation_accepted -> to=$toUserId, tokens_count=${allTokens.size}, tokens=${allTokens.map { maskToken(it) }}, recipientUserId=$toUserId, acceptedBy=$acceptedByName, habit='$habitTitle'"
                     )
-                )
+
+                    allTokens.forEach { token ->
+                        val result = fcmApiClient.sendPushNotification(
+                            fcmToken = token,
+                            title = "Приглашение принято",
+                            body = "$acceptedByName принял ваше приглашение к участию в привычке '$habitTitle'",
+                            data = mapOf(
+                                "type" to "habit_invitation_accepted",
+                                "habitTitle" to habitTitle,
+                                "acceptedByName" to acceptedByName,
+                                "action" to "open_habit_details",
+                                "recipientUserId" to toUserId
+                            )
+                        )
+                        result.onFailure { e ->
+                            val msg = e.message ?: ""
+                            if (msg.contains("UNREGISTERED", ignoreCase = true)) {
+                                Log.w("SocialRepository", "FCM UNREGISTERED -> remove token ${maskToken(token)} for user=$toUserId")
+                                safelyRemoveInvalidFcmToken(toUserId, token)
+                            } else {
+                                Log.w("SocialRepository", "FCM send failed for token ${maskToken(token)}: ${e.message}")
+                            }
+                        }
+                    }
+                }
             }
         } catch (e: Exception) {
-            Log.w("SocialRepository", "Ошибка отправки уведомления о принятии приглашения", e)
+            Log.w("SocialRepository", "Ошибка подготовки уведомления о принятии приглашения (outer)", e)
+        }
+    }
+
+    // Удаляем невалидный FCM-токен из массива fcmTokens и, если совпадает, из legacy fcmToken
+    private suspend fun safelyRemoveInvalidFcmToken(userId: String, badToken: String) {
+        try {
+            val userRef = firestore.collection("users").document(userId)
+            firestore.runTransaction { tx ->
+                val snap = tx.get(userRef)
+                val tokens = (snap.get("fcmTokens") as? List<*>)?.mapNotNull { it as? String } ?: emptyList()
+                val beforeSize = tokens.size
+                val newTokens = tokens.filter { it != badToken }
+
+                val legacy = snap.getString("fcmToken")
+                val legacyMatched = legacy == badToken
+
+                Log.d(
+                    "SocialRepository",
+                    "FCM cleanup: start user=$userId, token=${maskToken(badToken)}, before_tokens=$beforeSize, legacy_match=$legacyMatched"
+                )
+
+                val updates = mutableMapOf<String, Any>("fcmTokens" to newTokens)
+                if (legacyMatched) {
+                    updates["fcmToken"] = FieldValue.delete()
+                }
+                tx.update(userRef, updates as Map<String, Any>)
+            }.await()
+            Log.d(
+                "SocialRepository",
+                "FCM cleanup: done user=$userId, removed token=${maskToken(badToken)}"
+            )
+        } catch (e: Exception) {
+            Log.w(
+                "SocialRepository",
+                "FCM cleanup: failed user=$userId, token=${maskToken(badToken)} -> ${e.message}"
+            )
         }
     }
 
