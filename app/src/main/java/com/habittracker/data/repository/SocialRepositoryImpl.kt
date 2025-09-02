@@ -1352,25 +1352,21 @@ class SocialRepositoryImpl @Inject constructor(
             // 1) Стартуем слушатель Firestore
             val registration = firestore.collection("habit_invitations")
                 .whereEqualTo("toUserId", userId)
+                .whereEqualTo("status", HabitInvitationStatus.PENDING.name)
                 .addSnapshotListener { snapshot, error ->
                     if (error != null) {
                         // Игнорируем ошибку, оставляем локальные данные, но логируем
                         try {
                             android.util.Log.w(
                                 "SocialRepository",
-                                "[getIncomingHabitInvitations] Firestore listener error: ${error.message}",
+                                "[getIncomingHabitInvitations] listener error: ${error.message}",
                                 error
                             )
                         } catch (_: Exception) {}
                         return@addSnapshotListener
                     }
                     val docs = snapshot?.documents ?: emptyList()
-                    try {
-                        android.util.Log.d(
-                            "SocialRepository",
-                            "[getIncomingHabitInvitations] snapshot size=${docs.size}, docIds=${docs.map { it.id }}"
-                        )
-                    } catch (_: Exception) {}
+                    try { android.util.Log.d("SocialRepository", "[getIncomingHabitInvitations] snapshot size=${docs.size}") } catch (_: Exception) {}
 
                     val list = docs.mapNotNull { doc ->
                         doc.toObject(com.habittracker.data.remote.model.HabitInvitationRemote::class.java)
@@ -1380,15 +1376,8 @@ class SocialRepositoryImpl @Inject constructor(
                     // Апсертим локально для консистентности (и для счётчиков)
                     scope.launch {
                         try {
-                            android.util.Log.d(
-                                "SocialRepository",
-                                "[getIncomingHabitInvitations] insertAll -> size=${list.size}"
-                            )
                             habitInvitationDao.insertAll(list.map { it.toEntity() })
-                            android.util.Log.d(
-                                "SocialRepository",
-                                "[getIncomingHabitInvitations] insertAll DONE"
-                            )
+                            try { android.util.Log.d("SocialRepository", "[getIncomingHabitInvitations] upsert=${list.size}") } catch (_: Exception) {}
                         } catch (e: Exception) {
                             try {
                                 android.util.Log.w(
@@ -1423,6 +1412,7 @@ class SocialRepositoryImpl @Inject constructor(
             // Firestore listener: исходящие приглашения от пользователя
             val registration = firestore.collection("habit_invitations")
                 .whereEqualTo("fromUserId", userId)
+                .whereEqualTo("status", HabitInvitationStatus.PENDING.name)
                 .addSnapshotListener { snapshot, error ->
                     if (error != null) {
                         return@addSnapshotListener
@@ -1435,6 +1425,7 @@ class SocialRepositoryImpl @Inject constructor(
                     scope.launch {
                         try {
                             habitInvitationDao.insertAll(list.map { it.toEntity() })
+                            try { android.util.Log.d("SocialRepository", "[getOutgoingHabitInvitations] upsert=${list.size}") } catch (_: Exception) {}
                         } catch (_: Exception) {}
                     }
                 }
