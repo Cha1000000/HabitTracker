@@ -1659,96 +1659,211 @@ class SocialRepositoryImpl @Inject constructor(
     }
 
     override suspend fun sendChallengeInvitationNotification(toUserId: String, fromUserName: String, challengeTitle: String, habitTitle: String) {
-        val toUser = getUserById(toUserId)
-        if (toUser != null) {
-            val fcmToken = toUser.fcmToken
-            if (fcmToken != null) {
-                fcmApiClient.sendPushNotification(
-                    fcmToken,
-                    "Приглашение в челлендж",
-                    "$fromUserName приглашает вас к участию в челлендже '$challengeTitle' по привычке '$habitTitle'",
-                    mapOf(
-                        "type" to "challenge_invitation",
-                        "challengeTitle" to challengeTitle,
-                        "habitTitle" to habitTitle
-                    )
-                )
+        try {
+            val userDoc = firestore.collection("users").document(toUserId).get().await()
+            val tokensFromArray = (userDoc.get("fcmTokens") as? List<*>)?.mapNotNull { it as? String } ?: emptyList()
+            val legacyToken = userDoc.getString("fcmToken")
+            val allTokens = (tokensFromArray + listOfNotNull(legacyToken)).toSet().toList()
+
+            if (allTokens.isEmpty()) {
+                Log.w("SocialRepository", "FCM skip: challenge_invitation -> to=$toUserId, tokens_absent")
+                return
             }
+
+            Log.d(
+                "SocialRepository",
+                "FCM send: challenge_invitation -> to=$toUserId, tokens_count=${allTokens.size}, tokens=${allTokens.map { maskToken(it) }}, challenge='$challengeTitle', habit='$habitTitle'"
+            )
+
+            val batchResult = fcmApiClient.sendToMultipleTokens(
+                tokens = allTokens,
+                title = "Приглашение в челлендж",
+                body = "$fromUserName приглашает вас к участию в челлендже '$challengeTitle' по привычке '$habitTitle'",
+                data = mapOf(
+                    "type" to "challenge_invitation",
+                    "challengeTitle" to challengeTitle,
+                    "habitTitle" to habitTitle,
+                    "recipientUserId" to toUserId
+                )
+            )
+            batchResult.onSuccess { result ->
+                result.results.filter { !it.success && (it.error?.contains("UNREGISTERED", ignoreCase = true) == true) }
+                    .forEach { bad ->
+                        Log.w("SocialRepository", "FCM UNREGISTERED (challenge_invitation) -> remove token ${maskToken(bad.token)} for user=$toUserId")
+                        safelyRemoveInvalidFcmToken(toUserId, bad.token)
+                    }
+            }.onFailure { e ->
+                Log.w("SocialRepository", "Ошибка отправки challenge_invitation batch: ${e.message}")
+            }
+        } catch (e: Exception) {
+            Log.w("SocialRepository", "Ошибка отправки challenge_invitation", e)
         }
     }
     
     override suspend fun sendChallengeJoinedNotification(toUserId: String, joinedUserName: String, challengeTitle: String) {
-        val toUser = getUserById(toUserId)
-        if (toUser != null) {
-            val fcmToken = toUser.fcmToken
-            if (fcmToken != null) {
-                fcmApiClient.sendPushNotification(
-                    fcmToken,
-                    "Новый участник челленджа",
-                    "$joinedUserName присоединился к челленджу '$challengeTitle'",
-                    mapOf(
-                        "type" to "challenge_joined",
-                        "challengeTitle" to challengeTitle
-                    )
-                )
+        try {
+            val userDoc = firestore.collection("users").document(toUserId).get().await()
+            val tokensFromArray = (userDoc.get("fcmTokens") as? List<*>)?.mapNotNull { it as? String } ?: emptyList()
+            val legacyToken = userDoc.getString("fcmToken")
+            val allTokens = (tokensFromArray + listOfNotNull(legacyToken)).toSet().toList()
+
+            if (allTokens.isEmpty()) {
+                Log.w("SocialRepository", "FCM skip: challenge_joined -> to=$toUserId, tokens_absent")
+                return
             }
+
+            Log.d(
+                "SocialRepository",
+                "FCM send: challenge_joined -> to=$toUserId, tokens_count=${allTokens.size}, tokens=${allTokens.map { maskToken(it) }}, challenge='$challengeTitle', joined='$joinedUserName'"
+            )
+
+            val batchResult = fcmApiClient.sendToMultipleTokens(
+                tokens = allTokens,
+                title = "Новый участник челленджа",
+                body = "$joinedUserName присоединился к челленджу '$challengeTitle'",
+                data = mapOf(
+                    "type" to "challenge_joined",
+                    "challengeTitle" to challengeTitle,
+                    "recipientUserId" to toUserId
+                )
+            )
+            batchResult.onSuccess { result ->
+                result.results.filter { !it.success && (it.error?.contains("UNREGISTERED", ignoreCase = true) == true) }
+                    .forEach { bad ->
+                        Log.w("SocialRepository", "FCM UNREGISTERED (challenge_joined) -> remove token ${maskToken(bad.token)} for user=$toUserId")
+                        safelyRemoveInvalidFcmToken(toUserId, bad.token)
+                    }
+            }.onFailure { e ->
+                Log.w("SocialRepository", "Ошибка отправки challenge_joined batch: ${e.message}")
+            }
+        } catch (e: Exception) {
+            Log.w("SocialRepository", "Ошибка отправки challenge_joined", e)
         }
     }
     
     override suspend fun sendChallengeLeftNotification(toUserId: String, leftUserName: String, challengeTitle: String) {
-        val toUser = getUserById(toUserId)
-        if (toUser != null) {
-            val fcmToken = toUser.fcmToken
-            if (fcmToken != null) {
-                fcmApiClient.sendPushNotification(
-                    fcmToken,
-                    "Участник покинул челлендж",
-                    "$leftUserName покинул челлендж '$challengeTitle'",
-                    mapOf(
-                        "type" to "challenge_left",
-                        "challengeTitle" to challengeTitle
-                    )
-                )
+        try {
+            val userDoc = firestore.collection("users").document(toUserId).get().await()
+            val tokensFromArray = (userDoc.get("fcmTokens") as? List<*>)?.mapNotNull { it as? String } ?: emptyList()
+            val legacyToken = userDoc.getString("fcmToken")
+            val allTokens = (tokensFromArray + listOfNotNull(legacyToken)).toSet().toList()
+
+            if (allTokens.isEmpty()) {
+                Log.w("SocialRepository", "FCM skip: challenge_left -> to=$toUserId, tokens_absent")
+                return
             }
+
+            Log.d(
+                "SocialRepository",
+                "FCM send: challenge_left -> to=$toUserId, tokens_count=${allTokens.size}, tokens=${allTokens.map { maskToken(it) }}, challenge='$challengeTitle', left='$leftUserName'"
+            )
+
+            val batchResult = fcmApiClient.sendToMultipleTokens(
+                tokens = allTokens,
+                title = "Участник покинул челлендж",
+                body = "$leftUserName покинул челлендж '$challengeTitle'",
+                data = mapOf(
+                    "type" to "challenge_left",
+                    "challengeTitle" to challengeTitle,
+                    "recipientUserId" to toUserId
+                )
+            )
+            batchResult.onSuccess { result ->
+                result.results.filter { !it.success && (it.error?.contains("UNREGISTERED", ignoreCase = true) == true) }
+                    .forEach { bad ->
+                        Log.w("SocialRepository", "FCM UNREGISTERED (challenge_left) -> remove token ${maskToken(bad.token)} for user=$toUserId")
+                        safelyRemoveInvalidFcmToken(toUserId, bad.token)
+                    }
+            }.onFailure { e ->
+                Log.w("SocialRepository", "Ошибка отправки challenge_left batch: ${e.message}")
+            }
+        } catch (e: Exception) {
+            Log.w("SocialRepository", "Ошибка отправки challenge_left", e)
         }
     }
     
     override suspend fun sendChallengeCompletedNotification(toUserId: String, challengeTitle: String, message: String, isWinner: Boolean) {
-        val toUser = getUserById(toUserId)
-        if (toUser != null) {
-            val fcmToken = toUser.fcmToken
-            if (fcmToken != null) {
-                val title = if (isWinner) "Поздравляем с победой!" else "Челлендж завершен"
-                fcmApiClient.sendPushNotification(
-                    fcmToken,
-                    title,
-                    message,
-                    mapOf(
-                        "type" to "challenge_completed",
-                        "challengeTitle" to challengeTitle,
-                        "isWinner" to isWinner.toString()
-                    )
-                )
+        try {
+            val userDoc = firestore.collection("users").document(toUserId).get().await()
+            val tokensFromArray = (userDoc.get("fcmTokens") as? List<*>)?.mapNotNull { it as? String } ?: emptyList()
+            val legacyToken = userDoc.getString("fcmToken")
+            val allTokens = (tokensFromArray + listOfNotNull(legacyToken)).toSet().toList()
+
+            if (allTokens.isEmpty()) {
+                Log.w("SocialRepository", "FCM skip: challenge_completed -> to=$toUserId, tokens_absent")
+                return
             }
+
+            val title = if (isWinner) "Поздравляем с победой!" else "Челлендж завершен"
+            Log.d(
+                "SocialRepository",
+                "FCM send: challenge_completed -> to=$toUserId, tokens_count=${allTokens.size}, tokens=${allTokens.map { maskToken(it) }}, challenge='$challengeTitle', isWinner=$isWinner"
+            )
+
+            val batchResult = fcmApiClient.sendToMultipleTokens(
+                tokens = allTokens,
+                title = title,
+                body = message,
+                data = mapOf(
+                    "type" to "challenge_completed",
+                    "challengeTitle" to challengeTitle,
+                    "isWinner" to isWinner.toString(),
+                    "recipientUserId" to toUserId
+                )
+            )
+            batchResult.onSuccess { result ->
+                result.results.filter { !it.success && (it.error?.contains("UNREGISTERED", ignoreCase = true) == true) }
+                    .forEach { bad ->
+                        Log.w("SocialRepository", "FCM UNREGISTERED (challenge_completed) -> remove token ${maskToken(bad.token)} for user=$toUserId")
+                        safelyRemoveInvalidFcmToken(toUserId, bad.token)
+                    }
+            }.onFailure { e ->
+                Log.w("SocialRepository", "Ошибка отправки challenge_completed batch: ${e.message}")
+            }
+        } catch (e: Exception) {
+            Log.w("SocialRepository", "Ошибка отправки challenge_completed", e)
         }
     }
     
     override suspend fun sendChallengeCancelledNotification(toUserId: String, challengeTitle: String, reason: String) {
-        val toUser = getUserById(toUserId)
-        if (toUser != null) {
-            val fcmToken = toUser.fcmToken
-            if (fcmToken != null) {
-                fcmApiClient.sendPushNotification(
-                    fcmToken,
-                    "Челлендж отменен",
-                    "Челлендж '$challengeTitle' был отменен. $reason",
-                    mapOf(
-                        "type" to "challenge_cancelled",
-                        "challengeTitle" to challengeTitle,
-                        "reason" to reason
-                    )
-                )
+        try {
+            val userDoc = firestore.collection("users").document(toUserId).get().await()
+            val tokensFromArray = (userDoc.get("fcmTokens") as? List<*>)?.mapNotNull { it as? String } ?: emptyList()
+            val legacyToken = userDoc.getString("fcmToken")
+            val allTokens = (tokensFromArray + listOfNotNull(legacyToken)).toSet().toList()
+
+            if (allTokens.isEmpty()) {
+                Log.w("SocialRepository", "FCM skip: challenge_cancelled -> to=$toUserId, tokens_absent")
+                return
             }
+
+            Log.d(
+                "SocialRepository",
+                "FCM send: challenge_cancelled -> to=$toUserId, tokens_count=${allTokens.size}, tokens=${allTokens.map { maskToken(it) }}, challenge='$challengeTitle'"
+            )
+
+            val batchResult = fcmApiClient.sendToMultipleTokens(
+                tokens = allTokens,
+                title = "Челлендж отменен",
+                body = "Челлендж '$challengeTitle' был отменен. $reason",
+                data = mapOf(
+                    "type" to "challenge_cancelled",
+                    "challengeTitle" to challengeTitle,
+                    "reason" to reason,
+                    "recipientUserId" to toUserId
+                )
+            )
+            batchResult.onSuccess { result ->
+                result.results.filter { !it.success && (it.error?.contains("UNREGISTERED", ignoreCase = true) == true) }
+                    .forEach { bad ->
+                        Log.w("SocialRepository", "FCM UNREGISTERED (challenge_cancelled) -> remove token ${maskToken(bad.token)} for user=$toUserId")
+                        safelyRemoveInvalidFcmToken(toUserId, bad.token)
+                    }
+            }.onFailure { e ->
+                Log.w("SocialRepository", "Ошибка отправки challenge_cancelled batch: ${e.message}")
+            }
+        } catch (e: Exception) {
+            Log.w("SocialRepository", "Ошибка отправки challenge_cancelled", e)
         }
     }
 
