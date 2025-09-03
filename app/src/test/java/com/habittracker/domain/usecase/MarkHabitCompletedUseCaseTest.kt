@@ -1,13 +1,29 @@
 package com.habittracker.domain.usecase
 
-import com.habittracker.domain.model.*
+import com.habittracker.data.sync.SyncManager
+import com.habittracker.data.sync.SyncWorkScheduler
+import com.habittracker.domain.model.FriendRequest
+import com.habittracker.domain.model.FriendRequestWithUsers
+import com.habittracker.domain.model.Friendship
+import com.habittracker.domain.model.FriendshipWithUsers
+import com.habittracker.domain.model.Habit
+import com.habittracker.domain.model.HabitEntry
+import com.habittracker.domain.model.HabitEntryWithUser
+import com.habittracker.domain.model.HabitInvitation
+import com.habittracker.domain.model.HabitType
+import com.habittracker.domain.model.User
 import com.habittracker.domain.model.gamification.GamificationEvent
-import com.habittracker.domain.repository.*
+import com.habittracker.domain.repository.HabitEntryRepository
+import com.habittracker.domain.repository.HabitRepository
+import com.habittracker.domain.repository.SocialRepository
+import com.habittracker.domain.repository.UserRepository
 import com.habittracker.domain.usecase.gamification.UpdateUserPointsUseCase
 import com.habittracker.domain.usecase.notification.SendGroupHabitPushNotificationUseCase
-import kotlinx.coroutines.*
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
 import kotlinx.datetime.Clock
@@ -18,17 +34,22 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
+import org.mockito.kotlin.any
+import org.mockito.kotlin.argumentCaptor
+import org.mockito.kotlin.mock
+import org.mockito.kotlin.verify
 
 @ExperimentalCoroutinesApi
 class MarkHabitCompletedUseCaseTest {
 
-    private lateinit var firestoreRepository: FakeFirestoreRepository
     private lateinit var habitEntryRepository: FakeHabitEntryRepository
     private lateinit var updateUserPointsUseCase: FakeUpdateUserPointsUseCase
     private lateinit var habitRepository: FakeHabitRepository
     private lateinit var socialRepository: FakeSocialRepository
     private lateinit var sendGroupHabitPushNotificationUseCase: SendGroupHabitPushNotificationUseCase
     private lateinit var markHabitCompletedUseCase: MarkHabitCompletedUseCase
+    private lateinit var syncManager: SyncManager
+    private lateinit var syncWorkScheduler: SyncWorkScheduler
 
     private val testHabitId = "habit1"
     private val testUserId = "user1"
@@ -37,52 +58,79 @@ class MarkHabitCompletedUseCaseTest {
 
     @Before
     fun setUp() {
-        firestoreRepository = FakeFirestoreRepository()
         habitEntryRepository = FakeHabitEntryRepository()
         updateUserPointsUseCase = FakeUpdateUserPointsUseCase(FakeUserRepository())
         habitRepository = FakeHabitRepository()
         socialRepository = FakeSocialRepository()
         sendGroupHabitPushNotificationUseCase = SendGroupHabitPushNotificationUseCase(socialRepository, habitRepository)
+        syncManager = mock()
+        syncWorkScheduler = mock()
     }
 
     private fun setupUseCase(scope: CoroutineScope) {
         markHabitCompletedUseCase = MarkHabitCompletedUseCase(
-            firestoreRepository = firestoreRepository,
             habitEntryRepository = habitEntryRepository,
             updateUserPointsUseCase = updateUserPointsUseCase,
             sendGroupHabitPushNotificationUseCase = sendGroupHabitPushNotificationUseCase,
-            coroutineScope = scope
+            coroutineScope = scope,
+            syncManager = syncManager,
+            syncWorkScheduler = syncWorkScheduler
         )
     }
 
     @Test
-    fun `should save habit entry to both repositories when Firestore succeeds`() = runTest {
+    fun `should write local and enqueue outbox when success`() = runTest {
         setupUseCase(this)
-        // Arrange
-        firestoreRepository.shouldThrowException = false
 
         // Act
         markHabitCompletedUseCase(testHabitId, testUserId, testDate, testNote)
 
         // Assert
-        assertEquals(testHabitId, firestoreRepository.savedEntry?.habitId)
         assertTrue(habitEntryRepository.markHabitCompletedCalled)
+        // verify enqueueUpsert called with proper arguments
+        val entityTypeCaptor = argumentCaptor<String>()
+        val entityIdCaptor = argumentCaptor<String>()
+        val payloadCaptor = argumentCaptor<String>()
+        val updatedAtCaptor = argumentCaptor<Long>()
+        verify(syncManager).enqueueUpsert(
+            entityType = entityTypeCaptor.capture(),
+            entityId = entityIdCaptor.capture(),
+            payloadJson = payloadCaptor.capture(),
+            updatedAt = updatedAtCaptor.capture(),
+            operationId = any()
+        )
+        assertEquals("habit_entry", entityTypeCaptor.firstValue)
+        assertTrue(entityIdCaptor.firstValue.startsWith("${testHabitId}_${testUserId}_"))
+        val payload = payloadCaptor.firstValue
+        assertTrue(payload.contains("\"habitId\":\"$testHabitId\""))
+        assertTrue(payload.contains("\"userId\":\"$testUserId\""))
+        assertTrue(payload.contains("\"date\":\"${testDate.toString()}\""))
+        // one-time sync scheduled
+        verify(syncWorkScheduler).scheduleOneTimeSync()
     }
 
     @Test
-    fun `should save habit entry locally when Firestore fails`() = runTest {
+    fun `should save locally and still schedule sync when outbox enqueue fails`() = runTest {
         setupUseCase(this)
-        // Arrange
-        firestoreRepository.shouldThrowException = true
-
-        // Act & Assert
-        try {
-            markHabitCompletedUseCase(testHabitId, testUserId, testDate, testNote)
-        } catch (e: Exception) {
-            // Expected exception
+        // Arrange: make enqueueUpsert throw
+        runBlocking {
+            org.mockito.kotlin.whenever(
+                syncManager.enqueueUpsert(
+                    entityType = any(),
+                    entityId = any(),
+                    payloadJson = any(),
+                    updatedAt = any(),
+                    operationId = any()
+                )
+            ).thenThrow(RuntimeException("Outbox error"))
         }
 
+        // Act
+        markHabitCompletedUseCase(testHabitId, testUserId, testDate, testNote)
+
         assertTrue(habitEntryRepository.markHabitCompletedCalled)
+        // scheduleOneTimeSync still invoked
+        verify(syncWorkScheduler).scheduleOneTimeSync()
     }
 
     @Test
@@ -98,27 +146,6 @@ class MarkHabitCompletedUseCaseTest {
 }
 
 // Fake Implementations for testing
-
-class FakeFirestoreRepository : FirestoreRepository {
-    var saveHabitEntryCalled = false
-    var shouldThrowException = false
-    var savedEntry: HabitEntry? = null
-
-    override suspend fun saveHabitEntry(habitEntry: HabitEntry) {
-        if (shouldThrowException) throw Exception("Firestore error")
-        saveHabitEntryCalled = true
-        savedEntry = habitEntry
-    }
-
-    override fun getUserHabits(userId: String): Flow<List<Habit>> = flowOf(emptyList<Habit>())
-    override suspend fun saveHabit(habit: Habit) {}
-    override suspend fun updateHabit(habit: Habit) {}
-    override suspend fun deleteHabit(habitId: String) {}
-    override suspend fun getHabitById(habitId: String): Habit? = null
-    override suspend fun getHabitEntry(habitId: String, userId: String, date: LocalDate): HabitEntry? = null
-    override fun getHabitEntries(habitId: String, userId: String): Flow<List<HabitEntry>> = flowOf(emptyList<HabitEntry>())
-    override suspend fun syncData() {}
-}
 
 class FakeHabitEntryRepository : HabitEntryRepository {
     var markHabitCompletedCalled = false
@@ -263,4 +290,10 @@ class FakeUserRepository : UserRepository {
     override suspend fun searchUsersByName(query: String): List<User> = emptyList()
 
     override suspend fun updateUserLevel(userId: String, level: Int, points: Int) {}
+
+    override suspend fun upsertUserRemoteAndLocal(user: User, fcmToken: String?) { /* no-op for tests */ }
+
+    override fun observeUser(userId: String): Flow<User?> = flowOf(users[userId])
+
+    override suspend fun backfillAvatarThumbnails(): Result<Int> = Result.success(0)
 }

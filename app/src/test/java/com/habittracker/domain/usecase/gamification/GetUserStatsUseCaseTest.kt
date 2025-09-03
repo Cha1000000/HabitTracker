@@ -93,6 +93,9 @@ class GetUserStatsUseCaseTest {
                 override suspend fun setCurrentUser(userId: String) {}
                 override suspend fun searchUsersByName(query: String): List<User> = emptyList()
                 override suspend fun updateUserLevel(userId: String, level: Int, points: Int) {}
+                override suspend fun upsertUserRemoteAndLocal(user: User, fcmToken: String?) {}
+                override fun observeUser(userId: String): Flow<User?> = flowOf(null)
+                override suspend fun backfillAvatarThumbnails(): Result<Int> = Result.success(0)
             },
             habitRepository = object : HabitRepository {
                 override suspend fun insertHabit(habit: Habit) {}

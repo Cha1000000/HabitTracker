@@ -29,6 +29,7 @@ import com.habittracker.domain.model.createFriendship
 import com.habittracker.domain.model.isExpired
 import com.habittracker.domain.repository.HabitRepository
 import com.habittracker.domain.repository.SocialRepository
+import com.habittracker.domain.util.SyncPayloads
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.NonCancellable
@@ -42,7 +43,6 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.tasks.await
 import kotlinx.coroutines.withContext
-import org.json.JSONObject
 import java.util.UUID
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -235,15 +235,7 @@ class SocialRepositoryImpl @Inject constructor(
             friendRequestDao.insertFriendRequest(friendRequest.toEntity())
 
             // Enqueue remote UPSERT
-            val payload = JSONObject()
-                .put("fromUserId", friendRequest.fromUserId)
-                .put("toUserId", friendRequest.toUserId)
-                .put("status", friendRequest.status.name)
-                .put("message", friendRequest.message)
-                .put("createdAt", friendRequest.createdAt)
-                .put("respondedAt", friendRequest.respondedAt)
-                .put("updatedAt", friendRequest.updatedAt)
-                .toString()
+            val payload = SyncPayloads.friendRequestToJson(friendRequest)
             syncManager.enqueueUpsert(
                 entityType = "friend_request",
                 entityId = friendRequest.id,
@@ -303,15 +295,7 @@ class SocialRepositoryImpl @Inject constructor(
             friendshipDao.insertFriendship(friendship.toEntity())
 
             // Enqueue remote UPSERTs
-            val frPayload = JSONObject()
-                .put("fromUserId", acceptedRequest.fromUserId)
-                .put("toUserId", acceptedRequest.toUserId)
-                .put("status", acceptedRequest.status.name)
-                .put("message", acceptedRequest.message)
-                .put("createdAt", acceptedRequest.createdAt)
-                .put("respondedAt", acceptedRequest.respondedAt)
-                .put("updatedAt", acceptedRequest.updatedAt)
-                .toString()
+            val frPayload = SyncPayloads.friendRequestToJson(acceptedRequest)
             syncManager.enqueueUpsert(
                 entityType = "friend_request",
                 entityId = acceptedRequest.id,
@@ -321,17 +305,7 @@ class SocialRepositoryImpl @Inject constructor(
             try { syncWorkScheduler.scheduleOneTimeSync() } catch (_: Exception) { }
 
             val ordered = if (friendship.userId1 < friendship.userId2) Pair(friendship.userId1, friendship.userId2) else Pair(friendship.userId2, friendship.userId1)
-            val fsPayload = JSONObject()
-                .put("userId1", ordered.first)
-                .put("userId2", ordered.second)
-                .put("status", friendship.status.name)
-                .put("requestedBy", friendship.requestedBy)
-                .put("requestedAt", friendship.requestedAt)
-                .put("acceptedAt", friendship.acceptedAt)
-                .put("blockedBy", friendship.blockedBy)
-                .put("blockedAt", friendship.blockedAt)
-                .put("updatedAt", friendship.updatedAt)
-                .toString()
+            val fsPayload = SyncPayloads.friendshipToJson(friendship)
             syncManager.enqueueUpsert(
                 entityType = "friendship",
                 entityId = "${ordered.first}_${ordered.second}",
@@ -367,15 +341,7 @@ class SocialRepositoryImpl @Inject constructor(
             friendRequestDao.updateFriendRequest(declinedRequest.toEntity())
 
             // Enqueue remote UPSERT
-            val payload = JSONObject()
-                .put("fromUserId", declinedRequest.fromUserId)
-                .put("toUserId", declinedRequest.toUserId)
-                .put("status", declinedRequest.status.name)
-                .put("message", declinedRequest.message)
-                .put("createdAt", declinedRequest.createdAt)
-                .put("respondedAt", declinedRequest.respondedAt)
-                .put("updatedAt", declinedRequest.updatedAt)
-                .toString()
+            val payload = SyncPayloads.friendRequestToJson(declinedRequest)
             syncManager.enqueueUpsert(
                 entityType = "friend_request",
                 entityId = declinedRequest.id,
@@ -668,17 +634,7 @@ class SocialRepositoryImpl @Inject constructor(
 
             // Enqueue UPSERT
             val orderedIds = if (currentUserId < userIdToBlock) Pair(currentUserId, userIdToBlock) else Pair(userIdToBlock, currentUserId)
-            val payload = JSONObject()
-                .put("userId1", orderedIds.first)
-                .put("userId2", orderedIds.second)
-                .put("status", blockedFriendship.status.name)
-                .put("requestedBy", blockedFriendship.requestedBy)
-                .put("requestedAt", blockedFriendship.requestedAt)
-                .put("acceptedAt", blockedFriendship.acceptedAt)
-                .put("blockedBy", blockedFriendship.blockedBy)
-                .put("blockedAt", blockedFriendship.blockedAt)
-                .put("updatedAt", blockedFriendship.updatedAt)
-                .toString()
+            val payload = SyncPayloads.friendshipToJson(blockedFriendship)
             syncManager.enqueueUpsert(
                 entityType = "friendship",
                 entityId = "${orderedIds.first}_${orderedIds.second}",
@@ -708,17 +664,7 @@ class SocialRepositoryImpl @Inject constructor(
 
             // Enqueue UPSERT
             val orderedIds = if (currentUserId < userIdToUnblock) Pair(currentUserId, userIdToUnblock) else Pair(userIdToUnblock, currentUserId)
-            val payload = JSONObject()
-                .put("userId1", orderedIds.first)
-                .put("userId2", orderedIds.second)
-                .put("status", unblockedFriendship.status.name)
-                .put("requestedBy", unblockedFriendship.requestedBy)
-                .put("requestedAt", unblockedFriendship.requestedAt)
-                .put("acceptedAt", unblockedFriendship.acceptedAt)
-                .put("blockedBy", unblockedFriendship.blockedBy)
-                .put("blockedAt", unblockedFriendship.blockedAt)
-                .put("updatedAt", unblockedFriendship.updatedAt)
-                .toString()
+            val payload = SyncPayloads.friendshipToJson(unblockedFriendship)
             syncManager.enqueueUpsert(
                 entityType = "friendship",
                 entityId = "${orderedIds.first}_${orderedIds.second}",
@@ -1026,19 +972,7 @@ class SocialRepositoryImpl @Inject constructor(
             Log.d("SocialRepository", "[sendHabitInvitation] insert Room: DONE invitationId=${invitation.id}")
 
             // Enqueue UPSERT to Firestore via Outbox
-            val payload = JSONObject()
-                .put("habitId", invitation.habitId)
-                .put("habitTitle", invitation.habitTitle)
-                .put("fromUserId", invitation.fromUserId)
-                .put("fromUserName", invitation.fromUserName)
-                .put("toUserId", invitation.toUserId)
-                .put("message", invitation.message)
-                .put("status", invitation.status.name)
-                .put("createdAt", invitation.createdAt)
-                .put("respondedAt", invitation.respondedAt)
-                .put("expiresAt", invitation.expiresAt)
-                .put("updatedAt", invitation.createdAt)
-                .toString()
+            val payload = SyncPayloads.habitInvitationToJson(invitation, invitation.createdAt)
             Log.d(
                 "SocialRepository",
                 "[sendHabitInvitation] enqueueUpsert Outbox: type=habit_invitation, id=${invitation.id}, payloadSize=${payload.length}"
@@ -1106,25 +1040,14 @@ class SocialRepositoryImpl @Inject constructor(
             Log.d("SocialRepository", "[acceptHabitInvitation] update Room DONE: invitationId=$invitationId")
 
             // Enqueue UPSERT for invitation status
-            val payload = JSONObject()
-                .put("habitId", acceptedInvitation.habitId)
-                .put("habitTitle", acceptedInvitation.habitTitle)
-                .put("fromUserId", acceptedInvitation.fromUserId)
-                .put("fromUserName", acceptedInvitation.fromUserName)
-                .put("toUserId", acceptedInvitation.toUserId)
-                .put("message", acceptedInvitation.message)
-                .put("status", acceptedInvitation.status.name)
-                .put("createdAt", acceptedInvitation.createdAt)
-                .put("respondedAt", acceptedInvitation.respondedAt)
-                .put("expiresAt", acceptedInvitation.expiresAt)
-                .put("updatedAt", System.currentTimeMillis())
-                .toString()
+            val nowAccepted = System.currentTimeMillis()
+            val payload = SyncPayloads.habitInvitationToJson(acceptedInvitation, nowAccepted)
             Log.d("SocialRepository", "[acceptHabitInvitation] enqueueUpsert Outbox: type=habit_invitation, id=$invitationId")
             syncManager.enqueueUpsert(
                 entityType = "habit_invitation",
                 entityId = invitationId,
                 payloadJson = payload,
-                updatedAt = System.currentTimeMillis()
+                updatedAt = nowAccepted
             )
             // Форсируем немедленный дренаж outbox для обновления статуса приглашения
             try {
@@ -1204,24 +1127,13 @@ class SocialRepositoryImpl @Inject constructor(
             Log.d("SocialRepository", "[declineHabitInvitation] update Room DONE: invitationId=$invitationId")
 
             // Enqueue UPSERT for invitation status
-            val payload = JSONObject()
-                .put("habitId", declinedInvitation.habitId)
-                .put("habitTitle", declinedInvitation.habitTitle)
-                .put("fromUserId", declinedInvitation.fromUserId)
-                .put("fromUserName", declinedInvitation.fromUserName)
-                .put("toUserId", declinedInvitation.toUserId)
-                .put("message", declinedInvitation.message)
-                .put("status", declinedInvitation.status.name)
-                .put("createdAt", declinedInvitation.createdAt)
-                .put("respondedAt", declinedInvitation.respondedAt)
-                .put("expiresAt", declinedInvitation.expiresAt)
-                .put("updatedAt", System.currentTimeMillis())
-                .toString()
+            val nowDeclined = System.currentTimeMillis()
+            val payload = SyncPayloads.habitInvitationToJson(declinedInvitation, nowDeclined)
             syncManager.enqueueUpsert(
                 entityType = "habit_invitation",
                 entityId = invitationId,
                 payloadJson = payload,
-                updatedAt = System.currentTimeMillis()
+                updatedAt = nowDeclined
             )
             // Форсируем немедленный дренаж outbox для обновления статуса приглашения
             try {
@@ -1266,25 +1178,14 @@ class SocialRepositoryImpl @Inject constructor(
             Log.d("SocialRepository", "[cancelHabitInvitation] update Room DONE: invitationId=$invitationId")
 
             // Enqueue UPSERT for invitation status
-            val payload = JSONObject()
-                .put("habitId", cancelledInvitation.habitId)
-                .put("habitTitle", cancelledInvitation.habitTitle)
-                .put("fromUserId", cancelledInvitation.fromUserId)
-                .put("fromUserName", cancelledInvitation.fromUserName)
-                .put("toUserId", cancelledInvitation.toUserId)
-                .put("message", cancelledInvitation.message)
-                .put("status", cancelledInvitation.status.name)
-                .put("createdAt", cancelledInvitation.createdAt)
-                .put("respondedAt", cancelledInvitation.respondedAt)
-                .put("expiresAt", cancelledInvitation.expiresAt)
-                .put("updatedAt", System.currentTimeMillis())
-                .toString()
+            val nowCancelled = System.currentTimeMillis()
+            val payload = SyncPayloads.habitInvitationToJson(cancelledInvitation, nowCancelled)
             Log.d("SocialRepository", "[cancelHabitInvitation] enqueueUpsert Outbox: type=habit_invitation, id=$invitationId")
             syncManager.enqueueUpsert(
                 entityType = "habit_invitation",
                 entityId = invitationId,
                 payloadJson = payload,
-                updatedAt = System.currentTimeMillis()
+                updatedAt = nowCancelled
             )
             // Форсируем немедленный дренаж outbox для обновления статуса приглашения
             try {

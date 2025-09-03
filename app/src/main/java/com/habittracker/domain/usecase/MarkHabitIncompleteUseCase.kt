@@ -1,8 +1,13 @@
 package com.habittracker.domain.usecase
 
 import com.habittracker.domain.model.HabitEntry
-import com.habittracker.domain.repository.FirestoreRepository
 import com.habittracker.domain.repository.HabitEntryRepository
+import com.habittracker.data.sync.SyncManager
+import com.habittracker.data.sync.SyncWorkScheduler
+import com.habittracker.domain.util.SyncPayloads
+import com.habittracker.domain.util.HabitEntryIds
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.launch
 import kotlinx.datetime.Clock
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.TimeZone
@@ -11,12 +16,15 @@ import javax.inject.Inject
 
 /**
  * Use case для отметки привычки как невыполненной.
- * Сохраняет запись в Firestore для синхронизации и локально для офлайн-доступа.
+ * Room-first: локальная запись в Room, затем постановка UPSERT в Outbox и триггер one-time sync.
  */
 class MarkHabitIncompleteUseCase @Inject constructor(
-    private val firestoreRepository: FirestoreRepository,
-    private val habitEntryRepository: HabitEntryRepository
+    private val habitEntryRepository: HabitEntryRepository,
+    private val syncManager: SyncManager,
+    private val syncWorkScheduler: SyncWorkScheduler,
+    private val coroutineScope: CoroutineScope
 ) {
+    private val backgroundTasksScope = coroutineScope
     /**
      * Отмечает привычку как невыполненную за указанную дату
      * @param habitId ID привычки
@@ -28,6 +36,7 @@ class MarkHabitIncompleteUseCase @Inject constructor(
         userId: String,
         date: LocalDate = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault()).date
     ) {
+        val nowMillis = Clock.System.now().toEpochMilliseconds()
         val habitEntry = HabitEntry(
             habitId = habitId,
             userId = userId,
@@ -35,20 +44,34 @@ class MarkHabitIncompleteUseCase @Inject constructor(
             completed = false,
             completedAt = null,
             note = null,
-            createdAt = Clock.System.now().toEpochMilliseconds(),
-            updatedAt = Clock.System.now().toEpochMilliseconds()
+            createdAt = nowMillis,
+            updatedAt = nowMillis
         )
 
+        // 1) Локально в Room — всегда сначала
+        habitEntryRepository.markHabitIncomplete(habitId, userId, date)
+
+        // 2) Outbox UPSERT + форс-синк
+        val entityId = HabitEntryIds.make(habitId, userId, date)
+        val payloadJson = SyncPayloads.habitEntryToJson(habitEntry)
+
         try {
-            // Сначала сохраняем в Firestore
-            firestoreRepository.saveHabitEntry(habitEntry)
-            
-            // Затем сохраняем локально
-            habitEntryRepository.markHabitIncomplete(habitId, userId, date)
-        } catch (e: Exception) {
-            // Если Firestore недоступен, сохраняем только локально
-            habitEntryRepository.markHabitIncomplete(habitId, userId, date)
-            throw e
+            syncManager.enqueueUpsert(
+                entityType = "habit_entry",
+                entityId = entityId,
+                payloadJson = payloadJson,
+                updatedAt = nowMillis
+            )
+        } catch (_: Exception) {
+            // Игнорируем: локальная консистентность сохранена, воркер повторит
+        } finally {
+            syncWorkScheduler.scheduleOneTimeSync()
+            // Немедленный неблокирующий дренаж outbox для ускорения синка
+            backgroundTasksScope.launch {
+                try { syncManager.drainPending() } catch (_: Exception) { }
+            }
         }
     }
 }
+
+
