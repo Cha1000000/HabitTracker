@@ -1366,6 +1366,7 @@ class SocialRepositoryImpl @Inject constructor(
                         return@addSnapshotListener
                     }
                     val docs = snapshot?.documents ?: emptyList()
+                    val remoteIds = docs.map { it.id }.toSet()
                     try { android.util.Log.d("SocialRepository", "[getIncomingHabitInvitations] snapshot size=${docs.size}") } catch (_: Exception) {}
 
                     val list = docs.mapNotNull { doc ->
@@ -1378,6 +1379,15 @@ class SocialRepositoryImpl @Inject constructor(
                         try {
                             habitInvitationDao.insertAll(list.map { it.toEntity() })
                             try { android.util.Log.d("SocialRepository", "[getIncomingHabitInvitations] upsert=${list.size}") } catch (_: Exception) {}
+                            // Reconcile: удаляем локальные PENDING входящие, которых нет в снапшоте
+                            try {
+                                val local = habitInvitationDao.getIncomingInvitations(userId).first()
+                                val toDelete = local.filter { it.id !in remoteIds }
+                                if (toDelete.isNotEmpty()) {
+                                    try { android.util.Log.d("SocialRepository", "[getIncomingHabitInvitations] reconcile delete=${toDelete.size}") } catch (_: Exception) {}
+                                    toDelete.forEach { inv -> habitInvitationDao.deleteById(inv.id) }
+                                }
+                            } catch (_: Exception) { }
                         } catch (e: Exception) {
                             try {
                                 android.util.Log.w(
@@ -1417,7 +1427,9 @@ class SocialRepositoryImpl @Inject constructor(
                     if (error != null) {
                         return@addSnapshotListener
                     }
-                    val list = snapshot?.documents?.mapNotNull { doc ->
+                    val docs = snapshot?.documents ?: emptyList()
+                    val remoteIds = docs.map { it.id }.toSet()
+                    val list = docs.mapNotNull { doc ->
                         doc.toObject(com.habittracker.data.remote.model.HabitInvitationRemote::class.java)
                             ?.toDomain(doc.id)
                     } ?: emptyList()
@@ -1426,6 +1438,15 @@ class SocialRepositoryImpl @Inject constructor(
                         try {
                             habitInvitationDao.insertAll(list.map { it.toEntity() })
                             try { android.util.Log.d("SocialRepository", "[getOutgoingHabitInvitations] upsert=${list.size}") } catch (_: Exception) {}
+                            // Reconcile: удаляем локальные PENDING исходящие, которых нет в снапшоте
+                            try {
+                                val local = habitInvitationDao.getOutgoingInvitations(userId).first()
+                                val toDelete = local.filter { it.id !in remoteIds }
+                                if (toDelete.isNotEmpty()) {
+                                    try { android.util.Log.d("SocialRepository", "[getOutgoingHabitInvitations] reconcile delete=${toDelete.size}") } catch (_: Exception) {}
+                                    toDelete.forEach { inv -> habitInvitationDao.deleteById(inv.id) }
+                                }
+                            } catch (_: Exception) { }
                         } catch (_: Exception) {}
                     }
                 }

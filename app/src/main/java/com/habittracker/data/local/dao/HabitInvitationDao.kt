@@ -18,7 +18,7 @@ interface HabitInvitationDao {
     @Query("SELECT * FROM habit_invitations WHERE toUserId = :userId AND status = 'PENDING' ORDER BY createdAt DESC")
     fun getIncomingInvitations(userId: String): Flow<List<HabitInvitationEntity>>
 
-    @Query("SELECT * FROM habit_invitations WHERE fromUserId = :userId ORDER BY createdAt DESC")
+    @Query("SELECT * FROM habit_invitations WHERE fromUserId = :userId AND status = 'PENDING' ORDER BY createdAt DESC")
     fun getOutgoingInvitations(userId: String): Flow<List<HabitInvitationEntity>>
 
     @Query("SELECT * FROM habit_invitations WHERE habitId = :habitId ORDER BY createdAt DESC")
