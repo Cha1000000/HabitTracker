@@ -32,6 +32,8 @@ class SyncWorkScheduler @Inject constructor(
         val request = PeriodicWorkRequestBuilder<SyncWorker>(15, TimeUnit.MINUTES)
             .setConstraints(constraints)
             .setBackoffCriteria(BackoffPolicy.LINEAR, 30, TimeUnit.SECONDS)
+            // Avoid overlap with immediate one-time sync at app start
+            .setInitialDelay(15, TimeUnit.MINUTES)
             .build()
 
         workManager.enqueueUniquePeriodicWork(
@@ -54,7 +56,7 @@ class SyncWorkScheduler @Inject constructor(
 
         workManager.enqueueUniqueWork(
             UNIQUE_ONE_TIME_SYNC,
-            ExistingWorkPolicy.REPLACE,
+            ExistingWorkPolicy.KEEP,
             request
         )
     }
