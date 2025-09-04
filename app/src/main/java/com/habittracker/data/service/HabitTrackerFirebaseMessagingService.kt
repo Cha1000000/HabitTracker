@@ -1,5 +1,6 @@
 package com.habittracker.data.service
 
+import android.annotation.SuppressLint
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.PendingIntent
@@ -10,14 +11,15 @@ import android.util.Log
 import androidx.core.app.NotificationCompat
 import com.google.firebase.messaging.FirebaseMessagingService
 import com.google.firebase.messaging.RemoteMessage
+import com.google.gson.Gson
+import com.google.gson.reflect.TypeToken
 import com.habittracker.MainActivity
 import com.habittracker.R
-import com.habittracker.domain.repository.AuthRepository
-import com.habittracker.domain.repository.SocialRepository
 import com.habittracker.data.local.HabitTrackerDatabase
 import com.habittracker.data.local.dao.PendingNotificationDao
 import com.habittracker.data.local.entity.PendingNotificationEntity
-import com.google.gson.Gson
+import com.habittracker.domain.repository.AuthRepository
+import com.habittracker.domain.repository.SocialRepository
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -154,6 +156,7 @@ class HabitTrackerFirebaseMessagingService : FirebaseMessagingService() {
     /**
      * Создает канал уведомлений для Android 8+
      */
+    @SuppressLint("ObsoleteSdkInt")
     private fun createNotificationChannel() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             val channel = NotificationChannel(
@@ -222,7 +225,7 @@ class HabitTrackerFirebaseMessagingService : FirebaseMessagingService() {
             }
         }
 
-        val notificationManager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+        val notificationManager = getSystemService(NOTIFICATION_SERVICE) as NotificationManager
         val notificationId = System.currentTimeMillis().toInt()
         
         notificationManager.notify(notificationId, notificationBuilder.build())
@@ -259,7 +262,7 @@ class HabitTrackerFirebaseMessagingService : FirebaseMessagingService() {
             dataJson = gson.toJson(data),
             receivedAt = System.currentTimeMillis(),
             ttlSeconds = ttlSeconds,
-            dedupKey = if (dedupKey.isNotEmpty()) dedupKey else null
+            dedupKey = dedupKey.ifEmpty { null }
         )
         pendingDao.insert(entity)
         // подчистим просроченные
@@ -272,9 +275,10 @@ class HabitTrackerFirebaseMessagingService : FirebaseMessagingService() {
         val items = pendingDao.getAllForUser(currentUserId)
         if (items.isEmpty()) return
         Log.d(TAG, "Доставка отложенных уведомлений: count=${items.size} для user=$currentUserId")
+        val mapType = object : TypeToken<Map<String, String>>() {}.type
         items.forEach { item ->
             val map: Map<String, String> = runCatching {
-                gson.fromJson(item.dataJson, Map::class.java) as Map<String, String>
+                gson.fromJson<Map<String, String>>(item.dataJson, mapType) ?: emptyMap()
             }.getOrElse { emptyMap() }
             showNotification(item.title, item.body, map)
             runCatching { pendingDao.deleteById(item.id) }

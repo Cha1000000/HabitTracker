@@ -4,6 +4,7 @@ import android.app.Application
 import android.util.Log
 import androidx.hilt.work.HiltWorkerFactory
 import androidx.work.Configuration
+import com.google.firebase.appcheck.FirebaseAppCheck
 import com.habittracker.data.sync.SyncWorkScheduler
 import com.habittracker.domain.usecase.notification.ManageFCMTokenUseCase
 import dagger.hilt.android.HiltAndroidApp
@@ -24,6 +25,9 @@ class HabitTrackerApplication : Application(), Configuration.Provider {
 
     @Inject
     lateinit var syncWorkScheduler: SyncWorkScheduler
+
+    @Inject
+    lateinit var firebaseAppCheck: FirebaseAppCheck
     
     // Application-level scope for non-blocking init tasks
     private val applicationScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
@@ -33,11 +37,15 @@ class HabitTrackerApplication : Application(), Configuration.Provider {
         if (BuildConfig.DEBUG) {
             Log.d("HabitTrackerApp", "Application onCreate() called")
         }
+        // Touch AppCheck to ensure debug provider is installed (see FirebaseModule)
+        if (BuildConfig.DEBUG) {
+            Log.d("HabitTrackerApp", "FirebaseAppCheck injected: ${::firebaseAppCheck.isInitialized}")
+        }
         // Initialize FCM token once on app start (safe: use case checks auth internally)
         applicationScope.launch {
             manageFCMTokenUseCase.initializeFCMToken().onFailure { e ->
                 if (BuildConfig.DEBUG) {
-                    Log.d("HabitTrackerApp", "FCM init skipped/failed: ${'$'}{e.message}")
+                    Log.d("HabitTrackerApp", "FCM init skipped/failed: ${e.message}")
                 }
             }
         }
@@ -48,7 +56,7 @@ class HabitTrackerApplication : Application(), Configuration.Provider {
             syncWorkScheduler.scheduleOneTimeSync()
         } catch (e: Exception) {
             if (BuildConfig.DEBUG) {
-                Log.d("HabitTrackerApp", "Sync scheduling failed: ${'$'}{e.message}")
+                Log.d("HabitTrackerApp", "Sync scheduling failed: ${e.message}")
             }
         }
     }

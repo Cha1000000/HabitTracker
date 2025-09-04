@@ -720,7 +720,20 @@ class SocialRepositoryImpl @Inject constructor(
                                 val data = doc.data ?: emptyMap<String, Any?>()
                                 val userId1 = data["userId1"] as? String ?: return@forEach
                                 val userId2 = data["userId2"] as? String ?: return@forEach
-                                val status = (data["status"] as? String)?.let { runCatching { FriendshipStatus.valueOf(it) }.getOrNull() } ?: FriendshipStatus.PENDING
+                                // Гарантируем наличие пользователей в Room перед вставкой Friendship (FK constraints)
+                                try {
+                                    val u1 = getUserById(userId1)
+                                    if (u1 != null) {
+                                        userDao.insertUser(u1.toEntity())
+                                    }
+                                } catch (_: Exception) { /* ignore */ }
+                                try {
+                                    val u2 = getUserById(userId2)
+                                    if (u2 != null) {
+                                        userDao.insertUser(u2.toEntity())
+                                    }
+                                } catch (_: Exception) { /* ignore */ }
+                                val status = (data["status"] as? String)?.let { runCatching { FriendshipStatus.valueOf(it.uppercase()) }.getOrNull() } ?: FriendshipStatus.PENDING
                                 val requestedBy = data["requestedBy"] as? String ?: userId1
                                 val requestedAt = (data["requestedAt"] as? Number)?.toLong() ?: System.currentTimeMillis()
                                 val acceptedAt = (data["acceptedAt"] as? Number)?.toLong()
@@ -766,7 +779,20 @@ class SocialRepositoryImpl @Inject constructor(
                                 val data = doc.data ?: emptyMap<String, Any?>()
                                 val userId1 = data["userId1"] as? String ?: return@forEach
                                 val userId2 = data["userId2"] as? String ?: return@forEach
-                                val status = (data["status"] as? String)?.let { runCatching { FriendshipStatus.valueOf(it) }.getOrNull() } ?: FriendshipStatus.PENDING
+                                // Гарантируем наличие пользователей в Room перед вставкой Friendship (FK constraints)
+                                try {
+                                    val u1 = getUserById(userId1)
+                                    if (u1 != null) {
+                                        userDao.insertUser(u1.toEntity())
+                                    }
+                                } catch (_: Exception) { /* ignore */ }
+                                try {
+                                    val u2 = getUserById(userId2)
+                                    if (u2 != null) {
+                                        userDao.insertUser(u2.toEntity())
+                                    }
+                                } catch (_: Exception) { /* ignore */ }
+                                val status = (data["status"] as? String)?.let { runCatching { FriendshipStatus.valueOf(it.uppercase()) }.getOrNull() } ?: FriendshipStatus.PENDING
                                 val requestedBy = data["requestedBy"] as? String ?: userId1
                                 val requestedAt = (data["requestedAt"] as? Number)?.toLong() ?: System.currentTimeMillis()
                                 val acceptedAt = (data["acceptedAt"] as? Number)?.toLong()
@@ -808,8 +834,8 @@ class SocialRepositoryImpl @Inject constructor(
             }
 
             awaitClose {
-                reg1?.remove()
-                reg2?.remove()
+                reg1.remove()
+                reg2.remove()
                 job.cancel()
                 scope.cancel()
             }

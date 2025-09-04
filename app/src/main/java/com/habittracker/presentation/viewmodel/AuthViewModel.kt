@@ -1,5 +1,7 @@
 package com.habittracker.presentation.viewmodel
 
+import android.util.Log
+import com.habittracker.BuildConfig
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.google.firebase.auth.FirebaseAuth
@@ -197,7 +199,9 @@ class AuthViewModel @Inject constructor(
             manageFCMTokenUseCase.initializeFCMToken().onFailure { error ->
                 // Логируем ошибку, но не показываем пользователю
                 // FCM не критичен для основной функциональности
-                println("Ошибка инициализации FCM токена: ${error.message}")
+                if (BuildConfig.DEBUG) {
+                    Log.i("AuthViewModel", "FCM init failed: ${error.message}")
+                }
             }
         }
     }
@@ -209,7 +213,9 @@ class AuthViewModel @Inject constructor(
         viewModelScope.launch {
             manageFCMTokenUseCase.clearFCMToken().onFailure { error ->
                 // Логируем ошибку, но не блокируем выход
-                println("Ошибка очистки FCM токена: ${error.message}")
+                if (BuildConfig.DEBUG) {
+                    Log.i("AuthViewModel", "FCM clear failed: ${error.message}")
+                }
             }
         }
     }

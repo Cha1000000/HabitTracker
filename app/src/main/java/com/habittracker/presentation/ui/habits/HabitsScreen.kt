@@ -68,14 +68,6 @@ fun HabitsScreen(
     val friendsUiState by friendsViewModel.uiState.collectAsState()
     val friendRequestsBadgeCount = friendsUiState.incomingRequests.size
     
-    // Принудительная загрузка привычек при открытии экрана
-    LaunchedEffect(Unit) {
-        val currentUserId = com.google.firebase.auth.FirebaseAuth.getInstance().currentUser?.uid
-        if (currentUserId != null) {
-            viewModel.loadHabits(currentUserId)
-        }
-    }
-    
     // Показываем ошибки через Snackbar
     LaunchedEffect(uiState.error) {
         uiState.error?.let { errorMessage ->

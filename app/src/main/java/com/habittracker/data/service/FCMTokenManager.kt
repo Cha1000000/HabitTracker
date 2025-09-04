@@ -6,6 +6,7 @@ import com.habittracker.BuildConfig
 import com.habittracker.domain.repository.AuthRepository
 import com.habittracker.domain.repository.SocialRepository
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.tasks.await
 import java.util.concurrent.atomic.AtomicBoolean
 import javax.inject.Inject
@@ -40,27 +41,62 @@ class FCMTokenManager @Inject constructor(
             val currentUserId = authRepository.getCurrentUserId()
                 ?: return Result.failure(Exception("Пользователь не авторизован"))
 
-            val token = FirebaseMessaging.getInstance().token.await()
             if (BuildConfig.DEBUG) {
-                val masked = if (token.length > 8) "${token.take(4)}****${token.takeLast(4)}" else "****"
-                Log.d(TAG, "Получен FCM токен (masked): $masked")
+                Log.d(TAG, "[fcm] Start token refresh for user=$currentUserId")
             }
-            socialRepository.updateUserFcmToken(currentUserId, token)
-            
-            if (BuildConfig.DEBUG) {
-                Log.d(TAG, "FCM токен успешно сохранен для пользователя: $currentUserId")
+
+            var result: Result<String>? = null
+            var lastError: Exception? = null
+            var backoff = 500L
+
+            for (attempt in 1..3) {
+                try {
+                    val token = FirebaseMessaging.getInstance().token.await()
+                    if (BuildConfig.DEBUG) {
+                        val masked = if (token.length > 8) "${token.take(4)}****${token.takeLast(4)}" else "****"
+                        Log.d(TAG, "[fcm] Got token (masked): $masked on attempt $attempt")
+                    }
+
+                    // Compare with existing stored token to avoid redundant writes
+                    val existing = try { socialRepository.getUserById(currentUserId)?.fcmToken } catch (_: Exception) { null }
+                    if (existing == token) {
+                        if (BuildConfig.DEBUG) {
+                            Log.d(TAG, "[fcm] Token unchanged, skip update for user=$currentUserId")
+                        }
+                        result = Result.success(token)
+                        break
+                    }
+
+                    socialRepository.updateUserFcmToken(currentUserId, token)
+                    if (BuildConfig.DEBUG) {
+                        Log.d(TAG, "[fcm] Token saved for user=$currentUserId")
+                    }
+                    result = Result.success(token)
+                    break
+                } catch (e: CancellationException) {
+                    if (BuildConfig.DEBUG) {
+                        Log.i(TAG, "FCM token refresh cancelled: ${e.message ?: "cancelled"}")
+                    }
+                    result = Result.failure(e)
+                    break
+                } catch (e: Exception) {
+                    lastError = e
+                    if (BuildConfig.DEBUG) {
+                        Log.d(TAG, "[fcm] Attempt $attempt/3 failed: ${e.message}")
+                    }
+                    if (attempt < 3) {
+                        try { delay(backoff) } catch (_: CancellationException) { /* propagate later */ }
+                        backoff *= 2
+                    }
+                }
             }
-            
-            Result.success(token)
-        } catch (e: CancellationException) {
-            // Coroutine was cancelled (e.g., scope disposed). Not a hard error.
-            if (BuildConfig.DEBUG) {
-                Log.d(TAG, "Получение FCM токена отменено: ${e.message}")
+
+            if (result != null) {
+                result as Result<String>
+            } else {
+                Log.e(TAG, "Ошибка получения FCM токена", lastError)
+                Result.failure(lastError ?: Exception("FCM token refresh failed"))
             }
-            Result.failure(e)
-        } catch (e: Exception) {
-            Log.e(TAG, "Ошибка получения FCM токена", e)
-            Result.failure(e)
         } finally {
             isRefreshing.set(false)
         }

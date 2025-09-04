@@ -14,9 +14,13 @@ import com.habittracker.domain.usecase.MarkHabitCompletedUseCase
 import com.habittracker.domain.usecase.MarkHabitIncompleteUseCase
 import com.habittracker.presentation.ui.habits.components.ParticipantProgress
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.catch
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.launch
@@ -62,6 +66,9 @@ class HabitsViewModel @Inject constructor(
     private val _uiState = MutableStateFlow(HabitsUiState())
     val uiState: StateFlow<HabitsUiState> = _uiState.asStateFlow()
     
+    // Prevent parallel collection of habits flow
+    private var habitsJob: Job? = null
+    
     private val currentUserId: String
         get() = authRepository.getCurrentUserId() 
             ?: throw IllegalStateException("User must be authenticated to access habits")
@@ -81,25 +88,53 @@ class HabitsViewModel @Inject constructor(
      * Загружает список привычек для пользователя.
      */
     fun loadHabits(userId: String) {
-        Log.d(TAG, "🔄 [loadHabits] Starting to load habits for user: $userId")
-        getHabitsUseCase(userId)
+        Log.d(TAG, "🔄 [loadHabits] Start for user=$userId")
+        // Cancel previous collection if any
+        if (habitsJob != null) {
+            Log.d(TAG, "⛔ [loadHabits] Cancelling previous habits subscription")
+            habitsJob?.cancel()
+        }
+
+        var emissionCount = 0
+        val job = getHabitsUseCase(userId)
+            // Normalize ordering to make equality stable
+            .map { habits -> habits.sortedBy { it.id } }
+            // Skip identical lists to avoid redundant UI updates and status reloads
+            .distinctUntilChanged()
             .onEach { habits ->
-                Log.d(TAG, "📊 [loadHabits] Received ${habits.size} habits from Flow for user: $userId")
+                emissionCount += 1
+                Log.d(TAG, "📊 [habits][flow] emission #$emissionCount, size=${habits.size} (user=$userId)")
                 habits.forEach { habit ->
-                    Log.d(TAG, "   📋 [loadHabits] Habit: ${habit.title} (${habit.id}), participants: ${habit.participants}")
+                    Log.d(TAG, "   📋 [habit] ${habit.title} (${habit.id}), participants=${habit.participants}")
                 }
-                
-                // Загружаем статус выполнения для каждой привычки
+
+                // Pre-populate UI with loading flags for completion status
                 val habitsWithCompletion = habits.map { habit ->
                     HabitWithCompletion(habit = habit, isLoading = true)
                 }
                 _uiState.value = HabitsUiState(habitsWithCompletion = habitsWithCompletion, isLoading = false)
-                Log.d(TAG, "✅ [loadHabits] Updated UI state with ${habitsWithCompletion.size} habits")
-                
-                // Асинхронно загружаем статус выполнения для каждой привычки
+                Log.d(TAG, "✅ [habits][ui] list updated (${habitsWithCompletion.size})")
+
+                // Load per-habit completion in background
                 loadCompletionStatuses(habits, userId)
             }
+            .catch { e ->
+                Log.e(TAG, "❌ [habits][error] ${e.message}", e)
+                _uiState.value = _uiState.value.copy(
+                    isLoading = false,
+                    error = e.localizedMessage ?: "Unknown error"
+                )
+            }
             .launchIn(viewModelScope)
+
+        habitsJob = job
+        habitsJob?.invokeOnCompletion { cause ->
+            if (cause == null) {
+                Log.d(TAG, "🛑 [loadHabits] Subscription completed normally")
+            } else {
+                Log.d(TAG, "🛑 [loadHabits] Subscription cancelled/failed: ${cause.message}")
+            }
+        }
     }
     
     /**
