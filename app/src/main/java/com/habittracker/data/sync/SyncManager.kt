@@ -166,10 +166,9 @@ class SyncManager @Inject constructor(
         val map = jsonToMap(item.payloadJson)
         Log.d("SyncManager", "[pushUpsert] ${item.entityType} -> $collection/$docId payloadKeys=${map.keys}")
         val docRef = firestore.collection(collection).document(docId)
-        // Если есть флаги активности — принудительно обновляем их отдельно для надёжности
+        // Принудительно обновляем только актуальный флаг активности isActive
         val flagUpdates = mutableMapOf<String, Any>()
         map["isActive"]?.let { flagUpdates["isActive"] = it }
-        map["active"]?.let { flagUpdates["active"] = it }
         if (flagUpdates.isNotEmpty()) {
             try {
                 Log.d("SyncManager", "[pushUpsert] update flags=$flagUpdates")

@@ -1,6 +1,4 @@
 package com.habittracker.domain.model
-
-import com.google.firebase.firestore.PropertyName
 import kotlinx.datetime.LocalTime
 
 data class Habit(
@@ -20,7 +18,6 @@ data class Habit(
     val maxParticipants: Int = 10, // максимальное количество участников (лимит 10)
     val inviteCode: String? = null, // код для быстрого присоединения к групповой привычке
     val isPublic: Boolean = false, // можно ли найти привычку по коду
-    @get:PropertyName("active") // Firestore использует "active" вместо "isActive"
     val isActive: Boolean = true,
     val createdAt: Long = 0L, // timestamp вместо Instant для совместимости с Firestore
     val updatedAt: Long = 0L  // timestamp вместо Instant для совместимости с Firestore

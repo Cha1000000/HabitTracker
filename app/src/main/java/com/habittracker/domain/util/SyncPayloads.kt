@@ -42,9 +42,8 @@ object SyncPayloads {
             if (type != null) put("type", type.name)
             if (createdBy != null) put("createdBy", createdBy)
             if (isActive != null) {
-                // Пишем оба поля для обратной совместимости
+                // isActive-only стандарт
                 put("isActive", isActive)
-                put("active", isActive)
             }
         }
     )
