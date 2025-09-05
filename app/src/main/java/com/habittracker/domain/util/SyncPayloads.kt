@@ -5,6 +5,7 @@ import com.habittracker.domain.model.HabitEntry
 import com.habittracker.domain.model.FriendRequest
 import com.habittracker.domain.model.Friendship
 import com.habittracker.domain.model.HabitInvitation
+import com.habittracker.domain.model.HabitType
 
 /**
  * Общие сериализаторы для payload'ов синхронизации (Outbox)
@@ -25,6 +26,21 @@ object SyncPayloads {
             "createdAt" to entry.createdAt,
             "updatedAt" to entry.updatedAt
         )
+    )
+
+    // Частичное обновление Habit (используется SetOptions.merge в SyncManager)
+    fun habitPartialUpdateToJson(
+        participants: List<String>? = null,
+        type: HabitType? = null,
+        createdBy: String? = null,
+        updatedAt: Long
+    ): String = gson.toJson(
+        buildMap<String, Any?> {
+            put("updatedAt", updatedAt)
+            if (participants != null) put("participants", participants)
+            if (type != null) put("type", type.name)
+            if (createdBy != null) put("createdBy", createdBy)
+        }
     )
 
     // Friend request payload

@@ -1,6 +1,8 @@
 package com.habittracker.presentation.ui.habits.components
 
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -14,6 +16,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Group
 import androidx.compose.material.icons.filled.Person
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -22,6 +25,10 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -42,20 +49,27 @@ import kotlinx.datetime.LocalTime
 /**
  * Улучшенный компонент для отображения привычки с поддержкой групповых привычек
  */
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun EnhancedHabitItem(
     habitWithCompletion: HabitWithCompletion,
     onHabitClick: (HabitWithCompletion) -> Unit,
     onToggleCompletion: () -> Unit,
+    onEdit: (HabitWithCompletion) -> Unit = {},
+    onDelete: (HabitWithCompletion) -> Unit = {},
     modifier: Modifier = Modifier,
     showGroupProgress: Boolean = true
 ) {
     val habit = habitWithCompletion.habit
+    var showActionsDialog by remember { mutableStateOf(false) }
     
     Card(
         modifier = modifier
             .fillMaxWidth()
-            .clickable { onHabitClick(habitWithCompletion) },
+            .combinedClickable(
+                onClick = { onHabitClick(habitWithCompletion) },
+                onLongClick = { showActionsDialog = true }
+            ),
         elevation = CardDefaults.cardElevation(defaultElevation = 4.dp),
         colors = CardDefaults.cardColors(
             containerColor = if (habitWithCompletion.isCompletedToday) {
@@ -206,6 +220,40 @@ fun EnhancedHabitItem(
                 )
             }
         }
+    }
+
+    if (showActionsDialog) {
+        AlertDialog(
+            onDismissRequest = { showActionsDialog = false },
+            title = { Text(text = stringResource(id = R.string.cd_more)) },
+            text = { Text(text = habit.title) },
+            confirmButton = {
+                Text(
+                    text = stringResource(id = R.string.edit),
+                    color = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier
+                        .padding(16.dp)
+                        .clickable {
+                            showActionsDialog = false
+                            onEdit(habitWithCompletion)
+                        }
+                )
+            },
+            dismissButton = {
+                Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+                    Text(
+                        text = stringResource(id = R.string.delete),
+                        color = MaterialTheme.colorScheme.error,
+                        modifier = Modifier
+                            .padding(16.dp)
+                            .clickable {
+                                showActionsDialog = false
+                                onDelete(habitWithCompletion)
+                            }
+                    )
+                }
+            }
+        )
     }
 }
 

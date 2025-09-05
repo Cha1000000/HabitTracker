@@ -12,6 +12,7 @@ import com.habittracker.domain.usecase.GetHabitCompletionStatusUseCase
 import com.habittracker.domain.usecase.GetHabitsUseCase
 import com.habittracker.domain.usecase.MarkHabitCompletedUseCase
 import com.habittracker.domain.usecase.MarkHabitIncompleteUseCase
+import com.habittracker.domain.usecase.DeleteHabitUseCase
 import com.habittracker.presentation.ui.habits.components.ParticipantProgress
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Job
@@ -56,6 +57,7 @@ class HabitsViewModel @Inject constructor(
     private val markHabitIncompleteUseCase: MarkHabitIncompleteUseCase,
     private val getHabitCompletionStatusUseCase: GetHabitCompletionStatusUseCase,
     private val authRepository: AuthRepository,
+    private val deleteHabitUseCase: DeleteHabitUseCase,
     application: Application
 ) : AndroidViewModel(application) {
 
@@ -68,6 +70,10 @@ class HabitsViewModel @Inject constructor(
     
     // Prevent parallel collection of habits flow
     private var habitsJob: Job? = null
+    
+    // Pending deletion state for UNDO support
+    private var pendingDeletion: PendingDeletion? = null
+    private data class PendingDeletion(val habitWithCompletion: HabitWithCompletion, val index: Int)
     
     private val currentUserId: String
         get() = authRepository.getCurrentUserId() 
@@ -218,6 +224,92 @@ class HabitsViewModel @Inject constructor(
                 markHabitIncomplete(habitId)
             } else {
                 markHabitCompleted(habitId)
+            }
+        }
+    }
+    
+    /**
+     * Начинает удаление привычки с оптимистичным удалением из UI, но без фактического вызова use case.
+     * Используется совместно со Snackbar (UNDO). Для завершения вызовите [confirmPendingDeletion] или [cancelPendingDeletion].
+     */
+    fun requestDeleteHabit(habitId: String) {
+        if (pendingDeletion != null) return // already have one pending
+        val currentList = _uiState.value.habitsWithCompletion
+        val index = currentList.indexOfFirst { it.habit.id == habitId }
+        if (index == -1) return
+        val removedItem = currentList[index]
+        pendingDeletion = PendingDeletion(removedItem, index)
+        _uiState.value = _uiState.value.copy(
+            habitsWithCompletion = currentList.filterNot { it.habit.id == habitId }
+        )
+    }
+
+    /**
+     * Подтверждает удаление ожидающего элемента и выполняет use case.
+     * В случае ошибки восстанавливает элемент и показывает ошибку.
+     */
+    fun confirmPendingDeletion() {
+        val deletion = pendingDeletion ?: return
+        pendingDeletion = null
+        viewModelScope.launch {
+            try {
+                deleteHabitUseCase(
+                    deletion.habitWithCompletion.habit.id,
+                    currentUserId
+                )
+            } catch (e: Exception) {
+                val restored = _uiState.value.habitsWithCompletion.toMutableList()
+                val restoreIndex = deletion.index.coerceIn(0, restored.size)
+                restored.add(restoreIndex, deletion.habitWithCompletion)
+                _uiState.value = _uiState.value.copy(
+                    habitsWithCompletion = restored,
+                    error = getApplication<Application>().getString(R.string.error_delete_habit, e.localizedMessage ?: "")
+                )
+            }
+        }
+    }
+
+    /**
+     * Отменяет ожидающее удаление и возвращает элемент в исходную позицию.
+     */
+    fun cancelPendingDeletion() {
+        val deletion = pendingDeletion ?: return
+        pendingDeletion = null
+        val restored = _uiState.value.habitsWithCompletion.toMutableList()
+        val restoreIndex = deletion.index.coerceIn(0, restored.size)
+        restored.add(restoreIndex, deletion.habitWithCompletion)
+        _uiState.value = _uiState.value.copy(habitsWithCompletion = restored)
+    }
+    
+    /**
+     * Удаляет привычку с оптимистичным обновлением UI. В случае ошибки откатываем изменения и показываем ошибку.
+     */
+    fun deleteHabit(habitId: String) {
+        val currentList = _uiState.value.habitsWithCompletion
+        val index = currentList.indexOfFirst { it.habit.id == habitId }
+        if (index == -1) return
+        val removedItem = currentList[index]
+
+        // Оптимистично обновляем UI
+        _uiState.value = _uiState.value.copy(
+            habitsWithCompletion = currentList.filterNot { it.habit.id == habitId }
+        )
+
+        viewModelScope.launch {
+            try {
+                deleteHabitUseCase(habitId, currentUserId)
+            } catch (e: Exception) {
+                // Откатываем
+                val restored = _uiState.value.habitsWithCompletion.toMutableList()
+                if (index <= restored.size) {
+                    restored.add(index, removedItem)
+                } else {
+                    restored.add(removedItem)
+                }
+                _uiState.value = _uiState.value.copy(
+                    habitsWithCompletion = restored,
+                    error = getApplication<Application>().getString(R.string.error_delete_habit, e.localizedMessage ?: "")
+                )
             }
         }
     }

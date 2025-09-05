@@ -1,5 +1,6 @@
 package com.habittracker.presentation.ui.habits
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -13,27 +14,39 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.TrendingUp
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.EmojiEvents
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.People
 import androidx.compose.material.icons.filled.Person
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.SnackbarResult
+import androidx.compose.material3.SwipeToDismissBox
+import androidx.compose.material3.SwipeToDismissBoxValue
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.rememberSwipeToDismissBoxState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -48,10 +61,11 @@ import com.habittracker.domain.model.isGroupHabit
 import com.habittracker.presentation.navigation.Screen
 import com.habittracker.presentation.ui.habits.components.EnhancedHabitItem
 import com.habittracker.presentation.ui.notifications.NotificationBadge
+import com.habittracker.presentation.viewmodel.FriendsViewModel
 import com.habittracker.presentation.viewmodel.HabitWithCompletion
 import com.habittracker.presentation.viewmodel.HabitsViewModel
 import com.habittracker.presentation.viewmodel.NotificationsViewModel
-import com.habittracker.presentation.viewmodel.FriendsViewModel
+import kotlinx.coroutines.launch
 import kotlinx.datetime.Clock
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -64,6 +78,9 @@ fun HabitsScreen(
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val snackbarHostState = remember { SnackbarHostState() }
+    val scope = rememberCoroutineScope()
+    val habitDeletedText = stringResource(id = R.string.habit_deleted)
+    val undoText = stringResource(id = R.string.undo)
     val badgeCount by notificationsViewModel.badgeCount.collectAsState()
     val friendsUiState by friendsViewModel.uiState.collectAsState()
     val friendRequestsBadgeCount = friendsUiState.incomingRequests.size
@@ -168,22 +185,99 @@ fun HabitsScreen(
                     contentPadding = PaddingValues(16.dp),
                     verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
-                    items(uiState.habitsWithCompletion) { habitWithCompletion ->
-                        EnhancedHabitItem(
-                            habitWithCompletion = habitWithCompletion,
-                            onHabitClick = { habit ->
-                                if (habit.habit.isGroupHabit()) {
-                                    // Для групповых привычек переходим к детальному экрану
-                                    navController.navigate(Screen.GroupHabitDetail.createRoute(habit.habit.id))
-                                } else {
-                                    // Для обычных привычек переходим к редактированию
-                                    navController.navigate(Screen.AddEditHabit.route + "?habitId=${habit.habit.id}")
+                    items(uiState.habitsWithCompletion, key = { it.habit.id }) { habitWithCompletion ->
+                        var showDeleteDialog by remember { mutableStateOf(false) }
+                        val dismissState = rememberSwipeToDismissBoxState(
+                            confirmValueChange = { value ->
+                                if (value == SwipeToDismissBoxValue.EndToStart) {
+                                    showDeleteDialog = true
                                 }
-                            },
-                            onToggleCompletion = {
-                                viewModel.toggleHabitCompletion(habitWithCompletion.habit.id)
+                                // Не позволяем автоматически закрепить состояние, пока не подтвердим
+                                false
                             }
                         )
+
+                        SwipeToDismissBox(
+                            state = dismissState,
+                            modifier = Modifier.testTag("habit-${habitWithCompletion.habit.id}"),
+                            enableDismissFromStartToEnd = false,
+                            backgroundContent = {
+                                // Красный фон с иконкой удаления справа
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxSize()
+                                        .padding(horizontal = 4.dp)
+                                        .background(MaterialTheme.colorScheme.error),
+                                    contentAlignment = Alignment.CenterEnd
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.Delete,
+                                        contentDescription = stringResource(R.string.delete),
+                                        tint = MaterialTheme.colorScheme.onError,
+                                        modifier = Modifier
+                                            .padding(end = 24.dp)
+                                    )
+                                }
+                            }
+                        ) {
+                            EnhancedHabitItem(
+                                habitWithCompletion = habitWithCompletion,
+                                onHabitClick = { habit ->
+                                    if (habit.habit.isGroupHabit()) {
+                                        navController.navigate(Screen.GroupHabitDetail.createRoute(habit.habit.id))
+                                    } else {
+                                        navController.navigate(Screen.AddEditHabit.route + "?habitId=${habit.habit.id}")
+                                    }
+                                },
+                                onToggleCompletion = {
+                                    viewModel.toggleHabitCompletion(habitWithCompletion.habit.id)
+                                },
+                                onEdit = { habit ->
+                                    navController.navigate(Screen.AddEditHabit.route + "?habitId=${habit.habit.id}")
+                                },
+                                onDelete = {
+                                    showDeleteDialog = true
+                                }
+                            )
+                        }
+
+                        if (showDeleteDialog) {
+                            AlertDialog(
+                                onDismissRequest = { showDeleteDialog = false },
+                                title = { Text(stringResource(id = R.string.confirm_delete_habit_title)) },
+                                text = { Text(stringResource(id = R.string.confirm_delete_habit_message, habitWithCompletion.habit.title)) },
+                                confirmButton = {
+                                    TextButton(
+                                        onClick = {
+                                            showDeleteDialog = false
+                                            // Начинаем оптимистичное удаление и предлагаем UNDO
+                                            viewModel.requestDeleteHabit(habitWithCompletion.habit.id)
+                                            scope.launch {
+                                                val result = snackbarHostState.showSnackbar(
+                                                    message = habitDeletedText,
+                                                    actionLabel = undoText
+                                                )
+                                                if (result == SnackbarResult.ActionPerformed) {
+                                                    viewModel.cancelPendingDeletion()
+                                                } else {
+                                                    viewModel.confirmPendingDeletion()
+                                                }
+                                            }
+                                        }
+                                    ) {
+                                        Text(
+                                            text = stringResource(id = R.string.delete),
+                                            color = MaterialTheme.colorScheme.error
+                                        )
+                                    }
+                                },
+                                dismissButton = {
+                                    TextButton(onClick = { showDeleteDialog = false }) {
+                                        Text(text = stringResource(id = R.string.cancel))
+                                    }
+                                }
+                            )
+                        }
                     }
                 }
             }
