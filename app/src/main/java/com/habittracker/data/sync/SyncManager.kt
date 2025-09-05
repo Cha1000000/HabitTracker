@@ -5,14 +5,14 @@ import com.google.firebase.firestore.FirebaseFirestore
 import com.habittracker.data.local.dao.SyncOutboxDao
 import com.habittracker.data.local.entity.SyncOutboxEntity
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withContext
+import org.json.JSONArray
+import org.json.JSONObject
 import java.util.UUID
 import javax.inject.Inject
 import javax.inject.Singleton
-import org.json.JSONArray
-import org.json.JSONObject
-import kotlin.coroutines.resume
 import kotlin.coroutines.resumeWithException
 
 /**
@@ -254,8 +254,9 @@ private suspend fun <T> com.google.android.gms.tasks.Task<T>.await(): T {
     return suspendCancellableAwait(this)
 }
 
+@OptIn(ExperimentalCoroutinesApi::class)
 private suspend fun <T> suspendCancellableAwait(task: com.google.android.gms.tasks.Task<T>): T {
-    return kotlinx.coroutines.suspendCancellableCoroutine { cont ->
+    return suspendCancellableCoroutine { cont ->
         task.addOnCompleteListener { t ->
             if (t.isSuccessful) {
                 @Suppress("UNCHECKED_CAST")
