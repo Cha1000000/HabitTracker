@@ -69,6 +69,35 @@ class SyncManager @Inject constructor(
         )
     }
 
+    // Плановый безопасный DELETE после soft-delete (gated по notBefore, с ограничением попыток)
+    suspend fun enqueueSafeDelete(
+        entityType: String,
+        entityId: String,
+        notBeforeMillis: Long,
+        maxRetries: Int = 3,
+        updatedAt: Long = System.currentTimeMillis(),
+        operationId: String = UUID.randomUUID().toString()
+    ) = withContext(Dispatchers.IO) {
+        val payload = JSONObject()
+            .put("notBefore", notBeforeMillis)
+            .put("maxRetries", maxRetries)
+            .toString()
+        Log.d(
+            "SyncManager",
+            "[enqueueSafeDelete] type=$entityType id=$entityId opId=$operationId notBefore=$notBeforeMillis maxRetries=$maxRetries"
+        )
+        outboxDao.insert(
+            SyncOutboxEntity(
+                operationId = operationId,
+                entityType = entityType,
+                entityId = entityId,
+                opType = "DELETE",
+                payloadJson = payload,
+                updatedAt = updatedAt
+            )
+        )
+    }
+
     // Дренаж очереди: вызывать WorkManager'ом периодически и вручную при старте/онбординге
     suspend fun drainPending(maxBatch: Int = 50) = withContext(Dispatchers.IO) {
         val batch = outboxDao.getByState("PENDING", maxBatch)
@@ -79,6 +108,22 @@ class SyncManager @Inject constructor(
                     "SyncManager",
                     "[drainPending] process id=${item.id} op=${item.opType} type=${item.entityType} entity=${item.entityId} updatedAt=${item.updatedAt}"
                 )
+                // Для отложенных DELETE — пропускаем до наступления notBefore
+                if (item.opType == "DELETE") {
+                    try {
+                        val payloadObj = JSONObject(item.payloadJson)
+                        if (payloadObj.has("notBefore")) {
+                            val notBefore = payloadObj.getLong("notBefore")
+                            val now = System.currentTimeMillis()
+                            if (now < notBefore) {
+                                Log.d("SyncManager", "[drainPending] skip DELETE id=${item.id} until notBefore=$notBefore")
+                                continue
+                            }
+                        }
+                    } catch (_: Exception) {
+                        // игнорируем, нет валидного payload — выполняем немедленно
+                    }
+                }
                 outboxDao.updateState(item.id, "IN_PROGRESS")
                 when (item.opType) {
                     "UPSERT" -> pushUpsert(item)
@@ -87,13 +132,30 @@ class SyncManager @Inject constructor(
                 outboxDao.deleteById(item.id)
                 Log.d("SyncManager", "[drainPending] done id=${item.id}")
             } catch (e: Exception) {
-                val now = System.currentTimeMillis()
-                outboxDao.markRetry(item.id, e.message, "FAILED", now)
-                Log.w(
-                    "SyncManager",
-                    "[drainPending] failed id=${item.id} type=${item.entityType} entity=${item.entityId}: ${e.message}",
-                    e
-                )
+                val nowTs = System.currentTimeMillis()
+                // Для DELETE учитываем лимит попыток
+                if (item.opType == "DELETE") {
+                    var maxRetries = 3
+                    try {
+                        val payloadObj = JSONObject(item.payloadJson)
+                        if (payloadObj.has("maxRetries")) maxRetries = payloadObj.getInt("maxRetries")
+                    } catch (_: Exception) {}
+                    val nextState = if (item.retryCount + 1 >= maxRetries) "FAILED" else "PENDING"
+                    outboxDao.markRetry(item.id, e.message, nextState, nowTs)
+                    Log.w(
+                        "SyncManager",
+                        "[drainPending] DELETE failed id=${item.id} retries=${item.retryCount + 1}/$maxRetries -> $nextState: ${e.message}",
+                        e
+                    )
+                } else {
+                    // Для UPSERT — оставляем в PENDING, чтобы WorkManager повторял
+                    outboxDao.markRetry(item.id, e.message, "PENDING", nowTs)
+                    Log.w(
+                        "SyncManager",
+                        "[drainPending] UPSERT failed id=${item.id} -> PENDING retry: ${e.message}",
+                        e
+                    )
+                }
             }
         }
     }
@@ -102,10 +164,24 @@ class SyncManager @Inject constructor(
     private suspend fun pushUpsert(item: SyncOutboxEntity) {
         val (collection, docId) = route(item.entityType, item.entityId)
         val map = jsonToMap(item.payloadJson)
-        Log.d("SyncManager", "[pushUpsert] ${item.entityType} -> $collection/$docId")
-        firestore.collection(collection)
-            .document(docId)
-            .set(map, com.google.firebase.firestore.SetOptions.merge())
+        Log.d("SyncManager", "[pushUpsert] ${item.entityType} -> $collection/$docId payloadKeys=${map.keys}")
+        val docRef = firestore.collection(collection).document(docId)
+        // Если есть флаги активности — принудительно обновляем их отдельно для надёжности
+        val flagUpdates = mutableMapOf<String, Any>()
+        map["isActive"]?.let { flagUpdates["isActive"] = it }
+        map["active"]?.let { flagUpdates["active"] = it }
+        if (flagUpdates.isNotEmpty()) {
+            try {
+                Log.d("SyncManager", "[pushUpsert] update flags=$flagUpdates")
+                docRef.update(flagUpdates as Map<String, Any>)
+                    .awaitUnit()
+                Log.d("SyncManager", "[pushUpsert] flags updated")
+            } catch (e: Exception) {
+                Log.w("SyncManager", "[pushUpsert] flag update failed, will rely on merge(): ${e.message}")
+            }
+        }
+        // Затем делаем общий merge всех полей
+        docRef.set(map, com.google.firebase.firestore.SetOptions.merge())
             .awaitUnit()
         Log.d("SyncManager", "[pushUpsert] DONE ${item.entityType} -> $collection/$docId")
     }

@@ -130,7 +130,7 @@ class DeleteHabitUseCaseTest {
         // Soft delete flag
         assertTrue(json.has("isActive"))
         assertTrue(!json.get("isActive").asBoolean)
-        verify(scheduler).scheduleOneTimeSync()
+        verify(scheduler, org.mockito.kotlin.atLeastOnce()).scheduleOneTimeSync()
     }
 
     @Test
@@ -147,7 +147,7 @@ class DeleteHabitUseCaseTest {
         assertTrue(json.has("updatedAt"))
         assertTrue(json.has("isActive"))
         assertTrue(!json.get("isActive").asBoolean)
-        verify(scheduler).scheduleOneTimeSync()
+        verify(scheduler, org.mockito.kotlin.atLeastOnce()).scheduleOneTimeSync()
     }
 
     @Test
@@ -177,7 +177,7 @@ class DeleteHabitUseCaseTest {
         assertTrue(!json.has("type"))
         // createdBy должен поменяться
         assertEquals("u2", json.get("createdBy").asString)
-        verify(scheduler).scheduleOneTimeSync()
+        verify(scheduler, org.mockito.kotlin.atLeastOnce()).scheduleOneTimeSync()
     }
 
     @Test
@@ -280,13 +280,13 @@ class DeleteHabitUseCaseTest {
         val habit = personalHabit(id = "p3", createdBy = "u1")
         whenever(repo.getHabitById("p3")).thenReturn(habit)
         // Force SyncManager to throw during enqueueDelete; should be swallowed
-        whenever(syncManager.enqueueDelete(any(), any(), any(), any())).thenThrow(RuntimeException("outbox insert failed"))
+        whenever(syncManager.enqueueUpsert(any(), any(), any(), any(), any())).thenThrow(RuntimeException("outbox insert failed"))
 
         // Should not throw
         useCase.invoke("p3", userId = "u1")
 
         // Sync should still be scheduled in finally
-        verify(scheduler).scheduleOneTimeSync()
+        verify(scheduler, org.mockito.kotlin.atLeastOnce()).scheduleOneTimeSync()
     }
 
     @Test
@@ -299,7 +299,7 @@ class DeleteHabitUseCaseTest {
         localUseCase.invoke("p7", userId = "u1")
         advanceUntilIdle()
 
-        verify(syncManager).drainPending()
+        verify(syncManager, org.mockito.kotlin.atLeastOnce()).drainPending()
     }
 
     @Test
@@ -307,12 +307,12 @@ class DeleteHabitUseCaseTest {
         val localUseCase = DeleteHabitUseCase(repo, syncManager, scheduler, this)
         val habit = personalHabit(id = "p8", createdBy = "u1")
         whenever(repo.getHabitById("p8")).thenReturn(habit)
-        whenever(syncManager.enqueueDelete(any(), any(), any(), any())).thenThrow(RuntimeException("outbox insert failed"))
+        whenever(syncManager.enqueueUpsert(any(), any(), any(), any(), any())).thenThrow(RuntimeException("outbox insert failed"))
 
         // Не должно упасть
         localUseCase.invoke("p8", userId = "u1")
         advanceUntilIdle()
 
-        verify(syncManager).drainPending()
+        verify(syncManager, org.mockito.kotlin.atLeastOnce()).drainPending()
     }
 }

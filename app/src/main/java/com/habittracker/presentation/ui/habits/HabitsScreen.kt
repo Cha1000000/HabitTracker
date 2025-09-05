@@ -27,10 +27,10 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarDuration
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.SnackbarResult
-import androidx.compose.material3.SnackbarDuration
 import androidx.compose.material3.SwipeToDismissBox
 import androidx.compose.material3.SwipeToDismissBoxValue
 import androidx.compose.material3.Text
@@ -66,8 +66,8 @@ import com.habittracker.presentation.viewmodel.FriendsViewModel
 import com.habittracker.presentation.viewmodel.HabitWithCompletion
 import com.habittracker.presentation.viewmodel.HabitsViewModel
 import com.habittracker.presentation.viewmodel.NotificationsViewModel
-import kotlinx.coroutines.launch
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import kotlinx.datetime.Clock
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -272,7 +272,7 @@ fun HabitsScreen(
                                                     }
                                                 }
                                                 val timerJob = launch {
-                                                    delay(8_000)
+                                                    delay(5_000)
                                                     if (showJob.isActive) {
                                                         snackbarHostState.currentSnackbarData?.dismiss()
                                                     }

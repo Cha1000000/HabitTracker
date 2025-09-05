@@ -77,10 +77,15 @@ class FirestoreRepositoryImpl @Inject constructor(
             val maxParticipants = (data["maxParticipants"] as? Number)?.toInt() ?: 10
             val inviteCode = data["inviteCode"] as? String
 
-            // Поле активности может называться "active" или "isActive"
-            val isActive = when (val act = data["active"]) {
-                is Boolean -> act
-                else -> data["isActive"] as? Boolean ?: true
+            // Поле активности может называться "isActive" (новое) или "active" (legacy). Предпочитаем isActive.
+            val isActive: Boolean = when (val direct = data["isActive"]) {
+                is Boolean -> direct
+                else -> when (val act = data["active"]) {
+                    is Boolean -> act
+                    is Number -> act.toInt() != 0
+                    is String -> act.equals("true", ignoreCase = true) || act == "1"
+                    else -> true
+                }
             }
 
             // timestamps

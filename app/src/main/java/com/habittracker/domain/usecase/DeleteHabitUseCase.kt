@@ -34,12 +34,28 @@ class DeleteHabitUseCase @Inject constructor(
     private val coroutineScope: CoroutineScope
 ) {
     private val backgroundTasksScope = coroutineScope
+    private val SAFE_DELETE_DELAY_MS: Long = 10 * 60 * 1000 // 10 минут задержки перед hard delete
 
     // Decision policy for GROUP habits — pure domain logic without side-effects
     internal sealed class Decision {
         data object DeleteAll : Decision()
         data class ConvertToPersonal(val newCreatedBy: String) : Decision()
         data class UpdateGroup(val newCreatedBy: String, val participants: List<String>) : Decision()
+    }
+
+    private suspend fun enqueueSafeDeleteAndKick(habitId: String, notBeforeMillis: Long) {
+        try {
+            syncManager.enqueueSafeDelete(
+                entityType = "habit",
+                entityId = habitId,
+                notBeforeMillis = notBeforeMillis,
+                maxRetries = 3,
+                updatedAt = System.currentTimeMillis()
+            )
+        } catch (_: Exception) {
+        } finally {
+            kickSync()
+        }
     }
 
     internal fun decideGroupDeletion(habit: Habit, userId: String): Decision {
@@ -83,6 +99,8 @@ class DeleteHabitUseCase @Inject constructor(
                 updatedAt = nowMillis
             )
             enqueueUpsertAndKickSync(habitId, payload, nowMillis)
+            // Планируем безопасное физическое удаление документа спустя задержку
+            enqueueSafeDeleteAndKick(habitId, nowMillis + SAFE_DELETE_DELAY_MS)
             return
         }
 
@@ -96,6 +114,8 @@ class DeleteHabitUseCase @Inject constructor(
                     updatedAt = nowMillis
                 )
                 enqueueUpsertAndKickSync(habitId, payload, nowMillis)
+                // Планируем безопасное физическое удаление документа спустя задержку
+                enqueueSafeDeleteAndKick(habitId, nowMillis + SAFE_DELETE_DELAY_MS)
             }
             is Decision.ConvertToPersonal -> {
                 val updatedHabit = habit.copy(
@@ -161,10 +181,8 @@ class DeleteHabitUseCase @Inject constructor(
         }
     }
 
-    private fun kickSync() {
+    private suspend fun kickSync() {
         try { syncWorkScheduler.scheduleOneTimeSync() } catch (_: Exception) { }
-        backgroundTasksScope.launch {
-            try { syncManager.drainPending() } catch (_: Exception) { }
-        }
+        try { syncManager.drainPending() } catch (_: Exception) { }
     }
 }
