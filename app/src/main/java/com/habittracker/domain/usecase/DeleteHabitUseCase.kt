@@ -76,17 +76,26 @@ class DeleteHabitUseCase @Inject constructor(
             ?: run { return } // Уже удалена локально — ничего не делаем
 
         if (habit.type == HabitType.PERSONAL) {
-            // Полное удаление PERSONAL
+            // Локально удаляем, в Firestore — мягкое удаление (isActive=false)
             habitRepository.deleteHabit(habitId)
-            enqueueDeleteAndKickSync(habitId, nowMillis)
+            val payload = SyncPayloads.habitPartialUpdateToJson(
+                isActive = false,
+                updatedAt = nowMillis
+            )
+            enqueueUpsertAndKickSync(habitId, payload, nowMillis)
             return
         }
 
         // GROUP: пользователь покидает привычку согласно политике решений
         when (val decision = decideGroupDeletion(habit, userId)) {
             is Decision.DeleteAll -> {
+                // Никого не осталось — локально удаляем, в Firestore делаем soft-delete
                 habitRepository.deleteHabit(habitId)
-                enqueueDeleteAndKickSync(habitId, nowMillis)
+                val payload = SyncPayloads.habitPartialUpdateToJson(
+                    isActive = false,
+                    updatedAt = nowMillis
+                )
+                enqueueUpsertAndKickSync(habitId, payload, nowMillis)
             }
             is Decision.ConvertToPersonal -> {
                 val updatedHabit = habit.copy(

@@ -116,26 +116,37 @@ class DeleteHabitUseCaseTest {
     // --- Interaction tests ---
 
     @Test
-    fun invoke_personalHabit_deletesLocally_andEnqueuesDelete_andSchedulesSync() = runTest {
+    fun invoke_personalHabit_deletesLocally_andEnqueuesSoftDeleteUpsert_andSchedulesSync() = runTest {
         val habit = personalHabit(id = "p1", createdBy = "u1")
         whenever(repo.getHabitById("p1")).thenReturn(habit)
 
         useCase.invoke("p1", userId = "u1")
 
         verify(repo).deleteHabit("p1")
-        verify(syncManager).enqueueDelete(eq("habit"), eq("p1"), any(), any())
+        val payloadCaptor = argumentCaptor<String>()
+        verify(syncManager).enqueueUpsert(eq("habit"), eq("p1"), payloadCaptor.capture(), any(), any())
+        val json = JsonParser.parseString(payloadCaptor.firstValue).asJsonObject
+        assertTrue(json.has("updatedAt"))
+        // Soft delete flag
+        assertTrue(json.has("isActive"))
+        assertTrue(!json.get("isActive").asBoolean)
         verify(scheduler).scheduleOneTimeSync()
     }
 
     @Test
-    fun invoke_group_creatorLeaves_noParticipants_deletes_andEnqueuesDelete_andSchedulesSync() = runTest {
+    fun invoke_group_creatorLeaves_noParticipants_deletes_andEnqueuesSoftDeleteUpsert_andSchedulesSync() = runTest {
         val habit = baseGroupHabit(createdBy = "u1", participants = emptyList()).copy(id = "g1")
         whenever(repo.getHabitById("g1")).thenReturn(habit)
 
         useCase.invoke("g1", userId = "u1")
 
         verify(repo).deleteHabit("g1")
-        verify(syncManager).enqueueDelete(eq("habit"), eq("g1"), any(), any())
+        val payloadCaptor = argumentCaptor<String>()
+        verify(syncManager).enqueueUpsert(eq("habit"), eq("g1"), payloadCaptor.capture(), any(), any())
+        val json = JsonParser.parseString(payloadCaptor.firstValue).asJsonObject
+        assertTrue(json.has("updatedAt"))
+        assertTrue(json.has("isActive"))
+        assertTrue(!json.get("isActive").asBoolean)
         verify(scheduler).scheduleOneTimeSync()
     }
 

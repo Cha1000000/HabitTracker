@@ -30,6 +30,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.SnackbarResult
+import androidx.compose.material3.SnackbarDuration
 import androidx.compose.material3.SwipeToDismissBox
 import androidx.compose.material3.SwipeToDismissBoxValue
 import androidx.compose.material3.Text
@@ -66,6 +67,7 @@ import com.habittracker.presentation.viewmodel.HabitWithCompletion
 import com.habittracker.presentation.viewmodel.HabitsViewModel
 import com.habittracker.presentation.viewmodel.NotificationsViewModel
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.delay
 import kotlinx.datetime.Clock
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -252,16 +254,30 @@ fun HabitsScreen(
                                             showDeleteDialog = false
                                             // Начинаем оптимистичное удаление и предлагаем UNDO
                                             viewModel.requestDeleteHabit(habitWithCompletion.habit.id)
+                                            // Показываем Snackbar и одновременно ставим таймер авто-скрытия (~8 сек)
                                             scope.launch {
-                                                val result = snackbarHostState.showSnackbar(
-                                                    message = habitDeletedText,
-                                                    actionLabel = undoText
-                                                )
-                                                if (result == SnackbarResult.ActionPerformed) {
-                                                    viewModel.cancelPendingDeletion()
-                                                } else {
-                                                    viewModel.confirmPendingDeletion()
+                                                val showJob = launch {
+                                                    val result = snackbarHostState.showSnackbar(
+                                                        message = habitDeletedText,
+                                                        actionLabel = undoText,
+                                                        withDismissAction = true,
+                                                        duration = SnackbarDuration.Indefinite
+                                                    )
+                                                    if (result == SnackbarResult.ActionPerformed) {
+                                                        // Пользователь нажал Undo — восстанавливаем
+                                                        viewModel.cancelPendingDeletion()
+                                                    } else {
+                                                        // Dismissed (свайпом/таймером) — подтверждаем удаление
+                                                        viewModel.confirmPendingDeletion()
+                                                    }
                                                 }
+                                                val timerJob = launch {
+                                                    delay(8_000)
+                                                    if (showJob.isActive) {
+                                                        snackbarHostState.currentSnackbarData?.dismiss()
+                                                    }
+                                                }
+                                                showJob.invokeOnCompletion { timerJob.cancel() }
                                             }
                                         }
                                     ) {

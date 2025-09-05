@@ -33,6 +33,7 @@ object SyncPayloads {
         participants: List<String>? = null,
         type: HabitType? = null,
         createdBy: String? = null,
+        isActive: Boolean? = null,
         updatedAt: Long
     ): String = gson.toJson(
         buildMap<String, Any?> {
@@ -40,6 +41,11 @@ object SyncPayloads {
             if (participants != null) put("participants", participants)
             if (type != null) put("type", type.name)
             if (createdBy != null) put("createdBy", createdBy)
+            if (isActive != null) {
+                // Пишем оба поля для обратной совместимости
+                put("isActive", isActive)
+                put("active", isActive)
+            }
         }
     )
 
