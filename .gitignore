@@ -57,3 +57,8 @@ serviceAccountKey.json
 
 # Logs
 *.log
+
+# Firebase Admin SDK service accounts (do NOT commit)
+app/*firebase-adminsdk*.json
+**/*firebase-adminsdk*.json
+**/*adminsdk*.json
