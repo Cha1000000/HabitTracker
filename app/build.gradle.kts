@@ -1,5 +1,7 @@
 import java.io.FileInputStream
 import java.util.Properties
+import java.text.SimpleDateFormat
+import java.util.Date
 
 plugins {
     alias(libs.plugins.android.application)
@@ -23,6 +25,9 @@ ksp {
     arg("room.schemaLocation", "$projectDir/schemas")
 }
 
+// Единый источник versionName для использования и в defaultConfig, и в имени APK
+val appVersionName = "1.0"
+
 android {
     namespace = "com.habittracker"
     compileSdk = 34
@@ -32,7 +37,7 @@ android {
         minSdk = 26
         targetSdk = 34
         versionCode = 1
-        versionName = "1.0"
+        versionName = appVersionName
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables {
@@ -137,6 +142,61 @@ android {
             excludes += "/META-INF/LICENSE-notice.md"
         }
     }
+}
+
+// Автопереименование APK после упаковки (без Variant API)
+val apkDateProvider = providers.provider { SimpleDateFormat("yyyyMMdd").format(Date()) }
+
+tasks.register<Copy>("renameApkDebug") {
+    val dateStr = apkDateProvider.get()
+    val src = layout.buildDirectory.file("outputs/apk/debug/app-debug.apk")
+    from(src)
+    into(layout.buildDirectory.dir("outputs/apk/debug").get())
+    rename { _ -> "HabitTracker-debug-$appVersionName-$dateStr.apk" }
+}
+
+tasks.register<Copy>("renameApkRelease") {
+    val dateStr = apkDateProvider.get()
+    val src = layout.buildDirectory.file("outputs/apk/release/app-release.apk")
+    from(src)
+    into(layout.buildDirectory.dir("outputs/apk/release").get())
+    rename { _ -> "HabitTracker-release-$appVersionName-$dateStr.apk" }
+}
+
+// Правим output-metadata.json, чтобы он указывал на новое имя файла
+tasks.register("fixDebugApkMetadata") {
+    dependsOn("renameApkDebug")
+    doLast {
+        val dateStr = apkDateProvider.get()
+        val meta = layout.buildDirectory.file("outputs/apk/debug/output-metadata.json").get().asFile
+        if (meta.exists()) {
+            val desired = "HabitTracker-debug-$appVersionName-$dateStr.apk"
+            val content = meta.readText()
+            val updated = content.replace(Regex("\"outputFile\"\\s*:\\s*\"[^\"]+\""), "\"outputFile\":\"$desired\"")
+            meta.writeText(updated)
+        }
+    }
+}
+
+tasks.register("fixReleaseApkMetadata") {
+    dependsOn("renameApkRelease")
+    doLast {
+        val dateStr = apkDateProvider.get()
+        val meta = layout.buildDirectory.file("outputs/apk/release/output-metadata.json").get().asFile
+        if (meta.exists()) {
+            val desired = "HabitTracker-release-$appVersionName-$dateStr.apk"
+            val content = meta.readText()
+            val updated = content.replace(Regex("\"outputFile\"\\s*:\\s*\"[^\"]+\""), "\"outputFile\":\"$desired\"")
+            meta.writeText(updated)
+        }
+    }
+}
+
+tasks.whenTaskAdded {
+    if (name == "packageDebug") finalizedBy("renameApkDebug", "fixDebugApkMetadata")
+    if (name == "packageRelease") finalizedBy("renameApkRelease", "fixReleaseApkMetadata")
+    if (name == "createDebugApkListingFileRedirect") dependsOn("fixDebugApkMetadata")
+    if (name == "createReleaseApkListingFileRedirect") dependsOn("fixReleaseApkMetadata")
 }
 
 dependencies {
