@@ -15,3 +15,45 @@ keystore/
 .externalNativeBuild
 .cxx
 local.properties
+
+# --- Added for security and cleanliness ---
+# IDE settings
+.idea/
+.vscode/
+.kotlin/
+
+# Build outputs (all modules)
+**/build/
+
+# Firebase/Google configs (do not commit secrets or project configs)
+app/google-services.json
+**/google-services.json
+
+# Keystores and signing configs
+*.keystore
+keystore.properties
+signing.properties
+signing/*.properties
+
+# Local-only environment files
+.env
+.env.*
+*.env
+
+# Credentials/keys (generic patterns)
+*.pem
+*.p12
+*.der
+credentials.json
+service-account.json
+serviceAccountKey.json
+
+# Artifacts
+*.apk
+*.aab
+
+# Android Studio captures
+**/captures/
+
+# Logs
+*.log
