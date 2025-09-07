@@ -1,9 +1,10 @@
 package com.habittracker.data.repository
 
 import android.util.Log
-import com.google.firebase.firestore.FirebaseFirestore
-import com.google.firebase.firestore.Query
 import com.google.firebase.firestore.DocumentSnapshot
+import com.google.firebase.firestore.FirebaseFirestore
+import com.google.firebase.firestore.FieldValue
+import com.google.firebase.firestore.Query
 import com.habittracker.domain.model.Habit
 import com.habittracker.domain.model.HabitEntry
 import com.habittracker.domain.repository.FirestoreRepository
@@ -67,7 +68,7 @@ class FirestoreRepositoryImpl @Inject constructor(
                 else -> null
             }
 
-            val reminderEnabled = data["reminderEnabled"] as? Boolean ?: false
+            val reminderEnabled = (data["reminderEnabled"] as? Boolean) ?: (reminderTime != null)
             val targetValue = (data["targetValue"] as? Number)?.toInt() ?: 1
             val unit = data["unit"] as? String ?: "раз"
 
@@ -76,8 +77,6 @@ class FirestoreRepositoryImpl @Inject constructor(
             val participants = (data["participants"] as? List<*>)?.filterIsInstance<String>() ?: emptyList()
             val maxParticipants = (data["maxParticipants"] as? Number)?.toInt() ?: 10
             val inviteCode = data["inviteCode"] as? String
-
-            // isActive-only: читаем только isActive, по умолчанию true
             val isActive: Boolean = (data["isActive"] as? Boolean) ?: true
 
             // timestamps
@@ -153,9 +152,40 @@ class FirestoreRepositoryImpl @Inject constructor(
         try {
             Log.d(TAG, "💾 [saveHabit] Saving habit: ${habit.id}")
             Log.d(TAG, "💾 [saveHabit] Habit details: title='${habit.title}', participants=${habit.participants}, isActive=${habit.isActive}")
+            Log.d(TAG, "⏰ [saveHabit] reminderTime=${habit.reminderTime}, reminderEnabled(computed)=${habit.reminderTime != null}")
+            val payload = buildMap<String, Any?> {
+                // Простые поля
+                put("id", habit.id)
+                put("title", habit.title)
+                put("description", habit.description)
+                put("icon", habit.icon)
+                put("color", habit.color)
+                put("type", habit.type.name)
+                put("frequency", habit.frequency.name)
+                // Напоминания
+                val hasReminder = habit.reminderTime != null
+                put("reminderEnabled", hasReminder)
+                if (hasReminder) {
+                    val rt = habit.reminderTime!!
+                    put("reminderTime", mapOf("hour" to rt.hour, "minute" to rt.minute))
+                }
+                // Target
+                put("targetValue", habit.targetValue)
+                put("unit", habit.unit)
+                // Социальные
+                put("createdBy", habit.createdBy)
+                put("participants", habit.participants)
+                put("maxParticipants", habit.maxParticipants)
+                put("inviteCode", habit.inviteCode)
+                put("public", habit.isPublic)
+                put("isActive", habit.isActive)
+                // Метки времени
+                put("createdAt", habit.createdAt)
+                put("updatedAt", habit.updatedAt)
+            }
             firestore.collection(HABITS_COLLECTION)
                 .document(habit.id)
-                .set(habit)
+                .set(payload)
                 .await()
             Log.d(TAG, "✅ [saveHabit] Habit saved successfully: ${habit.id}")
         } catch (e: Exception) {
@@ -166,14 +196,39 @@ class FirestoreRepositoryImpl @Inject constructor(
 
     override suspend fun updateHabit(habit: Habit) {
         try {
-            Log.d(TAG, "Updating habit: ${habit.id}")
+            Log.d(TAG, "🛠️ [updateHabit] Updating habit: ${habit.id}")
+            Log.d(TAG, "⏰ [updateHabit] incoming reminderTime=${habit.reminderTime}, reminderEnabled(computed)=${habit.reminderTime != null}")
+            val payload = buildMap<String, Any?> {
+                put("title", habit.title)
+                put("description", habit.description)
+                put("icon", habit.icon)
+                put("color", habit.color)
+                put("type", habit.type.name)
+                put("frequency", habit.frequency.name)
+                val hasReminder = habit.reminderTime != null
+                put("reminderEnabled", hasReminder)
+                if (hasReminder) {
+                    val rt = habit.reminderTime!!
+                    put("reminderTime", mapOf("hour" to rt.hour, "minute" to rt.minute))
+                } else {
+                    put("reminderTime", FieldValue.delete())
+                }
+                put("targetValue", habit.targetValue)
+                put("unit", habit.unit)
+                put("participants", habit.participants)
+                put("maxParticipants", habit.maxParticipants)
+                put("inviteCode", habit.inviteCode)
+                put("public", habit.isPublic)
+                put("isActive", habit.isActive)
+                put("updatedAt", habit.updatedAt)
+            }
             firestore.collection(HABITS_COLLECTION)
                 .document(habit.id)
-                .set(habit)
+                .set(payload, com.google.firebase.firestore.SetOptions.merge())
                 .await()
-            Log.d(TAG, "Habit updated successfully: ${habit.id}")
+            Log.d(TAG, "✅ [updateHabit] Habit updated successfully: ${habit.id}")
         } catch (e: Exception) {
-            Log.e(TAG, "Error updating habit: ${habit.id}", e)
+            Log.e(TAG, "❌ [updateHabit] Error updating habit: ${habit.id}", e)
             throw e
         }
     }

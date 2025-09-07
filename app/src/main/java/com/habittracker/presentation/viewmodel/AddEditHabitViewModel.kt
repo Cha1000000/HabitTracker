@@ -167,6 +167,7 @@ class AddEditHabitViewModel @Inject constructor(
                         type = currentState.type,
                         frequency = currentState.frequency,
                         reminderTime = currentState.reminderTime,
+                        reminderEnabled = currentState.reminderTime != null,
                         targetValue = currentState.targetValue,
                         unit = currentState.unit,
                         createdBy = creatorId,
@@ -199,6 +200,8 @@ class AddEditHabitViewModel @Inject constructor(
                         color = "#%06X".format(0xFFFFFF and currentState.color), // Конвертируем Int (ARGB) в hex-строку RGB
                         type = currentState.type,
                         frequency = currentState.frequency,
+                        reminderTime = currentState.reminderTime,
+                        reminderEnabled = currentState.reminderTime != null,
                         targetValue = currentState.targetValue,
                         unit = currentState.unit,
                         maxParticipants = currentState.maxParticipants,

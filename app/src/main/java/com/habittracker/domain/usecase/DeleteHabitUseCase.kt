@@ -7,7 +7,6 @@ import com.habittracker.domain.model.HabitType
 import com.habittracker.domain.repository.HabitRepository
 import com.habittracker.domain.util.SyncPayloads
 import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.launch
 import kotlinx.datetime.Clock
 import javax.inject.Inject
 
@@ -34,7 +33,7 @@ class DeleteHabitUseCase @Inject constructor(
     private val coroutineScope: CoroutineScope
 ) {
     private val backgroundTasksScope = coroutineScope
-    private val SAFE_DELETE_DELAY_MS: Long = 10 * 60 * 1000 // 10 минут задержки перед hard delete
+    private val SAFE_DELETE_DELAY_MS: Long = 1 * 60 * 1000 // 1 минута задержки перед hard delete
 
     // Decision policy for GROUP habits — pure domain logic without side-effects
     internal sealed class Decision {
