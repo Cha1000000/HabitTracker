@@ -1,6 +1,6 @@
 <!--suppress HtmlDeprecatedAttribute -->
 <p align="center">
-  <img src="app/src/main/res/mipmap-xxxhdpi/ic_launcher.webp" alt="HabitTracker Logo" />
+  <img src="art/icons/progress_pie_teal_indigo_square.svg" alt="HabitTracker Logo" width="128" />
 </p>
 
 <!--suppress HtmlDeprecatedAttribute -->
