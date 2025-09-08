@@ -1,5 +1,6 @@
 package com.habittracker.presentation.ui.habits
 
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -47,6 +48,8 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
@@ -204,20 +207,29 @@ fun HabitsScreen(
                             modifier = Modifier.testTag("habit-${habitWithCompletion.habit.id}"),
                             enableDismissFromStartToEnd = false,
                             backgroundContent = {
-                                // Красный фон с иконкой удаления справа
+                                // Фон удаления: проявляется только при свайпе, совпадает по скруглению с карточкой
+                                val shape = MaterialTheme.shapes.medium
+                                val offsetPx = try { dismissState.requireOffset() } catch (_: IllegalStateException) { 0f }
+                                val targetAlpha = if (kotlin.math.abs(offsetPx) > 0f) {
+                                    // Наращиваем непрозрачность с прогрессом свайпа
+                                    (kotlin.math.abs(offsetPx) / 600f).coerceIn(0f, 1f)
+                                } else 0f
+                                val bgAlpha = animateFloatAsState(targetValue = targetAlpha, label = "swipeBgAlpha").value
+                                val coral = Color(0xFFD74646)
+
                                 Box(
                                     modifier = Modifier
                                         .fillMaxSize()
                                         .padding(horizontal = 4.dp)
-                                        .background(MaterialTheme.colorScheme.error),
+                                        .clip(shape)
+                                        .background(coral.copy(alpha = bgAlpha)),
                                     contentAlignment = Alignment.CenterEnd
                                 ) {
                                     Icon(
                                         imageVector = Icons.Default.Delete,
                                         contentDescription = stringResource(R.string.delete),
-                                        tint = MaterialTheme.colorScheme.onError,
-                                        modifier = Modifier
-                                            .padding(end = 24.dp)
+                                        tint = MaterialTheme.colorScheme.onError.copy(alpha = bgAlpha),
+                                        modifier = Modifier.padding(end = 24.dp)
                                     )
                                 }
                             }
