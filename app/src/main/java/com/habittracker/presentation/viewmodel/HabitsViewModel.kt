@@ -8,11 +8,11 @@ import com.habittracker.R
 import com.habittracker.domain.model.Habit
 import com.habittracker.domain.repository.AuthRepository
 import com.habittracker.domain.usecase.AddHabitUseCase
+import com.habittracker.domain.usecase.DeleteHabitUseCase
 import com.habittracker.domain.usecase.GetHabitCompletionStatusUseCase
 import com.habittracker.domain.usecase.GetHabitsUseCase
 import com.habittracker.domain.usecase.MarkHabitCompletedUseCase
 import com.habittracker.domain.usecase.MarkHabitIncompleteUseCase
-import com.habittracker.domain.usecase.DeleteHabitUseCase
 import com.habittracker.presentation.ui.habits.components.ParticipantProgress
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Job
@@ -21,8 +21,8 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.distinctUntilChanged
-import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.launchIn
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.launch
 import kotlinx.datetime.Clock
@@ -91,6 +91,20 @@ class HabitsViewModel @Inject constructor(
     }
 
     /**
+     * Обновляет данные (pull-to-refresh). Безопасно перезапускает подписку на список привычек
+     * для текущего авторизованного пользователя.
+     */
+    fun refresh() {
+        val userId = authRepository.getCurrentUserId()
+        if (userId == null) {
+            Log.w(TAG, "⚠️ [refresh] No user ID, ignoring refresh")
+            return
+        }
+        Log.d(TAG, "🔁 [refresh] Reloading habits for user=$userId")
+        loadHabits(userId)
+    }
+
+    /**
      * Загружает список привычек для пользователя.
      */
     fun loadHabits(userId: String) {
@@ -152,7 +166,7 @@ class HabitsViewModel @Inject constructor(
                 try {
                     val isCompleted = getHabitCompletionStatusUseCase(habit.id, userId, today)
                     HabitWithCompletion(habit = habit, isCompletedToday = isCompleted, isLoading = false)
-                } catch (e: Exception) {
+                } catch (_: Exception) {
                     HabitWithCompletion(habit = habit, isCompletedToday = false, isLoading = false)
                 }
             }
@@ -160,16 +174,6 @@ class HabitsViewModel @Inject constructor(
         }
     }
 
-    /**
-     * Добавляет новую привычку.
-     */
-    fun addHabit(habit: Habit) {
-        viewModelScope.launch {
-            addHabitUseCase(habit)
-            // После добавления список обновится автоматически благодаря Flow
-        }
-    }
-    
     /**
      * Отмечает привычку как выполненную
      */

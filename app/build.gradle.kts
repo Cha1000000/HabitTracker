@@ -247,6 +247,8 @@ dependencies {
     
     // FlowLayout from Accompanist
     implementation(libs.accompanist.flowlayout)
+    // Compose Material (M2) for pull-refresh APIs
+    implementation(libs.androidx.material)
 
     // Calendar
     implementation(libs.calendar.compose)
