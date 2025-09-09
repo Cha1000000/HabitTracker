@@ -7,7 +7,6 @@ import androidx.lifecycle.viewModelScope
 import com.habittracker.R
 import com.habittracker.domain.model.Habit
 import com.habittracker.domain.repository.AuthRepository
-import com.habittracker.domain.usecase.AddHabitUseCase
 import com.habittracker.domain.usecase.DeleteHabitUseCase
 import com.habittracker.domain.usecase.GetHabitCompletionStatusUseCase
 import com.habittracker.domain.usecase.GetHabitsUseCase
@@ -16,11 +15,17 @@ import com.habittracker.domain.usecase.MarkHabitIncompleteUseCase
 import com.habittracker.presentation.ui.habits.components.ParticipantProgress
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.onEach
@@ -52,7 +57,6 @@ data class HabitsUiState(
 @HiltViewModel
 class HabitsViewModel @Inject constructor(
     private val getHabitsUseCase: GetHabitsUseCase,
-    private val addHabitUseCase: AddHabitUseCase,
     private val markHabitCompletedUseCase: MarkHabitCompletedUseCase,
     private val markHabitIncompleteUseCase: MarkHabitIncompleteUseCase,
     private val getHabitCompletionStatusUseCase: GetHabitCompletionStatusUseCase,
@@ -107,6 +111,7 @@ class HabitsViewModel @Inject constructor(
     /**
      * Загружает список привычек для пользователя.
      */
+    @OptIn(ExperimentalCoroutinesApi::class)
     fun loadHabits(userId: String) {
         Log.d(TAG, "🔄 [loadHabits] Start for user=$userId")
         // Cancel previous collection if any
@@ -116,27 +121,49 @@ class HabitsViewModel @Inject constructor(
         }
 
         var emissionCount = 0
-        val job = getHabitsUseCase(userId)
+        habitsJob = getHabitsUseCase(userId)
             // Normalize ordering to make equality stable
             .map { habits -> habits.sortedBy { it.id } }
             // Skip identical lists to avoid redundant UI updates and status reloads
             .distinctUntilChanged()
-            .onEach { habits ->
+            // For each emission, emit skeleton first, then the resolved statuses
+            .flatMapLatest { habits ->
                 emissionCount += 1
                 Log.d(TAG, "📊 [habits][flow] emission #$emissionCount, size=${habits.size} (user=$userId)")
                 habits.forEach { habit ->
                     Log.d(TAG, "   📋 [habit] ${habit.title} (${habit.id}), participants=${habit.participants}")
                 }
 
-                // Pre-populate UI with loading flags for completion status
-                val habitsWithCompletion = habits.map { habit ->
-                    HabitWithCompletion(habit = habit, isLoading = true)
-                }
-                _uiState.value = HabitsUiState(habitsWithCompletion = habitsWithCompletion, isLoading = false)
-                Log.d(TAG, "✅ [habits][ui] list updated (${habitsWithCompletion.size})")
+                flow {
+                    // 1) Skeleton with per-item loading
+                    val skeleton = habits.map { habit ->
+                        HabitWithCompletion(habit = habit, isLoading = true)
+                    }
+                    emit(HabitsUiState(habitsWithCompletion = skeleton, isLoading = false))
 
-                // Load per-habit completion in background
-                loadCompletionStatuses(habits, userId)
+                    // 2) Parallel resolve completion statuses
+                    val updatedHabits = coroutineScope {
+                        habits.map { habit ->
+                            async {
+                                val isCompleted = try {
+                                    getHabitCompletionStatusUseCase(habit.id, userId, today)
+                                } catch (_: Exception) {
+                                    false
+                                }
+                                HabitWithCompletion(
+                                    habit = habit,
+                                    isCompletedToday = isCompleted,
+                                    isLoading = false
+                                )
+                            }
+                        }.awaitAll()
+                    }
+                    emit(HabitsUiState(habitsWithCompletion = updatedHabits, isLoading = false))
+                }
+            }
+            .onEach { state ->
+                _uiState.value = state
+                Log.d(TAG, "✅ [habits][ui] list updated (${state.habitsWithCompletion.size})")
             }
             .catch { e ->
                 Log.e(TAG, "❌ [habits][error] ${e.message}", e)
@@ -147,7 +174,6 @@ class HabitsViewModel @Inject constructor(
             }
             .launchIn(viewModelScope)
 
-        habitsJob = job
         habitsJob?.invokeOnCompletion { cause ->
             if (cause == null) {
                 Log.d(TAG, "🛑 [loadHabits] Subscription completed normally")
@@ -157,22 +183,7 @@ class HabitsViewModel @Inject constructor(
         }
     }
     
-    /**
-     * Загружает статус выполнения для списка привычек
-     */
-    private fun loadCompletionStatuses(habits: List<Habit>, userId: String) {
-        viewModelScope.launch {
-            val updatedHabits = habits.map { habit ->
-                try {
-                    val isCompleted = getHabitCompletionStatusUseCase(habit.id, userId, today)
-                    HabitWithCompletion(habit = habit, isCompletedToday = isCompleted, isLoading = false)
-                } catch (_: Exception) {
-                    HabitWithCompletion(habit = habit, isCompletedToday = false, isLoading = false)
-                }
-            }
-            _uiState.value = _uiState.value.copy(habitsWithCompletion = updatedHabits)
-        }
-    }
+    // loadCompletionStatuses(): merged into loadHabits() via flatMapLatest with parallel status resolution
 
     /**
      * Отмечает привычку как выполненную
