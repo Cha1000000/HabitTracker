@@ -39,9 +39,12 @@ import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.rememberSwipeToDismissBoxState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -55,6 +58,9 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.navigation.NavController
 import androidx.navigation.compose.rememberNavController
 import com.habittracker.R
@@ -89,6 +95,19 @@ fun HabitsScreen(
     val badgeCount by notificationsViewModel.badgeCount.collectAsState()
     val friendsUiState by friendsViewModel.uiState.collectAsState()
     val friendRequestsBadgeCount = friendsUiState.incomingRequests.size
+    var recomposeKey by remember { mutableIntStateOf(0) }
+    val lifecycleOwner = LocalLifecycleOwner.current
+
+    // Увеличиваем ключ при возврате на экран, чтобы форсировать полную рекомпозицию
+    DisposableEffect(lifecycleOwner) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_RESUME) {
+                recomposeKey++
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
+    }
     
     // Показываем ошибки через Snackbar
     LaunchedEffect(uiState.error) {
@@ -185,12 +204,16 @@ fun HabitsScreen(
             } else if (uiState.habitsWithCompletion.isEmpty()) {
                 Text(stringResource(R.string.habits_empty_state))
             } else {
+                key(recomposeKey) {
                 LazyColumn(
                     modifier = Modifier.fillMaxSize(),
                     contentPadding = PaddingValues(16.dp),
                     verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
-                    items(uiState.habitsWithCompletion, key = { it.habit.id }) { habitWithCompletion ->
+                    items(
+                        uiState.habitsWithCompletion,
+                        key = { hwc -> "${hwc.habit.id}:${hwc.isCompletedToday}" }
+                    ) { habitWithCompletion ->
                         var showDeleteDialog by remember { mutableStateOf(false) }
                         val dismissState = rememberSwipeToDismissBoxState(
                             confirmValueChange = { value ->
@@ -234,6 +257,7 @@ fun HabitsScreen(
                                 }
                             }
                         ) {
+                            key(recomposeKey) {
                             EnhancedHabitItem(
                                 habitWithCompletion = habitWithCompletion,
                                 onHabitClick = { habit ->
@@ -253,6 +277,7 @@ fun HabitsScreen(
                                     showDeleteDialog = true
                                 }
                             )
+                            }
                         }
 
                         if (showDeleteDialog) {
@@ -307,6 +332,7 @@ fun HabitsScreen(
                             )
                         }
                     }
+                }
                 }
             }
         }

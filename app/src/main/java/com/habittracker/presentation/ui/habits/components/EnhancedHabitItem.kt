@@ -3,7 +3,9 @@ package com.habittracker.presentation.ui.habits.components
 import androidx.compose.animation.Crossfade
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.LocalIndication
 import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -42,10 +44,11 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
-import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Outline
+import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalHapticFeedback
@@ -85,24 +88,31 @@ fun EnhancedHabitItem(
     val isDone = habitWithCompletion.isCompletedToday
     val successColor = Color(0xFF4CAF50)
     val outlineColor = MaterialTheme.colorScheme.outline
+    val shape = MaterialTheme.shapes.medium
 
     Box(modifier = modifier.fillMaxWidth()) {
+        val interaction = remember { MutableInteractionSource() }
+        val indication = if (isDone) null else LocalIndication.current
+
         Card(
             modifier = Modifier
                 .fillMaxWidth()
                 .combinedClickable(
+                    interactionSource = interaction,
+                    indication = indication,
                     onClick = { onHabitClick(habitWithCompletion) },
                     onLongClick = {
                         haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                         showMenu = true
                     }
                 ),
+            shape = shape,
             elevation = CardDefaults.cardElevation(
-                defaultElevation = if (isDone) 1.dp else 0.dp,
-                pressedElevation = if (isDone) 1.dp else 0.dp,
-                focusedElevation = if (isDone) 1.dp else 0.dp,
-                hoveredElevation = if (isDone) 1.dp else 0.dp,
-                draggedElevation = if (isDone) 1.dp else 0.dp
+                defaultElevation = if (isDone) 0.dp else 1.dp,
+                pressedElevation = if (isDone) 0.dp else 1.dp,
+                focusedElevation = if (isDone) 0.dp else 1.dp,
+                hoveredElevation = if (isDone) 0.dp else 1.dp,
+                draggedElevation = if (isDone) 0.dp else 1.dp
             ),
             colors = CardDefaults.cardColors(
                 containerColor = if (isDone) {
@@ -120,35 +130,45 @@ fun EnhancedHabitItem(
                     .then(
                         if (isDone) Modifier.drawBehind {
                             val stripeWidth = 4.dp.toPx()
-                            val cornerRadius = 12.dp.toPx() // MaterialTheme.shapes.medium radius
-                            
-                            // Рисуем левую полоску
-                            drawRect(
-                                color = successColor,
-                                size = Size(stripeWidth, size.height)
-                            )
-                            
-                            // Рисуем скруглённую рамку
+                            // Левая акцентная полоска
+                            drawRect(color = successColor, size = Size(stripeWidth, size.height))
+
+                            // Рамка по форме темы (через Path)
                             val borderWidth = 1.dp.toPx()
-                            drawRoundRect(
-                                color = successColor.copy(alpha = 0.35f),
-                                topLeft = Offset(0f, 0f),
-                                size = size,
-                                cornerRadius = CornerRadius(cornerRadius),
-                                style = Stroke(width = borderWidth)
-                            )
+                            when (val outline = shape.createOutline(this.size, layoutDirection, this)) {
+                                is Outline.Rounded -> {
+                                    val p = Path().apply { addRoundRect(outline.roundRect) }
+                                    drawPath(p, color = successColor.copy(alpha = 0.35f), style = Stroke(width = borderWidth))
+                                }
+                                is Outline.Rectangle -> drawRect(
+                                    color = successColor.copy(alpha = 0.35f),
+                                    size = this.size,
+                                    style = Stroke(width = borderWidth)
+                                )
+                                is Outline.Generic -> drawPath(
+                                    outline.path,
+                                    color = successColor.copy(alpha = 0.35f),
+                                    style = Stroke(width = borderWidth)
+                                )
+                            }
                         } else Modifier.drawBehind {
-                            val cornerRadius = 12.dp.toPx() // MaterialTheme.shapes.medium radius
-                            
-                            // Рисуем скруглённую рамку
                             val borderWidth = 1.dp.toPx()
-                            drawRoundRect(
-                                color = outlineColor,
-                                topLeft = Offset(0f, 0f),
-                                size = size,
-                                cornerRadius = CornerRadius(cornerRadius),
-                                style = Stroke(width = borderWidth)
-                            )
+                            when (val outline = shape.createOutline(this.size, layoutDirection, this)) {
+                                is Outline.Rounded -> {
+                                    val p = Path().apply { addRoundRect(outline.roundRect) }
+                                    drawPath(p, color = outlineColor, style = Stroke(width = borderWidth))
+                                }
+                                is Outline.Rectangle -> drawRect(
+                                    color = outlineColor,
+                                    size = this.size,
+                                    style = Stroke(width = borderWidth)
+                                )
+                                is Outline.Generic -> drawPath(
+                                    outline.path,
+                                    color = outlineColor,
+                                    style = Stroke(width = borderWidth)
+                                )
+                            }
                         }
                     )
             ) {
