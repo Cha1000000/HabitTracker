@@ -39,16 +39,9 @@ fun GradientPullRefreshIndicator(
     state: PullRefreshState,
     modifier: Modifier = Modifier,
     size: Dp = 26.dp,
-    strokeWidth: Dp = 5.dp,
-    colors: List<Color> = listOf(
-        Color(0xFF06B6D4), // base cyan
-        Color(0xB922D3EE), // lighter
-        Color(0xFF06B6D4)  // back to base for smooth loop
-    )
+    strokeWidth: Dp = 5.dp
 ) {
     val progress = state.progress.coerceIn(0f, 1f)
-
-    // Бесконечное вращение при refreshing
     val transition = rememberInfiniteTransition(label = "spin")
     val rotation by if (refreshing) {
         transition.animateFloat(
