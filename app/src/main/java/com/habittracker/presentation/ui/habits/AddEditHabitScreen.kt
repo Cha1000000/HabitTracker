@@ -971,12 +971,9 @@ fun AddEditHabitScreen(
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     OutlinedTextField(
-                        value = uiState.targetValue.toString(),
-                        onValueChange = { 
-                            val value = it.toIntOrNull()
-                            if (value != null && value > 0) {
-                                viewModel.onTargetValueChange(value)
-                            }
+                        value = uiState.targetValueInput,
+                        onValueChange = { input ->
+                            viewModel.onTargetValueInputChange(input)
                         },
                         label = { Text(stringResource(R.string.habit_target_value_label)) },
                         modifier = Modifier.weight(1f),

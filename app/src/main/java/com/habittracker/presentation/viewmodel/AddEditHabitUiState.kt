@@ -24,6 +24,8 @@ data class AddEditHabitUiState(
     
     // Целевые значения
     val targetValue: Int = 1,
+    // Текстовое состояние для поля «Целевое значение», чтобы поддерживать промежуточные значения (пустая строка, ведущие нули и т.п.)
+    val targetValueInput: String = "1",
     val unit: String = "раз",
     
     // Групповые привычки

@@ -17,6 +17,8 @@ interface IAddEditHabitViewModel {
     fun onIconChange(icon: String)
     fun onReminderTimeChange(time: LocalTime?)
     fun onReminderEnabledChange(enabled: Boolean)
+    // Текстовый ввод для поля «Целевое значение» (поддержка промежуточных состояний)
+    fun onTargetValueInputChange(text: String)
     fun onTargetValueChange(value: Int)
     fun onUnitChange(unit: String)
     fun saveHabit()

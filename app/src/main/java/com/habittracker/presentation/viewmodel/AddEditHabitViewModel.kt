@@ -116,6 +116,7 @@ class AddEditHabitViewModel @Inject constructor(
                             frequency = habit.frequency,
                             reminderTime = habit.reminderTime,
                             targetValue = habit.targetValue,
+                            targetValueInput = habit.targetValue.toString(),
                             unit = habit.unit,
                             maxParticipants = habit.maxParticipants,
                             maxParticipantsInput = habit.maxParticipants.toString(),
@@ -275,11 +276,27 @@ class AddEditHabitViewModel @Inject constructor(
         _uiState.update { 
             it.copy(
                 targetValue = targetValue,
+                targetValueInput = targetValue.toString(),
                 targetValueError = targetValueError,
                 hasUnsavedChanges = true
             )
         }
         updateValidationState()
+    }
+
+    override fun onTargetValueInputChange(text: String) {
+        // Разрешаем только цифры и ограничиваем длину до 3 символов (макс 100)
+        val filtered = text.filter { it.isDigit() }.take(3)
+        // Всегда сохраняем текст как есть (после фильтра) — важно для корректной работы курсора/удаления
+        _uiState.update { it.copy(targetValueInput = filtered, hasUnsavedChanges = true) }
+
+        val value = filtered.toIntOrNull()
+        if (value != null) {
+            onTargetValueChange(value)
+        } else {
+            // Пустая строка или некорректное число — просто обновим состояние валидации без изменения targetValue
+            updateValidationState()
+        }
     }
     
     override fun onUnitChange(unit: String) {

@@ -35,6 +35,19 @@ class PreviewAddEditHabitViewModel @Inject constructor(
         _uiState.update { it.copy(isLoading = false) }
     }
 
+    override fun onTargetValueInputChange(text: String) {
+        // Разрешаем только цифры, максимум 3 символа (<=100)
+        val filtered = text.filter { it.isDigit() }.take(3)
+        _uiState.update { it.copy(targetValueInput = filtered, hasUnsavedChanges = true) }
+
+        val value = filtered.toIntOrNull()
+        if (value != null) {
+            onTargetValueChange(value)
+        } else {
+            updateValidationState()
+        }
+    }
+
     override fun onTitleChange(title: String) {
         // Создаем временную привычку для валидации
         val tempHabit = createTempHabit().copy(title = title)
