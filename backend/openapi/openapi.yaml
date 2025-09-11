@@ -16,6 +16,12 @@ components:
       scheme: bearer
       bearerFormat: JWT
   schemas:
+    AuthResponse:
+      type: object
+      properties:
+        accessToken: { type: string }
+        refreshToken: { type: string }
+        user: { $ref: '#/components/schemas/User' }
     Error:
       type: object
       properties:
@@ -128,7 +134,9 @@ components:
 paths:
   /auth/google:
     post:
-      summary: Вход по Google ID Token
+      summary: Вход по Google ID Token (deprecated, используйте /auth/google-idtoken)
+      deprecated: true
+      security: []
       requestBody:
         required: true
         content:
@@ -138,6 +146,84 @@ paths:
               properties:
                 idToken: { type: string }
       responses:
+        '200': { description: OK, content: { application/json: { schema: { $ref: '#/components/schemas/AuthResponse' } } } }
+        '401': { description: Unauthorized, content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+
+  /auth/google-idtoken:
+    post:
+      summary: Вход по Google ID Token (рекомендуется)
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [idToken]
+              properties:
+                idToken: { type: string }
+                deviceId: { type: string }
+      responses:
+        '200': { description: OK, content: { application/json: { schema: { $ref: '#/components/schemas/AuthResponse' } } } }
+        '401': { description: Unauthorized, content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+
+  /auth/vk:
+    post:
+      summary: Вход через VK OAuth (Authorization Code + PKCE)
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [code, redirectUri]
+              properties:
+                code: { type: string }
+                redirectUri: { type: string }
+                codeVerifier: { type: string }
+                deviceId: { type: string }
+      responses:
+        '200': { description: OK, content: { application/json: { schema: { $ref: '#/components/schemas/AuthResponse' } } } }
+        '401': { description: Unauthorized, content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+        '409': { description: Provider linking required, content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+
+  /auth/yandex:
+    post:
+      summary: Вход через Яндекс ID (Authorization Code + PKCE)
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [code, redirectUri]
+              properties:
+                code: { type: string }
+                redirectUri: { type: string }
+                codeVerifier: { type: string }
+                deviceId: { type: string }
+      responses:
+        '200': { description: OK, content: { application/json: { schema: { $ref: '#/components/schemas/AuthResponse' } } } }
+        '401': { description: Unauthorized, content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+        '409': { description: Provider linking required, content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+
+  /auth/refresh:
+    post:
+      summary: Обновление access/refresh токенов (rotation)
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [refreshToken]
+              properties:
+                refreshToken: { type: string }
+                deviceId: { type: string }
+      responses:
         '200':
           description: OK
           content:
@@ -146,8 +232,26 @@ paths:
                 type: object
                 properties:
                   accessToken: { type: string }
-                  user: { $ref: '#/components/schemas/User' }
+                  refreshToken: { type: string }
         '401': { description: Unauthorized, content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+
+  /auth/logout:
+    post:
+      summary: Выход (revoke refresh token)
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [refreshToken]
+              properties:
+                refreshToken: { type: string }
+                deviceId: { type: string }
+      responses:
+        '204': { description: No Content }
+        '401': { description: Unauthorized }
 
   /users/me:
     get:

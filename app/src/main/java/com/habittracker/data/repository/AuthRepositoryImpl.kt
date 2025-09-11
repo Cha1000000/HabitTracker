@@ -10,8 +10,11 @@ import com.google.android.libraries.identity.googleid.GetGoogleIdOption
 import com.google.android.libraries.identity.googleid.GoogleIdTokenCredential
 import com.google.android.libraries.identity.googleid.GoogleIdTokenParsingException
 import com.google.firebase.auth.FirebaseAuth
-import com.google.firebase.auth.GoogleAuthProvider
 import com.google.firebase.messaging.FirebaseMessaging
+import com.habittracker.data.remote.api.AuthApi
+import com.habittracker.data.remote.auth.TokenStorage
+import com.habittracker.data.remote.dto.auth.AuthResponseDto
+import com.habittracker.data.remote.dto.auth.GoogleIdTokenRequest
 import com.habittracker.domain.model.User
 import com.habittracker.domain.repository.AuthRepository
 import com.habittracker.domain.usecase.auth.UpsertSignedInUserUseCase
@@ -26,7 +29,9 @@ class AuthRepositoryImpl @Inject constructor(
     private val firebaseMessaging: FirebaseMessaging,
     private val upsertSignedInUser: UpsertSignedInUserUseCase,
     @ApplicationContext private val context: Context,
-    private val getGoogleIdOption: GetGoogleIdOption
+    private val getGoogleIdOption: GetGoogleIdOption,
+    private val authApi: AuthApi,
+    private val tokenStorage: TokenStorage
 ) : AuthRepository {
 
     private val credentialManager: CredentialManager by lazy {
@@ -112,23 +117,32 @@ class AuthRepositoryImpl @Inject constructor(
                         try {
                             val googleIdTokenCredential = GoogleIdTokenCredential.createFrom(credential.data)
                             val idToken = googleIdTokenCredential.idToken
-                            val firebaseCredential = GoogleAuthProvider.getCredential(idToken, null)
-                            val result = firebaseAuth.signInWithCredential(firebaseCredential).await()
-                            val firebaseUser = result.user
-                            if (firebaseUser != null) {
-                                val user = User(
-                                    id = firebaseUser.uid,
-                                    name = firebaseUser.displayName ?: firebaseUser.email?.substringBefore("@") ?: "",
-                                    email = firebaseUser.email ?: "",
-                                    avatarUrl = firebaseUser.photoUrl?.toString(),
-                                    avatarThumbnailUrl = firebaseUser.photoUrl?.toString(),
-                                    createdAt = System.currentTimeMillis(),
-                                    lastActiveAt = System.currentTimeMillis()
-                                )
-                                val token = try { firebaseMessaging.token.await() } catch (e: Exception) { null }
-                                upsertSignedInUser(user, token)
+                            // Call backend with Google ID Token
+                            val response = authApi.signInWithGoogleIdToken(GoogleIdTokenRequest(idToken))
+                            if (response.isSuccessful) {
+                                val body: AuthResponseDto? = response.body()
+                                if (body != null) {
+                                    // Save tokens
+                                    tokenStorage.saveTokens(body.accessToken, body.refreshToken)
+                                    // Map backend user to domain
+                                    val user = User(
+                                        id = body.user.id,
+                                        name = body.user.name,
+                                        email = body.user.email,
+                                        avatarUrl = body.user.avatarUrl,
+                                        avatarThumbnailUrl = body.user.avatarThumbnailUrl,
+                                        createdAt = body.user.createdAt,
+                                        lastActiveAt = body.user.lastActiveAt
+                                    )
+                                    val fcmToken = try { firebaseMessaging.token.await() } catch (e: Exception) { null }
+                                    upsertSignedInUser(user, fcmToken)
+                                    emit(Result.success(null))
+                                } else {
+                                    emit(Result.failure(Exception("Empty auth response")))
+                                }
+                            } else {
+                                emit(Result.failure(Exception("Auth failed: ${response.code()}")))
                             }
-                            emit(Result.success(null)) // No Intent needed with new API
                         } catch (e: GoogleIdTokenParsingException) {
                             emit(Result.failure(Exception("Failed to parse Google ID token", e)))
                         }
