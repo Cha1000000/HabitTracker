@@ -199,6 +199,12 @@ tasks.whenTaskAdded {
     if (name == "createReleaseApkListingFileRedirect") dependsOn("fixReleaseApkMetadata")
 }
 
+// Когда выполняем installDebug, явно объявляем зависимость от задач переименования и фикса метаданных,
+// чтобы избежать проблем Gradle с неявными зависимостями.
+tasks.whenTaskAdded {
+    if (name == "installDebug") dependsOn("renameApkDebug", "fixDebugApkMetadata")
+}
+
 dependencies {
 
     // Compose BOM - обязательно в начале

@@ -2,6 +2,7 @@ package com.habittracker.data.local.mappers
 
 import com.habittracker.data.local.entity.HabitEntity
 import com.habittracker.domain.model.Habit
+import kotlinx.datetime.DayOfWeek
 
 /**
  * Мапперы для преобразования между Entity и Domain моделями привычек
@@ -18,6 +19,9 @@ fun HabitEntity.toDomain(): Habit {
         frequency = frequency,
         reminderTime = reminderTime,
         reminderEnabled = reminderEnabled,
+        reminderDays = reminderDays.mapNotNull { d ->
+            try { DayOfWeek.entries.firstOrNull { it.value == d } } catch (_: Exception) { null }
+        }.toSet(),
         targetValue = targetValue,
         unit = unit,
         createdBy = createdBy,
@@ -42,6 +46,7 @@ fun Habit.toEntity(): HabitEntity {
         frequency = frequency,
         reminderTime = reminderTime,
         reminderEnabled = reminderEnabled,
+        reminderDays = reminderDays.map { it.value },
         targetValue = targetValue,
         unit = unit,
         createdBy = createdBy,

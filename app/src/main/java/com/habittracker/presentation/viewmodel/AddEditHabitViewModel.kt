@@ -34,6 +34,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.datetime.LocalTime
+import kotlinx.datetime.DayOfWeek
 import java.util.UUID
 import javax.inject.Inject
 
@@ -115,6 +116,7 @@ class AddEditHabitViewModel @Inject constructor(
                             type = habit.type,
                             frequency = habit.frequency,
                             reminderTime = habit.reminderTime,
+                            reminderDaysInput = habit.reminderDays,
                             targetValue = habit.targetValue,
                             targetValueInput = habit.targetValue.toString(),
                             unit = habit.unit,
@@ -169,6 +171,7 @@ class AddEditHabitViewModel @Inject constructor(
                         frequency = currentState.frequency,
                         reminderTime = currentState.reminderTime,
                         reminderEnabled = currentState.reminderTime != null,
+                        reminderDays = currentState.reminderDaysInput,
                         targetValue = currentState.targetValue,
                         unit = currentState.unit,
                         createdBy = creatorId,
@@ -203,6 +206,7 @@ class AddEditHabitViewModel @Inject constructor(
                         frequency = currentState.frequency,
                         reminderTime = currentState.reminderTime,
                         reminderEnabled = currentState.reminderTime != null,
+                        reminderDays = currentState.reminderDaysInput,
                         targetValue = currentState.targetValue,
                         unit = currentState.unit,
                         maxParticipants = currentState.maxParticipants,
@@ -264,19 +268,35 @@ class AddEditHabitViewModel @Inject constructor(
     }
     
     override fun onFrequencyChange(frequency: HabitFrequency) {
-        _uiState.update { it.copy(frequency = frequency) }
+        _uiState.update { state ->
+            val presetDays: Set<DayOfWeek> = when (frequency) {
+                HabitFrequency.DAILY -> emptySet()
+                HabitFrequency.WEEKLY -> state.reminderDaysInput.takeIf { it.size == 1 } ?: emptySet()
+                HabitFrequency.TWICE_A_WEEK -> state.reminderDaysInput.takeIf { it.size <= 2 } ?: emptySet()
+                HabitFrequency.WEEKDAYS -> setOf(
+                    DayOfWeek.MONDAY,
+                    DayOfWeek.TUESDAY,
+                    DayOfWeek.WEDNESDAY,
+                    DayOfWeek.THURSDAY,
+                    DayOfWeek.FRIDAY
+                )
+                HabitFrequency.WEEKENDS -> setOf(DayOfWeek.SATURDAY, DayOfWeek.SUNDAY)
+                HabitFrequency.CUSTOM -> state.reminderDaysInput
+            }
+            state.copy(frequency = frequency, reminderDaysInput = presetDays)
+        }
     }
     
-    override fun onTargetValueChange(targetValue: Int) {
+    override fun onTargetValueChange(value: Int) {
         // Создаем временную привычку для валидации
-        val tempHabit = createTempHabit().copy(targetValue = targetValue)
+        val tempHabit = createTempHabit().copy(targetValue = value)
         val validationResult = HabitValidation.validateHabit(tempHabit)
         val targetValueError = validationResult.getError(HabitField.TARGET_VALUE)?.message
         
         _uiState.update { 
             it.copy(
-                targetValue = targetValue,
-                targetValueInput = targetValue.toString(),
+                targetValue = value,
+                targetValueInput = value.toString(),
                 targetValueError = targetValueError,
                 hasUnsavedChanges = true
             )
@@ -374,6 +394,43 @@ class AddEditHabitViewModel @Inject constructor(
     
     override fun onReminderTimeChange(time: LocalTime?) {
         _uiState.update { it.copy(reminderTime = time) }
+    }
+
+    override fun onReminderDayToggle(day: DayOfWeek) {
+        _uiState.update { state ->
+            val current = state.reminderDaysInput.toMutableSet()
+            val toggled = if (current.contains(day)) {
+                current.remove(day)
+                current
+            } else {
+                // Добавляем с учетом ограничений по частоте
+                when (state.frequency) {
+                    HabitFrequency.WEEKLY -> setOf(day)
+                    HabitFrequency.TWICE_A_WEEK -> {
+                        if (current.size >= 2) {
+                            // Не добавляем больше 2
+                            current
+                        } else {
+                            current.add(day)
+                            current
+                        }
+                    }
+                    HabitFrequency.WEEKDAYS -> setOf(
+                        DayOfWeek.MONDAY,
+                        DayOfWeek.TUESDAY,
+                        DayOfWeek.WEDNESDAY,
+                        DayOfWeek.THURSDAY,
+                        DayOfWeek.FRIDAY
+                    )
+                    HabitFrequency.WEEKENDS -> setOf(DayOfWeek.SATURDAY, DayOfWeek.SUNDAY)
+                    HabitFrequency.CUSTOM, HabitFrequency.DAILY -> {
+                        current.add(day)
+                        current
+                    }
+                }
+            }
+            state.copy(reminderDaysInput = toggled)
+        }
     }
     
     override fun onReminderEnabledChange(enabled: Boolean) {
@@ -530,7 +587,7 @@ class AddEditHabitViewModel @Inject constructor(
                         )
                     }
                 }
-            } catch (e: CancellationException) {
+            } catch (_: CancellationException) {
                 // Нормальная отмена при закрытии диалога — не считаем ошибкой
                 _uiState.update { it.copy(isLoadingFriends = false) }
             } catch (e: Exception) {

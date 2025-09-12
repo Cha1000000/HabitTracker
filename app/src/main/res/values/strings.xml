@@ -98,9 +98,27 @@
     <!-- Habit Frequencies -->
     <string name="frequency_daily">Каждый день</string>
     <string name="frequency_weekly">Раз в неделю</string>
+    <string name="frequency_twice_weekly">Два раза в неделю</string>
     <string name="frequency_weekdays">По будням</string>
     <string name="frequency_weekends">По выходным</string>
     <string name="frequency_custom">Произвольно</string>
+    
+    <!-- Weekday short names -->
+    <string name="weekday_mon">Пн</string>
+    <string name="weekday_tue">Вт</string>
+    <string name="weekday_wed">Ср</string>
+    <string name="weekday_thu">Чт</string>
+    <string name="weekday_fri">Пт</string>
+    <string name="weekday_sat">Сб</string>
+    <string name="weekday_sun">Вс</string>
+
+    <!-- Reminder day selection hints -->
+    <string name="reminder_days_hint_weekly">Выберите 1 день</string>
+    <string name="reminder_days_hint_twice">Выберите 2 дня</string>
+    <string name="reminder_days_hint_custom">Выберите дни</string>
+
+    <!-- Time suffix for composing phrases -->
+    <string name="at_time_format">в %1$d:%2$02d</string>
     
     <!-- Profile Screen -->
     <string name="profile_title">Профиль</string>

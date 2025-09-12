@@ -5,6 +5,7 @@ import com.habittracker.domain.model.HabitType
 import com.habittracker.domain.model.User
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.datetime.LocalTime
+import kotlinx.datetime.DayOfWeek
 
 interface IAddEditHabitViewModel {
     val uiState: StateFlow<AddEditHabitUiState>
@@ -17,6 +18,7 @@ interface IAddEditHabitViewModel {
     fun onIconChange(icon: String)
     fun onReminderTimeChange(time: LocalTime?)
     fun onReminderEnabledChange(enabled: Boolean)
+    fun onReminderDayToggle(day: DayOfWeek)
     // Текстовый ввод для поля «Целевое значение» (поддержка промежуточных состояний)
     fun onTargetValueInputChange(text: String)
     fun onTargetValueChange(value: Int)

@@ -19,6 +19,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.datetime.LocalTime
+import kotlinx.datetime.DayOfWeek
 import javax.inject.Inject
 
 /**
@@ -96,7 +97,23 @@ class PreviewAddEditHabitViewModel @Inject constructor(
     }
 
     override fun onFrequencyChange(frequency: HabitFrequency) {
-        _uiState.update { it.copy(frequency = frequency, hasUnsavedChanges = true) }
+        _uiState.update { state ->
+            val presetDays: Set<DayOfWeek> = when (frequency) {
+                HabitFrequency.DAILY -> emptySet()
+                HabitFrequency.WEEKLY -> state.reminderDaysInput.takeIf { it.size == 1 } ?: emptySet()
+                HabitFrequency.TWICE_A_WEEK -> state.reminderDaysInput.takeIf { it.size <= 2 } ?: emptySet()
+                HabitFrequency.WEEKDAYS -> setOf(
+                    DayOfWeek.MONDAY,
+                    DayOfWeek.TUESDAY,
+                    DayOfWeek.WEDNESDAY,
+                    DayOfWeek.THURSDAY,
+                    DayOfWeek.FRIDAY
+                )
+                HabitFrequency.WEEKENDS -> setOf(DayOfWeek.SATURDAY, DayOfWeek.SUNDAY)
+                HabitFrequency.CUSTOM -> state.reminderDaysInput
+            }
+            state.copy(frequency = frequency, reminderDaysInput = presetDays, hasUnsavedChanges = true)
+        }
         updateValidationState()
     }
 
@@ -107,6 +124,24 @@ class PreviewAddEditHabitViewModel @Inject constructor(
 
     override fun onReminderEnabledChange(enabled: Boolean) {
         // Не используется в новом интерфейсе
+    }
+
+    override fun onReminderDayToggle(day: DayOfWeek) {
+        _uiState.update { state ->
+            val current = state.reminderDaysInput.toMutableSet()
+            val toggled = if (current.contains(day)) {
+                current.remove(day); current
+            } else {
+                when (state.frequency) {
+                    HabitFrequency.WEEKLY -> setOf(day)
+                    HabitFrequency.TWICE_A_WEEK -> if (current.size >= 2) current else current.apply { add(day) }
+                    HabitFrequency.WEEKDAYS -> setOf(DayOfWeek.MONDAY, DayOfWeek.TUESDAY, DayOfWeek.WEDNESDAY, DayOfWeek.THURSDAY, DayOfWeek.FRIDAY)
+                    HabitFrequency.WEEKENDS -> setOf(DayOfWeek.SATURDAY, DayOfWeek.SUNDAY)
+                    HabitFrequency.CUSTOM, HabitFrequency.DAILY -> current.apply { add(day) }
+                }
+            }
+            state.copy(reminderDaysInput = toggled, hasUnsavedChanges = true)
+        }
     }
 
     override fun onTargetValueChange(value: Int) {
@@ -308,6 +343,7 @@ class PreviewAddEditHabitViewModel @Inject constructor(
             frequency = currentState.frequency,
             reminderTime = currentState.reminderTime,
             reminderEnabled = false, // простое значение по умолчанию
+            reminderDays = currentState.reminderDaysInput,
             targetValue = currentState.targetValue,
             unit = currentState.unit,
             createdBy = "preview_user",

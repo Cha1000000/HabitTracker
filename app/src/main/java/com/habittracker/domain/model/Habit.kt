@@ -1,5 +1,6 @@
 package com.habittracker.domain.model
 import com.google.firebase.firestore.PropertyName
+import kotlinx.datetime.DayOfWeek
 import kotlinx.datetime.LocalTime
 
 data class Habit(
@@ -12,6 +13,7 @@ data class Habit(
     val frequency: HabitFrequency = HabitFrequency.DAILY,
     val reminderTime: LocalTime? = null,
     val reminderEnabled: Boolean = false,
+    val reminderDays: Set<DayOfWeek> = emptySet(),
     val targetValue: Int = 1, // сколько раз в день нужно выполнить
     val unit: String = "раз", // единица измерения (раз, минут, км и т.д.)
     val createdBy: String = "", // userId создателя
@@ -31,11 +33,12 @@ enum class HabitType {
 }
 
 enum class HabitFrequency {
-    DAILY,      // каждый день
-    WEEKLY,     // раз в неделю
-    WEEKDAYS,   // только по будням
-    WEEKENDS,   // только по выходным
-    CUSTOM      // кастомные дни недели
+    DAILY,        // каждый день
+    WEEKLY,       // раз в неделю
+    TWICE_A_WEEK, // два раза в неделю
+    WEEKDAYS,     // только по будням
+    WEEKENDS,     // только по выходным
+    CUSTOM        // кастомные дни недели
 }
 
 // Extension functions для работы с привычками
@@ -51,6 +54,7 @@ fun Habit.isUserParticipant(userId: String): Boolean =
 fun Habit.getFrequencyText(): String = when (frequency) {
     HabitFrequency.DAILY -> "Каждый день"
     HabitFrequency.WEEKLY -> "Раз в неделю"
+    HabitFrequency.TWICE_A_WEEK -> "Два раза в неделю"
     HabitFrequency.WEEKDAYS -> "По будням"
     HabitFrequency.WEEKENDS -> "По выходным"
     HabitFrequency.CUSTOM -> "Выборочно"
