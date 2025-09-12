@@ -42,8 +42,8 @@ class ReminderRepositoryImpl @Inject constructor(
         // Отменяем существующее напоминание
         cancelReminder(habit.id)
         
-        // Вычисляем задержку до первого напоминания
-        val delay = calculateDelayUntilReminderTime(reminderTime)
+        // Вычисляем задержку до первого напоминания с учетом частоты и выбранных дней
+        val delay = calculateDelayForNextOccurrence(habit)
         
         // Создаем данные для Worker
         val inputData = Data.Builder()
@@ -97,34 +97,46 @@ class ReminderRepositoryImpl @Inject constructor(
         Log.d("ReminderRepositoryImpl", "scheduleRecurringReminders: $habit")
         val reminderTime = habit.reminderTime ?: return
         
-        when (habit.frequency) {
-            HabitFrequency.DAILY -> {
-                // Планируем на следующие 7 дней
-                repeat(7) { dayOffset ->
-                    if (dayOffset > 0) {
+        // Горизонт планирования (дней вперед)
+        val horizonDays = 21
+        
+        fun scheduleByAllowedDays(allowedDays: Set<Int>) {
+            val now = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault())
+            repeat(horizonDays) { dayOffset ->
+                if (dayOffset > 0) {
+                    val targetDate = now.date.plus(dayOffset, DateTimeUnit.DAY)
+                    val dow = targetDate.dayOfWeek.value // 1..7
+                    if (allowedDays.contains(dow)) {
                         scheduleReminderForDay(habit, reminderTime, dayOffset, initialDelay)
                     }
                 }
             }
+        }
+
+        when (habit.frequency) {
+            HabitFrequency.DAILY -> {
+                // Все дни
+                scheduleByAllowedDays(setOf(1,2,3,4,5,6,7))
+            }
             HabitFrequency.WEEKDAYS -> {
-                // Планируем только на будние дни (пн-пт)
                 scheduleWeekdayReminders(habit, reminderTime, initialDelay)
             }
             HabitFrequency.WEEKENDS -> {
-                // Планируем только на выходные (сб-вс)
                 scheduleWeekendReminders(habit, reminderTime, initialDelay)
             }
-            HabitFrequency.WEEKLY -> {
-                // Планируем на следующие 4 недели
-                repeat(4) { weekOffset ->
-                    if (weekOffset > 0) {
-                        scheduleReminderForDay(habit, reminderTime, weekOffset * 7, initialDelay)
+            HabitFrequency.WEEKLY, HabitFrequency.TWICE_A_WEEK, HabitFrequency.CUSTOM -> {
+                val selected = habit.reminderDays.map { it.value }.toSet()
+                if (selected.isNotEmpty()) {
+                    scheduleByAllowedDays(selected)
+                } else {
+                    // Fallback к старой логике, чтобы не сломать существующие данные
+                    when (habit.frequency) {
+                        HabitFrequency.WEEKLY -> repeat(4) { weekOffset -> if (weekOffset > 0) scheduleReminderForDay(habit, reminderTime, weekOffset * 7, initialDelay) }
+                        HabitFrequency.CUSTOM -> scheduleReminderForDay(habit, reminderTime, 1, initialDelay)
+                        HabitFrequency.TWICE_A_WEEK -> repeat(4) { weekOffset -> if (weekOffset > 0) scheduleReminderForDay(habit, reminderTime, weekOffset * 7, initialDelay) }
+                        else -> {}
                     }
                 }
-            }
-            HabitFrequency.CUSTOM -> {
-                // Для произвольной частоты планируем только на завтра
-                scheduleReminderForDay(habit, reminderTime, 1, initialDelay)
             }
         }
     }
@@ -204,30 +216,51 @@ class ReminderRepositoryImpl @Inject constructor(
     /**
      * Вычисляет задержку в миллисекундах до времени напоминания
      */
-    private fun calculateDelayUntilReminderTime(reminderTime: LocalTime): Long {
-        Log.d("ReminderRepositoryImpl", "calculateDelayUntilReminderTime: $reminderTime")
-        val now = Clock.System.now()
-        val currentDateTime = now.toLocalDateTime(TimeZone.currentSystemDefault())
-        val currentTime = currentDateTime.time
-        
-        Log.d("ReminderRepositoryImpl", "Current time: $currentTime")
-        
-        val targetDateTime = if (currentTime < reminderTime) {
-            // Напоминание сегодня
-            LocalDateTime(currentDateTime.date, reminderTime)
-        } else {
-            // Напоминание завтра
-            LocalDateTime(currentDateTime.date.plus(1, DateTimeUnit.DAY), reminderTime)
+    private fun calculateDelayForNextOccurrence(habit: Habit): Long {
+        val reminderTime = habit.reminderTime ?: return 0L
+        Log.d("ReminderRepositoryImpl", "calculateDelayForNextOccurrence: time=$reminderTime, freq=${habit.frequency}, days=${habit.reminderDays}")
+        val nowInstant = Clock.System.now()
+        val now = nowInstant.toLocalDateTime(TimeZone.currentSystemDefault())
+        val selectedDays = habit.reminderDays.map { it.value }.toSet()
+
+        for (dayOffset in 0..28) {
+            val targetDate = now.date.plus(dayOffset, DateTimeUnit.DAY)
+            val dow = targetDate.dayOfWeek.value
+            val targetDateTime = LocalDateTime(targetDate, reminderTime)
+            val targetInstant = targetDateTime.toInstant(TimeZone.currentSystemDefault())
+            val strictlyFuture = targetInstant > nowInstant
+
+            val allowed = when (habit.frequency) {
+                HabitFrequency.DAILY -> true
+                HabitFrequency.WEEKDAYS -> dow in 1..5
+                HabitFrequency.WEEKENDS -> dow in 6..7
+                HabitFrequency.WEEKLY, HabitFrequency.TWICE_A_WEEK, HabitFrequency.CUSTOM -> {
+                    if (selectedDays.isNotEmpty()) {
+                        selectedDays.contains(dow)
+                    } else {
+                        // После миграции старые привычки могут не иметь явно выбранных дней.
+                        // Гарантируем ближайшее уведомление:
+                        //  - если время сегодня ещё впереди — ставим на сегодня
+                        //  - дальше оставляем прежний фоллбек по частоте
+                        when (habit.frequency) {
+                            HabitFrequency.WEEKLY -> (dayOffset == 0) || (dayOffset % 7 == 0)
+                            HabitFrequency.TWICE_A_WEEK -> (dayOffset == 0) || (dayOffset % 7 == 0)
+                            HabitFrequency.CUSTOM -> (dayOffset == 0) || (dayOffset == 1)
+                            else -> false
+                        }
+                    }
+                }
+            }
+
+            if (allowed && strictlyFuture) {
+                val delay = (targetInstant - nowInstant).inWholeMilliseconds
+                Log.d("ReminderRepositoryImpl", "Next occurrence in $delay ms on $targetDateTime (dow=$dow, offset=$dayOffset, selectedEmpty=${selectedDays.isEmpty()})")
+                return delay
+            }
         }
-        
-        Log.d("ReminderRepositoryImpl", "Target datetime: $targetDateTime")
-        
-        val targetInstant = targetDateTime.toInstant(TimeZone.currentSystemDefault())
-        val delay = (targetInstant - now).inWholeMilliseconds
-        
-        Log.d("ReminderRepositoryImpl", "Calculated delay: $delay ms (${delay / 1000 / 60} minutes)")
-        
-        return delay
+        // Фоллбек: 24 часа
+        Log.w("ReminderRepositoryImpl", "No future occurrence found within 28 days, fallback to 24h")
+        return 24 * 60 * 60 * 1000L
     }
 
     private fun getWorkName(habitId: String): String = "${REMINDER_WORK_PREFIX}$habitId"

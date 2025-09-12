@@ -70,6 +70,12 @@ class FirestoreRepositoryImpl @Inject constructor(
 
             val reminderEnabled = (data["reminderEnabled"] as? Boolean) ?: (reminderTime != null)
             val targetValue = (data["targetValue"] as? Number)?.toInt() ?: 1
+            // reminderDays как список чисел (1..7)
+            @Suppress("UNCHECKED_CAST")
+            val reminderDaysRaw: List<Int> = (data["reminderDays"] as? List<*>)
+                ?.filterIsInstance<Number>()
+                ?.map { it.toInt() }
+                ?: emptyList()
             val unit = data["unit"] as? String ?: "раз"
 
             val createdBy = data["createdBy"] as? String ?: ""
@@ -93,6 +99,9 @@ class FirestoreRepositoryImpl @Inject constructor(
                 frequency = frequency,
                 reminderTime = reminderTime,
                 reminderEnabled = reminderEnabled,
+                reminderDays = reminderDaysRaw.mapNotNull { d ->
+                    try { kotlinx.datetime.DayOfWeek.entries.firstOrNull { it.value == d } } catch (_: Exception) { null }
+                }.toSet(),
                 targetValue = targetValue,
                 unit = unit,
                 createdBy = createdBy,
@@ -172,6 +181,10 @@ class FirestoreRepositoryImpl @Inject constructor(
                 // Target
                 put("targetValue", habit.targetValue)
                 put("unit", habit.unit)
+                // Дни недели напоминаний
+                if (habit.reminderDays.isNotEmpty()) {
+                    put("reminderDays", habit.reminderDays.map { it.value })
+                }
                 // Социальные
                 put("createdBy", habit.createdBy)
                 put("participants", habit.participants)
@@ -213,6 +226,7 @@ class FirestoreRepositoryImpl @Inject constructor(
                 } else {
                     put("reminderTime", FieldValue.delete())
                 }
+                put("reminderDays", if (habit.reminderDays.isNotEmpty()) habit.reminderDays.map { it.value } else FieldValue.delete())
                 put("targetValue", habit.targetValue)
                 put("unit", habit.unit)
                 put("participants", habit.participants)

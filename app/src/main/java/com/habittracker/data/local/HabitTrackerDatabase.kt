@@ -7,6 +7,7 @@ import androidx.room.RoomDatabase
 import androidx.room.TypeConverters
 import androidx.room.migration.Migration
 import androidx.sqlite.db.SupportSQLiteDatabase
+import com.habittracker.BuildConfig
 import com.habittracker.data.local.dao.*
 import com.habittracker.data.local.entity.AchievementEntity
 import com.habittracker.data.local.entity.ChallengeEntity
@@ -34,7 +35,7 @@ import com.habittracker.data.local.entity.UserEntity
         PendingNotificationEntity::class,
         SyncOutboxEntity::class
     ],
-    version = 8,
+    version = 9,
     exportSchema = false // Для простоты отключаем экспорт схемы
 )
 @TypeConverters(Converters::class)
@@ -61,21 +62,27 @@ abstract class HabitTrackerDatabase : RoomDatabase() {
 
         fun getDatabase(context: Context): HabitTrackerDatabase {
             return INSTANCE ?: synchronized(this) {
-                val instance = Room.databaseBuilder(
+                val builder = Room.databaseBuilder(
                     context.applicationContext,
                     HabitTrackerDatabase::class.java,
                     DATABASE_NAME
+                ).addMigrations(
+                    MIGRATION_1_2,
+                    MIGRATION_2_3,
+                    MIGRATION_3_4,
+                    MIGRATION_4_5,
+                    MIGRATION_5_6,
+                    MIGRATION_6_7,
+                    MIGRATION_7_8,
+                    MIGRATION_8_9
                 )
-                    .addMigrations(
-                        MIGRATION_1_2,
-                        MIGRATION_2_3,
-                        MIGRATION_3_4,
-                        MIGRATION_4_5,
-                        MIGRATION_5_6,
-                        MIGRATION_6_7
-                    )
-                    .fallbackToDestructiveMigration() // Только для разработки!
-                    .build()
+
+                if (BuildConfig.DEBUG) {
+                    // В debug-сборках допускаем деструктивные миграции для ускорения разработки
+                    builder.fallbackToDestructiveMigration()
+                }
+
+                val instance = builder.build()
 
                 INSTANCE = instance
                 instance
@@ -239,6 +246,21 @@ abstract class HabitTrackerDatabase : RoomDatabase() {
             override fun migrate(db: SupportSQLiteDatabase) {
                 // Добавляем новое поле avatarThumbnailUrl в таблицу users
                 db.execSQL("ALTER TABLE users ADD COLUMN avatarThumbnailUrl TEXT")
+            }
+        }
+
+        // Миграция с версии 7 на 8 (нет изменений в схеме — заглушка для непрерывной цепочки)
+        val MIGRATION_7_8 = object : Migration(7, 8) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                // no-op (схема без изменений)
+            }
+        }
+
+        // Миграция с версии 8 на 9 (дни напоминаний для привычек)
+        val MIGRATION_8_9 = object : Migration(8, 9) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                // Храним список дней недели как JSON-строку (конвертер List<Int> <-> String)
+                db.execSQL("ALTER TABLE habits ADD COLUMN reminderDays TEXT NOT NULL DEFAULT '[]'")
             }
         }
     }

@@ -18,6 +18,7 @@ data class HabitEntity(
     val frequency: HabitFrequency,
     val reminderTime: LocalTime?,
     val reminderEnabled: Boolean,
+    val reminderDays: List<Int> = emptyList(),
     val targetValue: Int,
     val unit: String,
     val createdBy: String,

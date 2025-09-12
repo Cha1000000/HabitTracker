@@ -294,6 +294,7 @@ private fun HabitInfoCard(
                             text = when (h.frequency) {
                                 HabitFrequency.DAILY -> stringResource(R.string.frequency_daily)
                                 HabitFrequency.WEEKLY -> stringResource(R.string.frequency_weekly)
+                                HabitFrequency.TWICE_A_WEEK -> stringResource(R.string.frequency_twice_weekly)
                                 HabitFrequency.WEEKDAYS -> stringResource(R.string.frequency_weekdays)
                                 HabitFrequency.WEEKENDS -> stringResource(R.string.frequency_weekends)
                                 HabitFrequency.CUSTOM -> stringResource(R.string.frequency_custom)

@@ -38,6 +38,18 @@ class Converters {
             gson.fromJson<List<String>>(it, type)
         } ?: emptyList()
 
+    // List<Int> converters (для reminderDays)
+    @TypeConverter
+    fun fromIntListToJson(list: List<Int>?): String? =
+        list?.let { gson.toJson(it) }
+
+    @TypeConverter
+    fun fromJsonToIntList(json: String?): List<Int> =
+        json?.let {
+            val type = object : TypeToken<List<Int>>() {}.type
+            gson.fromJson<List<Int>>(it, type)
+        } ?: emptyList()
+
     // ChallengeRules converters
     @TypeConverter
     fun toChallengeRules(value: String?): ChallengeRules? {

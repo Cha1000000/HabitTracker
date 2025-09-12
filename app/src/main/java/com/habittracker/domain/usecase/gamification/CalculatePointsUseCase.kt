@@ -55,6 +55,7 @@ class CalculatePointsUseCase @Inject constructor() {
         points = when (habit.frequency) {
             HabitFrequency.DAILY -> points
             HabitFrequency.WEEKLY -> (points * MULTIPLIER_WEEKLY).toInt()
+            HabitFrequency.TWICE_A_WEEK -> (points * MULTIPLIER_WEEKLY).toInt()
             HabitFrequency.WEEKDAYS -> points
             HabitFrequency.WEEKENDS -> points
             HabitFrequency.CUSTOM -> points

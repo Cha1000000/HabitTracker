@@ -6,6 +6,7 @@ import com.habittracker.domain.model.User
 import com.habittracker.presentation.utils.GroupHabitConstants
 import com.habittracker.presentation.utils.GroupHabitValidationResult
 import kotlinx.datetime.LocalTime
+import kotlinx.datetime.DayOfWeek
 
 data class AddEditHabitUiState(
     // Основные поля
@@ -21,9 +22,13 @@ data class AddEditHabitUiState(
     
     // Напоминание
     val reminderTime: LocalTime? = null,
+    // Выбранные дни недели для напоминаний (используются для WEEKLY/TWICE_A_WEEK/CUSTOM)
+    val reminderDaysInput: Set<DayOfWeek> = emptySet(),
     
     // Целевые значения
     val targetValue: Int = 1,
+    // Текстовое состояние для поля «Целевое значение», чтобы поддерживать промежуточные значения (пустая строка, ведущие нули и т.п.)
+    val targetValueInput: String = "1",
     val unit: String = "раз",
     
     // Групповые привычки

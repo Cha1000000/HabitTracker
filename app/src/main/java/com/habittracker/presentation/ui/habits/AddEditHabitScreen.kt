@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -52,6 +53,8 @@ import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExposedDropdownMenuBox
 import androidx.compose.material3.ExposedDropdownMenuDefaults
+import androidx.compose.material3.FilterChip
+import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.FloatingActionButtonDefaults
 import androidx.compose.material3.Icon
@@ -106,6 +109,7 @@ import com.habittracker.presentation.ui.permission.hasNotificationPermission
 import com.habittracker.presentation.viewmodel.AddEditHabitUiState
 import com.habittracker.presentation.viewmodel.AddEditHabitViewModel
 import com.habittracker.presentation.viewmodel.IAddEditHabitViewModel
+import kotlinx.datetime.DayOfWeek
 import kotlinx.datetime.LocalTime
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -192,6 +196,63 @@ private fun TimePickerDialog(
             }
         }
     )
+}
+
+@Composable
+private fun dayShortName(day: DayOfWeek): String = when (day) {
+    DayOfWeek.MONDAY -> stringResource(R.string.weekday_mon)
+    DayOfWeek.TUESDAY -> stringResource(R.string.weekday_tue)
+    DayOfWeek.WEDNESDAY -> stringResource(R.string.weekday_wed)
+    DayOfWeek.THURSDAY -> stringResource(R.string.weekday_thu)
+    DayOfWeek.FRIDAY -> stringResource(R.string.weekday_fri)
+    DayOfWeek.SATURDAY -> stringResource(R.string.weekday_sat)
+    DayOfWeek.SUNDAY -> stringResource(R.string.weekday_sun)
+}
+
+private fun dayShortNameRes(day: DayOfWeek): Int = when (day) {
+    DayOfWeek.MONDAY -> R.string.weekday_mon
+    DayOfWeek.TUESDAY -> R.string.weekday_tue
+    DayOfWeek.WEDNESDAY -> R.string.weekday_wed
+    DayOfWeek.THURSDAY -> R.string.weekday_thu
+    DayOfWeek.FRIDAY -> R.string.weekday_fri
+    DayOfWeek.SATURDAY -> R.string.weekday_sat
+    DayOfWeek.SUNDAY -> R.string.weekday_sun
+}
+
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun DaysOfWeekSelector(
+    selectedDays: Set<DayOfWeek>,
+    onToggle: (DayOfWeek) -> Unit,
+    enabled: Boolean,
+    modifier: Modifier = Modifier
+): Unit = FlowRow(
+    modifier = modifier,
+    horizontalArrangement = Arrangement.spacedBy(8.dp),
+    verticalArrangement = Arrangement.spacedBy(8.dp)
+){
+    val days = listOf(
+        DayOfWeek.MONDAY,
+        DayOfWeek.TUESDAY,
+        DayOfWeek.WEDNESDAY,
+        DayOfWeek.THURSDAY,
+        DayOfWeek.FRIDAY,
+        DayOfWeek.SATURDAY,
+        DayOfWeek.SUNDAY
+    )
+    days.forEach { day ->
+        val selected = selectedDays.contains(day)
+        FilterChip(
+            selected = selected,
+            onClick = { if (enabled) onToggle(day) },
+            label = { Text(dayShortName(day)) },
+            enabled = enabled,
+            colors = FilterChipDefaults.filterChipColors(
+                selectedContainerColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.48f),
+                selectedLabelColor = MaterialTheme.colorScheme.onPrimaryContainer
+            )
+        )
+    }
 }
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
@@ -626,6 +687,7 @@ private fun FrequencySelector(
             value = when (currentFrequency) {
                 HabitFrequency.DAILY -> stringResource(R.string.frequency_daily)
                 HabitFrequency.WEEKLY -> stringResource(R.string.frequency_weekly)
+                HabitFrequency.TWICE_A_WEEK -> stringResource(R.string.frequency_twice_weekly)
                 HabitFrequency.WEEKDAYS -> stringResource(R.string.frequency_weekdays)
                 HabitFrequency.WEEKENDS -> stringResource(R.string.frequency_weekends)
                 HabitFrequency.CUSTOM -> stringResource(R.string.frequency_custom)
@@ -652,6 +714,7 @@ private fun FrequencySelector(
                         Text(when (frequency) {
                             HabitFrequency.DAILY -> stringResource(R.string.frequency_daily)
                             HabitFrequency.WEEKLY -> stringResource(R.string.frequency_weekly)
+                            HabitFrequency.TWICE_A_WEEK -> stringResource(R.string.frequency_twice_weekly)
                             HabitFrequency.WEEKDAYS -> stringResource(R.string.frequency_weekdays)
                             HabitFrequency.WEEKENDS -> stringResource(R.string.frequency_weekends)
                             HabitFrequency.CUSTOM -> stringResource(R.string.frequency_custom)
@@ -971,12 +1034,9 @@ fun AddEditHabitScreen(
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     OutlinedTextField(
-                        value = uiState.targetValue.toString(),
-                        onValueChange = { 
-                            val value = it.toIntOrNull()
-                            if (value != null && value > 0) {
-                                viewModel.onTargetValueChange(value)
-                            }
+                        value = uiState.targetValueInput,
+                        onValueChange = { input ->
+                            viewModel.onTargetValueInputChange(input)
                         },
                         label = { Text(stringResource(R.string.habit_target_value_label)) },
                         modifier = Modifier.weight(1f),
@@ -1022,9 +1082,28 @@ fun AddEditHabitScreen(
                                 Text(stringResource(R.string.habit_reminder_label))
                                 Text(
                                     text = if (uiState.reminderTime != null) {
-                                        uiState.reminderTime?.let { time ->
-                                            stringResource(R.string.habit_reminder_time_format, time.hour, time.minute)
-                                        } ?: stringResource(R.string.habit_reminder_not_set)
+                                        val time = uiState.reminderTime!!
+                                        val timePart = stringResource(R.string.at_time_format, time.hour, time.minute)
+                                        when (uiState.frequency) {
+                                            HabitFrequency.DAILY -> "${stringResource(R.string.frequency_daily)} $timePart"
+                                            HabitFrequency.WEEKDAYS -> "${stringResource(R.string.frequency_weekdays)} $timePart"
+                                            HabitFrequency.WEEKENDS -> "${stringResource(R.string.frequency_weekends)} $timePart"
+                                            HabitFrequency.WEEKLY, HabitFrequency.TWICE_A_WEEK, HabitFrequency.CUSTOM -> {
+                                                val dayNames = listOf(
+                                                    DayOfWeek.MONDAY,
+                                                    DayOfWeek.TUESDAY,
+                                                    DayOfWeek.WEDNESDAY,
+                                                    DayOfWeek.THURSDAY,
+                                                    DayOfWeek.FRIDAY,
+                                                    DayOfWeek.SATURDAY,
+                                                    DayOfWeek.SUNDAY
+                                                ).associateWith { stringResource(dayShortNameRes(it)) }
+                                                val daysText = uiState.reminderDaysInput
+                                                    .sortedBy { it.value }
+                                                    .joinToString(", ") { day -> dayNames[day] ?: "" }
+                                                if (daysText.isNotBlank()) "$daysText $timePart" else stringResource(R.string.habit_reminder_not_set)
+                                            }
+                                        }
                                     } else {
                                         stringResource(R.string.habit_reminder_disabled)
                                     },
@@ -1059,6 +1138,44 @@ fun AddEditHabitScreen(
                                 enabled = !uiState.isLoading && !uiState.isHabitSaved
                             ) {
                                 Text(stringResource(R.string.habit_change_reminder_time))
+                            }
+                            // Выбор дней недели для WEEKLY/TWICE_A_WEEK/CUSTOM
+                            when (uiState.frequency) {
+                                HabitFrequency.WEEKLY, HabitFrequency.TWICE_A_WEEK, HabitFrequency.CUSTOM -> {
+                                    Spacer(modifier = Modifier.height(8.dp))
+                                    val hint = when (uiState.frequency) {
+                                        HabitFrequency.WEEKLY -> stringResource(R.string.reminder_days_hint_weekly)
+                                        HabitFrequency.TWICE_A_WEEK -> stringResource(R.string.reminder_days_hint_twice)
+                                        else -> stringResource(R.string.reminder_days_hint_custom)
+                                    }
+                                    Text(
+                                        text = hint,
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                    Spacer(modifier = Modifier.height(8.dp))
+                                    DaysOfWeekSelector(
+                                        selectedDays = uiState.reminderDaysInput,
+                                        onToggle = { day -> viewModel.onReminderDayToggle(day) },
+                                        enabled = !uiState.isLoading && !uiState.isHabitSaved
+                                    )
+                                    // Мягкая валидация выбора дней
+                                    val warnText = when (uiState.frequency) {
+                                        HabitFrequency.WEEKLY -> if (uiState.reminderDaysInput.size != 1) stringResource(R.string.reminder_days_hint_weekly) else null
+                                        HabitFrequency.TWICE_A_WEEK -> if (uiState.reminderDaysInput.size != 2) stringResource(R.string.reminder_days_hint_twice) else null
+                                        HabitFrequency.CUSTOM -> if (uiState.reminderDaysInput.isEmpty()) stringResource(R.string.reminder_days_hint_custom) else null
+                                        else -> null
+                                    }
+                                    if (warnText != null) {
+                                        Spacer(modifier = Modifier.height(6.dp))
+                                        Text(
+                                            text = warnText,
+                                            style = MaterialTheme.typography.bodySmall,
+                                            color = MaterialTheme.colorScheme.error
+                                        )
+                                    }
+                                }
+                                else -> { /* no-op */ }
                             }
                         }
                     }

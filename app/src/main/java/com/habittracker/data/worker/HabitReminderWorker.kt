@@ -4,8 +4,8 @@ import android.content.Context
 import android.util.Log
 import androidx.work.CoroutineWorker
 import androidx.work.WorkerParameters
-import com.habittracker.data.notification.NotificationHelper
 import com.habittracker.data.local.HabitTrackerDatabase
+import com.habittracker.data.notification.NotificationHelper
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.datetime.Clock
@@ -47,11 +47,40 @@ class HabitReminderWorker(
             val habitDao = database.habitDao()
             val habitEntryDao = database.habitEntryDao()
 
-            // Проверяем, что привычка все еще активна и напоминания включены
+            // Проверяем, что привычка все еще активна и имеет время напоминания (основной источник истины)
             val habit = habitDao.getHabitById(habitId)
-            if (habit == null || !habit.isActive || !habit.reminderEnabled) {
-                Log.d("HabitReminderWorker", "Habit is not active or reminders are disabled")
-                return@withContext Result.success() // Привычка удалена или напоминания отключены
+            if (habit == null) {
+                Log.d("HabitReminderWorker", "Habit not found in local DB: $habitId — fallback to inputData")
+                // Even if habit row is missing locally (e.g., after destructive migration),
+                // we can still notify the user using input data, but avoid duplicates if completed today.
+                val today = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault()).date
+                val todayEntry = habitEntryDao.getEntry(habitId, userId, today)
+                if (todayEntry != null && todayEntry.completed) {
+                    Log.d("HabitReminderWorker", "Habit already completed today (fallback) - skipping notification")
+                    return@withContext Result.success()
+                }
+
+                val notificationHelper = NotificationHelper(applicationContext)
+                if (!notificationHelper.areNotificationsEnabled()) {
+                    Log.d("HabitReminderWorker", "Notifications are disabled by user (fallback)")
+                    return@withContext Result.success()
+                }
+                Log.d("HabitReminderWorker", "Sending notification (fallback) for habit: $habitTitle")
+                notificationHelper.showHabitReminderNotification(
+                    habitId = habitId,
+                    habitTitle = habitTitle,
+                    habitIcon = habitIcon
+                )
+                Log.d("HabitReminderWorker", "Notification sent successfully (fallback)")
+                return@withContext Result.success()
+            }
+            Log.d(
+                "HabitReminderWorker",
+                "Loaded habit from DB: id=${habit.id}, isActive=${habit.isActive}, reminderEnabled=${habit.reminderEnabled}, reminderTime=${habit.reminderTime}"
+            )
+            if (!habit.isActive || habit.reminderTime == null) {
+                Log.d("HabitReminderWorker", "Habit inactive or reminderTime is null — skipping notification")
+                return@withContext Result.success()
             }
 
             // Умная проверка: не отправляем уведомление, если привычка уже выполнена сегодня

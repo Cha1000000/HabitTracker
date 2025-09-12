@@ -22,7 +22,7 @@ class HabitRepositoryImpl @Inject constructor(
     }
     
     override suspend fun updateHabit(habit: Habit) {
-        habitDao.updateHabit(habit.toEntity())
+        habitDao.insertHabit(habit.toEntity())
     }
     
     override suspend fun deleteHabit(habitId: String) {
