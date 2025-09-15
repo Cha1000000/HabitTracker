@@ -1,5 +1,6 @@
 package com.habittracker.domain.usecase.habit
 
+import android.util.Log
 import com.habittracker.domain.model.Habit
 import com.habittracker.domain.model.canAddParticipants
 import com.habittracker.domain.model.getParticipantsCount
@@ -7,6 +8,7 @@ import com.habittracker.domain.model.isGroupHabit
 import com.habittracker.domain.model.isUserParticipant
 import com.habittracker.domain.repository.HabitRepository
 import com.habittracker.domain.repository.SocialRepository
+import com.habittracker.domain.usecase.ScheduleHabitReminderUseCase
 import kotlinx.datetime.Clock
 import javax.inject.Inject
 
@@ -16,7 +18,8 @@ import javax.inject.Inject
 class JoinHabitByCodeUseCase @Inject constructor(
     private val habitRepository: HabitRepository,
     private val socialRepository: SocialRepository,
-    private val generateInviteCodeUseCase: GenerateHabitInviteCodeUseCase
+    private val generateInviteCodeUseCase: GenerateHabitInviteCodeUseCase,
+    private val scheduleHabitReminderUseCase: ScheduleHabitReminderUseCase
 ) {
     
     /**
@@ -77,6 +80,18 @@ class JoinHabitByCodeUseCase @Inject constructor(
 
             // Добавляем пользователя к участникам привычки
             habitRepository.addParticipantToHabit(habit.id, userId)
+
+            // Локально планируем напоминания для нового участника на этом устройстве
+            try {
+                if (habit.reminderTime != null) {
+                    Log.d("JoinHabitByCodeUC", "[reminder] scheduling for habit=${habit.id}")
+                    scheduleHabitReminderUseCase(habit)
+                } else {
+                    Log.d("JoinHabitByCodeUC", "[reminder] skip: no reminderTime for habit=${habit.id}")
+                }
+            } catch (e: Exception) {
+                Log.w("JoinHabitByCodeUC", "[reminder] failed to schedule: ${e.message}", e)
+            }
 
             // Отправляем уведомление создателю привычки
             try {

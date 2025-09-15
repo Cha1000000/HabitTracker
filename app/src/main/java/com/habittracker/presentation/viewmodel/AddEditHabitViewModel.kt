@@ -264,7 +264,7 @@ class AddEditHabitViewModel @Inject constructor(
     }
     
     override fun onTypeChange(type: HabitType) {
-        _uiState.update { it.copy(type = type) }
+        _uiState.update { it.copy(type = type, hasUnsavedChanges = true) }
     }
     
     override fun onFrequencyChange(frequency: HabitFrequency) {
@@ -636,8 +636,23 @@ class AddEditHabitViewModel @Inject constructor(
 
     override fun requestInvitations() {
         val state = _uiState.value
-        // Если можно отправить прямо сейчас — отправляем
+        val persistedType = currentHabit?.type
+        val typeChanged = persistedType != null && persistedType != state.type
+
+        // Если тип изменился (например, PERSONAL -> GROUP), надо сначала сохранить
+        if (typeChanged) {
+            _uiState.update {
+                it.copy(
+                    sendInvitesAfterSave = true,
+                    successMessage = getApplication<Application>().getString(R.string.save_to_send_invitations)
+                )
+            }
+            return
+        }
+
+        // Можно отправлять только если сохранённая привычка уже GROUP
         val canSendNow = state.type == HabitType.GROUP &&
+                currentHabit?.type == HabitType.GROUP &&
                 currentHabit?.id != null &&
                 state.selectedFriendsToInvite.isNotEmpty() &&
                 (state.participants.size + state.selectedFriendsToInvite.size) <= state.maxParticipants

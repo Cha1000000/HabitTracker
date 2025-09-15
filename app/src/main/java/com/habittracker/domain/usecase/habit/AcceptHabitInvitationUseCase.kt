@@ -1,8 +1,11 @@
 package com.habittracker.domain.usecase.habit
 
+import android.util.Log
 import com.habittracker.domain.model.HabitInvitation
 import com.habittracker.domain.model.isExpired
 import com.habittracker.domain.model.isPending
+import com.habittracker.domain.usecase.GetHabitByIdUseCase
+import com.habittracker.domain.usecase.ScheduleHabitReminderUseCase
 import com.habittracker.domain.repository.SocialRepository
 import javax.inject.Inject
 
@@ -10,7 +13,9 @@ import javax.inject.Inject
  * Use case для принятия приглашения в групповую привычку
  */
 class AcceptHabitInvitationUseCase @Inject constructor(
-    private val socialRepository: SocialRepository
+    private val socialRepository: SocialRepository,
+    private val getHabitByIdUseCase: GetHabitByIdUseCase,
+    private val scheduleHabitReminderUseCase: ScheduleHabitReminderUseCase
 ) {
     /**
      * Принимает приглашение в групповую привычку
@@ -47,10 +52,26 @@ class AcceptHabitInvitationUseCase @Inject constructor(
                 ?: return Result.failure(Exception("Пользователь не найден"))
 
             // Принимаем приглашение через SocialRepository
-            val acceptedInvitation = socialRepository.acceptHabitInvitation(invitationId)
+            val result = socialRepository.acceptHabitInvitation(invitationId)
             // Побочные эффекты (добавление участника, пуш-уведомления) выполняются на уровне репозитория
-            
-            acceptedInvitation
+
+            // Локально планируем напоминания для нового участника на этом устройстве
+            result.onSuccess { accepted ->
+                try {
+                    val habitId = accepted.habitId
+                    val habit = getHabitByIdUseCase(habitId)
+                    if (habit != null && habit.reminderTime != null) {
+                        Log.d("AcceptHabitInvitationUC", "[reminder] scheduling for habit=$habitId")
+                        scheduleHabitReminderUseCase(habit)
+                    } else {
+                        Log.d("AcceptHabitInvitationUC", "[reminder] skip: habit null or no reminderTime for habit=$habitId")
+                    }
+                } catch (e: Exception) {
+                    Log.w("AcceptHabitInvitationUC", "[reminder] failed to schedule: ${e.message}", e)
+                }
+            }
+
+            result
         } catch (e: Exception) {
             Result.failure(e)
         }
