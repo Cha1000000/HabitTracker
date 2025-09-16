@@ -6,6 +6,7 @@ import com.habittracker.domain.model.isExpired
 import com.habittracker.domain.model.isPending
 import com.habittracker.domain.usecase.GetHabitByIdUseCase
 import com.habittracker.domain.usecase.ScheduleHabitReminderUseCase
+import com.habittracker.domain.repository.ParticipantSettingsRepository
 import com.habittracker.domain.repository.SocialRepository
 import javax.inject.Inject
 
@@ -15,7 +16,8 @@ import javax.inject.Inject
 class AcceptHabitInvitationUseCase @Inject constructor(
     private val socialRepository: SocialRepository,
     private val getHabitByIdUseCase: GetHabitByIdUseCase,
-    private val scheduleHabitReminderUseCase: ScheduleHabitReminderUseCase
+    private val scheduleHabitReminderUseCase: ScheduleHabitReminderUseCase,
+    private val participantSettingsRepository: ParticipantSettingsRepository
 ) {
     /**
      * Принимает приглашение в групповую привычку
@@ -55,12 +57,14 @@ class AcceptHabitInvitationUseCase @Inject constructor(
             val result = socialRepository.acceptHabitInvitation(invitationId)
             // Побочные эффекты (добавление участника, пуш-уведомления) выполняются на уровне репозитория
 
-            // Локально планируем напоминания для нового участника на этом устройстве
+            // Локально инициализируем персональные настройки и планируем напоминания для нового участника на этом устройстве
             result.onSuccess { accepted ->
                 try {
                     val habitId = accepted.habitId
                     val habit = getHabitByIdUseCase(habitId)
                     if (habit != null && habit.reminderTime != null) {
+                        // Инициализируем персональные настройки из текущей привычки
+                        participantSettingsRepository.upsertDefaultsFromHabit(habit, userId)
                         Log.d("AcceptHabitInvitationUC", "[reminder] scheduling for habit=$habitId")
                         scheduleHabitReminderUseCase(habit)
                     } else {

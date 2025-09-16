@@ -2,7 +2,6 @@
     <!-- App Info -->
     <string name="app_name">HabitTracker</string>
     <string name="default_web_client_id">637297267141-flvhigsfcbgc0m20hdoh3kid6vl0k0ne.apps.googleusercontent.com</string>
-    
     <!-- Common Actions -->
     <string name="action_save">Сохранить</string>
     <string name="action_cancel">Отмена</string>
@@ -74,6 +73,12 @@
     <string name="habit_select_icon">Выберите иконку</string>
     <string name="habit_select_color">Выберите цвет</string>
     <string name="habit_click_to_change_icon">Нажмите, чтобы изменить иконку</string>
+    <!-- Personal reminder settings -->
+    <string name="reminder_personal_hint">Напоминание — только для меня</string>
+    <string name="apply_reminder_to_all">Применить для всех</string>
+    <string name="confirm_apply_reminder_title">Применить напоминание для всех?</string>
+    <string name="confirm_apply_reminder_message">Текущие настройки напоминания (время и дни) будут применены всем участникам группы. Продолжить?</string>
+    <string name="apply">Применить</string>
     <string name="habit_color_label">Цвет:</string>
     <string name="habit_name_required_hint">Введите название, чтобы продолжить</string>
     

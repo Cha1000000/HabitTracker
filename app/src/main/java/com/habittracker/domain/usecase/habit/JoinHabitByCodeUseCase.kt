@@ -9,6 +9,7 @@ import com.habittracker.domain.model.isUserParticipant
 import com.habittracker.domain.repository.HabitRepository
 import com.habittracker.domain.repository.SocialRepository
 import com.habittracker.domain.usecase.ScheduleHabitReminderUseCase
+import com.habittracker.domain.repository.ParticipantSettingsRepository
 import kotlinx.datetime.Clock
 import javax.inject.Inject
 
@@ -19,7 +20,8 @@ class JoinHabitByCodeUseCase @Inject constructor(
     private val habitRepository: HabitRepository,
     private val socialRepository: SocialRepository,
     private val generateInviteCodeUseCase: GenerateHabitInviteCodeUseCase,
-    private val scheduleHabitReminderUseCase: ScheduleHabitReminderUseCase
+    private val scheduleHabitReminderUseCase: ScheduleHabitReminderUseCase,
+    private val participantSettingsRepository: ParticipantSettingsRepository
 ) {
     
     /**
@@ -81,9 +83,10 @@ class JoinHabitByCodeUseCase @Inject constructor(
             // Добавляем пользователя к участникам привычки
             habitRepository.addParticipantToHabit(habit.id, userId)
 
-            // Локально планируем напоминания для нового участника на этом устройстве
+            // Инициализируем персональные настройки и локально планируем напоминания для нового участника на этом устройстве
             try {
                 if (habit.reminderTime != null) {
+                    participantSettingsRepository.upsertDefaultsFromHabit(habit, userId)
                     Log.d("JoinHabitByCodeUC", "[reminder] scheduling for habit=${habit.id}")
                     scheduleHabitReminderUseCase(habit)
                 } else {

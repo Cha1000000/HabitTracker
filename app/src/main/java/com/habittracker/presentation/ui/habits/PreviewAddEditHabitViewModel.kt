@@ -126,6 +126,10 @@ class PreviewAddEditHabitViewModel @Inject constructor(
         // Не используется в новом интерфейсе
     }
 
+    override fun applyReminderToAllParticipants() {
+        // no-op in preview
+    }
+
     override fun onReminderDayToggle(day: DayOfWeek) {
         _uiState.update { state ->
             val current = state.reminderDaysInput.toMutableSet()

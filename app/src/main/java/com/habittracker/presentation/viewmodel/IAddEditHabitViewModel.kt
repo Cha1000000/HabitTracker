@@ -45,6 +45,7 @@ interface IAddEditHabitViewModel {
     fun scheduleReminder()
     fun cancelReminder()
     fun updateReminder()
+    fun applyReminderToAllParticipants()
     
     fun onErrorShown()
     fun onSuccessMessageShown()

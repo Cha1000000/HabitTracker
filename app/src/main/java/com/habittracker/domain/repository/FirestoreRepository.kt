@@ -1,6 +1,7 @@
 package com.habittracker.domain.repository
 
 import com.habittracker.domain.model.Habit
+import com.habittracker.domain.model.HabitParticipantSettings
 import com.habittracker.domain.model.HabitEntry
 import kotlinx.coroutines.flow.Flow
 
@@ -78,4 +79,8 @@ interface FirestoreRepository {
      * Загружает изменения с сервера и отправляет локальные изменения.
      */
     suspend fun syncData()
+
+    // Participant personal settings for reminders
+    suspend fun getParticipantSettings(habitId: String, userId: String): HabitParticipantSettings?
+    suspend fun setParticipantSettings(settings: HabitParticipantSettings)
 }

@@ -46,6 +46,7 @@ class HabitReminderWorker(
             val database = HabitTrackerDatabase.getDatabase(applicationContext)
             val habitDao = database.habitDao()
             val habitEntryDao = database.habitEntryDao()
+            val participantDao = database.habitParticipantSettingsDao()
 
             // Проверяем, что привычка все еще активна и имеет время напоминания (основной источник истины)
             val habit = habitDao.getHabitById(habitId)
@@ -78,9 +79,24 @@ class HabitReminderWorker(
                 "HabitReminderWorker",
                 "Loaded habit from DB: id=${habit.id}, isActive=${habit.isActive}, reminderEnabled=${habit.reminderEnabled}, reminderTime=${habit.reminderTime}"
             )
-            if (!habit.isActive || habit.reminderTime == null) {
-                Log.d("HabitReminderWorker", "Habit inactive or reminderTime is null — skipping notification")
-                return@withContext Result.success()
+
+            // Загружаем персональные настройки участника, если есть
+            val settings = participantDao.get(habitId, userId)
+            if (settings != null) {
+                Log.d("HabitReminderWorker", "Participant settings loaded: enabled=${settings.reminderEnabled}, rt=${settings.reminderTime}, muted=${settings.notificationsMuted}")
+                if (settings.notificationsMuted) {
+                    Log.d("HabitReminderWorker", "Notifications muted by user — skipping notification")
+                    return@withContext Result.success()
+                }
+                if (!habit.isActive || settings.reminderTime == null || !settings.reminderEnabled) {
+                    Log.d("HabitReminderWorker", "Habit inactive or participant reminder off — skipping notification")
+                    return@withContext Result.success()
+                }
+            } else {
+                if (!habit.isActive || habit.reminderTime == null) {
+                    Log.d("HabitReminderWorker", "Habit inactive or reminderTime is null — skipping notification")
+                    return@withContext Result.success()
+                }
             }
 
             // Умная проверка: не отправляем уведомление, если привычка уже выполнена сегодня

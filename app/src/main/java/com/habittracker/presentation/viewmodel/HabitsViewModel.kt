@@ -8,14 +8,16 @@ import com.habittracker.R
 import com.habittracker.domain.model.Habit
 import com.habittracker.domain.repository.AuthRepository
 import com.habittracker.domain.usecase.DeleteHabitUseCase
+import com.habittracker.domain.usecase.EnsureMySettingsForHabitUseCase
 import com.habittracker.domain.usecase.GetHabitCompletionStatusUseCase
 import com.habittracker.domain.usecase.GetHabitsUseCase
 import com.habittracker.domain.usecase.MarkHabitCompletedUseCase
 import com.habittracker.domain.usecase.MarkHabitIncompleteUseCase
+import com.habittracker.domain.usecase.ScheduleHabitReminderUseCase
 import com.habittracker.presentation.ui.habits.components.ParticipantProgress
 import dagger.hilt.android.lifecycle.HiltViewModel
-import kotlinx.coroutines.Job
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
@@ -62,6 +64,8 @@ class HabitsViewModel @Inject constructor(
     private val getHabitCompletionStatusUseCase: GetHabitCompletionStatusUseCase,
     private val authRepository: AuthRepository,
     private val deleteHabitUseCase: DeleteHabitUseCase,
+    private val ensureMySettingsForHabitUseCase: EnsureMySettingsForHabitUseCase,
+    private val scheduleHabitReminderUseCase: ScheduleHabitReminderUseCase,
     application: Application
 ) : AndroidViewModel(application) {
 
@@ -78,6 +82,9 @@ class HabitsViewModel @Inject constructor(
     // Pending deletion state for UNDO support
     private var pendingDeletion: PendingDeletion? = null
     private data class PendingDeletion(val habitWithCompletion: HabitWithCompletion, val index: Int)
+
+    // Reactive rescheduling disabled to avoid loops; we schedule on demand where settings change
+    private val lastScheduleKeyByHabit: MutableMap<String, String> = mutableMapOf()
     
     private val currentUserId: String
         get() = authRepository.getCurrentUserId() 
@@ -145,6 +152,27 @@ class HabitsViewModel @Inject constructor(
                     val updatedHabits = coroutineScope {
                         habits.map { habit ->
                             async {
+                                // Ленивая инициализация персональных настроек для текущего пользователя
+                                try { ensureMySettingsForHabitUseCase(habit) } catch (_: Exception) { }
+
+                                // Планируем уведомление только если есть изменения значимых полей
+                                val scheduleKey = buildString {
+                                    append(habit.reminderEnabled)
+                                    append("|")
+                                    append(habit.reminderTime?.toString() ?: "null")
+                                    append("|")
+                                    append(habit.reminderDays.sortedBy { it.value }.joinToString(","))
+                                    append("|")
+                                    append(habit.frequency.name)
+                                    append("|")
+                                    append(habit.isActive)
+                                }
+                                val lastKey = lastScheduleKeyByHabit[habit.id]
+                                if (lastKey != scheduleKey) {
+                                    lastScheduleKeyByHabit[habit.id] = scheduleKey
+                                    try { scheduleHabitReminderUseCase(habit) } catch (_: Exception) { }
+                                }
+
                                 val isCompleted = try {
                                     getHabitCompletionStatusUseCase(habit.id, userId, today)
                                 } catch (_: Exception) {

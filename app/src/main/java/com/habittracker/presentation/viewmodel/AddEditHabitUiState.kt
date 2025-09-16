@@ -21,6 +21,8 @@ data class AddEditHabitUiState(
     val frequency: HabitFrequency = HabitFrequency.DAILY,
     
     // Напоминание
+    // Явный флаг включения напоминаний (не завязан на nullability времени)
+    val reminderEnabled: Boolean = false,
     val reminderTime: LocalTime? = null,
     // Выбранные дни недели для напоминаний (используются для WEEKLY/TWICE_A_WEEK/CUSTOM)
     val reminderDaysInput: Set<DayOfWeek> = emptySet(),
@@ -65,10 +67,14 @@ data class AddEditHabitUiState(
     val canSaveHabit: Boolean = true,
     val inviteCodeGenerationAttempts: Int = 0,
     val lastInvitationSentAt: Long? = null,
+    // Можно ли применить напоминание для всех (создатель групповой привычки)
+    val canApplyReminderToAll: Boolean = false,
     
     // Индикаторы состояния
     val hasUnsavedChanges: Boolean = false,
     val isFormValid: Boolean = true,
     // Флаг намерения отправить приглашения после сохранения (Variant B)
-    val sendInvitesAfterSave: Boolean = false
+    val sendInvitesAfterSave: Boolean = false,
+    // Когда true — экран полностью инициализирован данными (исключаем стартовый кадр с дефолтами)
+    val isInitialized: Boolean = false
 )

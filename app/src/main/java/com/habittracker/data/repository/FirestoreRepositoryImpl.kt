@@ -2,11 +2,12 @@ package com.habittracker.data.repository
 
 import android.util.Log
 import com.google.firebase.firestore.DocumentSnapshot
-import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.FieldValue
+import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.Query
 import com.habittracker.domain.model.Habit
 import com.habittracker.domain.model.HabitEntry
+import com.habittracker.domain.model.HabitParticipantSettings
 import com.habittracker.domain.repository.FirestoreRepository
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
@@ -68,7 +69,12 @@ class FirestoreRepositoryImpl @Inject constructor(
                 else -> null
             }
 
-            val reminderEnabled = (data["reminderEnabled"] as? Boolean) ?: (reminderTime != null)
+            val rawEnabled = data["reminderEnabled"] as? Boolean
+            val reminderEnabled = when (rawEnabled) {
+                null -> (reminderTime != null)
+                false -> if (reminderTime != null) true else false
+                else -> rawEnabled
+            }
             val targetValue = (data["targetValue"] as? Number)?.toInt() ?: 1
             // reminderDays как список чисел (1..7)
             @Suppress("UNCHECKED_CAST")
@@ -211,7 +217,7 @@ class FirestoreRepositoryImpl @Inject constructor(
         try {
             Log.d(TAG, "🛠️ [updateHabit] Updating habit: ${habit.id}")
             Log.d(TAG, "⏰ [updateHabit] incoming reminderTime=${habit.reminderTime}, reminderEnabled(computed)=${habit.reminderTime != null}")
-            val payload = buildMap<String, Any?> {
+            val payload = mutableMapOf<String, Any>().apply {
                 put("title", habit.title)
                 put("description", habit.description)
                 put("icon", habit.icon)
@@ -226,19 +232,30 @@ class FirestoreRepositoryImpl @Inject constructor(
                 } else {
                     put("reminderTime", FieldValue.delete())
                 }
-                put("reminderDays", if (habit.reminderDays.isNotEmpty()) habit.reminderDays.map { it.value } else FieldValue.delete())
+                if (habit.reminderDays.isNotEmpty()) {
+                    put("reminderDays", habit.reminderDays.map { it.value })
+                } else {
+                    put("reminderDays", FieldValue.delete())
+                }
                 put("targetValue", habit.targetValue)
                 put("unit", habit.unit)
-                put("participants", habit.participants)
+                // Important guard: don't clear participants if UI didn't load them yet
+                if (habit.participants.isNotEmpty()) {
+                    put("participants", habit.participants)
+                }
                 put("maxParticipants", habit.maxParticipants)
-                put("inviteCode", habit.inviteCode)
+                if (habit.inviteCode != null) {
+                    put("inviteCode", habit.inviteCode)
+                } else {
+                    put("inviteCode", FieldValue.delete())
+                }
                 put("public", habit.isPublic)
                 put("isActive", habit.isActive)
                 put("updatedAt", habit.updatedAt)
             }
             firestore.collection(HABITS_COLLECTION)
                 .document(habit.id)
-                .set(payload, com.google.firebase.firestore.SetOptions.merge())
+                .update(payload as Map<String, Any>)
                 .await()
             Log.d(TAG, "✅ [updateHabit] Habit updated successfully: ${habit.id}")
         } catch (e: Exception) {
@@ -354,4 +371,95 @@ class FirestoreRepositoryImpl @Inject constructor(
         // для более сложной логики конфликтов и офлайн-поддержки
         Log.d(TAG, "Data sync completed (basic implementation)")
     }
+
+    // region Participant settings
+    private fun participantSettingsDoc(habitId: String, userId: String) =
+        firestore.collection(HABITS_COLLECTION)
+            .document(habitId)
+            .collection("participants")
+            .document(userId)
+            .collection("meta")
+            .document("settings")
+
+    override suspend fun getParticipantSettings(habitId: String, userId: String): HabitParticipantSettings? {
+        return try {
+            val doc = participantSettingsDoc(habitId, userId).get().await()
+            if (!doc.exists()) return null
+            val data = doc.data ?: return null
+            val rt = data["reminderTime"] as? Map<*, *>
+            val reminderTime = if (rt != null) {
+                val hour = (rt["hour"] as? Number)?.toInt()
+                val minute = (rt["minute"] as? Number)?.toInt()
+                if (hour != null && minute != null) kotlinx.datetime.LocalTime(hour, minute) else null
+            } else null
+            val reminderEnabled = (data["reminderEnabled"] as? Boolean) ?: (reminderTime != null)
+            @Suppress("UNCHECKED_CAST")
+            val reminderDaysRaw: List<Int> = (data["reminderDays"] as? List<*>)?.filterIsInstance<Number>()?.map { it.toInt() } ?: emptyList()
+            val notificationsMuted = data["notificationsMuted"] as? Boolean ?: false
+            val timeZone = data["timeZone"] as? String
+            val updatedAt = (data["updatedAt"] as? Number)?.toLong() ?: System.currentTimeMillis()
+            HabitParticipantSettings(
+                habitId = habitId,
+                userId = userId,
+                reminderTime = reminderTime,
+                reminderEnabled = reminderEnabled,
+                reminderDays = reminderDaysRaw.mapNotNull { d ->
+                    try { kotlinx.datetime.DayOfWeek.entries.firstOrNull { it.value == d } } catch (_: Exception) { null }
+                }.toSet(),
+                notificationsMuted = notificationsMuted,
+                timeZone = timeZone,
+                updatedAt = updatedAt
+            )
+        } catch (e: Exception) {
+            Log.e(TAG, "Error getParticipantSettings: habit=$habitId user=$userId", e)
+            null
+        }
+    }
+
+    override suspend fun setParticipantSettings(settings: HabitParticipantSettings) {
+        try {
+            // Если включено, но время null — пробуем подтянуть дефолт из документа привычки
+            var finalTime = settings.reminderTime
+            if (settings.reminderEnabled && finalTime == null) {
+                try {
+                    val habitDoc = firestore.collection(HABITS_COLLECTION).document(settings.habitId).get().await()
+                    val rt = habitDoc.get("reminderTime") as? Map<*, *>
+                    if (rt != null) {
+                        val hour = (rt["hour"] as? Number)?.toInt()
+                        val minute = (rt["minute"] as? Number)?.toInt()
+                        if (hour != null && minute != null) {
+                            finalTime = kotlinx.datetime.LocalTime(hour, minute)
+                        }
+                    }
+                } catch (e: Exception) {
+                    Log.w(TAG, "Fallback to habit.reminderTime failed: ${e.message}")
+                }
+            }
+
+            val payload = mutableMapOf<String, Any>().apply {
+                put("reminderEnabled", settings.reminderEnabled)
+                if (finalTime != null && settings.reminderEnabled) {
+                    put("reminderTime", mapOf("hour" to finalTime.hour, "minute" to finalTime.minute))
+                } else {
+                    put("reminderTime", FieldValue.delete())
+                }
+                if (settings.reminderDays.isNotEmpty()) {
+                    put("reminderDays", settings.reminderDays.map { it.value })
+                } else {
+                    put("reminderDays", FieldValue.delete())
+                }
+                put("notificationsMuted", settings.notificationsMuted)
+                settings.timeZone?.let { put("timeZone", it) } ?: put("timeZone", FieldValue.delete())
+                put("updatedAt", settings.updatedAt)
+            }
+            participantSettingsDoc(settings.habitId, settings.userId)
+                .set(payload as Map<String, Any>, com.google.firebase.firestore.SetOptions.merge())
+                .await()
+            Log.d(TAG, "setParticipantSettings OK: ${settings.habitId}/${settings.userId}, time=$finalTime, enabled=${settings.reminderEnabled}")
+        } catch (e: Exception) {
+            Log.e(TAG, "Error setParticipantSettings: ${settings.habitId}/${settings.userId}", e)
+            throw e
+        }
+    }
+    // endregion
 }

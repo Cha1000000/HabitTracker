@@ -68,6 +68,7 @@ import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
+import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TimePicker
@@ -75,6 +76,7 @@ import androidx.compose.material3.TimePickerDefaults
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.rememberTimePickerState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -87,11 +89,13 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.toArgb
+import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.core.graphics.toColorInt
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -741,9 +745,19 @@ fun AddEditHabitScreen(
     var showIconPicker by remember { mutableStateOf(false) }
     var showColorPicker by remember { mutableStateOf(false) }
     var showTimePicker by remember { mutableStateOf(false) }
+    var timeSelectedDuringDialog by remember { mutableStateOf(false) }
+    var pendingEnableFromSwitch by remember { mutableStateOf(false) }
     var shouldRequestNotificationPermission by remember { mutableStateOf(false) }
     val hasPermission = hasNotificationPermission()
     val snackbarHostState = remember { SnackbarHostState() }
+
+    // Диагностируем текущее состояние напоминаний на уровне UI-композиции
+    LaunchedEffect(uiState.reminderEnabled, uiState.reminderTime) {
+        android.util.Log.d(
+            "AddEditHabitScreen",
+            "[compose] reminder: enabled=${uiState.reminderEnabled}, time=${uiState.reminderTime}"
+        )
+    }
 
     LaunchedEffect(uiState.isHabitSaved) {
         if (uiState.isHabitSaved) {
@@ -770,13 +784,53 @@ fun AddEditHabitScreen(
         )
     }
 
+    // Сброс флага выбора при каждом открытии диалога
+    LaunchedEffect(showTimePicker) {
+        if (showTimePicker) timeSelectedDuringDialog = false
+    }
+
     // Показываем диалог выбора времени
     if (showTimePicker) {
         val currentTime = uiState.reminderTime ?: LocalTime(12, 0)
         TimePickerDialog(
             initialTime = currentTime,
-            onTimeSelected = { viewModel.onReminderTimeChange(it) },
-            onDismiss = { showTimePicker = false }
+            onTimeSelected = { 
+                timeSelectedDuringDialog = true
+                viewModel.onReminderTimeChange(it) 
+            },
+            onDismiss = {
+                showTimePicker = false
+                // Если пользователь закрыл пикер без выбора времени — откатываем тумблер
+                if (pendingEnableFromSwitch) {
+                    if (!timeSelectedDuringDialog) {
+                        viewModel.onReminderEnabledChange(false)
+                    }
+                    pendingEnableFromSwitch = false
+                }
+            }
+        )
+    }
+
+    // Подтверждение применения напоминаний для всех
+    var showApplyAllConfirm by remember { mutableStateOf(false) }
+    if (showApplyAllConfirm) {
+        AlertDialog(
+            onDismissRequest = { showApplyAllConfirm = false },
+            title = { Text(stringResource(R.string.confirm_apply_reminder_title)) },
+            text = { Text(stringResource(R.string.confirm_apply_reminder_message)) },
+            confirmButton = {
+                TextButton(onClick = {
+                    showApplyAllConfirm = false
+                    (viewModel as? AddEditHabitViewModel)?.applyReminderToAllParticipants()
+                }) {
+                    Text(stringResource(R.string.apply))
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showApplyAllConfirm = false }) {
+                    Text(stringResource(R.string.action_cancel))
+                }
+            }
         )
     }
 
@@ -1080,57 +1134,81 @@ fun AddEditHabitScreen(
 
                             Column(modifier = Modifier.weight(1f)) {
                                 Text(stringResource(R.string.habit_reminder_label))
-                                Text(
-                                    text = if (uiState.reminderTime != null) {
-                                        val time = uiState.reminderTime!!
-                                        val timePart = stringResource(R.string.at_time_format, time.hour, time.minute)
-                                        when (uiState.frequency) {
-                                            HabitFrequency.DAILY -> "${stringResource(R.string.frequency_daily)} $timePart"
-                                            HabitFrequency.WEEKDAYS -> "${stringResource(R.string.frequency_weekdays)} $timePart"
-                                            HabitFrequency.WEEKENDS -> "${stringResource(R.string.frequency_weekends)} $timePart"
-                                            HabitFrequency.WEEKLY, HabitFrequency.TWICE_A_WEEK, HabitFrequency.CUSTOM -> {
-                                                val dayNames = listOf(
-                                                    DayOfWeek.MONDAY,
-                                                    DayOfWeek.TUESDAY,
-                                                    DayOfWeek.WEDNESDAY,
-                                                    DayOfWeek.THURSDAY,
-                                                    DayOfWeek.FRIDAY,
-                                                    DayOfWeek.SATURDAY,
-                                                    DayOfWeek.SUNDAY
-                                                ).associateWith { stringResource(dayShortNameRes(it)) }
-                                                val daysText = uiState.reminderDaysInput
-                                                    .sortedBy { it.value }
-                                                    .joinToString(", ") { day -> dayNames[day] ?: "" }
-                                                if (daysText.isNotBlank()) "$daysText $timePart" else stringResource(R.string.habit_reminder_not_set)
+                                if (!uiState.isInitialized) {
+                                    CircularProgressIndicator(
+                                        modifier = Modifier
+                                            .padding(top = 6.dp)
+                                            .size(16.dp),
+                                        strokeWidth = 2.dp
+                                    )
+                                } else {
+                                    Text(
+                                        text = if (uiState.reminderEnabled && uiState.reminderTime != null) {
+                                            val time = uiState.reminderTime!!
+                                            val timePart = stringResource(R.string.at_time_format, time.hour, time.minute)
+                                            when (uiState.frequency) {
+                                                HabitFrequency.DAILY -> "${stringResource(R.string.frequency_daily)} $timePart"
+                                                HabitFrequency.WEEKDAYS -> "${stringResource(R.string.frequency_weekdays)} $timePart"
+                                                HabitFrequency.WEEKENDS -> "${stringResource(R.string.frequency_weekends)} $timePart"
+                                                HabitFrequency.WEEKLY, HabitFrequency.TWICE_A_WEEK, HabitFrequency.CUSTOM -> {
+                                                    val dayNames = listOf(
+                                                        DayOfWeek.MONDAY,
+                                                        DayOfWeek.TUESDAY,
+                                                        DayOfWeek.WEDNESDAY,
+                                                        DayOfWeek.THURSDAY,
+                                                        DayOfWeek.FRIDAY,
+                                                        DayOfWeek.SATURDAY,
+                                                        DayOfWeek.SUNDAY
+                                                    ).associateWith { stringResource(dayShortNameRes(it)) }
+                                                    val daysText = uiState.reminderDaysInput
+                                                        .sortedBy { it.value }
+                                                        .joinToString(", ") { day -> dayNames[day] ?: "" }
+                                                    if (daysText.isNotBlank()) "$daysText $timePart" else stringResource(R.string.habit_reminder_not_set)
+                                                }
                                             }
-                                        }
-                                    } else {
-                                        stringResource(R.string.habit_reminder_disabled)
-                                    },
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
+                                        } else {
+                                            stringResource(R.string.habit_reminder_disabled)
+                                        },
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                }
                             }
 
-                            Switch(
-                                checked = uiState.reminderTime != null,
-                                onCheckedChange = { isChecked ->
-                                    if (isChecked) {
-                                        if (!hasPermission) {
-                                            shouldRequestNotificationPermission = true
-                                        }
-                                        if (uiState.reminderTime == null) {
-                                            showTimePicker = true
-                                        }
-                                    } else {
-                                        viewModel.onReminderTimeChange(null)
-                                    }
-                                },
-                                enabled = !uiState.isLoading && !uiState.isHabitSaved
-                            )
+                            if (!uiState.isInitialized) {
+                                CircularProgressIndicator(
+                                    modifier = Modifier.size(24.dp),
+                                    strokeWidth = 2.dp
+                                )
+                            } else {
+                                CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Ltr) {
+                                    Switch(
+                                        checked = uiState.reminderEnabled,
+                                        onCheckedChange = { isChecked ->
+                                            if (isChecked) {
+                                                if (!hasPermission) { shouldRequestNotificationPermission = true }
+                                                viewModel.onReminderEnabledChange(true)
+                                                if (uiState.reminderTime == null) {
+                                                    pendingEnableFromSwitch = true
+                                                    showTimePicker = true
+                                                }
+                                            } else {
+                                                viewModel.onReminderEnabledChange(false)
+                                            }
+                                        },
+                                        enabled = !uiState.isLoading && !uiState.isHabitSaved,
+                                        colors = SwitchDefaults.colors(
+                                            checkedTrackColor = MaterialTheme.colorScheme.primary,
+                                            checkedThumbColor = MaterialTheme.colorScheme.onPrimary,
+                                            uncheckedTrackColor = MaterialTheme.colorScheme.surfaceVariant,
+                                            uncheckedThumbColor = MaterialTheme.colorScheme.onSurfaceVariant
+                                        )
+                                    )
+                                }
+                            }
                         }
 
-                        if (uiState.reminderTime != null) {
+                        if (uiState.reminderEnabled && uiState.reminderTime != null) {
                             Spacer(modifier = Modifier.height(8.dp))
                             OutlinedButton(
                                 onClick = { showTimePicker = true },
@@ -1176,6 +1254,46 @@ fun AddEditHabitScreen(
                                     }
                                 }
                                 else -> { /* no-op */ }
+                            }
+                            Spacer(modifier = Modifier.height(8.dp))
+                            // Лёгкая подпись о персональности напоминания и кнопка "Применить для всех"
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    modifier = Modifier.weight(1f)
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.Person,
+                                        contentDescription = null,
+                                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        modifier = Modifier.size(18.dp).padding(end = 6.dp)
+                                    )
+                                    Text(
+                                        text = stringResource(R.string.reminder_personal_hint),
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                }
+                                if (uiState.canApplyReminderToAll) {
+                                    Button(
+                                        onClick = { showApplyAllConfirm = true },
+                                        enabled = !uiState.isLoading && !uiState.isHabitSaved,
+                                        colors = ButtonDefaults.buttonColors(
+                                            containerColor = MaterialTheme.colorScheme.secondaryContainer,
+                                            contentColor = MaterialTheme.colorScheme.onSecondaryContainer
+                                        )
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Default.Group,
+                                            contentDescription = null,
+                                            modifier = Modifier.padding(end = 6.dp)
+                                        )
+                                        Text(stringResource(R.string.apply_reminder_to_all))
+                                    }
+                                }
                             }
                         }
                     }
@@ -1243,7 +1361,7 @@ fun AddEditHabitScreen(
             shouldRequestNotificationPermission = false
             if (!isGranted) {
                 // Если разрешение не получено, отключаем напоминания
-                viewModel.onReminderTimeChange(null)
+                viewModel.onReminderEnabledChange(false)
             }
         }
     )

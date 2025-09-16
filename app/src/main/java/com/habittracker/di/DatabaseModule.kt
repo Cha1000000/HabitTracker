@@ -7,6 +7,7 @@ import com.habittracker.data.local.dao.ChallengeDao
 import com.habittracker.data.local.dao.FriendRequestDao
 import com.habittracker.data.local.dao.FriendshipDao
 import com.habittracker.data.local.dao.HabitDao
+import com.habittracker.data.local.dao.HabitParticipantSettingsDao
 import com.habittracker.data.local.dao.HabitEntryDao
 import com.habittracker.data.local.dao.HabitInvitationDao
 import com.habittracker.data.local.dao.UserAchievementDao
@@ -58,4 +59,8 @@ object DatabaseModule {
 
     @Provides
     fun provideSyncOutboxDao(database: HabitTrackerDatabase): SyncOutboxDao = database.syncOutboxDao()
+
+    @Provides
+    fun provideHabitParticipantSettingsDao(database: HabitTrackerDatabase): HabitParticipantSettingsDao =
+        database.habitParticipantSettingsDao()
 }

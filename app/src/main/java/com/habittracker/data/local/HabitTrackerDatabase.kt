@@ -14,6 +14,7 @@ import com.habittracker.data.local.entity.ChallengeEntity
 import com.habittracker.data.local.entity.FriendRequestEntity
 import com.habittracker.data.local.entity.FriendshipEntity
 import com.habittracker.data.local.entity.HabitEntity
+import com.habittracker.data.local.entity.HabitParticipantSettingsEntity
 import com.habittracker.data.local.entity.HabitEntryEntity
 import com.habittracker.data.local.entity.HabitInvitationEntity
 import com.habittracker.data.local.entity.PendingNotificationEntity
@@ -33,9 +34,10 @@ import com.habittracker.data.local.entity.UserEntity
         AchievementEntity::class,
         UserAchievementEntity::class,
         PendingNotificationEntity::class,
-        SyncOutboxEntity::class
+        SyncOutboxEntity::class,
+        HabitParticipantSettingsEntity::class
     ],
-    version = 9,
+    version = 10,
     exportSchema = false // Для простоты отключаем экспорт схемы
 )
 @TypeConverters(Converters::class)
@@ -52,6 +54,7 @@ abstract class HabitTrackerDatabase : RoomDatabase() {
     abstract fun userAchievementDao(): UserAchievementDao
     abstract fun pendingNotificationDao(): PendingNotificationDao
     abstract fun syncOutboxDao(): SyncOutboxDao
+    abstract fun habitParticipantSettingsDao(): HabitParticipantSettingsDao
 
     companion object {
         const val DATABASE_NAME = "habit_tracker_db"
@@ -74,7 +77,8 @@ abstract class HabitTrackerDatabase : RoomDatabase() {
                     MIGRATION_5_6,
                     MIGRATION_6_7,
                     MIGRATION_7_8,
-                    MIGRATION_8_9
+                    MIGRATION_8_9,
+                    MIGRATION_9_10
                 )
 
                 if (BuildConfig.DEBUG) {
@@ -261,6 +265,28 @@ abstract class HabitTrackerDatabase : RoomDatabase() {
             override fun migrate(db: SupportSQLiteDatabase) {
                 // Храним список дней недели как JSON-строку (конвертер List<Int> <-> String)
                 db.execSQL("ALTER TABLE habits ADD COLUMN reminderDays TEXT NOT NULL DEFAULT '[]'")
+            }
+        }
+
+        // Миграция с версии 9 на 10 (персональные настройки напоминаний участников)
+        val MIGRATION_9_10 = object : Migration(9, 10) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
+                    """
+                    CREATE TABLE IF NOT EXISTS habit_participant_settings (
+                        key TEXT NOT NULL PRIMARY KEY,
+                        habitId TEXT NOT NULL,
+                        userId TEXT NOT NULL,
+                        reminderTime TEXT,
+                        reminderEnabled INTEGER NOT NULL,
+                        reminderDays TEXT NOT NULL DEFAULT '[]',
+                        notificationsMuted INTEGER NOT NULL DEFAULT 0,
+                        timeZone TEXT,
+                        updatedAt INTEGER NOT NULL
+                    )
+                    """
+                )
+                db.execSQL("CREATE INDEX IF NOT EXISTS index_hps_habit_user ON habit_participant_settings(habitId, userId)")
             }
         }
     }

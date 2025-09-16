@@ -9,17 +9,21 @@ import androidx.lifecycle.viewModelScope
 import com.habittracker.R
 import com.habittracker.domain.model.Habit
 import com.habittracker.domain.model.HabitFrequency
+import com.habittracker.domain.model.HabitParticipantSettings
 import com.habittracker.domain.model.HabitType
 import com.habittracker.domain.model.HabitValidation
 import com.habittracker.domain.model.HabitValidation.HabitField
 import com.habittracker.domain.model.User
 import com.habittracker.domain.repository.AuthRepository
 import com.habittracker.domain.usecase.AddHabitUseCase
+import com.habittracker.domain.usecase.ApplyReminderToAllParticipantsUseCase
 import com.habittracker.domain.usecase.CancelHabitReminderUseCase
 import com.habittracker.domain.usecase.GetHabitByIdUseCase
+import com.habittracker.domain.usecase.GetMyHabitReminderSettingsUseCase
 import com.habittracker.domain.usecase.ScheduleHabitReminderUseCase
-import com.habittracker.domain.usecase.UpdateHabitReminderUseCase
+import com.habittracker.domain.usecase.EnsureMySettingsForHabitUseCase
 import com.habittracker.domain.usecase.UpdateHabitUseCase
+import com.habittracker.domain.usecase.UpdateMyHabitReminderSettingsUseCase
 import com.habittracker.domain.usecase.habit.GenerateHabitInviteCodeUseCase
 import com.habittracker.domain.usecase.habit.SendHabitInvitationUseCase
 import com.habittracker.domain.usecase.social.GetFriendsUseCase
@@ -31,10 +35,11 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-import kotlinx.datetime.LocalTime
 import kotlinx.datetime.DayOfWeek
+import kotlinx.datetime.LocalTime
 import java.util.UUID
 import javax.inject.Inject
 
@@ -45,10 +50,13 @@ class AddEditHabitViewModel @Inject constructor(
     private val getHabitByIdUseCase: GetHabitByIdUseCase,
     private val scheduleHabitReminderUseCase: ScheduleHabitReminderUseCase,
     private val cancelHabitReminderUseCase: CancelHabitReminderUseCase,
-    private val updateHabitReminderUseCase: UpdateHabitReminderUseCase,
+    private val getMyHabitReminderSettingsUseCase: GetMyHabitReminderSettingsUseCase,
+    private val updateMyHabitReminderSettingsUseCase: UpdateMyHabitReminderSettingsUseCase,
     private val sendHabitInvitationUseCase: SendHabitInvitationUseCase,
     private val generateHabitInviteCodeUseCase: GenerateHabitInviteCodeUseCase,
     private val getFriendsUseCase: GetFriendsUseCase,
+    private val applyReminderToAllParticipantsUseCase: ApplyReminderToAllParticipantsUseCase,
+    private val ensureMySettingsForHabitUseCase: EnsureMySettingsForHabitUseCase,
     private val authRepository: AuthRepository,
     savedStateHandle: SavedStateHandle,
     application: Application
@@ -63,9 +71,57 @@ class AddEditHabitViewModel @Inject constructor(
     init {
         val habitId: String? = savedStateHandle["habitId"]
         if (habitId != null) {
+            _uiState.update { it.copy(isLoading = true) }
             loadHabit(habitId)
         } else {
-            _uiState.update { it.copy(isLoading = false, maxParticipantsInput = it.maxParticipants.toString()) }
+            _uiState.update { it.copy(
+                isLoading = false,
+                isInitialized = true,
+                maxParticipantsInput = it.maxParticipants.toString()
+            ) }
+        }
+    }
+
+    // Применить текущие настройки напоминаний для всех участников (для автора)
+    override fun applyReminderToAllParticipants() {
+        viewModelScope.launch {
+            try {
+                val habit = currentHabit ?: return@launch
+                val state = uiState.value
+                _uiState.update { it.copy(isLoading = true) }
+                val res = applyReminderToAllParticipantsUseCase(
+                    habitId = habit.id,
+                    reminderTime = state.reminderTime,
+                    reminderDays = state.reminderDaysInput,
+                    enabled = state.reminderEnabled
+                )
+                if (res.isSuccess) {
+                    // Важно: обновим локальную currentHabit, чтобы последующее сохранение не откатило дефолтные напоминания
+                    currentHabit = currentHabit?.copy(
+                        reminderTime = if (state.reminderEnabled) state.reminderTime else null,
+                        reminderEnabled = state.reminderEnabled,
+                        reminderDays = state.reminderDaysInput
+                    )
+                    // Синхронизируем UI: включаем тумблер и проставляем дни согласно применённым значениям
+                    _uiState.update { it.copy(
+                        isLoading = false,
+                        reminderEnabled = state.reminderEnabled,
+                        reminderTime = state.reminderTime,
+                        reminderDaysInput = state.reminderDaysInput,
+                        successMessage = getApplication<Application>().getString(R.string.habit_updated)
+                    ) }
+                } else {
+                    _uiState.update { it.copy(
+                        isLoading = false,
+                        error = res.exceptionOrNull()?.localizedMessage ?: "Ошибка применения настроек для всех"
+                    ) }
+                }
+            } catch (e: Exception) {
+                _uiState.update { it.copy(
+                    isLoading = false,
+                    error = e.localizedMessage ?: "Ошибка применения настроек для всех"
+                ) }
+            }
         }
     }
 
@@ -106,6 +162,7 @@ class AddEditHabitViewModel @Inject constructor(
             try {
                 currentHabit = getHabitByIdUseCase(habitId)
                 currentHabit?.let { habit ->
+                    val currentUserId = authRepository.getCurrentUserId()
                     _uiState.update { state ->
                         state.copy(
                             habitId = habit.id,
@@ -115,6 +172,7 @@ class AddEditHabitViewModel @Inject constructor(
                             color = habit.color.toColorInt(), // Безопасный парсинг hex-строки в Int
                             type = habit.type,
                             frequency = habit.frequency,
+                            reminderEnabled = habit.reminderEnabled,
                             reminderTime = habit.reminderTime,
                             reminderDaysInput = habit.reminderDays,
                             targetValue = habit.targetValue,
@@ -125,11 +183,49 @@ class AddEditHabitViewModel @Inject constructor(
                             inviteCode = habit.inviteCode,
                             isPublic = habit.isPublic,
                             participants = emptyList(), // Пока оставляем пустым, позже загрузим User объекты
-                            isLoading = false
+                            isLoading = false,
+                            isHabitSaved = false,
+                            canApplyReminderToAll = (habit.type == HabitType.GROUP && habit.createdBy == currentUserId)
                         )
                     }
+                    // Переопределяем/гарантируем персональные настройки через use case
+                    try {
+                        ensureMySettingsForHabitUseCase(habit)
+                        // Важно: берём свежие персональные настройки (remote-preferred), а не первый элемент локального observe
+                        val personal = getMyHabitReminderSettingsUseCase.getOnce(habit.id)
+                        if (personal != null) {
+                            _uiState.update { s ->
+                                s.copy(
+                                    reminderEnabled = personal.reminderEnabled,
+                                    reminderTime = personal.reminderTime,
+                                    reminderDaysInput = personal.reminderDays
+                                )
+                            }
+                        } else {
+                            // Фолбэк на дефолты привычки
+                            _uiState.update { s ->
+                                s.copy(
+                                    reminderEnabled = habit.reminderEnabled,
+                                    reminderTime = habit.reminderTime,
+                                    reminderDaysInput = habit.reminderDays
+                                )
+                            }
+                        }
+                        _uiState.update { it.copy(isInitialized = true) }
+                    } catch (_: Exception) { /* no-op */ }
+
+                    // Финальная нормализация UI: если есть время, но флаг выключен — включим флаг (устранение артефактов старых данных)
+                    val s = _uiState.value
+                    if (s.reminderTime != null && !s.reminderEnabled) {
+                        _uiState.update { it.copy(reminderEnabled = true) }
+                    }
+
+                    Log.d(
+                        "AddEditHabitViewModel",
+                        "[loadHabit] ui: enabled=${_uiState.value.reminderEnabled}, time=${_uiState.value.reminderTime}, days=${_uiState.value.reminderDaysInput}"
+                    )
                 } ?: run {
-                    _uiState.update { it.copy(isLoading = false, maxParticipantsInput = it.maxParticipants.toString()) }
+                    _uiState.update { it.copy(isLoading = false, maxParticipantsInput = it.maxParticipants.toString(), isInitialized = true) }
                 }
             } catch (e: Exception) {
                 _uiState.update { it.copy(
@@ -169,8 +265,8 @@ class AddEditHabitViewModel @Inject constructor(
                         color = "#%06X".format(0xFFFFFF and currentState.color), // Конвертируем Int (ARGB) в hex-строку RGB
                         type = currentState.type,
                         frequency = currentState.frequency,
-                        reminderTime = currentState.reminderTime,
-                        reminderEnabled = currentState.reminderTime != null,
+                        reminderTime = if (currentState.reminderEnabled) currentState.reminderTime else null,
+                        reminderEnabled = currentState.reminderEnabled,
                         reminderDays = currentState.reminderDaysInput,
                         targetValue = currentState.targetValue,
                         unit = currentState.unit,
@@ -192,11 +288,29 @@ class AddEditHabitViewModel @Inject constructor(
                     
                     // Планируем напоминание для новой привычки
                     if (newHabit.reminderTime != null) {
+                        // Инициализируем персональные настройки для создателя из дефолтов привычки
+                        try {
+                            updateMyHabitReminderSettingsUseCase(
+                                HabitParticipantSettings(
+                                    habitId = newHabit.id,
+                                    userId = creatorId,
+                                    reminderTime = newHabit.reminderTime,
+                                    reminderEnabled = true,
+                                    reminderDays = newHabit.reminderDays
+                                )
+                            )
+                        } catch (_: Exception) { /* no-op */ }
                         scheduleHabitReminderUseCase(newHabit)
                         Log.d("AddEditHabitViewModel", "Напоминание запланировано для новой привычки")
                     }
                 } else {
                     // Обновляем существующую привычку
+                    val safeParticipants: List<String> = if (currentState.participants.isNotEmpty()) {
+                        currentState.participants.map { it.id }
+                    } else {
+                        // Сохраняем текущий состав участников, если UI ещё не успел подгрузить User-объекты
+                        currentHabit!!.participants
+                    }
                     val updatedHabit = currentHabit!!.copy(
                         title = currentState.title,
                         description = currentState.description,
@@ -204,22 +318,31 @@ class AddEditHabitViewModel @Inject constructor(
                         color = "#%06X".format(0xFFFFFF and currentState.color), // Конвертируем Int (ARGB) в hex-строку RGB
                         type = currentState.type,
                         frequency = currentState.frequency,
-                        reminderTime = currentState.reminderTime,
-                        reminderEnabled = currentState.reminderTime != null,
-                        reminderDays = currentState.reminderDaysInput,
                         targetValue = currentState.targetValue,
                         unit = currentState.unit,
                         maxParticipants = currentState.maxParticipants,
                         inviteCode = currentState.inviteCode,
                         isPublic = currentState.isPublic,
-                        participants = currentState.participants.map { it.id }, // Конвертируем User в String ID
+                        participants = safeParticipants,
                         updatedAt = now
                     )
                     updateHabitUseCase(updatedHabit)
                     
-                    // Обновляем напоминание для существующей привычки
-                    updateHabitReminderUseCase(updatedHabit)
-                    Log.d("AddEditHabitViewModel", "Напоминание обновлено для существующей привычки")
+                    // Обновляем персональные настройки напоминаний текущего пользователя и перепланируем
+                    try {
+                        val userId = authRepository.getCurrentUserId() ?: ""
+                        updateMyHabitReminderSettingsUseCase(
+                            HabitParticipantSettings(
+                                habitId = updatedHabit.id,
+                                userId = userId,
+                                reminderTime = if (currentState.reminderEnabled) currentState.reminderTime else null,
+                                reminderEnabled = currentState.reminderEnabled,
+                                reminderDays = currentState.reminderDaysInput
+                            )
+                        )
+                        scheduleHabitReminderUseCase(updatedHabit)
+                        Log.d("AddEditHabitViewModel", "Персональные напоминания обновлены и перепланированы")
+                    } catch (_: Exception) { /* no-op */ }
                     // Обновим ссылку на текущую привычку
                     currentHabit = updatedHabit
                 }
@@ -367,8 +490,20 @@ class AddEditHabitViewModel @Inject constructor(
         viewModelScope.launch {
             try {
                 currentHabit?.let { habit ->
+                    // Обновляем персональные настройки: выключаем напоминания
+                    val userId = authRepository.getCurrentUserId() ?: return@launch
+                    updateMyHabitReminderSettingsUseCase(
+                        HabitParticipantSettings(
+                            habitId = habit.id,
+                            userId = userId,
+                            reminderTime = null,
+                            reminderEnabled = false,
+                            reminderDays = emptySet()
+                        )
+                    )
+                    // Отменяем запланированные задачи
                     cancelHabitReminderUseCase(habit.id)
-                    Log.d("AddEditHabitViewModel", "Напоминание отменено")
+                    Log.d("AddEditHabitViewModel", "Персональные напоминания отключены и отменены")
                 }
             } catch (e: Exception) {
                 _uiState.update { it.copy(error = getApplication<Application>().getString(R.string.error_canceling_reminder, e.localizedMessage ?: "")) }
@@ -380,12 +515,21 @@ class AddEditHabitViewModel @Inject constructor(
         viewModelScope.launch {
             try {
                 val currentState = uiState.value
-                val tempHabit = currentHabit?.copy(
-                    reminderTime = currentState.reminderTime
-                ) ?: return@launch
-                
-                updateHabitReminderUseCase(tempHabit)
-                Log.d("AddEditHabitViewModel", "Напоминание обновлено")
+                val habit = currentHabit ?: return@launch
+                val userId = authRepository.getCurrentUserId() ?: return@launch
+                // Обновляем перс. настройки
+                updateMyHabitReminderSettingsUseCase(
+                    HabitParticipantSettings(
+                        habitId = habit.id,
+                        userId = userId,
+                        reminderTime = if (currentState.reminderEnabled) currentState.reminderTime else null,
+                        reminderEnabled = currentState.reminderEnabled,
+                        reminderDays = currentState.reminderDaysInput
+                    )
+                )
+                // Перепланируем напоминание с учётом перс. настроек
+                scheduleHabitReminderUseCase(habit)
+                Log.d("AddEditHabitViewModel", "Персональные напоминания обновлены и перепланированы")
             } catch (e: Exception) {
                 _uiState.update { it.copy(error = getApplication<Application>().getString(R.string.error_updating_reminder, e.localizedMessage ?: "")) }
             }
@@ -393,7 +537,17 @@ class AddEditHabitViewModel @Inject constructor(
     }
     
     override fun onReminderTimeChange(time: LocalTime?) {
-        _uiState.update { it.copy(reminderTime = time) }
+        _uiState.update { s ->
+            s.copy(
+                reminderTime = time,
+                reminderEnabled = if (time != null) true else s.reminderEnabled,
+                hasUnsavedChanges = true
+            )
+        }
+    }
+
+    override fun onReminderEnabledChange(enabled: Boolean) {
+        _uiState.update { s -> s.copy(reminderEnabled = enabled, hasUnsavedChanges = true) }
     }
 
     override fun onReminderDayToggle(day: DayOfWeek) {
@@ -431,10 +585,6 @@ class AddEditHabitViewModel @Inject constructor(
             }
             state.copy(reminderDaysInput = toggled)
         }
-    }
-    
-    override fun onReminderEnabledChange(enabled: Boolean) {
-        // Метод оставлен для совместимости, но не используется в новой архитектуре
     }
     
     override fun generateInviteCode() {
