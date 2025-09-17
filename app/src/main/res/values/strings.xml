@@ -79,6 +79,10 @@
     <string name="confirm_apply_reminder_title">Применить напоминание для всех?</string>
     <string name="confirm_apply_reminder_message">Текущие настройки напоминания (время и дни) будут применены всем участникам группы. Продолжить?</string>
     <string name="apply">Применить</string>
+    <!-- Frequency global control -->
+    <string name="frequency_global_hint">Глобальная настройка — изменяет только автор</string>
+    <string name="confirm_change_frequency_title">Изменить частоту для всех?</string>
+    <string name="confirm_change_frequency_message">Изменение частоты повлияет на всех участников группы. Продолжить?</string>
     <string name="habit_color_label">Цвет:</string>
     <string name="habit_name_required_hint">Введите название, чтобы продолжить</string>
     

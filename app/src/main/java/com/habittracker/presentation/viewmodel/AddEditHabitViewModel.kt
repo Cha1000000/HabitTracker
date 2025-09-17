@@ -311,13 +311,19 @@ class AddEditHabitViewModel @Inject constructor(
                         // Сохраняем текущий состав участников, если UI ещё не успел подгрузить User-объекты
                         currentHabit!!.participants
                     }
+                    // Частота — глобальная для группы: менять может только автор
+                    val currentUserIdForUpdate = authRepository.getCurrentUserId() ?: ""
+                    val isAuthor = currentHabit!!.createdBy == currentUserIdForUpdate
+                    val effectiveFrequency = if (currentHabit!!.type == HabitType.GROUP && !isAuthor) {
+                        currentHabit!!.frequency
+                    } else currentState.frequency
                     val updatedHabit = currentHabit!!.copy(
                         title = currentState.title,
                         description = currentState.description,
                         icon = currentState.icon,
                         color = "#%06X".format(0xFFFFFF and currentState.color), // Конвертируем Int (ARGB) в hex-строку RGB
                         type = currentState.type,
-                        frequency = currentState.frequency,
+                        frequency = effectiveFrequency,
                         targetValue = currentState.targetValue,
                         unit = currentState.unit,
                         maxParticipants = currentState.maxParticipants,
@@ -391,6 +397,15 @@ class AddEditHabitViewModel @Inject constructor(
     }
     
     override fun onFrequencyChange(frequency: HabitFrequency) {
+        // Если редактируем существующую групповую привычку и пользователь не автор — блокируем смену частоты
+        currentHabit?.let { habit ->
+            if (habit.type == HabitType.GROUP) {
+                val userId = authRepository.getCurrentUserId()
+                if (userId != null && habit.createdBy != userId) {
+                    return
+                }
+            }
+        }
         _uiState.update { state ->
             val presetDays: Set<DayOfWeek> = when (frequency) {
                 HabitFrequency.DAILY -> emptySet()

@@ -677,14 +677,15 @@ private fun GroupSettings(
 private fun FrequencySelector(
     currentFrequency: HabitFrequency,
     onFrequencySelected: (HabitFrequency) -> Unit,
+    enabled: Boolean = true,
     modifier: Modifier = Modifier
 ) {
     var expanded by remember { mutableStateOf(false) }
     val items = HabitFrequency.entries
     
     ExposedDropdownMenuBox(
-        expanded = expanded,
-        onExpandedChange = { expanded = !expanded },
+        expanded = expanded && enabled,
+        onExpandedChange = { if (enabled) expanded = !expanded },
         modifier = modifier
     ) {
         OutlinedTextField(
@@ -698,9 +699,10 @@ private fun FrequencySelector(
             },
             onValueChange = {},
             readOnly = true,
+            enabled = enabled,
             label = { Text(stringResource(R.string.habit_frequency_label)) },
             trailingIcon = {
-                ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded)
+                ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded && enabled)
             },
             colors = ExposedDropdownMenuDefaults.outlinedTextFieldColors(),
             modifier = Modifier
@@ -709,7 +711,7 @@ private fun FrequencySelector(
         )
         
         ExposedDropdownMenu(
-            expanded = expanded,
+            expanded = expanded && enabled,
             onDismissRequest = { expanded = false }
         ) {
             items.forEach { frequency ->
@@ -725,8 +727,10 @@ private fun FrequencySelector(
                         })
                     },
                     onClick = {
-                        onFrequencySelected(frequency)
-                        expanded = false
+                        if (enabled) {
+                            onFrequencySelected(frequency)
+                            expanded = false
+                        }
                     }
                 )
             }
@@ -1074,11 +1078,57 @@ fun AddEditHabitScreen(
 
             item {
                 // Частота
+                val isGroup = uiState.type == HabitType.GROUP
+                val isExisting = uiState.habitId != null
+                val isAuthor = uiState.canApplyReminderToAll
+                val canEditFrequency = !isGroup || !isExisting || isAuthor
+
+                var showFrequencyConfirm by remember { mutableStateOf(false) }
+                var pendingFrequency by remember { mutableStateOf<HabitFrequency?>(null) }
+
                 FrequencySelector(
                     currentFrequency = uiState.frequency,
-                    onFrequencySelected = { viewModel.onFrequencyChange(it) },
+                    onFrequencySelected = { newFreq ->
+                        val shouldConfirm = isGroup && isExisting && isAuthor
+                        if (shouldConfirm) {
+                            pendingFrequency = newFreq
+                            showFrequencyConfirm = true
+                        } else {
+                            viewModel.onFrequencyChange(newFreq)
+                        }
+                    },
+                    enabled = canEditFrequency,
                     modifier = Modifier.fillMaxWidth()
                 )
+
+                if (!canEditFrequency) {
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text(
+                        text = stringResource(R.string.frequency_global_hint),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+
+                if (showFrequencyConfirm && pendingFrequency != null) {
+                    AlertDialog(
+                        onDismissRequest = { showFrequencyConfirm = false; pendingFrequency = null },
+                        title = { Text(stringResource(R.string.confirm_change_frequency_title)) },
+                        text = { Text(stringResource(R.string.confirm_change_frequency_message)) },
+                        confirmButton = {
+                            TextButton(onClick = {
+                                pendingFrequency?.let { viewModel.onFrequencyChange(it) }
+                                showFrequencyConfirm = false
+                                pendingFrequency = null
+                            }) { Text(stringResource(R.string.apply)) }
+                        },
+                        dismissButton = {
+                            TextButton(onClick = { showFrequencyConfirm = false; pendingFrequency = null }) {
+                                Text(stringResource(R.string.action_cancel))
+                            }
+                        }
+                    )
+                }
             }
 
             item {
