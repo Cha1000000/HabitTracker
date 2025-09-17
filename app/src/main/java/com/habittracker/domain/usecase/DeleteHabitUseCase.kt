@@ -6,7 +6,6 @@ import com.habittracker.domain.model.Habit
 import com.habittracker.domain.model.HabitType
 import com.habittracker.domain.repository.HabitRepository
 import com.habittracker.domain.util.SyncPayloads
-import kotlinx.coroutines.CoroutineScope
 import kotlinx.datetime.Clock
 import javax.inject.Inject
 
@@ -30,9 +29,8 @@ class DeleteHabitUseCase @Inject constructor(
     private val habitRepository: HabitRepository,
     private val syncManager: SyncManager,
     private val syncWorkScheduler: SyncWorkScheduler,
-    private val coroutineScope: CoroutineScope
+    private val cancelHabitReminderUseCase: CancelHabitReminderUseCase
 ) {
-    private val backgroundTasksScope = coroutineScope
     private val SAFE_DELETE_DELAY_MS: Long = 1 * 60 * 1000 // 1 минута задержки перед hard delete
 
     // Decision policy for GROUP habits — pure domain logic without side-effects
@@ -53,7 +51,11 @@ class DeleteHabitUseCase @Inject constructor(
             )
         } catch (_: Exception) {
         } finally {
+            // Запускаем немедленную синхронизацию (проигнорирует DELETE до notBefore),
+            // а также планируем отложенную, чтобы гарантированно обработать DELETE после notBefore
             kickSync()
+            val delay = notBeforeMillis - System.currentTimeMillis()
+            try { syncWorkScheduler.scheduleOneTimeSyncDelayed(delay) } catch (_: Exception) { }
         }
     }
 
@@ -89,6 +91,9 @@ class DeleteHabitUseCase @Inject constructor(
 
         val habit: Habit = habitRepository.getHabitById(habitId)
             ?: run { return } // Уже удалена локально — ничего не делаем
+
+        // На текущем устройстве больше не должно быть локальных уведомлений по этой привычке
+        try { cancelHabitReminderUseCase(habitId) } catch (_: Exception) { }
 
         if (habit.type == HabitType.PERSONAL) {
             // Локально удаляем, в Firestore — мягкое удаление (isActive=false)
@@ -150,19 +155,6 @@ class DeleteHabitUseCase @Inject constructor(
                 )
                 enqueueUpsertAndKickSync(habitId, payload, nowMillis)
             }
-        }
-    }
-
-    private suspend fun enqueueDeleteAndKickSync(habitId: String, nowMillis: Long) {
-        try {
-            syncManager.enqueueDelete(
-                entityType = "habit",
-                entityId = habitId,
-                updatedAt = nowMillis
-            )
-        } catch (_: Exception) {
-        } finally {
-            kickSync()
         }
     }
 

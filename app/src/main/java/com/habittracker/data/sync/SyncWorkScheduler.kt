@@ -60,4 +60,20 @@ class SyncWorkScheduler @Inject constructor(
             request
         )
     }
+
+    fun scheduleOneTimeSyncDelayed(delayMs: Long) {
+        val safeDelay = if (delayMs < 0) 0 else delayMs
+        val builder = OneTimeWorkRequestBuilder<SyncWorker>()
+            .setConstraints(constraints)
+            .setBackoffCriteria(BackoffPolicy.LINEAR, 30, TimeUnit.SECONDS)
+            .addTag(TAG_OUTBOX_SYNC)
+            .setInitialDelay(safeDelay, TimeUnit.MILLISECONDS)
+
+        // Важно: для отложенной работы нельзя использовать expedited
+        val request: OneTimeWorkRequest = builder.build()
+
+        // Здесь без уникального имени — позволяем сосуществовать нескольким отложенным джобам
+        // (на случай, если пользователь удалил несколько сущностей подряд)
+        workManager.enqueue(request)
+    }
 }

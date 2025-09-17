@@ -51,28 +51,9 @@ class HabitReminderWorker(
             // Проверяем, что привычка все еще активна и имеет время напоминания (основной источник истины)
             val habit = habitDao.getHabitById(habitId)
             if (habit == null) {
-                Log.d("HabitReminderWorker", "Habit not found in local DB: $habitId — fallback to inputData")
-                // Even if habit row is missing locally (e.g., after destructive migration),
-                // we can still notify the user using input data, but avoid duplicates if completed today.
-                val today = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault()).date
-                val todayEntry = habitEntryDao.getEntry(habitId, userId, today)
-                if (todayEntry != null && todayEntry.completed) {
-                    Log.d("HabitReminderWorker", "Habit already completed today (fallback) - skipping notification")
-                    return@withContext Result.success()
-                }
-
-                val notificationHelper = NotificationHelper(applicationContext)
-                if (!notificationHelper.areNotificationsEnabled()) {
-                    Log.d("HabitReminderWorker", "Notifications are disabled by user (fallback)")
-                    return@withContext Result.success()
-                }
-                Log.d("HabitReminderWorker", "Sending notification (fallback) for habit: $habitTitle")
-                notificationHelper.showHabitReminderNotification(
-                    habitId = habitId,
-                    habitTitle = habitTitle,
-                    habitIcon = habitIcon
-                )
-                Log.d("HabitReminderWorker", "Notification sent successfully (fallback)")
+                // После удаления или миграций привычка может отсутствовать локально.
+                // В таком случае НЕ отправляем уведомление.
+                Log.d("HabitReminderWorker", "Habit not found in local DB: $habitId — skip notification")
                 return@withContext Result.success()
             }
             Log.d(
