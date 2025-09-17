@@ -53,6 +53,7 @@ import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExposedDropdownMenuBox
 import androidx.compose.material3.ExposedDropdownMenuDefaults
+import androidx.compose.material3.MenuAnchorType
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.FloatingActionButton
@@ -441,7 +442,7 @@ private fun HabitTypeSelector(
             colors = ExposedDropdownMenuDefaults.outlinedTextFieldColors(),
             modifier = Modifier
                 .fillMaxWidth()
-                .menuAnchor()
+                .menuAnchor(MenuAnchorType.PrimaryNotEditable, enabled = true)
         )
         
         ExposedDropdownMenu(
@@ -677,8 +678,8 @@ private fun GroupSettings(
 private fun FrequencySelector(
     currentFrequency: HabitFrequency,
     onFrequencySelected: (HabitFrequency) -> Unit,
+    modifier: Modifier = Modifier,
     enabled: Boolean = true,
-    modifier: Modifier = Modifier
 ) {
     var expanded by remember { mutableStateOf(false) }
     val items = HabitFrequency.entries
@@ -707,7 +708,7 @@ private fun FrequencySelector(
             colors = ExposedDropdownMenuDefaults.outlinedTextFieldColors(),
             modifier = Modifier
                 .fillMaxWidth()
-                .menuAnchor()
+                .menuAnchor(MenuAnchorType.PrimaryNotEditable, enabled = enabled)
         )
         
         ExposedDropdownMenu(
@@ -1097,8 +1098,8 @@ fun AddEditHabitScreen(
                             viewModel.onFrequencyChange(newFreq)
                         }
                     },
+                    modifier = Modifier.fillMaxWidth(),
                     enabled = canEditFrequency,
-                    modifier = Modifier.fillMaxWidth()
                 )
 
                 if (!canEditFrequency) {
