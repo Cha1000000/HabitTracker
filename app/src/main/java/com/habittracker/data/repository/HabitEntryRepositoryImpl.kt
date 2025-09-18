@@ -1,5 +1,6 @@
 package com.habittracker.data.repository
 
+import android.util.Log
 import com.google.firebase.firestore.FirebaseFirestore
 import com.habittracker.data.local.dao.HabitEntryDao
 import com.habittracker.data.local.mappers.toDomain
@@ -11,8 +12,8 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.callbackFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import kotlinx.datetime.Clock
@@ -53,12 +54,21 @@ class HabitEntryRepositoryImpl @Inject constructor(
 
             val registration = firestore.collection("habit_entries")
                 .whereEqualTo("habitId", habitId)
-                .addSnapshotListener { snapshot, _ ->
+                .addSnapshotListener { snapshot, error ->
+                    if (error != null) {
+                        Log.w("HabitEntryRepo", "Listener error (habitId=$habitId): ${error.message}", error)
+                        return@addSnapshotListener
+                    }
                     val list = snapshot?.documents?.mapNotNull { doc ->
-                        try { doc.toObject(HabitEntry::class.java) } catch (_: Exception) { null }
+                        try { doc.toObject(HabitEntry::class.java) } catch (e: Exception) {
+                            Log.d("HabitEntryRepo", "Map doc to HabitEntry failed: ${e.message}")
+                            null
+                        }
                     } ?: emptyList()
                     scope.launch {
-                        try { habitEntryDao.insertEntries(list.map { it.habitEntryToEntity() }) } catch (_: Exception) {}
+                        try { habitEntryDao.insertEntries(list.map { it.habitEntryToEntity() }) } catch (e: Exception) {
+                            Log.w("HabitEntryRepo", "Insert entries failed: ${e.message}", e)
+                        }
                     }
                 }
 
@@ -69,7 +79,7 @@ class HabitEntryRepositoryImpl @Inject constructor(
             }
 
             awaitClose {
-                registration?.remove()
+                registration.remove()
                 job.cancel()
                 scope.cancel()
             }
@@ -82,12 +92,21 @@ class HabitEntryRepositoryImpl @Inject constructor(
 
             val registration = firestore.collection("habit_entries")
                 .whereEqualTo("userId", userId)
-                .addSnapshotListener { snapshot, _ ->
+                .addSnapshotListener { snapshot, error ->
+                    if (error != null) {
+                        Log.w("HabitEntryRepo", "Listener error (userId=$userId): ${error.message}", error)
+                        return@addSnapshotListener
+                    }
                     val list = snapshot?.documents?.mapNotNull { doc ->
-                        try { doc.toObject(HabitEntry::class.java) } catch (_: Exception) { null }
+                        try { doc.toObject(HabitEntry::class.java) } catch (e: Exception) {
+                            Log.d("HabitEntryRepo", "Map doc to HabitEntry failed: ${e.message}")
+                            null
+                        }
                     } ?: emptyList()
                     scope.launch {
-                        try { habitEntryDao.insertEntries(list.map { it.habitEntryToEntity() }) } catch (_: Exception) {}
+                        try { habitEntryDao.insertEntries(list.map { it.habitEntryToEntity() }) } catch (e: Exception) {
+                            Log.w("HabitEntryRepo", "Insert entries failed: ${e.message}", e)
+                        }
                     }
                 }
 
@@ -98,7 +117,7 @@ class HabitEntryRepositoryImpl @Inject constructor(
             }
 
             awaitClose {
-                registration?.remove()
+                registration.remove()
                 job.cancel()
                 scope.cancel()
             }
@@ -112,12 +131,21 @@ class HabitEntryRepositoryImpl @Inject constructor(
             val registration = firestore.collection("habit_entries")
                 .whereEqualTo("habitId", habitId)
                 .whereEqualTo("userId", userId)
-                .addSnapshotListener { snapshot, _ ->
+                .addSnapshotListener { snapshot, error ->
+                    if (error != null) {
+                        Log.w("HabitEntryRepo", "Listener error (userId=$userId, habitId=$habitId): ${error.message}", error)
+                        return@addSnapshotListener
+                    }
                     val list = snapshot?.documents?.mapNotNull { doc ->
-                        try { doc.toObject(HabitEntry::class.java) } catch (_: Exception) { null }
+                        try { doc.toObject(HabitEntry::class.java) } catch (e: Exception) {
+                            Log.d("HabitEntryRepo", "Map doc to HabitEntry failed: ${e.message}")
+                            null
+                        }
                     } ?: emptyList()
                     scope.launch {
-                        try { habitEntryDao.insertEntries(list.map { it.habitEntryToEntity() }) } catch (_: Exception) {}
+                        try { habitEntryDao.insertEntries(list.map { it.habitEntryToEntity() }) } catch (e: Exception) {
+                            Log.w("HabitEntryRepo", "Insert entries failed: ${e.message}", e)
+                        }
                     }
                 }
 
@@ -128,7 +156,7 @@ class HabitEntryRepositoryImpl @Inject constructor(
             }
 
             awaitClose {
-                registration?.remove()
+                registration.remove()
                 job.cancel()
                 scope.cancel()
             }

@@ -120,7 +120,8 @@ class ProfileViewModel @Inject constructor(
             try {
                 val friends = socialRepository.areFriends(selfId, otherId)
                 _state.value = _state.value.copy(isFriend = friends, isRequestSent = if (friends) false else _state.value.isRequestSent)
-            } catch (_: Exception) {
+            } catch (e: Exception) {
+                if (BuildConfig.DEBUG) Log.d("ProfileVM", "refreshFriendship.areFriends failed (non-fatal): ${e.message}")
             }
         }
     }
@@ -159,8 +160,14 @@ class ProfileViewModel @Inject constructor(
                 // Загрузка аватара если выбран
                 val picked = _state.value.pendingAvatarUri
                 if (picked != null) {
-                    val bucket = try { storage.reference.bucket } catch (_: Exception) { "<unknown>" }
-                    val optBucket = try { storage.app.options.storageBucket } catch (_: Exception) { null }
+                    val bucket = try { storage.reference.bucket } catch (e: Exception) {
+                        if (BuildConfig.DEBUG) Log.d("ProfileVM", "read storage.reference.bucket failed: ${e.message}")
+                        "<unknown>"
+                    }
+                    val optBucket = try { storage.app.options.storageBucket } catch (e: Exception) {
+                        if (BuildConfig.DEBUG) Log.d("ProfileVM", "read storage.app.options.storageBucket failed: ${e.message}")
+                        null
+                    }
                     val path = "user_avatars/${user.id}/${System.currentTimeMillis()}.jpg"
                     if (BuildConfig.DEBUG) {
                         Log.d("ProfileVM", "Uploading avatar to bucket=${bucket}, optBucket=${optBucket}, path=${path}, uri=${picked}")

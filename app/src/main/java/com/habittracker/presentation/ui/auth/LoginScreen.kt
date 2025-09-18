@@ -1,6 +1,7 @@
 package com.habittracker.presentation.ui.auth
 
 import android.widget.Toast
+import android.app.Activity
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -66,8 +67,13 @@ fun LoginScreen(
     LaunchedEffect(authState) {
         when (authState) {
             is AuthState.Success -> {
-                navController.navigate(Screen.Habits.route) {
-                    popUpTo(Screen.Login.route) { inclusive = true }
+                // Если запуск НЕ из пуша (нет navigate_to), выполняем дефолтную навигацию на Habits
+                val deep = (context as? Activity)?.intent?.getStringExtra("navigate_to")
+                if (deep.isNullOrEmpty()) {
+                    navController.navigate(Screen.Habits.route) {
+                        popUpTo(Screen.Login.route) { inclusive = true }
+                        launchSingleTop = true
+                    }
                 }
             }
             is AuthState.Error -> {

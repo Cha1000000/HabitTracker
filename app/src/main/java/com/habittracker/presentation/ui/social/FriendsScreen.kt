@@ -4,8 +4,9 @@ import android.graphics.BitmapFactory
 import android.util.Base64
 import androidx.compose.animation.Crossfade
 import androidx.compose.animation.core.tween
-import androidx.compose.foundation.background
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -23,7 +24,6 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.Image
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Check
@@ -99,10 +99,11 @@ import com.habittracker.presentation.viewmodel.FriendsViewModel
 fun FriendsScreen(
     onNavigateToProfile: (String) -> Unit,
     onNavigateBack: () -> Unit = {},
+    initialSelectedTab: Int = 0,
     viewModel: FriendsViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
-    var selectedTab by remember { mutableIntStateOf(0) }
+    var selectedTab by remember(initialSelectedTab) { mutableIntStateOf(initialSelectedTab.coerceIn(0, 2)) }
     // Состояния диалога удаления друга
     var showRemoveDialog by remember { mutableStateOf(false) }
     var pendingRemoveFriendId by remember { mutableStateOf<String?>(null) }
@@ -275,8 +276,8 @@ private fun AvatarImage(
     if (displayData != null) {
         val isDataUrl = (displayData as? String)?.startsWith("data:image") == true
         if (isDataUrl) {
-            val base64 = (displayData as String).substringAfter(',')
-            val bytes = try { Base64.decode(base64, Base64.DEFAULT) } catch (_: Exception) { null }
+            val base64 = displayData.substringAfter(',')
+            val bytes = runCatching { Base64.decode(base64, Base64.DEFAULT) }.getOrNull()
             val bmp = bytes?.let { BitmapFactory.decodeByteArray(it, 0, it.size) }
             if (bmp != null) {
                 Image(
@@ -692,7 +693,7 @@ private fun FriendCard(
                 if (isRemoving) {
                     CircularProgressIndicator(modifier = Modifier.size(24.dp))
                 } else {
-                    IconButton(onClick = { showMenu = true }, enabled = !isRemoving) {
+                    IconButton(onClick = { showMenu = true }, enabled = true) {
                         Icon(
                             Icons.Default.MoreVert,
                             contentDescription = stringResource(id = R.string.cd_more)

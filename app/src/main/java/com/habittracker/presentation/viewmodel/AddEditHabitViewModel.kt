@@ -212,7 +212,9 @@ class AddEditHabitViewModel @Inject constructor(
                             }
                         }
                         _uiState.update { it.copy(isInitialized = true) }
-                    } catch (_: Exception) { /* no-op */ }
+                    } catch (e: Exception) {
+                        Log.d("AddEditHabitViewModel", "ensureMySettingsForHabitUseCase failed (non-fatal): ${e.message}")
+                    }
 
                     // Финальная нормализация UI: если есть время, но флаг выключен — включим флаг (устранение артефактов старых данных)
                     val s = _uiState.value
@@ -299,7 +301,9 @@ class AddEditHabitViewModel @Inject constructor(
                                     reminderDays = newHabit.reminderDays
                                 )
                             )
-                        } catch (_: Exception) { /* no-op */ }
+                        } catch (e: Exception) {
+                            Log.w("AddEditHabitViewModel", "updateMyHabitReminderSettingsUseCase failed for new habit: ${e.message}", e)
+                        }
                         scheduleHabitReminderUseCase(newHabit)
                         Log.d("AddEditHabitViewModel", "Напоминание запланировано для новой привычки")
                     }
@@ -348,7 +352,9 @@ class AddEditHabitViewModel @Inject constructor(
                         )
                         scheduleHabitReminderUseCase(updatedHabit)
                         Log.d("AddEditHabitViewModel", "Персональные напоминания обновлены и перепланированы")
-                    } catch (_: Exception) { /* no-op */ }
+                    } catch (e: Exception) {
+                        Log.w("AddEditHabitViewModel", "updateMyHabitReminderSettingsUseCase/scheduleHabitReminderUseCase failed: ${e.message}", e)
+                    }
                     // Обновим ссылку на текущую привычку
                     currentHabit = updatedHabit
                 }

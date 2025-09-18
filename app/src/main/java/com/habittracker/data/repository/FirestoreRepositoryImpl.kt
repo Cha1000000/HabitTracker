@@ -54,10 +54,12 @@ class FirestoreRepositoryImpl @Inject constructor(
 
             // type и frequency как строки
             val typeStr = (data["type"] as? String)?.uppercase() ?: "PERSONAL"
-            val type = try { com.habittracker.domain.model.HabitType.valueOf(typeStr) } catch (_: Exception) { com.habittracker.domain.model.HabitType.PERSONAL }
+            val type = runCatching { com.habittracker.domain.model.HabitType.valueOf(typeStr) }
+                .getOrElse { com.habittracker.domain.model.HabitType.PERSONAL }
 
             val freqStr = (data["frequency"] as? String)?.uppercase() ?: "DAILY"
-            val frequency = try { com.habittracker.domain.model.HabitFrequency.valueOf(freqStr) } catch (_: Exception) { com.habittracker.domain.model.HabitFrequency.DAILY }
+            val frequency = runCatching { com.habittracker.domain.model.HabitFrequency.valueOf(freqStr) }
+                .getOrElse { com.habittracker.domain.model.HabitFrequency.DAILY }
 
             // reminderTime может быть сериализован сложным объектом или картой c hour/minute
             val reminderTime: kotlinx.datetime.LocalTime? = when (val rt = data["reminderTime"]) {
@@ -106,7 +108,7 @@ class FirestoreRepositoryImpl @Inject constructor(
                 reminderTime = reminderTime,
                 reminderEnabled = reminderEnabled,
                 reminderDays = reminderDaysRaw.mapNotNull { d ->
-                    try { kotlinx.datetime.DayOfWeek.entries.firstOrNull { it.value == d } } catch (_: Exception) { null }
+                    kotlinx.datetime.DayOfWeek.entries.firstOrNull { it.value == d }
                 }.toSet(),
                 targetValue = targetValue,
                 unit = unit,
@@ -404,7 +406,7 @@ class FirestoreRepositoryImpl @Inject constructor(
                 reminderTime = reminderTime,
                 reminderEnabled = reminderEnabled,
                 reminderDays = reminderDaysRaw.mapNotNull { d ->
-                    try { kotlinx.datetime.DayOfWeek.entries.firstOrNull { it.value == d } } catch (_: Exception) { null }
+                    kotlinx.datetime.DayOfWeek.entries.firstOrNull { it.value == d }
                 }.toSet(),
                 notificationsMuted = notificationsMuted,
                 timeZone = timeZone,

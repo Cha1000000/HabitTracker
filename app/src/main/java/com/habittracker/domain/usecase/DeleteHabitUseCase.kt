@@ -1,5 +1,6 @@
 package com.habittracker.domain.usecase
 
+import android.util.Log
 import com.habittracker.data.sync.SyncManager
 import com.habittracker.data.sync.SyncWorkScheduler
 import com.habittracker.domain.model.Habit
@@ -49,13 +50,16 @@ class DeleteHabitUseCase @Inject constructor(
                 maxRetries = 3,
                 updatedAt = System.currentTimeMillis()
             )
-        } catch (_: Exception) {
+        } catch (e: Exception) {
+            Log.w("DeleteHabitUseCase", "enqueueSafeDelete failed: ${e.message}", e)
         } finally {
             // Запускаем немедленную синхронизацию (проигнорирует DELETE до notBefore),
             // а также планируем отложенную, чтобы гарантированно обработать DELETE после notBefore
             kickSync()
             val delay = notBeforeMillis - System.currentTimeMillis()
-            try { syncWorkScheduler.scheduleOneTimeSyncDelayed(delay) } catch (_: Exception) { }
+            try { syncWorkScheduler.scheduleOneTimeSyncDelayed(delay) } catch (e: Exception) {
+                Log.w("DeleteHabitUseCase", "scheduleOneTimeSyncDelayed failed: ${e.message}", e)
+            }
         }
     }
 
@@ -93,7 +97,9 @@ class DeleteHabitUseCase @Inject constructor(
             ?: run { return } // Уже удалена локально — ничего не делаем
 
         // На текущем устройстве больше не должно быть локальных уведомлений по этой привычке
-        try { cancelHabitReminderUseCase(habitId) } catch (_: Exception) { }
+        try { cancelHabitReminderUseCase(habitId) } catch (e: Exception) {
+            Log.w("DeleteHabitUseCase", "cancelHabitReminder failed: ${e.message}", e)
+        }
 
         if (habit.type == HabitType.PERSONAL) {
             // Локально удаляем, в Firestore — мягкое удаление (isActive=false)
@@ -166,14 +172,19 @@ class DeleteHabitUseCase @Inject constructor(
                 payloadJson = payloadJson,
                 updatedAt = nowMillis
             )
-        } catch (_: Exception) {
+        } catch (e: Exception) {
+            Log.w("DeleteHabitUseCase", "enqueueUpsert failed: ${e.message}", e)
         } finally {
             kickSync()
         }
     }
 
     private suspend fun kickSync() {
-        try { syncWorkScheduler.scheduleOneTimeSync() } catch (_: Exception) { }
-        try { syncManager.drainPending() } catch (_: Exception) { }
+        try { syncWorkScheduler.scheduleOneTimeSync() } catch (e: Exception) {
+            Log.w("DeleteHabitUseCase", "scheduleOneTimeSync failed: ${e.message}", e)
+        }
+        try { syncManager.drainPending() } catch (e: Exception) {
+            Log.w("DeleteHabitUseCase", "drainPending failed: ${e.message}", e)
+        }
     }
 }

@@ -124,7 +124,7 @@ fun ProfileScreen(
                     val isDataUrl = (displayData as? String)?.startsWith("data:image") == true
                     if (isDataUrl) {
                         val base64 = (displayData as String).substringAfter(',')
-                        val bytes = try { Base64.decode(base64, Base64.DEFAULT) } catch (_: Exception) { null }
+                        val bytes = runCatching { Base64.decode(base64, Base64.DEFAULT) }.getOrNull()
                         val bmp = bytes?.let { BitmapFactory.decodeByteArray(it, 0, it.size) }
                         if (bmp != null) {
                             Image(

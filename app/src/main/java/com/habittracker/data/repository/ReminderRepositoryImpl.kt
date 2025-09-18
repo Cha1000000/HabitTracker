@@ -13,7 +13,6 @@ import com.habittracker.domain.repository.ReminderRepository
 import kotlinx.datetime.Clock
 import kotlinx.datetime.DateTimeUnit
 import kotlinx.datetime.LocalDateTime
-import kotlinx.datetime.LocalTime
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.plus
 import kotlinx.datetime.toInstant
@@ -37,8 +36,7 @@ class ReminderRepositoryImpl @Inject constructor(
 
     override suspend fun scheduleReminder(habit: Habit) {
         Log.d("ReminderRepositoryImpl", "scheduleReminder: $habit")
-        val reminderTime = habit.reminderTime ?: return
-        
+
         // Отменяем существующее напоминание
         cancelReminder(habit.id)
         
@@ -95,8 +93,7 @@ class ReminderRepositoryImpl @Inject constructor(
      */
     private fun scheduleRecurringReminders(habit: Habit, initialDelay: Long) {
         Log.d("ReminderRepositoryImpl", "scheduleRecurringReminders: $habit")
-        val reminderTime = habit.reminderTime ?: return
-        
+
         // Горизонт планирования (дней вперед)
         val horizonDays = 21
         
@@ -107,7 +104,7 @@ class ReminderRepositoryImpl @Inject constructor(
                     val targetDate = now.date.plus(dayOffset, DateTimeUnit.DAY)
                     val dow = targetDate.dayOfWeek.value // 1..7
                     if (allowedDays.contains(dow)) {
-                        scheduleReminderForDay(habit, reminderTime, dayOffset, initialDelay)
+                        scheduleReminderForDay(habit, dayOffset, initialDelay)
                     }
                 }
             }
@@ -119,10 +116,10 @@ class ReminderRepositoryImpl @Inject constructor(
                 scheduleByAllowedDays(setOf(1,2,3,4,5,6,7))
             }
             HabitFrequency.WEEKDAYS -> {
-                scheduleWeekdayReminders(habit, reminderTime, initialDelay)
+                scheduleWeekdayReminders(habit, initialDelay)
             }
             HabitFrequency.WEEKENDS -> {
-                scheduleWeekendReminders(habit, reminderTime, initialDelay)
+                scheduleWeekendReminders(habit, initialDelay)
             }
             HabitFrequency.WEEKLY, HabitFrequency.TWICE_A_WEEK, HabitFrequency.CUSTOM -> {
                 val selected = habit.reminderDays.map { it.value }.toSet()
@@ -131,9 +128,11 @@ class ReminderRepositoryImpl @Inject constructor(
                 } else {
                     // Fallback к старой логике, чтобы не сломать существующие данные
                     when (habit.frequency) {
-                        HabitFrequency.WEEKLY -> repeat(4) { weekOffset -> if (weekOffset > 0) scheduleReminderForDay(habit, reminderTime, weekOffset * 7, initialDelay) }
-                        HabitFrequency.CUSTOM -> scheduleReminderForDay(habit, reminderTime, 1, initialDelay)
-                        HabitFrequency.TWICE_A_WEEK -> repeat(4) { weekOffset -> if (weekOffset > 0) scheduleReminderForDay(habit, reminderTime, weekOffset * 7, initialDelay) }
+                        HabitFrequency.WEEKLY -> repeat(4) { weekOffset -> if (weekOffset > 0) scheduleReminderForDay(habit,
+                            weekOffset * 7, initialDelay) }
+                        HabitFrequency.CUSTOM -> scheduleReminderForDay(habit, 1, initialDelay)
+                        HabitFrequency.TWICE_A_WEEK -> repeat(4) { weekOffset -> if (weekOffset > 0) scheduleReminderForDay(habit,
+                            weekOffset * 7, initialDelay) }
                         else -> {}
                     }
                 }
@@ -146,7 +145,6 @@ class ReminderRepositoryImpl @Inject constructor(
      */
     private fun scheduleReminderForDay(
         habit: Habit,
-        reminderTime: LocalTime,
         dayOffset: Int,
         baseDelay: Long
     ) {
@@ -174,7 +172,7 @@ class ReminderRepositoryImpl @Inject constructor(
     /**
      * Планирует напоминания только на будние дни
      */
-    private fun scheduleWeekdayReminders(habit: Habit, reminderTime: LocalTime, baseDelay: Long) {
+    private fun scheduleWeekdayReminders(habit: Habit, baseDelay: Long) {
         Log.d("ReminderRepositoryImpl", "scheduleWeekdayReminders: $habit")
         val now = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault())
         
@@ -186,7 +184,7 @@ class ReminderRepositoryImpl @Inject constructor(
                 
                 // Проверяем, что это будний день (пн-пт)
                 if (dayOfWeek in 1..5) {
-                    scheduleReminderForDay(habit, reminderTime, dayOffset, baseDelay)
+                    scheduleReminderForDay(habit, dayOffset, baseDelay)
                 }
             }
         }
@@ -195,7 +193,7 @@ class ReminderRepositoryImpl @Inject constructor(
     /**
      * Планирует напоминания только на выходные дни
      */
-    private fun scheduleWeekendReminders(habit: Habit, reminderTime: LocalTime, baseDelay: Long) {
+    private fun scheduleWeekendReminders(habit: Habit, baseDelay: Long) {
         Log.d("ReminderRepositoryImpl", "scheduleWeekendReminders: $habit")
         val now = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault())
         
@@ -207,7 +205,7 @@ class ReminderRepositoryImpl @Inject constructor(
                 
                 // Проверяем, что это выходной день (сб-вс)
                 if (dayOfWeek in 6..7) {
-                    scheduleReminderForDay(habit, reminderTime, dayOffset, baseDelay)
+                    scheduleReminderForDay(habit, dayOffset, baseDelay)
                 }
             }
         }

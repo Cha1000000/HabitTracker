@@ -153,7 +153,9 @@ class HabitsViewModel @Inject constructor(
                         habits.map { habit ->
                             async {
                                 // Ленивая инициализация персональных настроек для текущего пользователя
-                                try { ensureMySettingsForHabitUseCase(habit) } catch (_: Exception) { }
+                                try { ensureMySettingsForHabitUseCase(habit) } catch (e: Exception) {
+                                    Log.d(TAG, "ensureMySettingsForHabitUseCase failed (non-fatal) for habit=${habit.id}: ${e.message}")
+                                }
 
                                 // Планируем уведомление только если есть изменения значимых полей
                                 val scheduleKey = buildString {
@@ -170,12 +172,15 @@ class HabitsViewModel @Inject constructor(
                                 val lastKey = lastScheduleKeyByHabit[habit.id]
                                 if (lastKey != scheduleKey) {
                                     lastScheduleKeyByHabit[habit.id] = scheduleKey
-                                    try { scheduleHabitReminderUseCase(habit) } catch (_: Exception) { }
+                                    try { scheduleHabitReminderUseCase(habit) } catch (e: Exception) {
+                                        Log.w(TAG, "scheduleHabitReminderUseCase failed for habit=${habit.id}: ${e.message}", e)
+                                    }
                                 }
 
                                 val isCompleted = try {
                                     getHabitCompletionStatusUseCase(habit.id, userId, today)
-                                } catch (_: Exception) {
+                                } catch (e: Exception) {
+                                    Log.d(TAG, "getHabitCompletionStatusUseCase failed for habit=${habit.id}: ${e.message}")
                                     false
                                 }
                                 HabitWithCompletion(

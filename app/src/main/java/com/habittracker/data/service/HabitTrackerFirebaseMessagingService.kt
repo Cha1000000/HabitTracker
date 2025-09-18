@@ -110,7 +110,10 @@ class HabitTrackerFirebaseMessagingService : FirebaseMessagingService() {
         // Если указали целевого пользователя в payload, не показываем уведомление не тому пользователю
         val recipientUserId = data["recipientUserId"]
         if (recipientUserId != null) {
-            val currentUserId = try { authRepository.getCurrentUserId() } catch (_: Exception) { null }
+            val currentUserId = try { authRepository.getCurrentUserId() } catch (e: Exception) {
+                Log.w(TAG, "authRepository.getCurrentUserId() failed in onMessageReceived", e)
+                null
+            }
             if (currentUserId == null || currentUserId != recipientUserId) {
                 Log.d(TAG, "Уведомление не для текущего пользователя. current=$currentUserId, recipient=$recipientUserId — сохраняем в очередь")
                 // Сохраняем в локальную очередь
@@ -270,7 +273,10 @@ class HabitTrackerFirebaseMessagingService : FirebaseMessagingService() {
     }
 
     private suspend fun deliverPendingForCurrentUser() {
-        val currentUserId = try { authRepository.getCurrentUserId() } catch (_: Exception) { null } ?: return
+        val currentUserId = try { authRepository.getCurrentUserId() } catch (e: Exception) {
+            Log.w(TAG, "authRepository.getCurrentUserId() failed in deliverPendingForCurrentUser", e)
+            null
+        } ?: return
         pendingDao.deleteExpired(System.currentTimeMillis())
         val items = pendingDao.getAllForUser(currentUserId)
         if (items.isEmpty()) return
@@ -290,7 +296,7 @@ class HabitTrackerFirebaseMessagingService : FirebaseMessagingService() {
      */
     private fun createNotificationIntent(data: Map<String, String>): Intent {
         val intent = Intent(this, MainActivity::class.java).apply {
-            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
+            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP
         }
 
         // Добавляем данные для навигации
@@ -305,14 +311,33 @@ class HabitTrackerFirebaseMessagingService : FirebaseMessagingService() {
             "friend_request" -> {
                 intent.putExtra("navigate_to", "friend_requests")
             }
+            "friend_accepted" -> {
+                intent.putExtra("navigate_to", "friends")
+            }
             "habit_invitation" -> {
                 intent.putExtra("navigate_to", "habit_invitations")
+            }
+            "habit_invitation_accepted" -> {
+                val habitId = data["habit_id"]
+                if (habitId != null) {
+                    intent.putExtra("navigate_to", "group_habit_detail")
+                    intent.putExtra("habit_id", habitId)
+                } else {
+                    intent.putExtra("navigate_to", "notifications")
+                }
+            }
+            "habit_reminder" -> {
+                // На всякий случай, если бэк начнет отправлять отдельный тип напоминаний
+                intent.putExtra("navigate_to", "habits")
             }
             else -> {
                 intent.putExtra("navigate_to", "notifications")
             }
         }
 
+        val dbgNavigateTo = intent.getStringExtra("navigate_to")
+        val dbgHabitId = intent.getStringExtra("habit_id")
+        Log.d(TAG, "[push-nav] Built intent navigate_to=${dbgNavigateTo} habit_id=${dbgHabitId}")
         return intent
     }
 }

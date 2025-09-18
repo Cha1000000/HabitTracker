@@ -1,5 +1,6 @@
 package com.habittracker.data.repository
 
+import android.util.Log
 import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.SetOptions
@@ -115,7 +116,8 @@ class UserRepositoryImpl @Inject constructor(
                     "updatedAt" to now
                 )).await()
             }
-        } catch (_: Exception) {
+        } catch (e: Exception) {
+            Log.w("UserRepository", "upsertUserRemoteAndLocal failed (non-fatal): ${e.message}", e)
             // не падаем; WorkManager/повтор можно добавить отдельно при необходимости
         }
     }
@@ -131,7 +133,9 @@ class UserRepositoryImpl @Inject constructor(
                 val remote = if (data != null) UserFirestoreConverter.fromFirestore(data, snapshot.id) else null
                 if (remote != null) {
                     scope.launch {
-                        try { userDao.insertUser(remote.userToEntity()) } catch (_: Exception) {}
+                        try { userDao.insertUser(remote.userToEntity()) } catch (e: Exception) {
+                            Log.d("UserRepository", "observeUser: local insert failed (non-fatal): ${e.message}")
+                        }
                     }
                 }
             }
@@ -169,8 +173,8 @@ class UserRepositoryImpl @Inject constructor(
                         // Local update
                         userDao.updateUserAvatarThumbnail(id, avatarUrl)
                         updated++
-                    } catch (_: Exception) {
-                        // safely skip failed doc
+                    } catch (e: Exception) {
+                        Log.d("UserRepository", "backfillAvatarThumbnails: skipping doc=${id}, reason=${e.message}")
                     }
                 }
             }

@@ -1,5 +1,6 @@
 package com.habittracker.data.repository
 
+import android.util.Log
 import com.habittracker.data.local.dao.HabitParticipantSettingsDao
 import com.habittracker.data.local.mappers.toDomain
 import com.habittracker.data.local.mappers.toEntity
@@ -21,7 +22,10 @@ class ParticipantSettingsRepositoryImpl @Inject constructor(
     override suspend fun get(habitId: String, userId: String): HabitParticipantSettings? {
         val local = dao.get(habitId, userId)?.toDomain()
         // Всегда пытаемся получить удалённые настройки
-        val remote = try { firestoreRepository.getParticipantSettings(habitId, userId) } catch (_: Exception) { null }
+        val remote = try { firestoreRepository.getParticipantSettings(habitId, userId) } catch (e: Exception) {
+            Log.d("ParticipantSettingsRepo", "get() remote fetch failed for habit=$habitId user=$userId: ${e.message}")
+            null
+        }
         return when {
             local == null && remote == null -> null
             local == null && remote != null -> {

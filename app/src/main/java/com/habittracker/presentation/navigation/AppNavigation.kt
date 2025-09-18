@@ -3,6 +3,7 @@ package com.habittracker.presentation.navigation
 import androidx.compose.runtime.Composable
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
+import androidx.navigation.NavHostController
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
@@ -48,8 +49,13 @@ sealed class Screen(val route: String) {
  * Определяет все маршруты и соответствующие им экраны.
  */
 @Composable
-fun AppNavHost() {
+fun AppNavHost(
+    onNavControllerReady: (NavHostController) -> Unit = {}
+) {
     val navController = rememberNavController()
+    androidx.compose.runtime.LaunchedEffect(Unit) {
+        onNavControllerReady(navController)
+    }
     // TODO: Add logic to check if user is logged in and set start destination accordingly
     NavHost(navController = navController, startDestination = Screen.Login.route) {
         composable(route = Screen.Habits.route) {
@@ -89,12 +95,18 @@ fun AppNavHost() {
             ProfileScreen(navController = navController)
         }
         
-        composable(route = Screen.Friends.route) {
+        composable(
+            route = Screen.Friends.route + "?tab={tab}",
+            arguments = listOf(navArgument("tab") { nullable = true })
+        ) { backStackEntry ->
+            val tabArg = backStackEntry.arguments?.getString("tab")
+            val initialTab = if (tabArg == "requests") 1 else 0
             FriendsScreen(
                 onNavigateToProfile = { userId ->
                     navController.navigate(Screen.ProfileUser.createRoute(userId))
                 },
-                onNavigateBack = { navController.popBackStack() }
+                onNavigateBack = { navController.popBackStack() },
+                initialSelectedTab = initialTab
             )
         }
         

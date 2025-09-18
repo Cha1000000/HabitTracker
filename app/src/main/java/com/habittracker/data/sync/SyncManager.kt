@@ -120,8 +120,9 @@ class SyncManager @Inject constructor(
                                 continue
                             }
                         }
-                    } catch (_: Exception) {
-                        // игнорируем, нет валидного payload — выполняем немедленно
+                    } catch (e: Exception) {
+                        // игнорируем, нет валидного payload — выполняем немедленно, но залогируем для диагностики
+                        Log.w("SyncManager", "[drainPending] invalid DELETE payload for id=${item.id}, executing immediately: ${e.message}")
                     }
                 }
                 outboxDao.updateState(item.id, "IN_PROGRESS")
@@ -139,7 +140,9 @@ class SyncManager @Inject constructor(
                     try {
                         val payloadObj = JSONObject(item.payloadJson)
                         if (payloadObj.has("maxRetries")) maxRetries = payloadObj.getInt("maxRetries")
-                    } catch (_: Exception) {}
+                    } catch (e: Exception) {
+                        Log.w("SyncManager", "[drainPending] failed to parse maxRetries for id=${item.id}: ${e.message}")
+                    }
                     val nextState = if (item.retryCount + 1 >= maxRetries) "FAILED" else "PENDING"
                     outboxDao.markRetry(item.id, e.message, nextState, nowTs)
                     Log.w(

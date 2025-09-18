@@ -58,7 +58,10 @@ class FCMTokenManager @Inject constructor(
                     }
 
                     // Compare with existing stored token to avoid redundant writes
-                    val existing = try { socialRepository.getUserById(currentUserId)?.fcmToken } catch (_: Exception) { null }
+                    val existing = try { socialRepository.getUserById(currentUserId)?.fcmToken } catch (e: Exception) {
+                        if (BuildConfig.DEBUG) Log.d(TAG, "[fcm] getUserById failed while comparing tokens: ${e.message}")
+                        null
+                    }
                     if (existing == token) {
                         if (BuildConfig.DEBUG) {
                             Log.d(TAG, "[fcm] Token unchanged, skip update for user=$currentUserId")

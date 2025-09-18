@@ -1,5 +1,6 @@
 package com.habittracker.domain.usecase
 
+import android.util.Log
 import com.habittracker.domain.model.HabitEntry
 import com.habittracker.domain.model.gamification.GamificationEvent
 import com.habittracker.domain.repository.HabitEntryRepository
@@ -73,15 +74,22 @@ class MarkHabitCompletedUseCase @Inject constructor(
                 payloadJson = payloadJson,
                 updatedAt = nowMillis
             )
-        } catch (_: Exception) {
-            // Игнорируем: запись останется локально, воркер позже повторит
+        } catch (e: Exception) {
+            // Игнорируем критично для UI, но логируем для диагностики: запись останется локально, воркер позже повторит
+            Log.w("MarkHabitCompleted", "enqueueUpsert failed: ${e.message}", e)
         } finally {
             // Экспедитим синхронизацию
-            syncWorkScheduler.scheduleOneTimeSync()
+            try {
+                syncWorkScheduler.scheduleOneTimeSync()
+            } catch (e: Exception) {
+                Log.w("MarkHabitCompleted", "scheduleOneTimeSync failed: ${e.message}", e)
+            }
 
             // 3) Немедленный неблокирующий дренаж outbox для ускорения синка
             backgroundTasksScope.launch {
-                try { syncManager.drainPending() } catch (_: Exception) { }
+                try { syncManager.drainPending() } catch (e: Exception) {
+                    Log.d("MarkHabitCompleted", "drainPending failed (non-fatal): ${e.message}")
+                }
             }
 
             // 4) Асинхронные побочные эффекты (очки, уведомления)

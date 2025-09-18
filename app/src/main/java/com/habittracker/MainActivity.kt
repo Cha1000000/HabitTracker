@@ -14,10 +14,12 @@ import androidx.core.content.ContextCompat
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
+import androidx.navigation.NavHostController
 import com.habittracker.data.service.PendingNotificationManager
 import com.habittracker.domain.repository.AuthRepository
 import com.habittracker.domain.repository.SocialRepository
 import com.habittracker.presentation.navigation.AppNavHost
+import com.habittracker.presentation.navigation.Screen
 import com.habittracker.presentation.ui.theme.HabitTrackerTheme
 import com.habittracker.presentation.viewmodel.AuthState
 import com.habittracker.presentation.viewmodel.AuthViewModel
@@ -37,13 +39,26 @@ class MainActivity : ComponentActivity() {
 
     private val authViewModel: AuthViewModel by viewModels()
     private var socialSyncJob: Job? = null
+    private var navController: NavHostController? = null
+    private var pendingNavigation: (() -> Unit)? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        // Ранний захват deep link из push до инициализации UI/подписок
+        intent?.getStringExtra("navigate_to")?.let { deep ->
+            Log.d("MainActivity", "[push-nav] pre-UI handle navigate_to=$deep")
+            handleIntentForNavigation(intent)
+        }
         enableEdgeToEdge()
         setContent {
             HabitTrackerTheme {
-                AppNavHost()
+                AppNavHost(
+                    onNavControllerReady = { controller ->
+                        navController = controller
+                        // Обработка стартового интента из уведомления
+                        handleIntentForNavigation(intent)
+                    }
+                )
             }
         }
 
@@ -68,6 +83,40 @@ class MainActivity : ComponentActivity() {
                             }
                             if (userId != null) {
                                 startSocialRealtimeSync(userId)
+                                // Если есть отложенная навигация — выполним её
+                                pendingNavigation?.let { nav ->
+                                    Log.d(
+                                        "MainActivity",
+                                        "[push-nav] executing pendingNavigation after auth success"
+                                    )
+                                    nav()
+                                    pendingNavigation = null
+                                } ?: run {
+                                    val deep = intent?.getStringExtra("navigate_to")
+                                    if (deep.isNullOrEmpty()) {
+                                        // Если push/deeplink не ставил отложенную навигацию, идём на Habits
+                                        val action: () -> Unit = {
+                                            navController?.let { controller ->
+                                                Log.d("MainActivity", "[bootstrap] default navigate to Habits")
+                                                runCatching {
+                                                    controller.navigate(Screen.Habits.route) {
+                                                        popUpTo(controller.graph.startDestinationId) { inclusive = true }
+                                                        launchSingleTop = true
+                                                    }
+                                                }
+                                            }
+                                        }
+                                        if (navController != null) {
+                                            Log.d("MainActivity", "[bootstrap] navController ready -> execute default nav")
+                                            action()
+                                        } else {
+                                            Log.d("MainActivity", "[bootstrap] navController null -> set pending default nav to Habits")
+                                            pendingNavigation = action
+                                        }
+                                    } else {
+                                        Log.d("MainActivity", "[bootstrap] deep link present ($deep) -> skip default Habits nav")
+                                    }
+                                }
                             } else {
                                 Log.w("MainActivity", "[bootstrap] Cannot start social realtime sync: currentUserId is null")
                             }
@@ -80,6 +129,96 @@ class MainActivity : ComponentActivity() {
                     }
                 }
             }
+        }
+    }
+
+    override fun onNewIntent(intent: android.content.Intent) {
+        super.onNewIntent(intent)
+        Log.d(
+            "MainActivity",
+            "[push-nav] onNewIntent action=${intent.action} extras=${intent.extras?.keySet()?.joinToString()}"
+        )
+        // Обновляем текущий intent, чтобы Compose-экраны (LoginScreen) могли читать navigate_to
+        setIntent(intent)
+        handleIntentForNavigation(intent)
+    }
+
+    private fun handleIntentForNavigation(intent: android.content.Intent) {
+        val navigateTo = intent.getStringExtra("navigate_to")
+        val habitId = intent.getStringExtra("habit_id") ?: intent.getStringExtra("habitId")
+
+        val route: String? = when (navigateTo) {
+            "friends" -> Screen.Friends.route
+            "friend_requests" -> Screen.Friends.route + "?tab=requests"
+            "habit_invitations" -> Screen.Notifications.route
+            "notifications" -> Screen.Notifications.route
+            "group_habit_detail" -> habitId?.let { Screen.GroupHabitDetail.createRoute(it) } ?: Screen.Habits.route
+            "habits" -> Screen.Habits.route
+            null -> {
+                if (habitId != null) Screen.Habits.route else null
+            }
+            else -> null
+        }
+
+        Log.d(
+            "MainActivity",
+            "[push-nav] handleIntentForNavigation navigate_to=$navigateTo habitId=$habitId -> route=${route ?: "<null>"}"
+        )
+
+        if (route != null) {
+            val action: () -> Unit = {
+                navController?.let { controller ->
+                    val result = runCatching {
+                        controller.navigate(route) {
+                            // Сносим стартовый (Login) экран, чтобы он не перезаписал наш переход
+                            popUpTo(controller.graph.startDestinationId) { inclusive = true }
+                            launchSingleTop = true
+                            restoreState = false
+                        }
+                    }
+                    val currentRoute = controller.currentBackStackEntry?.destination?.route
+                    val currentTab = controller.currentBackStackEntry?.arguments?.getString("tab")
+                    Log.d("MainActivity", "[push-nav] navigate('$route') success=${result.isSuccess} -> current=${currentRoute} tab=${currentTab}")
+                    // После успешной навигации очищаем deep link extras, чтобы они не мешали дефолтной навигации позже
+                    clearDeepLinkExtras()
+                }
+            }
+            val isAuthenticated = (authViewModel.authState.value is AuthState.Success)
+            if (navController != null && isAuthenticated) {
+                Log.d("MainActivity", "[push-nav] navController ready & authed=true -> execute now")
+                action()
+            } else {
+                Log.d(
+                    "MainActivity",
+                    "[push-nav] navController ready=${navController != null} authed=$isAuthenticated -> postpone"
+                )
+                // Очищаем extras сразу, чтобы не блокировать дефолтную навигацию после логина
+                clearDeepLinkExtras()
+                pendingNavigation = action
+            }
+        } else if (navigateTo != null) {
+            // Если navigate_to пришёл, но наш роут не распознан — очищаем extras,
+            // чтобы не блокировать дефолтную навигацию на Habits после авторизации
+            Log.d(
+                "MainActivity",
+                "[push-nav] unknown navigate_to='$navigateTo' -> clear extras to allow default nav"
+            )
+            clearDeepLinkExtras()
+        }
+    }
+
+    private fun clearDeepLinkExtras() {
+        try {
+            val hadNavigateTo = intent?.hasExtra("navigate_to") == true
+            val hadHabitId = intent?.hasExtra("habit_id") == true || intent?.hasExtra("habitId") == true
+            intent?.removeExtra("navigate_to")
+            intent?.removeExtra("habit_id")
+            intent?.removeExtra("habitId")
+            if (hadNavigateTo || hadHabitId) {
+                Log.d("MainActivity", "[push-nav] cleared deep link extras (navigate_to/habit_id)")
+            }
+        } catch (e: Exception) {
+            Log.w("MainActivity", "[push-nav] failed to clear deep link extras: ${e.message}", e)
         }
     }
 

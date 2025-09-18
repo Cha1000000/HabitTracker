@@ -1,5 +1,6 @@
 package com.habittracker.presentation.viewmodel
 
+import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.habittracker.domain.repository.AuthRepository
@@ -96,7 +97,9 @@ class NotificationsViewModel @Inject constructor(
                     ?: return@launch
                 getHabitInvitationsUseCase.getPendingInvitationsCount(currentUserId)
                     .collect { count -> pendingInvitationsCount.value = count }
-            } catch (_: Exception) { /* no-op */ }
+            } catch (e: Exception) {
+                Log.d("NotificationsVM", "observeInvitationsCount failed (non-fatal): ${e.message}")
+            }
         }
     }
 

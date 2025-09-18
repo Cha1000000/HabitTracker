@@ -134,7 +134,10 @@ class SocialRepositoryImpl @Inject constructor(
 
     override suspend fun getUserById(userId: String): User? {
         // Local-first: быстрее и устойчивее к отменам корутин
-        val local = try { userDao.getUserById(userId)?.toDomain() } catch (_: Exception) { null }
+        val local = try { userDao.getUserById(userId)?.toDomain() } catch (e: Exception) {
+            Log.w("SocialRepository", "Local getUserById failed: $userId", e)
+            null
+        }
         if (local != null) return local
 
         return try {
@@ -144,7 +147,8 @@ class SocialRepositoryImpl @Inject constructor(
             } else {
                 null
             }
-        } catch (_: Exception) {
+        } catch (e: Exception) {
+            Log.w("SocialRepository", "getUserById Firestore failed for userId=$userId: ${e.message}", e)
             null
         }
     }
@@ -176,8 +180,9 @@ class SocialRepositoryImpl @Inject constructor(
                             .await()
                     }
                 }
-            } catch (_: Exception) {
+            } catch (e: Exception) {
                 // Не критично: в худшем случае токен временно будет подвязан к двум аккаунтам
+                Log.w("SocialRepository", "updateUserFcmToken cleanup (remove token from other users) failed: ${e.message}", e)
             }
 
             // 2) Добавляем токен текущему пользователю (массив + legacy)
@@ -191,6 +196,7 @@ class SocialRepositoryImpl @Inject constructor(
                 .await()
         } catch (e: Exception) {
             // Обновляем локально (сохраним единственный токен в legacy поле)
+            Log.w("SocialRepository", "updateUserFcmToken remote update failed for user=$userId: ${e.message}", e)
             val user = userDao.getUserById(userId)
             user?.let {
                 userDao.updateUser(it.copy(fcmToken = token))
@@ -205,6 +211,7 @@ class SocialRepositoryImpl @Inject constructor(
                 .await()
         } catch (e: Exception) {
             // Обновляем локально
+            Log.w("SocialRepository", "updateFriendsCount remote update failed for user=$userId: ${e.message}", e)
             val user = userDao.getUserById(userId)
             user?.let {
                 userDao.updateUser(it.copy(friendsCount = count))
@@ -245,13 +252,72 @@ class SocialRepositoryImpl @Inject constructor(
             // Форсируем немедленный дренаж outbox, чтобы запись быстрее попала в Firestore
             try {
                 syncWorkScheduler.scheduleOneTimeSync()
-            } catch (_: Exception) { /* ignore */ }
+            } catch (e: Exception) {
+                Log.w("SocialRepository", "scheduleOneTimeSync() failed after enqueueUpsert(friend_request): ${e.message}", e)
+            }
 
             Log.d("SocialRepository", "✅ Friend request enqueued successfully!")
+
+            // Fire-and-forget push для получателя (не блокируем основной флоу)
+            repoScope.launch {
+                runCatching { sendFriendRequestPush(fromUserId = fromUserId, toUserId = toUserId, message = message) }
+                    .onFailure { e -> Log.w("SocialRepository", "Push(friend_request) failed: ${e.message}") }
+            }
             Result.success(friendRequest)
         } catch (e: Exception) {
             Log.e("SocialRepository", "❌ Failed to send friend request: ${e.message}", e)
             Result.failure(e)
+        }
+    }
+
+    private suspend fun sendFriendRequestPush(fromUserId: String, toUserId: String, message: String?) {
+        // 1) Получим токены получателя из Firestore
+        val userDoc = firestore.collection("users").document(toUserId).get().await()
+        val tokens = mutableSetOf<String>()
+        (userDoc.get("fcmTokens") as? List<*>)
+            ?.filterIsInstance<String>()
+            ?.filter { it.isNotBlank() }
+            ?.let { tokens.addAll(it) }
+        (userDoc.get("fcmToken") as? String)
+            ?.takeIf { it.isNotBlank() }
+            ?.let { tokens.add(it) }
+
+        if (tokens.isEmpty()) {
+            Log.d("SocialRepository", "sendFriendRequestPush: no tokens for user=$toUserId — skip push")
+            return
+        }
+
+        // 2) Попробуем достать имя отправителя для текста
+        val fromName: String = try {
+            val local = userDao.getUserById(fromUserId)?.toDomain()?.name
+            if (!local.isNullOrBlank()) local else {
+                val fromDoc = firestore.collection("users").document(fromUserId).get().await()
+                (fromDoc.get("name") as? String) ?: "Пользователь"
+            }
+        } catch (e: Exception) {
+            Log.d("SocialRepository", "sendFriendRequestPush: resolve fromName failed for fromUserId=$fromUserId: ${e.message}")
+            "Пользователь"
+        }
+
+        val title = "Новый запрос дружбы"
+        val body = "$fromName хочет добавить вас в друзья"
+
+        // 3) Сформируем data payload
+        val data = buildMap {
+            put("type", "friend_request")
+            put("recipientUserId", toUserId)
+            put("fromUserId", fromUserId)
+            put("fromUserName", fromName)
+            message?.takeIf { it.isNotBlank() }?.let { put("message", it) }
+        }
+
+        // 4) Отправим батчем
+        val result = fcmApiClient.sendToMultipleTokens(tokens.toList(), title, body, data)
+        if (result.isSuccess) {
+            val br = result.getOrNull()
+            Log.d("SocialRepository", "sendFriendRequestPush: sent=${br?.successCount ?: 0}/${br?.totalSent ?: tokens.size}")
+        } else {
+            Log.w("SocialRepository", "sendFriendRequestPush: failed ${result.exceptionOrNull()?.message}")
         }
     }
 
@@ -289,7 +355,7 @@ class SocialRepositoryImpl @Inject constructor(
                     userDao.insertUser(toUser.toEntity())
                 }
             } catch (e: Exception) {
-                // Продолжаем выполнение - пользователи могли уже существовать
+                Log.d("SocialRepository", "acceptFriendRequest: optional user upsert failed (non-fatal): ${e.message}")
             }
             
             friendshipDao.insertFriendship(friendship.toEntity())
@@ -302,7 +368,9 @@ class SocialRepositoryImpl @Inject constructor(
                 payloadJson = frPayload,
                 updatedAt = acceptedRequest.updatedAt
             )
-            try { syncWorkScheduler.scheduleOneTimeSync() } catch (_: Exception) { }
+            try { syncWorkScheduler.scheduleOneTimeSync() } catch (e: Exception) {
+                Log.w("SocialRepository", "scheduleOneTimeSync() failed after enqueueUpsert(friend_request accepted): ${e.message}", e)
+            }
 
             val ordered = if (friendship.userId1 < friendship.userId2) Pair(friendship.userId1, friendship.userId2) else Pair(friendship.userId2, friendship.userId1)
             val fsPayload = SyncPayloads.friendshipToJson(friendship)
@@ -312,7 +380,9 @@ class SocialRepositoryImpl @Inject constructor(
                 payloadJson = fsPayload,
                 updatedAt = friendship.updatedAt
             )
-            try { syncWorkScheduler.scheduleOneTimeSync() } catch (_: Exception) { }
+            try { syncWorkScheduler.scheduleOneTimeSync() } catch (e: Exception) {
+                Log.w("SocialRepository", "scheduleOneTimeSync() failed after enqueueUpsert(friendship in acceptFriendRequest): ${e.message}", e)
+            }
 
             // Обновляем счетчики друзей
             val user1FriendsCount = friendshipDao.getFriendsCount(friendship.userId1).first()
@@ -348,7 +418,9 @@ class SocialRepositoryImpl @Inject constructor(
                 payloadJson = payload,
                 updatedAt = declinedRequest.updatedAt
             )
-            try { syncWorkScheduler.scheduleOneTimeSync() } catch (_: Exception) { }
+            try { syncWorkScheduler.scheduleOneTimeSync() } catch (e: Exception) {
+                Log.w("SocialRepository", "scheduleOneTimeSync() failed after declineFriendRequest: ${e.message}", e)
+            }
 
             Result.success(declinedRequest)
         } catch (e: Exception) {
@@ -367,7 +439,9 @@ class SocialRepositoryImpl @Inject constructor(
                 entityId = requestId,
                 updatedAt = System.currentTimeMillis()
             )
-            try { syncWorkScheduler.scheduleOneTimeSync() } catch (_: Exception) { }
+            try { syncWorkScheduler.scheduleOneTimeSync() } catch (e: Exception) {
+                Log.w("SocialRepository", "scheduleOneTimeSync() failed after cancelFriendRequest: ${e.message}", e)
+            }
 
             Result.success(Unit)
         } catch (e: Exception) {
@@ -382,7 +456,8 @@ class SocialRepositoryImpl @Inject constructor(
                 try {
                     val remote = doc.toObject(com.habittracker.data.remote.model.FriendRequestRemote::class.java)
                     remote?.toDomain(doc.id)
-                } catch (_: Exception) {
+                } catch (e: Exception) {
+                    Log.d("SocialRepository", "getFriendRequestById: mapping failed for doc=${doc.id}: ${e.message}")
                     // fallback к Room, если маппинг не удался
                     friendRequestDao.getFriendRequestById(requestId)?.toDomain()
                 }
@@ -390,6 +465,7 @@ class SocialRepositoryImpl @Inject constructor(
                 friendRequestDao.getFriendRequestById(requestId)?.toDomain()
             }
         } catch (e: Exception) {
+            Log.w("SocialRepository", "getFriendRequestById Firestore failed: ${e.message}", e)
             friendRequestDao.getFriendRequestById(requestId)?.toDomain()
         }
     }
@@ -407,11 +483,13 @@ class SocialRepositoryImpl @Inject constructor(
                 try {
                     val remote = doc.toObject(com.habittracker.data.remote.model.FriendRequestRemote::class.java)
                     remote?.toDomain(doc.id)
-                } catch (_: Exception) {
+                } catch (e: Exception) {
+                    Log.d("SocialRepository", "getFriendRequestBetweenUsers: mapping failed for doc=${doc.id}: ${e.message}")
                     null
                 }
             }
         } catch (e: Exception) {
+            Log.w("SocialRepository", "getFriendRequestBetweenUsers Firestore failed: ${e.message}", e)
             friendRequestDao.getFriendRequestBetweenUsers(fromUserId, toUserId)?.toDomain()
         }
     }
@@ -442,7 +520,9 @@ class SocialRepositoryImpl @Inject constructor(
                                     try {
                                         getUserById(fr.fromUserId)?.let { userDao.insertUser(it.toEntity()) }
                                         getUserById(fr.toUserId)?.let { userDao.insertUser(it.toEntity()) }
-                                    } catch (_: Exception) { }
+                                    } catch (e: Exception) {
+                                        Log.d("SocialRepository", "Incoming FR prefetch users failed (non-fatal): ${e.message}")
+                                    }
                                 }
                             } catch (e: Exception) {
                                 Log.w("SocialRepository", "Incoming FR map/insert error: ${e.message}")
@@ -456,7 +536,9 @@ class SocialRepositoryImpl @Inject constructor(
                                 Log.d("SocialRepository", "Incoming FR reconcile: deleting ${toDelete.size} stale records")
                                 toDelete.forEach { fr -> friendRequestDao.deleteFriendRequestById(fr.id) }
                             }
-                        } catch (_: Exception) { }
+                        } catch (e: Exception) {
+                            Log.w("SocialRepository", "Incoming FR reconcile failed: ${e.message}", e)
+                        }
                     }
                 }
 
@@ -473,7 +555,7 @@ class SocialRepositoryImpl @Inject constructor(
             }
 
             awaitClose {
-                registration?.remove()
+                registration.remove()
                 job.cancel()
                 scope.cancel()
             }
@@ -506,7 +588,9 @@ class SocialRepositoryImpl @Inject constructor(
                                     try {
                                         getUserById(fr.fromUserId)?.let { userDao.insertUser(it.toEntity()) }
                                         getUserById(fr.toUserId)?.let { userDao.insertUser(it.toEntity()) }
-                                    } catch (_: Exception) { }
+                                    } catch (e: Exception) {
+                                        Log.d("SocialRepository", "Outgoing FR prefetch users failed (non-fatal): ${e.message}")
+                                    }
                                 }
                             } catch (e: Exception) {
                                 Log.w("SocialRepository", "Outgoing FR map/insert error: ${e.message}")
@@ -520,7 +604,9 @@ class SocialRepositoryImpl @Inject constructor(
                                 Log.d("SocialRepository", "Outgoing FR reconcile: deleting ${toDelete.size} stale records")
                                 toDelete.forEach { fr -> friendRequestDao.deleteFriendRequestById(fr.id) }
                             }
-                        } catch (_: Exception) { }
+                        } catch (e: Exception) {
+                            Log.w("SocialRepository", "Outgoing FR reconcile failed: ${e.message}", e)
+                        }
                     }
                 }
 
@@ -537,7 +623,7 @@ class SocialRepositoryImpl @Inject constructor(
             }
 
             awaitClose {
-                registration?.remove()
+                registration.remove()
                 job.cancel()
                 scope.cancel()
             }
@@ -582,6 +668,7 @@ class SocialRepositoryImpl @Inject constructor(
                 return friendshipDao.getFriendshipBetweenUsers(userId1, userId2)?.toDomain()
             }
         } catch (e: Exception) {
+            Log.w("SocialRepository", "getFriendshipBetweenUsers Firestore failed: ${e.message}", e)
             friendshipDao.getFriendshipBetweenUsers(userId1, userId2)?.toDomain()
         }
     }
@@ -604,7 +691,9 @@ class SocialRepositoryImpl @Inject constructor(
             try {
                 Log.d("SocialRepository", "removeFriend: scheduled one-time sync for delete friendship doc=$docId")
                 syncWorkScheduler.scheduleOneTimeSync()
-            } catch (_: Exception) { /* ignore */ }
+            } catch (e: Exception) {
+                Log.w("SocialRepository", "scheduleOneTimeSync() failed after enqueueDelete(friendship): ${e.message}", e)
+            }
 
             // Обновляем счетчики друзей
             val user1FriendsCount = friendshipDao.getFriendsCount(currentUserId).first()
@@ -698,7 +787,9 @@ class SocialRepositoryImpl @Inject constructor(
                             friendshipDao.deleteFriendshipBetweenUsers(entity.userId1, entity.userId2)
                         }
                     }
-                } catch (_: Exception) { }
+                } catch (e: Exception) {
+                    Log.w("SocialRepository", "Friends reconcile failed for user=$userId: ${e.message}", e)
+                }
             }
             // Два слушателя: userId как userId1 и как userId2
             val reg1 = firestore.collection("friendships")
@@ -726,13 +817,17 @@ class SocialRepositoryImpl @Inject constructor(
                                     if (u1 != null) {
                                         userDao.insertUser(u1.toEntity())
                                     }
-                                } catch (_: Exception) { /* ignore */ }
+                                } catch (e: Exception) {
+                                    Log.d("SocialRepository", "Prefetch user failed (userId1=$userId1): ${e.message}")
+                                }
                                 try {
                                     val u2 = getUserById(userId2)
                                     if (u2 != null) {
                                         userDao.insertUser(u2.toEntity())
                                     }
-                                } catch (_: Exception) { /* ignore */ }
+                                } catch (e: Exception) {
+                                    Log.d("SocialRepository", "Prefetch user failed (userId2=$userId2): ${e.message}")
+                                }
                                 val status = (data["status"] as? String)?.let { runCatching { FriendshipStatus.valueOf(it.uppercase()) }.getOrNull() } ?: FriendshipStatus.PENDING
                                 val requestedBy = data["requestedBy"] as? String ?: userId1
                                 val requestedAt = (data["requestedAt"] as? Number)?.toLong() ?: System.currentTimeMillis()
@@ -753,7 +848,9 @@ class SocialRepositoryImpl @Inject constructor(
                                     updatedAt = updatedAt
                                 )
                                 friendshipDao.insertFriendship(fs.toEntity())
-                            } catch (_: Exception) { /* ignore single doc errors */ }
+                            } catch (e: Exception) {
+                                Log.w("SocialRepository", "Friends listener1 mapping error for doc=${doc.id}: ${e.message}", e)
+                            }
                         }
                         // Reconcile после обработки снапшота
                         reconcileFriends()
@@ -785,13 +882,17 @@ class SocialRepositoryImpl @Inject constructor(
                                     if (u1 != null) {
                                         userDao.insertUser(u1.toEntity())
                                     }
-                                } catch (_: Exception) { /* ignore */ }
+                                } catch (e: Exception) {
+                                    Log.d("SocialRepository", "Friends listener2 prefetch user failed (userId1=$userId1): ${e.message}")
+                                }
                                 try {
                                     val u2 = getUserById(userId2)
                                     if (u2 != null) {
                                         userDao.insertUser(u2.toEntity())
                                     }
-                                } catch (_: Exception) { /* ignore */ }
+                                } catch (e: Exception) {
+                                    Log.d("SocialRepository", "Friends listener2 prefetch user failed (userId2=$userId2): ${e.message}")
+                                }
                                 val status = (data["status"] as? String)?.let { runCatching { FriendshipStatus.valueOf(it.uppercase()) }.getOrNull() } ?: FriendshipStatus.PENDING
                                 val requestedBy = data["requestedBy"] as? String ?: userId1
                                 val requestedAt = (data["requestedAt"] as? Number)?.toLong() ?: System.currentTimeMillis()
@@ -812,7 +913,9 @@ class SocialRepositoryImpl @Inject constructor(
                                     updatedAt = updatedAt
                                 )
                                 friendshipDao.insertFriendship(fs.toEntity())
-                            } catch (_: Exception) { /* ignore single doc errors */ }
+                            } catch (e: Exception) {
+                                Log.w("SocialRepository", "Friends listener2 mapping error for doc=${doc.id}: ${e.message}", e)
+                            }
                         }
                         // Reconcile после обработки снапшота
                         reconcileFriends()
@@ -827,7 +930,10 @@ class SocialRepositoryImpl @Inject constructor(
                             val user1 = runBlocking { getUserById(friendship.userId1) }
                             val user2 = runBlocking { getUserById(friendship.userId2) }
                             if (user1 != null && user2 != null) FriendshipWithUsers(friendship, user1, user2) else null
-                        } catch (_: Exception) { null }
+                        } catch (e: Exception) {
+                            Log.d("SocialRepository", "Map FriendshipWithUsers failed (non-fatal): ${e.message}")
+                            null
+                        }
                     }.filter { it.friendship.status == FriendshipStatus.ACCEPTED }
                     trySend(list)
                 }
@@ -869,7 +975,7 @@ class SocialRepositoryImpl @Inject constructor(
         try {
             friendRequestDao.expireOldRequests(thirtyDaysAgo)
         } catch (e: Exception) {
-            // Игнорируем ошибки
+            Log.d("SocialRepository", "expireOldFriendRequests failed (non-fatal): ${e.message}")
         }
     }
 
@@ -1106,14 +1212,15 @@ class SocialRepositoryImpl @Inject constructor(
                         )
                     )
                     .await()
-            } catch (_: Exception) {
-                // Не валим процесс принятия, но логично оставить локальный апдейт; Firestore подтянется при следующей синхронизации
+            } catch (e: Exception) {
+                Log.d("SocialRepository", "acceptHabitInvitation: remote habit update failed (non-fatal): ${e.message}")
             }
             // Отправляем FCM уведомление создателю привычки
             val acceptedUserName = try {
                 getUserById(invitation.toUserId)?.name ?: invitation.toUserId
             }
-            catch (_: Exception) {
+            catch (e: Exception) {
+                Log.d("SocialRepository", "acceptHabitInvitation: resolve acceptedUserName failed (non-fatal): ${e.message}")
                 invitation.toUserId
             }
             Log.d(
@@ -1166,7 +1273,9 @@ class SocialRepositoryImpl @Inject constructor(
                 Log.d("SocialRepository", "[declineHabitInvitation] scheduleOneTimeSync() -> start")
                 syncWorkScheduler.scheduleOneTimeSync()
                 Log.d("SocialRepository", "[declineHabitInvitation] scheduleOneTimeSync() -> enqueued")
-            } catch (_: Exception) { }
+            } catch (e: Exception) {
+                Log.w("SocialRepository", "[declineHabitInvitation] scheduleOneTimeSync() failed: ${e.message}", e)
+            }
             // Дополнительно: мгновенный дренаж в бекграунде
             repoScope.launch {
                 try {
@@ -1248,6 +1357,7 @@ class SocialRepositoryImpl @Inject constructor(
                 habitInvitationDao.getById(invitationId)?.toDomain()
             }
         } catch (e: Exception) {
+            Log.w("SocialRepository", "getHabitInvitationById Firestore failed: ${e.message}", e)
             habitInvitationDao.getById(invitationId)?.toDomain()
         }
     }
@@ -1266,6 +1376,7 @@ class SocialRepositoryImpl @Inject constructor(
                     ?.toDomain(doc.id)
             }
         } catch (e: Exception) {
+            Log.w("SocialRepository", "getPendingHabitInvitation Firestore failed: ${e.message}", e)
             habitInvitationDao.getPendingInvitation(habitId, userId)?.toDomain()
         }
     }
@@ -1282,47 +1393,45 @@ class SocialRepositoryImpl @Inject constructor(
                 .whereEqualTo("status", HabitInvitationStatus.PENDING.name)
                 .addSnapshotListener { snapshot, error ->
                     if (error != null) {
-                        // Игнорируем ошибку, оставляем локальные данные, но логируем
-                        try {
-                            android.util.Log.w(
-                                "SocialRepository",
-                                "[getIncomingHabitInvitations] listener error: ${error.message}",
-                                error
-                            )
-                        } catch (_: Exception) {}
+                        // Логируем и выходим, локальные данные остаются
+                        android.util.Log.w(
+                            "SocialRepository",
+                            "[getIncomingHabitInvitations] listener error: ${error.message}",
+                            error
+                        )
                         return@addSnapshotListener
                     }
                     val docs = snapshot?.documents ?: emptyList()
                     val remoteIds = docs.map { it.id }.toSet()
-                    try { android.util.Log.d("SocialRepository", "[getIncomingHabitInvitations] snapshot size=${docs.size}") } catch (_: Exception) {}
+                    android.util.Log.d("SocialRepository", "[getIncomingHabitInvitations] snapshot size=${docs.size}")
 
                     val list = docs.mapNotNull { doc ->
                         doc.toObject(com.habittracker.data.remote.model.HabitInvitationRemote::class.java)
                             ?.toDomain(doc.id)
-                    } ?: emptyList()
+                    }
 
                     // Апсертим локально для консистентности (и для счётчиков)
                     scope.launch {
                         try {
                             habitInvitationDao.insertAll(list.map { it.toEntity() })
-                            try { android.util.Log.d("SocialRepository", "[getIncomingHabitInvitations] upsert=${list.size}") } catch (_: Exception) {}
+                            android.util.Log.d("SocialRepository", "[getIncomingHabitInvitations] upsert=${list.size}")
                             // Reconcile: удаляем локальные PENDING входящие, которых нет в снапшоте
                             try {
                                 val local = habitInvitationDao.getIncomingInvitations(userId).first()
                                 val toDelete = local.filter { it.id !in remoteIds }
                                 if (toDelete.isNotEmpty()) {
-                                    try { android.util.Log.d("SocialRepository", "[getIncomingHabitInvitations] reconcile delete=${toDelete.size}") } catch (_: Exception) {}
+                                    android.util.Log.d("SocialRepository", "[getIncomingHabitInvitations] reconcile delete=${toDelete.size}")
                                     toDelete.forEach { inv -> habitInvitationDao.deleteById(inv.id) }
                                 }
-                            } catch (_: Exception) { }
+                            } catch (e: Exception) {
+                                android.util.Log.w("SocialRepository", "[getIncomingHabitInvitations] reconcile failed: ${e.message}", e)
+                            }
                         } catch (e: Exception) {
-                            try {
-                                android.util.Log.w(
-                                    "SocialRepository",
-                                    "[getIncomingHabitInvitations] insertAll failed: ${e.message}",
-                                    e
-                                )
-                            } catch (_: Exception) {}
+                            android.util.Log.w(
+                                "SocialRepository",
+                                "[getIncomingHabitInvitations] insertAll failed: ${e.message}",
+                                e
+                            )
                         }
                     }
                 }
@@ -1335,7 +1444,7 @@ class SocialRepositoryImpl @Inject constructor(
             }
 
             awaitClose {
-                registration?.remove()
+                registration.remove()
                 job.cancel()
                 scope.cancel()
             }
@@ -1359,22 +1468,26 @@ class SocialRepositoryImpl @Inject constructor(
                     val list = docs.mapNotNull { doc ->
                         doc.toObject(com.habittracker.data.remote.model.HabitInvitationRemote::class.java)
                             ?.toDomain(doc.id)
-                    } ?: emptyList()
+                    }
 
                     scope.launch {
                         try {
                             habitInvitationDao.insertAll(list.map { it.toEntity() })
-                            try { android.util.Log.d("SocialRepository", "[getOutgoingHabitInvitations] upsert=${list.size}") } catch (_: Exception) {}
+                            Log.d("SocialRepository", "[getOutgoingHabitInvitations] upsert=${list.size}")
                             // Reconcile: удаляем локальные PENDING исходящие, которых нет в снапшоте
                             try {
                                 val local = habitInvitationDao.getOutgoingInvitations(userId).first()
                                 val toDelete = local.filter { it.id !in remoteIds }
                                 if (toDelete.isNotEmpty()) {
-                                    try { android.util.Log.d("SocialRepository", "[getOutgoingHabitInvitations] reconcile delete=${toDelete.size}") } catch (_: Exception) {}
+                                    Log.d("SocialRepository", "[getOutgoingHabitInvitations] reconcile delete=${toDelete.size}")
                                     toDelete.forEach { inv -> habitInvitationDao.deleteById(inv.id) }
                                 }
-                            } catch (_: Exception) { }
-                        } catch (_: Exception) {}
+                            } catch (e: Exception) {
+                                Log.w("SocialRepository", "[getOutgoingHabitInvitations] reconcile failed: ${e.message}", e)
+                            }
+                        } catch (e: Exception) {
+                            Log.w("SocialRepository", "[getOutgoingHabitInvitations] insertAll failed: ${e.message}", e)
+                        }
                     }
                 }
 
@@ -1385,7 +1498,7 @@ class SocialRepositoryImpl @Inject constructor(
             }
 
             awaitClose {
-                registration?.remove()
+                registration.remove()
                 job.cancel()
                 scope.cancel()
             }
@@ -1411,7 +1524,9 @@ class SocialRepositoryImpl @Inject constructor(
                     scope.launch {
                         try {
                             habitInvitationDao.insertAll(list.map { it.toEntity() })
-                        } catch (_: Exception) {}
+                        } catch (e: Exception) {
+                            Log.w("SocialRepository", "[observeHabitInvitationsByHabit] insertAll failed: ${e.message}", e)
+                        }
                     }
                 }
 
@@ -1422,7 +1537,7 @@ class SocialRepositoryImpl @Inject constructor(
             }
 
             awaitClose {
-                registration?.remove()
+                registration.remove()
                 job.cancel()
                 scope.cancel()
             }
@@ -1437,6 +1552,7 @@ class SocialRepositoryImpl @Inject constructor(
         return try {
             habitInvitationDao.getActiveOutgoingInvitationsCount(userId)
         } catch (e: Exception) {
+            Log.w("SocialRepository", "getActiveOutgoingInvitationsCount failed: ${e.message}", e)
             0
         }
     }
@@ -1447,7 +1563,7 @@ class SocialRepositoryImpl @Inject constructor(
             habitInvitationDao.expireOldInvitations(currentTime)
             habitInvitationDao.deleteOldInvitations(currentTime - (30 * 24 * 60 * 60 * 1000)) // Удаляем старые через 30 дней
         } catch (e: Exception) {
-            // Игнорируем ошибки
+            Log.d("SocialRepository", "expireOldHabitInvitations failed (non-fatal): ${e.message}")
         }
     }
 

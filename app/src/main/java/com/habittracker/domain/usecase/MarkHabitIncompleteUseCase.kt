@@ -1,5 +1,6 @@
 package com.habittracker.domain.usecase
 
+import android.util.Log
 import com.habittracker.domain.model.HabitEntry
 import com.habittracker.domain.repository.HabitEntryRepository
 import com.habittracker.data.sync.SyncManager
@@ -62,13 +63,20 @@ class MarkHabitIncompleteUseCase @Inject constructor(
                 payloadJson = payloadJson,
                 updatedAt = nowMillis
             )
-        } catch (_: Exception) {
-            // Игнорируем: локальная консистентность сохранена, воркер повторит
+        } catch (e: Exception) {
+            // Не критично для UI, но логируем, чтобы не терять причину
+            Log.w("MarkHabitIncomplete", "enqueueUpsert failed: ${e.message}", e)
         } finally {
-            syncWorkScheduler.scheduleOneTimeSync()
+            try {
+                syncWorkScheduler.scheduleOneTimeSync()
+            } catch (e: Exception) {
+                Log.w("MarkHabitIncomplete", "scheduleOneTimeSync failed: ${e.message}", e)
+            }
             // Немедленный неблокирующий дренаж outbox для ускорения синка
             backgroundTasksScope.launch {
-                try { syncManager.drainPending() } catch (_: Exception) { }
+                try { syncManager.drainPending() } catch (e: Exception) {
+                    Log.d("MarkHabitIncomplete", "drainPending failed (non-fatal): ${e.message}")
+                }
             }
         }
     }

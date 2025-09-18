@@ -11,7 +11,10 @@ object PendingNotificationManager {
     private const val TAG = "PendingNotifMgr"
 
     suspend fun deliverForCurrentUser(context: Context, authRepository: AuthRepository) {
-        val userId = try { authRepository.getCurrentUserId() } catch (_: Exception) { null } ?: return
+        val userId = try { authRepository.getCurrentUserId() } catch (e: Exception) {
+            Log.w(TAG, "getCurrentUserId() failed in PendingNotificationManager", e)
+            null
+        } ?: return
         val dao = HabitTrackerDatabase.getDatabase(context).pendingNotificationDao()
         dao.deleteExpired(System.currentTimeMillis())
         val items = dao.getAllForUser(userId)
@@ -23,6 +26,7 @@ object PendingNotificationManager {
             val data: Map<String, String> = runCatching { gson.fromJson<Map<String, String>>(item.dataJson, type) }.getOrElse { emptyMap() }
             NotificationHelper.showNotification(context, item.title, item.body, data)
             runCatching { dao.deleteById(item.id) }
+                .onFailure { e -> Log.w(TAG, "Failed to delete pending notification id=${item.id}", e) }
         }
     }
 }

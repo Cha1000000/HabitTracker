@@ -10,7 +10,7 @@ fun HabitParticipantSettingsEntity.toDomain(): HabitParticipantSettings = HabitP
     reminderTime = reminderTime,
     reminderEnabled = reminderEnabled,
     reminderDays = reminderDays.mapNotNull { d ->
-        try { DayOfWeek.entries.firstOrNull { it.value == d } } catch (_: Exception) { null }
+        DayOfWeek.entries.firstOrNull { it.value == d }
     }.toSet(),
     notificationsMuted = notificationsMuted,
     timeZone = timeZone,

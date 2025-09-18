@@ -1,23 +1,20 @@
 package com.habittracker.data.service
 
 import android.util.Log
-import com.habittracker.BuildConfig
+import com.google.auth.oauth2.GoogleCredentials
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
-import kotlinx.serialization.Serializable
-import kotlinx.serialization.SerialName
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
+import java.io.ByteArrayInputStream
+import java.nio.charset.StandardCharsets
 import java.util.concurrent.TimeUnit
 import javax.inject.Inject
 import javax.inject.Singleton
-import java.io.ByteArrayInputStream
-import com.google.auth.oauth2.GoogleCredentials
-import java.nio.charset.StandardCharsets
 
 /**
  * Клиент для отправки push-уведомлений через FCM HTTP v1 API
@@ -43,7 +40,10 @@ class FCMApiClient @Inject constructor() {
 
     private val json = Json {
         ignoreUnknownKeys = true
-        encodeDefaults = true
+        // Не сериализуем значения по умолчанию, чтобы не тащить пустые поля
+        encodeDefaults = false
+        // Не включаем поля со значением null (например, notification=null)
+        explicitNulls = false
     }
 
     // Service Account JSON для OAuth 2.0
@@ -104,11 +104,7 @@ class FCMApiClient @Inject constructor() {
                     ),
                     android = AndroidConfig(
                         priority = "high",
-                        ttl = DEFAULT_TTL,
-                        notification = AndroidNotification(
-                            sound = "default",
-                            channelId = CHANNEL_ID
-                        )
+                        ttl = DEFAULT_TTL
                     )
                 )
             )
@@ -174,11 +170,7 @@ class FCMApiClient @Inject constructor() {
                             ),
                             android = AndroidConfig(
                                 priority = "high",
-                                ttl = DEFAULT_TTL,
-                                notification = AndroidNotification(
-                                    sound = "default",
-                                    channelId = CHANNEL_ID
-                                )
+                                ttl = DEFAULT_TTL
                             )
                         )
                     )
@@ -248,10 +240,7 @@ class FCMApiClient @Inject constructor() {
                         "body" to body
                     ),
                     android = AndroidConfig(
-                        priority = "high",
-                        notification = AndroidNotification(
-                            sound = "default"
-                        )
+                        priority = "high"
                     )
                 )
             )
@@ -283,49 +272,4 @@ class FCMApiClient @Inject constructor() {
     }
 }
 
-@Serializable
-data class FCMV1Message(
-    val message: FCMV1MessageData
-)
-
-@Serializable
-data class FCMV1MessageData(
-    val token: String,
-    // Делаем notification опциональным, чтобы отправлять data-only
-    val notification: FCMNotification? = null,
-    val data: Map<String, String>,
-    val android: AndroidConfig
-)
-
-@Serializable
-data class AndroidConfig(
-    val priority: String,
-    val ttl: String? = null,
-    val notification: AndroidNotification
-)
-
-@Serializable
-data class AndroidNotification(
-    val sound: String = "default",
-    @SerialName("channel_id") val channelId: String? = null
-    // clickAction больше НЕ поддерживается в FCM v1 API
-)
-
-@Serializable
-data class FCMNotification(
-    val title: String,
-    val body: String
-)
-
-data class BatchResult(
-    val totalSent: Int,
-    val successCount: Int,
-    val failureCount: Int,
-    val results: List<SingleResult> = emptyList()
-)
-
-data class SingleResult(
-    val token: String,
-    val success: Boolean,
-    val error: String? = null
-)
+// FCM models moved to FcmModels.kt for clarity and to avoid IDE highlighting glitches.
