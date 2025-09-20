@@ -107,10 +107,10 @@ fun EnhancedHabitItem(
                 ),
             shape = shape,
             elevation = CardDefaults.cardElevation(
-                defaultElevation = if (isDone) 0.dp else 1.dp,
-                pressedElevation = if (isDone) 0.dp else 1.dp,
-                focusedElevation = if (isDone) 0.dp else 1.dp,
-                hoveredElevation = if (isDone) 0.dp else 1.dp,
+                defaultElevation = if (isDone) 0.dp else 2.dp,
+                pressedElevation = if (isDone) 0.dp else 3.dp,
+                focusedElevation = if (isDone) 0.dp else 2.dp,
+                hoveredElevation = if (isDone) 0.dp else 3.dp,
                 draggedElevation = if (isDone) 0.dp else 1.dp
             ),
             colors = CardDefaults.cardColors(

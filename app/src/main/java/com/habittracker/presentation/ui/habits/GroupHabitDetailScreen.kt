@@ -1,6 +1,8 @@
 package com.habittracker.presentation.ui.habits
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -14,43 +16,69 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Cancel
 import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.Done
+import androidx.compose.material.icons.filled.ExitToApp
+import androidx.compose.material.icons.filled.Group
+import androidx.compose.material.icons.filled.History
+import androidx.compose.material.icons.filled.PersonAdd
+import androidx.compose.material.icons.filled.PersonRemove
+import androidx.compose.material.icons.filled.Public
 import androidx.compose.material.icons.filled.RadioButtonUnchecked
 import androidx.compose.material.icons.filled.RemoveCircle
 import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.Share
+import androidx.compose.material.icons.filled.TrendingUp
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.AssistChip
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.Divider
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
+import androidx.compose.material3.ListItem
+import androidx.compose.material3.ListItemDefaults
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarDuration
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalClipboardManager
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.core.graphics.toColorInt
@@ -63,6 +91,7 @@ import com.habittracker.domain.model.HabitEntry
 import com.habittracker.domain.model.HabitFrequency
 import com.habittracker.domain.model.HabitInvitation
 import com.habittracker.domain.model.User
+import com.habittracker.presentation.ui.components.SectionCard
 import com.habittracker.presentation.ui.habits.components.InviteCodeCard
 import com.habittracker.presentation.viewmodel.GroupHabitDetailViewModel
 import kotlinx.datetime.Clock
@@ -165,7 +194,7 @@ fun GroupHabitDetailScreen(
                 
                 // Основная информация о привычке
                 item {
-                    HabitInfoCard(
+                    HabitInfoSection(
                         habit = uiState.habit,
                         modifier = Modifier.fillMaxWidth()
                     )
@@ -173,7 +202,7 @@ fun GroupHabitDetailScreen(
                 
                 // Прогресс группы
                 item {
-                    GroupProgressCard(
+                    GroupProgressSection(
                         participants = uiState.participants,
                         habitEntries = uiState.habitEntries,
                         currentStreak = uiState.groupStreak,
@@ -183,7 +212,7 @@ fun GroupHabitDetailScreen(
                 
                 // Участники группы
                 item {
-                    ParticipantsCard(
+                    ParticipantsSection(
                         participants = uiState.participants,
                         habitEntries = uiState.habitEntries,
                         isOwner = uiState.isOwner,
@@ -198,7 +227,7 @@ fun GroupHabitDetailScreen(
                 // Управление приглашениями (только для владельца)
                 if (uiState.isOwner) {
                     item {
-                        InviteManagementCard(
+                        InviteManagementSection(
                             habit = uiState.habit,
                             inviteCode = uiState.inviteCode,
                             pendingInvitations = uiState.pendingInvitations,
@@ -214,7 +243,7 @@ fun GroupHabitDetailScreen(
                 
                 // История активности
                 item {
-                    ActivityHistoryCard(
+                    ActivityHistorySection(
                         habitEntries = uiState.habitEntries,
                         participants = uiState.participants,
                         modifier = Modifier.fillMaxWidth()
@@ -224,9 +253,11 @@ fun GroupHabitDetailScreen(
                 // Кнопка выхода из группы (для участников)
                 if (!uiState.isOwner) {
                     item {
-                        LeaveGroupButton(
+                        Spacer(modifier = Modifier.height(8.dp))
+                        LeaveGroupSection(
                             onLeaveGroup = { viewModel.leaveGroup() },
-                            isLoading = uiState.isLoading
+                            isLoading = uiState.isLoading,
+                            modifier = Modifier.fillMaxWidth()
                         )
                     }
                 }
@@ -236,35 +267,44 @@ fun GroupHabitDetailScreen(
 }
 
 /**
- * Карточка с основной информацией о привычке
+ * Секция с основной информацией о привычке
  */
 @Composable
-private fun HabitInfoCard(
+private fun HabitInfoSection(
     habit: Habit?,
     modifier: Modifier = Modifier
 ) {
     habit?.let { h ->
-        Card(
+        SectionCard(
             modifier = modifier,
-            elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+            outlined = false
         ) {
             Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(16.dp),
+                modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                // Иконка привычки
+                // Иконка привычки с улучшенным дизайном
                 Box(
                     modifier = Modifier
-                        .size(60.dp)
+                        .size(56.dp)
                         .clip(CircleShape)
-                        .background(Color(h.color.toColorInt())),
+                        .background(
+                            color = try {
+                                Color(h.color.toColorInt()).copy(alpha = 0.1f)
+                            } catch (e: Exception) {
+                                MaterialTheme.colorScheme.surfaceVariant
+                            }
+                        ),
                     contentAlignment = Alignment.Center
                 ) {
                     Text(
                         text = h.icon,
-                        style = MaterialTheme.typography.headlineMedium
+                        style = MaterialTheme.typography.headlineMedium,
+                        color = try {
+                            Color(h.color.toColorInt())
+                        } catch (e: Exception) {
+                            MaterialTheme.colorScheme.primary
+                        }
                     )
                 }
                 
@@ -274,42 +314,62 @@ private fun HabitInfoCard(
                     Text(
                         text = h.title,
                         style = MaterialTheme.typography.titleLarge,
-                        fontWeight = FontWeight.Bold
+                        fontWeight = FontWeight.SemiBold,
+                        color = MaterialTheme.colorScheme.onSurface
                     )
                     
                     if (h.description.isNotBlank()) {
+                        Spacer(modifier = Modifier.height(4.dp))
                         Text(
                             text = h.description,
                             style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            maxLines = 2,
+                            overflow = TextOverflow.Ellipsis
                         )
                     }
                     
-                    Spacer(modifier = Modifier.height(4.dp))
+                    Spacer(modifier = Modifier.height(8.dp))
                     
                     Row(
-                        horizontalArrangement = Arrangement.spacedBy(16.dp)
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
-                        // Частота
-                        Text(
-                            text = when (h.frequency) {
-                                HabitFrequency.DAILY -> stringResource(R.string.frequency_daily)
-                                HabitFrequency.WEEKLY -> stringResource(R.string.frequency_weekly)
-                                HabitFrequency.TWICE_A_WEEK -> stringResource(R.string.frequency_twice_weekly)
-                                HabitFrequency.WEEKDAYS -> stringResource(R.string.frequency_weekdays)
-                                HabitFrequency.WEEKENDS -> stringResource(R.string.frequency_weekends)
-                                HabitFrequency.CUSTOM -> stringResource(R.string.frequency_custom)
+                        // Частота в виде чипса
+                        AssistChip(
+                            onClick = { },
+                            label = {
+                                Text(
+                                    text = when (h.frequency) {
+                                        HabitFrequency.DAILY -> stringResource(R.string.frequency_daily)
+                                        HabitFrequency.WEEKLY -> stringResource(R.string.frequency_weekly) 
+                                        HabitFrequency.TWICE_A_WEEK -> stringResource(R.string.frequency_twice_weekly)
+                                        HabitFrequency.WEEKDAYS -> stringResource(R.string.frequency_weekdays)
+                                        HabitFrequency.WEEKENDS -> stringResource(R.string.frequency_weekends)
+                                        HabitFrequency.CUSTOM -> stringResource(R.string.frequency_custom)
+                                    },
+                                    style = MaterialTheme.typography.labelSmall
+                                )
                             },
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.primary
+                            leadingIcon = {
+                                Icon(
+                                    Icons.Default.TrendingUp,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(16.dp)
+                                )
+                            }
                         )
                         
-                        // Целевое значение
+                        // Целевое значение в виде чипса
                         if (h.targetValue > 0) {
-                            Text(
-                                text = "${h.targetValue} ${h.unit}",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.secondary
+                            AssistChip(
+                                onClick = { },
+                                label = {
+                                    Text(
+                                        text = "${h.targetValue} ${h.unit}",
+                                        style = MaterialTheme.typography.labelSmall
+                                    )
+                                }
                             )
                         }
                     }
@@ -320,10 +380,10 @@ private fun HabitInfoCard(
 }
 
 /**
- * Карточка прогресса группы
+ * Секция прогресса группы с улучшенным дизайном
  */
 @Composable
-private fun GroupProgressCard(
+private fun GroupProgressSection(
     participants: List<User>,
     habitEntries: List<HabitEntry>,
     currentStreak: Int,
@@ -335,101 +395,117 @@ private fun GroupProgressCard(
     val totalParticipants = participants.size
     val completionRate = if (totalParticipants > 0) completedToday.toFloat() / totalParticipants else 0f
     
-    Card(
+    SectionCard(
         modifier = modifier,
-        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f)
-        )
+        title = stringResource(R.string.group_progress),
+        subtitle = stringResource(R.string.group_progress_subtitle),
+        outlined = false
     ) {
-        Column(
-            modifier = Modifier.padding(16.dp)
-        ) {
-            Text(
-                text = stringResource(R.string.group_progress),
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.primary
-            )
-            
-            Spacer(modifier = Modifier.height(12.dp))
-            
+        // Прогресс-бар
+        Column {
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceEvenly
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.Bottom
             ) {
-                // Прогресс сегодня
-                Column(
-                    horizontalAlignment = Alignment.CenterHorizontally
-                ) {
-                    Text(
-                        text = "$completedToday/$totalParticipants",
-                        style = MaterialTheme.typography.headlineSmall,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.primary
-                    )
-                    Text(
-                        text = stringResource(R.string.completed_today),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-                
-                // Групповая серия
-                Column(
-                    horizontalAlignment = Alignment.CenterHorizontally
-                ) {
-                    Text(
-                        text = "$currentStreak",
-                        style = MaterialTheme.typography.headlineSmall,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.secondary
-                    )
-                    Text(
-                        text = stringResource(R.string.group_streak_days),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-                
-                // Процент выполнения
-                Column(
-                    horizontalAlignment = Alignment.CenterHorizontally
-                ) {
-                    Text(
-                        text = "${(completionRate * 100).toInt()}%",
-                        style = MaterialTheme.typography.headlineSmall,
-                        fontWeight = FontWeight.Bold,
-                        color = if (completionRate >= 0.8f) Color(0xFF4CAF50) else MaterialTheme.colorScheme.onSurface
-                    )
-                    Text(
-                        text = stringResource(R.string.completion_rate),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
+                Text(
+                    text = "$completedToday/$totalParticipants ${stringResource(R.string.completed_today)}",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+                Text(
+                    text = "${(completionRate * 100).toInt()}%",
+                    style = MaterialTheme.typography.bodyMedium,
+                    fontWeight = FontWeight.SemiBold,
+                    color = MaterialTheme.colorScheme.primary
+                )
             }
             
-            // Прогресс-бар
-            Spacer(modifier = Modifier.height(12.dp))
+            Spacer(modifier = Modifier.height(8.dp))
             
             LinearProgressIndicator(
-                progress = { completionRate },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(8.dp)
-                    .clip(RoundedCornerShape(4.dp)),
-                color = if (completionRate >= 0.8f) Color(0xFF4CAF50) else MaterialTheme.colorScheme.primary,
+                progress = completionRate,
+                modifier = Modifier.fillMaxWidth(),
+                color = when {
+                    completionRate >= 0.75f -> MaterialTheme.colorScheme.primary
+                    completionRate >= 0.5f -> MaterialTheme.colorScheme.secondary
+                    else -> MaterialTheme.colorScheme.tertiary
+                },
+                trackColor = MaterialTheme.colorScheme.surfaceVariant
+            )
+        }
+        
+        Spacer(modifier = Modifier.height(16.dp))
+        
+        // Метрики в ряд
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceEvenly
+        ) {
+            // Выполнено сегодня
+            StatisticItem(
+                value = "$completedToday",
+                label = stringResource(R.string.completed),
+                icon = Icons.Default.CheckCircle
+            )
+            
+            // Групповая серия
+            StatisticItem(
+                value = "$currentStreak",
+                label = stringResource(R.string.streak_days),
+                icon = Icons.Default.TrendingUp
+            )
+            
+            // Всего участников
+            StatisticItem(
+                value = "$totalParticipants",
+                label = stringResource(R.string.participants),
+                icon = Icons.Default.Group
             )
         }
     }
 }
 
 /**
- * Карточка участников группы
+ * Элемент статистики для прогресса
  */
 @Composable
-private fun ParticipantsCard(
+private fun StatisticItem(
+    value: String,
+    label: String,
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    modifier: Modifier = Modifier
+) {
+    Column(
+        modifier = modifier,
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Icon(
+            imageVector = icon,
+            contentDescription = null,
+            modifier = Modifier.size(20.dp),
+            tint = MaterialTheme.colorScheme.primary
+        )
+        Spacer(modifier = Modifier.height(4.dp))
+        Text(
+            text = value,
+            style = MaterialTheme.typography.titleLarge,
+            fontWeight = FontWeight.SemiBold,
+            color = MaterialTheme.colorScheme.onSurface
+        )
+        Text(
+            text = label,
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+    }
+}
+
+/**
+ * Секция участников группы с улучшенным дизайном
+ */
+@Composable
+private fun ParticipantsSection(
     participants: List<User>,
     habitEntries: List<HabitEntry>,
     isOwner: Boolean,
@@ -438,52 +514,38 @@ private fun ParticipantsCard(
     modifier: Modifier = Modifier
 ) {
     val today = Clock.System.todayIn(TimeZone.currentSystemDefault())
+    val todayEntries = habitEntries.filter { it.date == today }
     
-    Card(
+    SectionCard(
         modifier = modifier,
-        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+        title = stringResource(R.string.participants),
+        subtitle = if (isManageMode) {
+            stringResource(R.string.tap_to_remove)
+        } else {
+            pluralStringResource(R.plurals.participants_plural, participants.size, participants.size)
+        },
+        outlined = false
     ) {
-        Column(
-            modifier = Modifier.padding(16.dp)
-        ) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
+        if (participants.isEmpty()) {
+            Text(
+                text = stringResource(R.string.no_participants),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(vertical = 16.dp)
+            )
+        } else {
+            Column(
+                verticalArrangement = Arrangement.spacedBy(4.dp)
             ) {
-                Text(
-                    text = stringResource(R.string.participants, participants.size),
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold
-                )
-                
-                if (isOwner && isManageMode) {
-                    Text(
-                        text = stringResource(R.string.tap_to_remove),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.error
+                participants.forEach { participant ->
+                    val isCompleted = todayEntries.any { it.userId == participant.id && it.completed }
+                    ParticipantListItem(
+                        participant = participant,
+                        isCompleted = isCompleted,
+                        isOwner = participant.id == participants.firstOrNull()?.id,
+                        isManageMode = isManageMode,
+                        onRemove = { onRemoveParticipant(participant.id) }
                     )
-                }
-            }
-            
-            Spacer(modifier = Modifier.height(12.dp))
-            
-            participants.forEach { participant ->
-                val todayEntry = habitEntries.find { 
-                    it.userId == participant.id && it.date == today 
-                }
-                val isCompleted = todayEntry?.completed == true
-                
-                ParticipantItem(
-                    participant = participant,
-                    isCompleted = isCompleted,
-                    isOwner = isOwner,
-                    isManageMode = isManageMode,
-                    onRemove = { onRemoveParticipant(participant.id) }
-                )
-                
-                if (participant != participants.last()) {
-                    Spacer(modifier = Modifier.height(8.dp))
                 }
             }
         }
@@ -491,10 +553,10 @@ private fun ParticipantsCard(
 }
 
 /**
- * Элемент участника группы
+ * Элемент списка участника с Material 3 дизайном
  */
 @Composable
-private fun ParticipantItem(
+private fun ParticipantListItem(
     participant: User,
     isCompleted: Boolean,
     isOwner: Boolean,
@@ -502,88 +564,108 @@ private fun ParticipantItem(
     onRemove: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    Row(
+    ListItem(
         modifier = modifier
-            .fillMaxWidth()
             .clip(RoundedCornerShape(8.dp))
-            .background(
-                if (isCompleted) 
-                    MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f)
-                else 
-                    MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)
-            )
-            .padding(12.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        // Аватар участника
-        Box(
-            modifier = Modifier
-                .size(40.dp)
-                .clip(CircleShape)
-                .background(MaterialTheme.colorScheme.primary),
-            contentAlignment = Alignment.Center
-        ) {
-            Text(
-                text = participant.name.firstOrNull()?.uppercase() ?: "?",
-                style = MaterialTheme.typography.titleMedium,
-                color = MaterialTheme.colorScheme.onPrimary,
-                fontWeight = FontWeight.Bold
-            )
-        }
-        
-        Spacer(modifier = Modifier.width(12.dp))
-        
-        Column(modifier = Modifier.weight(1f)) {
-            Text(
-                text = participant.name,
-                style = MaterialTheme.typography.bodyLarge,
-                fontWeight = FontWeight.Medium
-            )
-            
-            Text(
-                text = if (isCompleted) 
-                    stringResource(R.string.completed_today) 
-                else 
-                    stringResource(R.string.not_completed_today),
-                style = MaterialTheme.typography.bodySmall,
-                color = if (isCompleted) 
-                    Color(0xFF4CAF50) 
-                else 
-                    MaterialTheme.colorScheme.onSurfaceVariant
-            )
-        }
-        
-        // Индикатор выполнения
-        Icon(
-            imageVector = if (isCompleted) Icons.Default.CheckCircle else Icons.Default.RadioButtonUnchecked,
-            contentDescription = null,
-            tint = if (isCompleted) Color(0xFF4CAF50) else MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.size(24.dp)
-        )
-        
-        // Кнопка удаления (только для владельца в режиме управления)
-        if (isOwner && isManageMode) {
-            Spacer(modifier = Modifier.width(8.dp))
-            IconButton(
-                onClick = onRemove,
-                modifier = Modifier.size(32.dp)
+            .then(
+                if (isManageMode) Modifier.clickable { onRemove() }
+                else Modifier
+            ),
+        colors = ListItemDefaults.colors(
+            containerColor = if (isCompleted) {
+                MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.1f)
+            } else {
+                Color.Transparent
+            }
+        ),
+        leadingContent = {
+            // Аватар участника
+            Box(
+                modifier = Modifier
+                    .size(40.dp)
+                    .clip(CircleShape)
+                    .background(MaterialTheme.colorScheme.surfaceVariant),
+                contentAlignment = Alignment.Center
             ) {
-                Icon(
-                    imageVector = Icons.Default.RemoveCircle,
-                    contentDescription = stringResource(R.string.remove_participant),
-                    tint = MaterialTheme.colorScheme.error,
-                    modifier = Modifier.size(20.dp)
+                Text(
+                    text = participant.name.take(2).uppercase(),
+                    style = MaterialTheme.typography.labelLarge,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    fontWeight = FontWeight.Medium
                 )
             }
+        },
+        headlineContent = {
+            Row(
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = participant.name,
+                    style = MaterialTheme.typography.bodyLarge
+                )
+                if (isOwner) {
+                    Spacer(modifier = Modifier.width(8.dp))
+                    AssistChip(
+                        onClick = { },
+                        label = {
+                            Text(
+                                text = stringResource(R.string.owner),
+                                style = MaterialTheme.typography.labelSmall
+                            )
+                        },
+                        modifier = Modifier.height(24.dp)
+                    )
+                }
+            }
+        },
+        supportingContent = {
+            Text(
+                text = if (isCompleted) {
+                    stringResource(R.string.completed_today)
+                } else {
+                    stringResource(R.string.not_completed_today)
+                },
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        },
+        trailingContent = {
+            Row(
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Icon(
+                    imageVector = if (isCompleted) {
+                        Icons.Default.CheckCircle
+                    } else {
+                        Icons.Default.RadioButtonUnchecked
+                    },
+                    contentDescription = null,
+                    tint = if (isCompleted) {
+                        MaterialTheme.colorScheme.primary
+                    } else {
+                        MaterialTheme.colorScheme.onSurfaceVariant
+                    },
+                    modifier = Modifier.size(24.dp)
+                )
+                if (isManageMode && !isOwner) {
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Icon(
+                        imageVector = Icons.Default.PersonRemove,
+                        contentDescription = stringResource(R.string.remove_participant),
+                        tint = MaterialTheme.colorScheme.error,
+                        modifier = Modifier.size(20.dp)
+                    )
+                }
+            }
         }
-    }
+    )
 }
 
 /**
- * Карточка управления приглашениями
+ * Секция управления приглашениями с современным дизайном
  */
 @Composable
-private fun InviteManagementCard(
+private fun InviteManagementSection(
     habit: Habit?,
     inviteCode: String?,
     pendingInvitations: List<HabitInvitation>,
@@ -594,80 +676,197 @@ private fun InviteManagementCard(
     onTogglePublic: (Boolean) -> Unit,
     modifier: Modifier = Modifier
 ) {
-    Card(
+    val clipboardManager = LocalClipboardManager.current
+    
+    SectionCard(
         modifier = modifier,
-        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+        title = stringResource(R.string.invite_management),
+        subtitle = if (pendingInvitations.isNotEmpty()) {
+            stringResource(R.string.pending_invitations, pendingInvitations.size)
+        } else null,
+        outlined = false
     ) {
-        Column(
-            modifier = Modifier.padding(16.dp)
+        // Публичный доступ
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
         ) {
-            Text(
-                text = stringResource(R.string.invite_management),
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Bold
-            )
-            
-            Spacer(modifier = Modifier.height(12.dp))
-            
-            // Invite-код
-            InviteCodeCard(
-                inviteCode = inviteCode,
-                isPublic = habit?.isPublic == true,
-                isGenerating = isGeneratingCode,
-                onGenerateCode = onGenerateCode,
-                onTogglePublic = onTogglePublic,
-                onShareCode = onShareCode,
-                onDisableCode = onDisableCode
-            )
-            
-            // Ожидающие приглашения
-            if (pendingInvitations.isNotEmpty()) {
-                Spacer(modifier = Modifier.height(12.dp))
-                
-                Text(
-                    text = stringResource(R.string.pending_invitations, pendingInvitations.size),
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
+            Row(
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Public,
+                    contentDescription = null,
+                    modifier = Modifier.size(20.dp),
+                    tint = MaterialTheme.colorScheme.primary
                 )
+                Spacer(modifier = Modifier.width(12.dp))
+                Column {
+                    Text(
+                        text = stringResource(R.string.public_access),
+                        style = MaterialTheme.typography.bodyLarge
+                    )
+                    Text(
+                        text = stringResource(R.string.public_access_description),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+            Switch(
+                checked = habit?.isPublic == true,
+                onCheckedChange = onTogglePublic
+            )
+        }
+        
+        Spacer(modifier = Modifier.height(16.dp))
+        Divider()
+        Spacer(modifier = Modifier.height(16.dp))
+        
+        // Код приглашения
+        Column {
+            Text(
+                text = stringResource(R.string.invite_code),
+                style = MaterialTheme.typography.titleSmall,
+                fontWeight = FontWeight.Medium,
+                color = MaterialTheme.colorScheme.onSurface
+            )
+            Spacer(modifier = Modifier.height(8.dp))
+            
+            if (inviteCode != null) {
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f)
+                    )
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(12.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Text(
+                            text = inviteCode,
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                        Row {
+                            IconButton(
+                                onClick = {
+                                    clipboardManager.setText(AnnotatedString(inviteCode))
+                                }
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.ContentCopy,
+                                    contentDescription = stringResource(R.string.copy_code),
+                                    tint = MaterialTheme.colorScheme.primary
+                                )
+                            }
+                            IconButton(
+                                onClick = { onShareCode(inviteCode) }
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Share,
+                                    contentDescription = stringResource(R.string.share_code),
+                                    tint = MaterialTheme.colorScheme.primary
+                                )
+                            }
+                            IconButton(
+                                onClick = onDisableCode
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Close,
+                                    contentDescription = stringResource(R.string.disable_code),
+                                    tint = MaterialTheme.colorScheme.error
+                                )
+                            }
+                        }
+                    }
+                }
+            } else {
+                FilledTonalButton(
+                    onClick = onGenerateCode,
+                    modifier = Modifier.fillMaxWidth(),
+                    enabled = !isGeneratingCode
+                ) {
+                    if (isGeneratingCode) {
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(16.dp),
+                            strokeWidth = 2.dp
+                        )
+                    } else {
+                        Icon(
+                            imageVector = Icons.Default.PersonAdd,
+                            contentDescription = null,
+                            modifier = Modifier.size(18.dp)
+                        )
+                    }
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(
+                        text = stringResource(R.string.generate_invite_code)
+                    )
+                }
             }
         }
     }
 }
 
 /**
- * Карточка истории активности
+ * Секция истории активности с улучшенным дизайном
  */
 @Composable
-private fun ActivityHistoryCard(
+private fun ActivityHistorySection(
     habitEntries: List<HabitEntry>,
     participants: List<User>,
     modifier: Modifier = Modifier
 ) {
-    Card(
+    SectionCard(
         modifier = modifier,
-        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
-    ) {
-        Column(
-            modifier = Modifier.padding(16.dp)
-        ) {
-            Text(
-                text = stringResource(R.string.recent_activity),
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Bold
+        title = stringResource(R.string.recent_activity),
+        subtitle = stringResource(R.string.recent_activity_description),
+        outlined = false,
+        action = {
+            Icon(
+                imageVector = Icons.Default.History,
+                contentDescription = null,
+                modifier = Modifier.size(20.dp),
+                tint = MaterialTheme.colorScheme.primary
             )
-            
-            Spacer(modifier = Modifier.height(12.dp))
-            
-            if (habitEntries.isEmpty()) {
-                Text(
-                    text = stringResource(R.string.no_activity_yet),
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    textAlign = TextAlign.Center,
-                    modifier = Modifier.fillMaxWidth()
-                )
-            } else {
-                // Показываем последние 5 записей
+        }
+    ) {
+        if (habitEntries.isEmpty()) {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 24.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.History,
+                        contentDescription = null,
+                        modifier = Modifier.size(48.dp),
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(
+                        text = stringResource(R.string.no_activity_yet),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+        } else {
+            // Показываем последние 5 записей
+            Column(
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
                 habitEntries
                     .sortedByDescending { it.completedAt }
                     .take(5)
@@ -741,6 +940,93 @@ private fun ActivityItem(
             contentDescription = null,
             tint = if (entry.completed) Color(0xFF4CAF50) else MaterialTheme.colorScheme.error,
             modifier = Modifier.size(20.dp)
+        )
+    }
+}
+
+/**
+ * Секция выхода из группы с диалогом подтверждения
+ */
+@Composable
+private fun LeaveGroupSection(
+    onLeaveGroup: () -> Unit,
+    isLoading: Boolean,
+    modifier: Modifier = Modifier
+) {
+    var showConfirmDialog by remember { mutableStateOf(false) }
+    
+    // Диалог подтверждения
+    if (showConfirmDialog) {
+        AlertDialog(
+            onDismissRequest = { showConfirmDialog = false },
+            icon = {
+                Icon(
+                    imageVector = Icons.Default.ExitToApp,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.error
+                )
+            },
+            title = {
+                Text(text = stringResource(R.string.leave_group_title))
+            },
+            text = {
+                Text(
+                    text = stringResource(R.string.leave_group_warning),
+                    style = MaterialTheme.typography.bodyMedium
+                )
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        onLeaveGroup()
+                        showConfirmDialog = false
+                    },
+                    enabled = !isLoading
+                ) {
+                    if (isLoading) {
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(16.dp),
+                            strokeWidth = 2.dp
+                        )
+                    } else {
+                        Text(
+                            text = stringResource(R.string.leave_confirm),
+                            color = MaterialTheme.colorScheme.error
+                        )
+                    }
+                }
+            },
+            dismissButton = {
+                TextButton(
+                    onClick = { showConfirmDialog = false }
+                ) {
+                    Text(text = stringResource(R.string.cancel))
+                }
+            }
+        )
+    }
+    
+    // Кнопка выхода
+    OutlinedButton(
+        onClick = { showConfirmDialog = true },
+        modifier = modifier,
+        colors = ButtonDefaults.outlinedButtonColors(
+            contentColor = MaterialTheme.colorScheme.error
+        ),
+        border = BorderStroke(
+            width = 1.dp,
+            color = MaterialTheme.colorScheme.error
+        )
+    ) {
+        Icon(
+            imageVector = Icons.Default.ExitToApp,
+            contentDescription = null,
+            modifier = Modifier.size(18.dp)
+        )
+        Spacer(modifier = Modifier.width(8.dp))
+        Text(
+            text = stringResource(R.string.leave_group),
+            style = MaterialTheme.typography.labelLarge
         )
     }
 }

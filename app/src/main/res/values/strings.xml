@@ -257,6 +257,7 @@
     
     <!-- Group Habits Progress -->
     <string name="group_progress_today">Прогресс группы сегодня</string>
+    <string name="group_progress_subtitle">Ежедневный прогресс участников группы</string>
     <string name="group_participants">Участники группы</string>
     <string name="participant_streak">Серия: %d дней</string>
     <string name="participant_completion_rate">%d%% за неделю</string>
@@ -264,8 +265,23 @@
     <string name="group_habit_public">Публичная привычка</string>
     <string name="group_habit_private">Приватная привычка</string>
     <string name="participants_count" formatted="false">Участников: %d/%d</string>
+    <plurals name="participants_plural">
+        <item quantity="one">%d участник</item>
+        <item quantity="few">%d участника</item>
+        <item quantity="many">%d участников</item>
+        <item quantity="other">%d участников</item>
+    </plurals>
     <string name="group_habit">Групповая привычка</string>
     <string name="personal_habit">Личная привычка</string>
+    <string name="completed">Выполнено</string>
+    <string name="streak_days">дней подряд</string>
+    <string name="no_participants">Пока нет участников</string>
+    <string name="owner">Владелец</string>
+    <string name="public_access">Публичный доступ</string>
+    <string name="public_access_description">Любой может присоединиться по коду</string>
+    <string name="recent_activity_description">Последняя активность участников</string>
+    <string name="leave_group_title">Покинуть группу?</string>
+    <string name="leave_confirm">Покинуть</string>
     
     <!-- Invite Code Components -->
     <string name="invite_code_settings">Настройки приглашений</string>
