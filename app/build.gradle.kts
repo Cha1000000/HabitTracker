@@ -147,20 +147,32 @@ android {
 // Автопереименование APK после упаковки (без Variant API)
 val apkDateProvider = providers.provider { SimpleDateFormat("yyyyMMdd").format(Date()) }
 
-tasks.register<Copy>("renameApkDebug") {
-    val dateStr = apkDateProvider.get()
-    val src = layout.buildDirectory.file("outputs/apk/debug/app-debug.apk")
-    from(src)
-    into(layout.buildDirectory.dir("outputs/apk/debug").get())
-    rename { _ -> "HabitTracker-debug-$appVersionName-$dateStr.apk" }
+tasks.register("renameApkDebug") {
+    doLast {
+        val dateStr = apkDateProvider.get()
+        val srcFile = layout.buildDirectory.file("outputs/apk/debug/app-debug.apk").get().asFile
+        val destFile = layout.buildDirectory.file("outputs/apk/debug/HabitTracker-debug-$appVersionName-$dateStr.apk").get().asFile
+        
+        if (srcFile.exists()) {
+            // Переименовываем файл вместо копирования
+            srcFile.renameTo(destFile)
+            println("APK renamed: ${srcFile.name} -> ${destFile.name}")
+        }
+    }
 }
 
-tasks.register<Copy>("renameApkRelease") {
-    val dateStr = apkDateProvider.get()
-    val src = layout.buildDirectory.file("outputs/apk/release/app-release.apk")
-    from(src)
-    into(layout.buildDirectory.dir("outputs/apk/release").get())
-    rename { _ -> "HabitTracker-release-$appVersionName-$dateStr.apk" }
+tasks.register("renameApkRelease") {
+    doLast {
+        val dateStr = apkDateProvider.get()
+        val srcFile = layout.buildDirectory.file("outputs/apk/release/app-release.apk").get().asFile
+        val destFile = layout.buildDirectory.file("outputs/apk/release/HabitTracker-release-$appVersionName-$dateStr.apk").get().asFile
+        
+        if (srcFile.exists()) {
+            // Переименовываем файл вместо копирования
+            srcFile.renameTo(destFile)
+            println("APK renamed: ${srcFile.name} -> ${destFile.name}")
+        }
+    }
 }
 
 // Правим output-metadata.json, чтобы он указывал на новое имя файла

@@ -2,17 +2,18 @@ package com.habittracker.domain.usecase
 
 import com.habittracker.domain.model.Habit
 import com.habittracker.domain.model.HabitEntry
+import com.habittracker.domain.model.HabitParticipantSettings
 import com.habittracker.domain.repository.FirestoreRepository
 import com.habittracker.domain.repository.HabitEntryRepository
 import kotlinx.coroutines.ExperimentalCoroutinesApi
-import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.test.runTest
 import kotlinx.datetime.Clock
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toLocalDateTime
-import org.junit.Assert.*
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
 
@@ -151,6 +152,8 @@ class GetHabitCompletionStatusUseCaseTest {
         override suspend fun saveHabitEntry(habitEntry: HabitEntry) = throw NotImplementedError()
         override fun getHabitEntries(habitId: String, userId: String) = throw NotImplementedError()
         override suspend fun syncData() = throw NotImplementedError()
+        override suspend fun getParticipantSettings(habitId: String, userId: String) = null
+        override suspend fun setParticipantSettings(settings: HabitParticipantSettings) = throw NotImplementedError()
     }
 
     private class FakeHabitEntryRepository : HabitEntryRepository {

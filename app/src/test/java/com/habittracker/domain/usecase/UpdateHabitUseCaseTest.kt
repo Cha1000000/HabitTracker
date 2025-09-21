@@ -3,6 +3,7 @@ package com.habittracker.domain.usecase
 import com.habittracker.domain.model.Habit
 import com.habittracker.domain.model.HabitEntry
 import com.habittracker.domain.model.HabitFrequency
+import com.habittracker.domain.model.HabitParticipantSettings
 import com.habittracker.domain.model.HabitType
 import com.habittracker.domain.repository.FirestoreRepository
 import com.habittracker.domain.repository.HabitRepository
@@ -100,6 +101,8 @@ class UpdateHabitUseCaseTest {
         override suspend fun getHabitEntry(habitId: String, userId: String, date: LocalDate) = throw NotImplementedError()
         override fun getHabitEntries(habitId: String, userId: String) = throw NotImplementedError()
         override suspend fun syncData() = throw NotImplementedError()
+        override suspend fun getParticipantSettings(habitId: String, userId: String) = null
+        override suspend fun setParticipantSettings(settings: HabitParticipantSettings) = throw NotImplementedError()
     }
 
     private class FakeHabitRepository : HabitRepository {

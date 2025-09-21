@@ -27,6 +27,26 @@ import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
 
+// Extension function for assertDoesNotExist
+fun SemanticsNodeInteraction.assertDoesNotExist() {
+    try {
+        assertIsDisplayed()
+        throw AssertionError("Node was expected not to exist but it exists")
+    } catch (e: AssertionError) {
+        // If assertIsDisplayed throws, the node doesn't exist, which is what we want
+        if (e.message?.contains("Failed to perform") == true ||
+            e.message?.contains("Failed: assertIsDisplayed") == true ||
+            e.message?.contains("Couldn't find a node") == true) {
+            // Node doesn't exist - this is the expected state
+            return
+        }
+        // Re-throw if it's our custom message
+        if (e.message == "Node was expected not to exist but it exists") {
+            throw e
+        }
+    }
+}
+
 @RunWith(AndroidJUnit4::class)
 class NotificationsScreenTest {
 

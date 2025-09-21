@@ -30,14 +30,15 @@ class DeleteHabitUseCaseTest {
     private lateinit var repo: HabitRepository
     private lateinit var syncManager: SyncManager
     private lateinit var scheduler: SyncWorkScheduler
+    private lateinit var cancelHabitReminderUseCase: CancelHabitReminderUseCase
 
     @Before
     fun setUp() {
         repo = mock()
         syncManager = mock()
         scheduler = mock()
-        val scope = CoroutineScope(Dispatchers.Unconfined)
-        useCase = DeleteHabitUseCase(repo, syncManager, scheduler, scope)
+        cancelHabitReminderUseCase = mock()
+        useCase = DeleteHabitUseCase(repo, syncManager, scheduler, cancelHabitReminderUseCase)
     }
 
     private fun baseGroupHabit(
@@ -291,8 +292,9 @@ class DeleteHabitUseCaseTest {
 
     @Test
     fun kickSync_calls_drainPending_on_successful_enqueue() = runTest {
-        // Создаем локальный use case с тестовым scope, чтобы контролировать запуск launch {}
-        val localUseCase = DeleteHabitUseCase(repo, syncManager, scheduler, this)
+        // Создаем локальный use case с моком CancelHabitReminderUseCase
+        val localCancelHabitReminderUseCase: CancelHabitReminderUseCase = mock()
+        val localUseCase = DeleteHabitUseCase(repo, syncManager, scheduler, localCancelHabitReminderUseCase)
         val habit = personalHabit(id = "p7", createdBy = "u1")
         whenever(repo.getHabitById("p7")).thenReturn(habit)
 
@@ -304,7 +306,8 @@ class DeleteHabitUseCaseTest {
 
     @Test
     fun kickSync_calls_drainPending_even_when_enqueue_throws() = runTest {
-        val localUseCase = DeleteHabitUseCase(repo, syncManager, scheduler, this)
+        val localCancelHabitReminderUseCase: CancelHabitReminderUseCase = mock()
+        val localUseCase = DeleteHabitUseCase(repo, syncManager, scheduler, localCancelHabitReminderUseCase)
         val habit = personalHabit(id = "p8", createdBy = "u1")
         whenever(repo.getHabitById("p8")).thenReturn(habit)
         whenever(syncManager.enqueueUpsert(any(), any(), any(), any(), any())).thenThrow(RuntimeException("outbox insert failed"))

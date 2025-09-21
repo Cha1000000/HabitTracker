@@ -8,12 +8,13 @@ import com.habittracker.domain.model.Habit
 import com.habittracker.domain.model.HabitFrequency
 import com.habittracker.domain.model.HabitType
 import com.habittracker.domain.repository.AuthRepository
-import com.habittracker.domain.usecase.AddHabitUseCase
 import com.habittracker.domain.usecase.DeleteHabitUseCase
+import com.habittracker.domain.usecase.EnsureMySettingsForHabitUseCase
 import com.habittracker.domain.usecase.GetHabitCompletionStatusUseCase
 import com.habittracker.domain.usecase.GetHabitsUseCase
 import com.habittracker.domain.usecase.MarkHabitCompletedUseCase
 import com.habittracker.domain.usecase.MarkHabitIncompleteUseCase
+import com.habittracker.domain.usecase.ScheduleHabitReminderUseCase
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.test.advanceUntilIdle
@@ -43,12 +44,13 @@ class HabitsViewModelTest {
     val mainDispatcherRule = MainDispatcherRule()
 
     private val getHabitsUseCase: GetHabitsUseCase = mock()
-    private val addHabitUseCase: AddHabitUseCase = mock()
     private val markHabitCompletedUseCase: MarkHabitCompletedUseCase = mock()
     private val markHabitIncompleteUseCase: MarkHabitIncompleteUseCase = mock()
     private val getHabitCompletionStatusUseCase: GetHabitCompletionStatusUseCase = mock()
     private val authRepository: AuthRepository = mock()
     private val deleteHabitUseCase: DeleteHabitUseCase = mock()
+    private val ensureMySettingsForHabitUseCase: EnsureMySettingsForHabitUseCase = mock()
+    private val scheduleHabitReminderUseCase: ScheduleHabitReminderUseCase = mock()
     private val application: Application = mock()
     private lateinit var logMock: MockedStatic<Log>
 
@@ -98,12 +100,13 @@ class HabitsViewModelTest {
         }
         return HabitsViewModel(
             getHabitsUseCase,
-            addHabitUseCase,
             markHabitCompletedUseCase,
             markHabitIncompleteUseCase,
             getHabitCompletionStatusUseCase,
             authRepository,
             deleteHabitUseCase,
+            ensureMySettingsForHabitUseCase,
+            scheduleHabitReminderUseCase,
             application
         )
     }

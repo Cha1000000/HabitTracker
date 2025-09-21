@@ -6,16 +6,13 @@ import com.habittracker.domain.model.Habit
 import com.habittracker.domain.model.HabitFrequency
 import com.habittracker.domain.model.HabitType
 import com.habittracker.domain.repository.HabitRepository
-import java.util.Arrays
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
 import org.junit.Assert.assertEquals
-import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.junit.runners.Parameterized
 import org.mockito.kotlin.mock
+import java.util.Arrays
 
 @RunWith(Parameterized::class)
 class DeleteHabitGroupDecisionParamTest(
@@ -36,7 +33,8 @@ class DeleteHabitGroupDecisionParamTest(
         val repo: HabitRepository = mock()
         val syncManager: SyncManager = mock()
         val scheduler: SyncWorkScheduler = mock()
-        useCase = DeleteHabitUseCase(repo, syncManager, scheduler, CoroutineScope(Dispatchers.Unconfined))
+        val cancelHabitReminderUseCase: CancelHabitReminderUseCase = mock()
+        useCase = DeleteHabitUseCase(repo, syncManager, scheduler, cancelHabitReminderUseCase)
     }
 
     @Test
