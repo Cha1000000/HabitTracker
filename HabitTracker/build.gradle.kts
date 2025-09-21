@@ -1,7 +1,8 @@
+
 import java.io.FileInputStream
-import java.util.Properties
 import java.text.SimpleDateFormat
 import java.util.Date
+import java.util.Properties
 
 plugins {
     alias(libs.plugins.android.application)
@@ -125,6 +126,14 @@ android {
     kotlinOptions {
         jvmTarget = "17"
     }
+    @Suppress("UnstableApiUsage")
+    testOptions {
+        unitTests {
+            isReturnDefaultValues = true  // Возвращать default значения для Android методов вместо исключений
+            isIncludeAndroidResources = false
+        }
+    }
+
     packaging {
         resources {
             excludes += "/META-INF/{AL2.0,LGPL2.1}"
@@ -150,11 +159,11 @@ val apkDateProvider = providers.provider { SimpleDateFormat("yyyyMMdd").format(D
 tasks.register("renameApkDebug") {
     doLast {
         val dateStr = apkDateProvider.get()
-        val srcFile = layout.buildDirectory.file("outputs/apk/debug/app-debug.apk").get().asFile
+        val srcFile = layout.buildDirectory.file("outputs/apk/debug/HabitTracker-debug.apk").get().asFile
         val destFile = layout.buildDirectory.file("outputs/apk/debug/HabitTracker-debug-$appVersionName-$dateStr.apk").get().asFile
         
         if (srcFile.exists()) {
-            // Переименовываем файл вместо копирования
+            // Добавляем версию и дату к имени файла
             srcFile.renameTo(destFile)
             println("APK renamed: ${srcFile.name} -> ${destFile.name}")
         }
@@ -164,11 +173,11 @@ tasks.register("renameApkDebug") {
 tasks.register("renameApkRelease") {
     doLast {
         val dateStr = apkDateProvider.get()
-        val srcFile = layout.buildDirectory.file("outputs/apk/release/app-release.apk").get().asFile
+        val srcFile = layout.buildDirectory.file("outputs/apk/release/HabitTracker-release.apk").get().asFile
         val destFile = layout.buildDirectory.file("outputs/apk/release/HabitTracker-release-$appVersionName-$dateStr.apk").get().asFile
         
         if (srcFile.exists()) {
-            // Переименовываем файл вместо копирования
+            // Добавляем версию и дату к имени файла
             srcFile.renameTo(destFile)
             println("APK renamed: ${srcFile.name} -> ${destFile.name}")
         }

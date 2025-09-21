@@ -11,6 +11,7 @@ import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
 import kotlinx.datetime.Clock
 import kotlinx.datetime.LocalDate
@@ -97,13 +98,14 @@ class MarkHabitIncompleteUseCaseTest {
                 )
             ).thenThrow(RuntimeException("Outbox error"))
         }
-
+        
         // Act
         markHabitIncompleteUseCase(testHabitId, testUserId, testDate)
+        advanceUntilIdle() // Дождаться завершения всех корутин
 
         // Assert local write still happened
         assertTrue(habitEntryRepository.markHabitIncompleteCalled)
-        // scheduleOneTimeSync still invoked
+        // scheduleOneTimeSync still invoked in finally block
         verify(syncWorkScheduler).scheduleOneTimeSync()
     }
 }

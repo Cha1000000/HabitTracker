@@ -26,7 +26,7 @@ local.properties
 **/build/
 
 # Firebase/Google configs (do not commit secrets or project configs)
-app/google-services.json
+HabitTracker/google-services.json
 **/google-services.json
 
 # Keystores and signing configs
@@ -59,6 +59,6 @@ serviceAccountKey.json
 *.log
 
 # Firebase Admin SDK service accounts (do NOT commit)
-app/*firebase-adminsdk*.json
+HabitTracker/*firebase-adminsdk*.json
 **/*firebase-adminsdk*.json
 **/*adminsdk*.json

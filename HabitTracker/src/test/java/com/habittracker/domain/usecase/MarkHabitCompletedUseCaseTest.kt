@@ -124,12 +124,13 @@ class MarkHabitCompletedUseCaseTest {
                 )
             ).thenThrow(RuntimeException("Outbox error"))
         }
-
+        
         // Act
         markHabitCompletedUseCase(testHabitId, testUserId, testDate, testNote)
+        advanceUntilIdle() // Дождаться завершения всех корутин
 
         assertTrue(habitEntryRepository.markHabitCompletedCalled)
-        // scheduleOneTimeSync still invoked
+        // scheduleOneTimeSync still invoked in finally block
         verify(syncWorkScheduler).scheduleOneTimeSync()
     }
 

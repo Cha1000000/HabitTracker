@@ -135,8 +135,8 @@ com.habittracker/
    cd HabitTracker
    ```
 2. Firebase:
-   - Создайте проект Firebase и добавьте Android-приложение (используйте `applicationId` из `app/build.gradle.kts`).
-   - Скачайте `google-services.json` и поместите в `app/`.
+   - Создайте проект Firebase и добавьте Android-приложение (используйте `applicationId` из `HabitTracker/build.gradle.kts`).
+   - Скачайте `google-services.json` и поместите в `HabitTracker/`.
    - Включите Authentication (Google), Firestore и Cloud Messaging.
    - Добавьте SHA-1/SH A-256 отпечатки для корректного Google Sign-In.
 3. FCM Server Key:
@@ -157,7 +157,7 @@ com.habittracker/
   ```bash
   ./gradlew connectedDebugAndroidTest
   ```
-Примечание: в `app/build.gradle.kts` настроены packagingOptions для исключения дубликатов META-INF. Часть UI-тестов стабилизирована с помощью MockK.
+Примечание: в `HabitTracker/build.gradle.kts` настроены packagingOptions для исключения дубликатов META-INF. Часть UI-тестов стабилизирована с помощью MockK.
 
 ## Безопасность и приватность
 - Не коммитьте секреты (FCM Server Key, приватные ключи, реальные `google-services.json`).

@@ -7,8 +7,6 @@ import com.habittracker.domain.model.Habit
 import com.habittracker.domain.model.HabitFrequency
 import com.habittracker.domain.model.HabitType
 import com.habittracker.domain.repository.HabitRepository
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
@@ -280,8 +278,9 @@ class DeleteHabitUseCaseTest {
     fun syncManager_throws_swallowed_andSyncScheduled() = runTest {
         val habit = personalHabit(id = "p3", createdBy = "u1")
         whenever(repo.getHabitById("p3")).thenReturn(habit)
-        // Force SyncManager to throw during enqueueDelete; should be swallowed
+        // Force SyncManager to throw during enqueueUpsert; should be swallowed
         whenever(syncManager.enqueueUpsert(any(), any(), any(), any(), any())).thenThrow(RuntimeException("outbox insert failed"))
+        // Void методы в моках по умолчанию ничего не делают
 
         // Should not throw
         useCase.invoke("p3", userId = "u1")
@@ -311,6 +310,7 @@ class DeleteHabitUseCaseTest {
         val habit = personalHabit(id = "p8", createdBy = "u1")
         whenever(repo.getHabitById("p8")).thenReturn(habit)
         whenever(syncManager.enqueueUpsert(any(), any(), any(), any(), any())).thenThrow(RuntimeException("outbox insert failed"))
+        // Void методы в моках по умолчанию ничего не делают
 
         // Не должно упасть
         localUseCase.invoke("p8", userId = "u1")
