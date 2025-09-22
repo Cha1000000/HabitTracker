@@ -6,6 +6,7 @@ import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.LocalIndication
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -25,8 +26,6 @@ import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Group
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Person
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
@@ -62,6 +61,7 @@ import com.habittracker.domain.model.Habit
 import com.habittracker.domain.model.HabitFrequency
 import com.habittracker.domain.model.HabitType
 import com.habittracker.domain.model.isGroupHabit
+import com.habittracker.presentation.ui.theme.GlassmorphicCard
 import com.habittracker.presentation.viewmodel.HabitWithCompletion
 import kotlinx.datetime.Clock
 import kotlinx.datetime.LocalTime
@@ -88,12 +88,13 @@ fun EnhancedHabitItem(
     val successColor = Color(0xFF4CAF50)
     val outlineColor = MaterialTheme.colorScheme.outline
     val shape = MaterialTheme.shapes.medium
+    val isDarkTheme = isSystemInDarkTheme()
 
     Box(modifier = modifier.fillMaxWidth()) {
         val interaction = remember { MutableInteractionSource() }
         val indication = if (isDone) null else LocalIndication.current
 
-        Card(
+        GlassmorphicCard(
             modifier = Modifier
                 .fillMaxWidth()
                 .combinedClickable(
@@ -105,21 +106,19 @@ fun EnhancedHabitItem(
                         showMenu = true
                     }
                 ),
-            shape = shape,
-            elevation = CardDefaults.cardElevation(
-                defaultElevation = if (isDone) 0.dp else 2.dp,
-                pressedElevation = if (isDone) 0.dp else 3.dp,
-                focusedElevation = if (isDone) 0.dp else 2.dp,
-                hoveredElevation = if (isDone) 0.dp else 3.dp,
-                draggedElevation = if (isDone) 0.dp else 1.dp
-            ),
-            colors = CardDefaults.cardColors(
-                containerColor = if (isDone) {
-                    successColor.copy(alpha = 0.04f)
-                } else {
-                    MaterialTheme.colorScheme.surface
-                }
-            )
+            isDarkTheme = isDarkTheme,
+            cornerRadius = 12.dp,
+            glassAlpha = if (isDone) {
+                if (isDarkTheme) 0.25f else 0.95f
+            } else {
+                if (isDarkTheme) 0.15f else 0.85f
+            },
+            borderAlpha = if (isDone) {
+                if (isDarkTheme) 0.5f else 0.3f
+            } else {
+                if (isDarkTheme) 0.3f else 0.15f
+            },
+            elevation = if (isDone) 4.dp else 2.dp
         ) {
             // Корневой слой без внутреннего отступа, чтобы «⋮» можно было прижать к краю карточки
             Box(

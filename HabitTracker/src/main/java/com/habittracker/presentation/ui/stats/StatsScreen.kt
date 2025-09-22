@@ -1,5 +1,6 @@
 package com.habittracker.presentation.ui.stats
 
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -49,6 +50,8 @@ import com.habittracker.domain.model.gamification.HabitStats
 import com.habittracker.domain.model.gamification.SocialStats
 import com.habittracker.domain.model.gamification.StreakStats
 import com.habittracker.domain.model.gamification.TimeStats
+import com.habittracker.presentation.ui.theme.GlassmorphicCard
+import com.habittracker.presentation.ui.theme.TahoeGradientBackground
 import com.habittracker.presentation.viewmodel.StatsViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -83,27 +86,32 @@ fun StatsScreen(
             )
         }
     ) { paddingValues ->
-        when {
-            uiState.isLoading -> {
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(paddingValues),
-                    contentAlignment = Alignment.Center
-                ) {
-                    CircularProgressIndicator()
+        // Оборачиваем весь контент в градиентный фон Tahoe
+        TahoeGradientBackground(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(paddingValues),
+            isDarkTheme = isSystemInDarkTheme()
+        ) {
+            when {
+                uiState.isLoading -> {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize(),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        CircularProgressIndicator()
+                    }
                 }
-            }
-            
-            uiState.userStats != null -> {
-                val userStats = uiState.userStats!!
-                LazyColumn(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(paddingValues),
-                    contentPadding = PaddingValues(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(16.dp)
-                ) {
+                
+                uiState.userStats != null -> {
+                    val userStats = uiState.userStats!!
+                    LazyColumn(
+                        modifier = Modifier
+                            .fillMaxSize(),
+                        contentPadding = PaddingValues(16.dp),
+                        verticalArrangement = Arrangement.spacedBy(16.dp)
+                    ) {
                     item {
                         UserLevelCard(userStats.levelInfo)
                     }
@@ -159,12 +167,22 @@ fun StatsScreen(
                 }
             }
         }
+        }
     }
 }
 
 @Composable
 private fun UserLevelCard(levelInfo: com.habittracker.domain.model.UserLevelInfo) {
-    Card {
+    val isDarkTheme = isSystemInDarkTheme()
+    
+    GlassmorphicCard(
+        modifier = Modifier.fillMaxWidth(),
+        isDarkTheme = isDarkTheme,
+        cornerRadius = 16.dp,
+        glassAlpha = if (isDarkTheme) 0.15f else 0.85f,
+        borderAlpha = if (isDarkTheme) 0.3f else 0.15f,
+        elevation = 2.dp
+    ) {
         Column(
             modifier = Modifier.padding(16.dp)
         ) {
@@ -305,7 +323,16 @@ private fun StatsCard(
     icon: androidx.compose.ui.graphics.vector.ImageVector,
     stats: List<Pair<String, String>>
 ) {
-    Card {
+    val isDarkTheme = isSystemInDarkTheme()
+    
+    GlassmorphicCard(
+        modifier = Modifier.fillMaxWidth(),
+        isDarkTheme = isDarkTheme,
+        cornerRadius = 16.dp,
+        glassAlpha = if (isDarkTheme) 0.15f else 0.85f,
+        borderAlpha = if (isDarkTheme) 0.3f else 0.15f,
+        elevation = 2.dp
+    ) {
         Column(
             modifier = Modifier.padding(16.dp)
         ) {

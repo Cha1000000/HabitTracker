@@ -11,6 +11,7 @@ import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -49,9 +50,9 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -62,6 +63,9 @@ import coil.request.ImageRequest
 import com.habittracker.BuildConfig
 import com.habittracker.R
 import com.habittracker.presentation.navigation.Screen
+import com.habittracker.presentation.ui.theme.GlassmorphicCard
+import com.habittracker.presentation.ui.theme.GlassmorphicButton
+import com.habittracker.presentation.ui.theme.TahoeGradientBackground
 import com.habittracker.presentation.viewmodel.AuthViewModel
 import com.habittracker.presentation.viewmodel.ProfileViewModel
 
@@ -100,14 +104,20 @@ fun ProfileScreen(
             )
         }
     ) { padding ->
-        Column(
+        // Оборачиваем весь контент в градиентный фон Tahoe
+        TahoeGradientBackground(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(padding)
-                .padding(16.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.Top
+                .padding(padding),
+            isDarkTheme = isSystemInDarkTheme()
         ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(16.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.Top
+            ) {
             // Avatar + name section
             Box(contentAlignment = Alignment.BottomEnd) {
                 val avatarSize = 112.dp
@@ -401,6 +411,7 @@ fun ProfileScreen(
                     Text("🧪 FCM Test")
                 }
             }
+        }
         }
     }
 }

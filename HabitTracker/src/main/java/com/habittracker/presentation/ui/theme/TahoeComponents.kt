@@ -1,0 +1,339 @@
+package com.habittracker.presentation.ui.theme
+
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.*
+import androidx.compose.runtime.Composable
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.*
+import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.dp
+import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.ui.draw.blur
+import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.platform.LocalDensity
+
+/**
+ * Модификатор для создания градиентного фона в стиле Tahoe
+ */
+@Composable
+fun Modifier.tahoeGradientBackground(
+    isDarkTheme: Boolean = isSystemInDarkTheme()
+): Modifier {
+    val gradientColors = if (isDarkTheme) {
+        listOf(
+            TahoeDeepBlue,
+            TahoeElectricBlue,
+            TahoeDeepPurple,
+            TahoeViolet
+        )
+    } else {
+        listOf(
+            Color(0xFFE0E7FF),
+            Color(0xFFC7D2FE),
+            Color(0xFFA5B4FC),
+            Color(0xFF818CF8)
+        )
+    }
+
+    return this.drawBehind {
+        val angleInRadians = (135f * Math.PI / 180f).toFloat()
+        val x = kotlin.math.cos(angleInRadians) * size.width
+        val y = kotlin.math.sin(angleInRadians) * size.height
+
+        drawRect(
+            brush = Brush.linearGradient(
+                colors = gradientColors,
+                start = Offset(0f, 0f),
+                end = Offset(x, y)
+            ),
+            size = size
+        )
+    }
+}
+
+/**
+ * Модификатор для создания радиального градиента (для акцентов)
+ */
+@Composable
+fun Modifier.tahoeRadialGradient(
+    isDarkTheme: Boolean = isSystemInDarkTheme(),
+    center: Offset = Offset.Unspecified
+): Modifier {
+    val gradientColors = if (isDarkTheme) {
+        listOf(
+            TahoeRoyalBlue.copy(alpha = 0.8f),
+            TahoeLavender.copy(alpha = 0.6f),
+            Color.Transparent
+        )
+    } else {
+        listOf(
+            TahoeLightAccent.copy(alpha = 0.5f),
+            TahoeLightPurpleAccent.copy(alpha = 0.3f),
+            Color.Transparent
+        )
+    }
+
+    return this.drawBehind {
+        val finalCenter = if (center == Offset.Unspecified) {
+            Offset(size.width / 2f, size.height / 2f)
+        } else center
+
+        drawCircle(
+            brush = Brush.radialGradient(
+                colors = gradientColors,
+                center = finalCenter,
+                radius = maxOf(size.width, size.height)
+            ),
+            center = finalCenter,
+            radius = maxOf(size.width, size.height)
+        )
+    }
+}
+
+/**
+ * Glassmorphic карточка в стиле Tahoe
+ */
+@Composable
+fun GlassmorphicCard(
+    modifier: Modifier = Modifier,
+    isDarkTheme: Boolean = isSystemInDarkTheme(),
+    cornerRadius: Dp = 16.dp,
+    glassAlpha: Float = if (isDarkTheme) 0.15f else 0.85f,
+    borderAlpha: Float = if (isDarkTheme) 0.3f else 0.15f,
+    blurRadius: Dp = 10.dp,
+    elevation: Dp = 0.dp,
+    content: @Composable BoxScope.() -> Unit
+) {
+    val backgroundColor = if (isDarkTheme) {
+        GlassWhite20.copy(alpha = glassAlpha)
+    } else {
+        Color.White.copy(alpha = glassAlpha)
+    }
+    
+    val borderColor = if (isDarkTheme) {
+        GlassWhite30.copy(alpha = borderAlpha)
+    } else {
+        GlassBlack10.copy(alpha = borderAlpha)
+    }
+
+    Box(
+        modifier = modifier
+            .clip(RoundedCornerShape(cornerRadius))
+            .shadow(
+                elevation = elevation,
+                shape = RoundedCornerShape(cornerRadius),
+                ambientColor = if (isDarkTheme) TahoeRoyalBlue.copy(alpha = 0.2f) else TahoeLightAccent.copy(alpha = 0.1f),
+                spotColor = if (isDarkTheme) TahoeLavender.copy(alpha = 0.2f) else TahoeLightPurpleAccent.copy(alpha = 0.1f)
+            )
+            .background(
+                brush = Brush.verticalGradient(
+                    colors = listOf(
+                        backgroundColor,
+                        backgroundColor.copy(alpha = backgroundColor.alpha * 0.7f)
+                    )
+                ),
+                shape = RoundedCornerShape(cornerRadius)
+            )
+            .border(
+                width = 1.dp,
+                color = borderColor,
+                shape = RoundedCornerShape(cornerRadius)
+            ),
+        content = content
+    )
+}
+
+/**
+ * Кнопка в стиле Glassmorphic
+ */
+@Composable
+fun GlassmorphicButton(
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    enabled: Boolean = true,
+    isDarkTheme: Boolean = isSystemInDarkTheme(),
+    content: @Composable RowScope.() -> Unit
+) {
+    val backgroundColor = if (isDarkTheme) {
+        if (enabled) GlassWhite30 else GlassWhite10
+    } else {
+        if (enabled) Color.White.copy(alpha = 0.9f) else Color.White.copy(alpha = 0.5f)
+    }
+    
+    val borderColor = if (isDarkTheme) {
+        GlassWhite40
+    } else {
+        GlassBlack10
+    }
+
+    Button(
+        onClick = onClick,
+        modifier = modifier,
+        enabled = enabled,
+        colors = ButtonDefaults.buttonColors(
+            containerColor = backgroundColor,
+            contentColor = if (isDarkTheme) Color.White else TahoeLightAccent,
+            disabledContainerColor = backgroundColor.copy(alpha = 0.5f),
+            disabledContentColor = if (isDarkTheme) GlassWhite30 else GlassBlack30
+        ),
+        border = BorderStroke(
+            width = 1.dp,
+            color = borderColor
+        ),
+        shape = RoundedCornerShape(12.dp),
+        content = content
+    )
+}
+
+/**
+ * Floating Action Button в стиле Glassmorphic
+ */
+@Composable
+fun GlassmorphicFAB(
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    isDarkTheme: Boolean = isSystemInDarkTheme(),
+    content: @Composable () -> Unit
+) {
+    FloatingActionButton(
+        onClick = onClick,
+        modifier = modifier
+            .shadow(
+                elevation = 8.dp,
+                shape = RoundedCornerShape(16.dp),
+                ambientColor = if (isDarkTheme) TahoeRoyalBlue.copy(alpha = 0.3f) else TahoeLightAccent.copy(alpha = 0.2f),
+                spotColor = if (isDarkTheme) TahoeLavender.copy(alpha = 0.3f) else TahoeLightPurpleAccent.copy(alpha = 0.2f)
+            ),
+        containerColor = if (isDarkTheme) {
+            GlassWhite30
+        } else {
+            Color.White.copy(alpha = 0.95f)
+        },
+        contentColor = if (isDarkTheme) Color.White else TahoeLightAccent,
+        shape = RoundedCornerShape(16.dp)
+    ) {
+        content()
+    }
+}
+
+/**
+ * Компонент для градиентного фона экрана
+ */
+@Composable
+fun TahoeGradientBackground(
+    modifier: Modifier = Modifier,
+    isDarkTheme: Boolean = isSystemInDarkTheme(),
+    content: @Composable () -> Unit
+) {
+    Box(
+        modifier = modifier
+            .fillMaxSize()
+            .tahoeGradientBackground(isDarkTheme)
+    ) {
+        // Добавляем дополнительный эффект свечения
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .tahoeRadialGradient(
+                    isDarkTheme = isDarkTheme,
+                    center = Offset(0f, 0f)
+                )
+        )
+        
+        // Контент поверх градиента
+        content()
+    }
+}
+
+/**
+ * Текстовое поле в стиле Glassmorphic
+ */
+@Composable
+fun GlassmorphicTextField(
+    value: String,
+    onValueChange: (String) -> Unit,
+    modifier: Modifier = Modifier,
+    label: @Composable (() -> Unit)? = null,
+    placeholder: @Composable (() -> Unit)? = null,
+    isDarkTheme: Boolean = isSystemInDarkTheme(),
+    singleLine: Boolean = true
+) {
+    val colors = TextFieldDefaults.colors(
+        focusedContainerColor = if (isDarkTheme) GlassWhite10 else Color.White.copy(alpha = 0.8f),
+        unfocusedContainerColor = if (isDarkTheme) GlassWhite10.copy(alpha = 0.5f) else Color.White.copy(alpha = 0.6f),
+        disabledContainerColor = if (isDarkTheme) GlassBlack30 else Color.Gray.copy(alpha = 0.3f),
+        focusedIndicatorColor = if (isDarkTheme) TahoeRoyalBlue else TahoeLightAccent,
+        unfocusedIndicatorColor = if (isDarkTheme) GlassWhite30 else GlassBlack20,
+        focusedTextColor = if (isDarkTheme) Color.White else Color.Black,
+        unfocusedTextColor = if (isDarkTheme) GlassWhite50 else GlassBlack50
+    )
+    
+    OutlinedTextField(
+        value = value,
+        onValueChange = onValueChange,
+        modifier = modifier
+            .clip(RoundedCornerShape(12.dp))
+            .border(
+                width = 1.dp,
+                color = if (isDarkTheme) GlassWhite20 else GlassBlack10,
+                shape = RoundedCornerShape(12.dp)
+            ),
+        label = label,
+        placeholder = placeholder,
+        colors = colors,
+        singleLine = singleLine,
+        shape = RoundedCornerShape(12.dp)
+    )
+}
+
+/**
+ * Анимированный градиентный индикатор прогресса
+ */
+@Composable
+fun GradientProgressBar(
+    progress: Float,
+    modifier: Modifier = Modifier,
+    isDarkTheme: Boolean = isSystemInDarkTheme()
+) {
+    val progressColors = if (isDarkTheme) {
+        listOf(
+            TahoeRoyalBlue,
+            TahoeLavender,
+            TahoeSkyBlue
+        )
+    } else {
+        listOf(
+            TahoeLightAccent,
+            TahoeLightPurpleAccent,
+            Color(0xFF5E5CE6)
+        )
+    }
+    
+    Box(
+        modifier = modifier
+            .height(8.dp)
+            .clip(RoundedCornerShape(4.dp))
+            .background(
+                color = if (isDarkTheme) GlassWhite10 else GlassBlack10,
+                shape = RoundedCornerShape(4.dp)
+            )
+    ) {
+        Box(
+            modifier = Modifier
+                .fillMaxHeight()
+                .fillMaxWidth(progress)
+                .background(
+                    brush = Brush.horizontalGradient(colors = progressColors),
+                    shape = RoundedCornerShape(4.dp)
+                )
+        )
+    }
+}

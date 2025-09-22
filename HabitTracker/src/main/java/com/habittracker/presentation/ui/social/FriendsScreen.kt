@@ -8,6 +8,7 @@ import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -89,6 +90,8 @@ import coil.request.ImageRequest
 import com.habittracker.R
 import com.habittracker.domain.model.FriendRequestWithUsers
 import com.habittracker.domain.model.User
+import com.habittracker.presentation.ui.theme.GlassmorphicCard
+import com.habittracker.presentation.ui.theme.TahoeGradientBackground
 import com.habittracker.presentation.viewmodel.FriendsViewModel
 
 /**
@@ -129,12 +132,17 @@ fun FriendsScreen(
             )
         }
     ) { padding ->
-        Column(
+        // Оборачиваем весь контент в градиентный фон Tahoe
+        TahoeGradientBackground(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(padding)
-                .background(MaterialTheme.colorScheme.background)
+                .padding(padding),
+            isDarkTheme = isSystemInDarkTheme()
         ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+            ) {
         // 🎨 Modern Header с статистикой
         FriendsHeader(
             friendsCount = uiState.friends.size,
@@ -214,6 +222,7 @@ fun FriendsScreen(
                     onSendFriendRequest = { userId -> viewModel.sendFriendRequest(userId, "") }
                 )
             }
+        }
         }
         }
     }
@@ -625,16 +634,17 @@ private fun FriendCard(
     onRemove: () -> Unit
 ) {
     var showMenu by remember { mutableStateOf(false) }
+    val isDarkTheme = isSystemInDarkTheme()
     
-    Card(
+    GlassmorphicCard(
         modifier = Modifier
             .fillMaxWidth()
             .let { base -> if (!isRemoving) base.clickable { onClick() } else base },
-        shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceVariant
-        ),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+        isDarkTheme = isDarkTheme,
+        cornerRadius = 16.dp,
+        glassAlpha = if (isDarkTheme) 0.15f else 0.85f,
+        borderAlpha = if (isDarkTheme) 0.3f else 0.15f,
+        elevation = 2.dp
     ) {
         Row(
             modifier = Modifier
@@ -783,13 +793,15 @@ private fun IncomingRequestCard(
     onAccept: () -> Unit,
     onDecline: () -> Unit
 ) {
-    Card(
+    val isDarkTheme = isSystemInDarkTheme()
+    
+    GlassmorphicCard(
         modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceVariant
-        ),
-        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+        isDarkTheme = isDarkTheme,
+        cornerRadius = 16.dp,
+        glassAlpha = if (isDarkTheme) 0.2f else 0.9f,
+        borderAlpha = if (isDarkTheme) 0.4f else 0.2f,
+        elevation = 4.dp
     ) {
         Column(
             modifier = Modifier.padding(16.dp)

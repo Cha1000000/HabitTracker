@@ -2,6 +2,7 @@ package com.habittracker.presentation.ui.habits
 
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.background
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -26,7 +27,6 @@ import androidx.compose.material.pullrefresh.rememberPullRefreshState
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -76,6 +76,8 @@ import com.habittracker.presentation.navigation.Screen
 import com.habittracker.presentation.ui.components.GradientPullRefreshIndicator
 import com.habittracker.presentation.ui.habits.components.EnhancedHabitItem
 import com.habittracker.presentation.ui.notifications.NotificationBadge
+import com.habittracker.presentation.ui.theme.GlassmorphicFAB
+import com.habittracker.presentation.ui.theme.TahoeGradientBackground
 import com.habittracker.presentation.viewmodel.FriendsViewModel
 import com.habittracker.presentation.viewmodel.HabitWithCompletion
 import com.habittracker.presentation.viewmodel.HabitsViewModel
@@ -191,8 +193,9 @@ fun HabitsScreen(
             )
         },
         floatingActionButton = {
-            FloatingActionButton(
-                onClick = { navController.navigate(Screen.AddEditHabit.route) }
+            GlassmorphicFAB(
+                onClick = { navController.navigate(Screen.AddEditHabit.route) },
+                isDarkTheme = isSystemInDarkTheme()
             ) {
                 Icon(Icons.Default.Add, contentDescription = stringResource(R.string.cd_add_habit))
             }
@@ -207,12 +210,18 @@ fun HabitsScreen(
             }
         )
 
-        Box(
+        // Оборачиваем весь контент в градиентный фон Tahoe
+        TahoeGradientBackground(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(paddingValues),
-            contentAlignment = Alignment.Center
+            isDarkTheme = isSystemInDarkTheme()
         ) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize(),
+                contentAlignment = Alignment.Center
+            ) {
             if (uiState.isLoading) {
                 CircularProgressIndicator()
             } else {
@@ -364,6 +373,7 @@ fun HabitsScreen(
                             //.padding(top = 8.dp)
                     )
                 }
+            }
             }
         }
     }
