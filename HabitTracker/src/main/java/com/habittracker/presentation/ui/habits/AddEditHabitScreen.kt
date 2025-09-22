@@ -73,6 +73,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.material3.TimePicker
 import androidx.compose.material3.TimePickerDefaults
 import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.rememberTimePickerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
@@ -878,88 +879,93 @@ fun AddEditHabitScreen(
         }
     }
 
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = { 
-                    Text(
-                        if (uiState.isLoading) "" 
-                        else if (uiState.isHabitSaved) stringResource(R.string.habit_saving) 
-                        else uiState.title.ifBlank { stringResource(R.string.habit_new_title) }
-                    )
-                },
-                navigationIcon = {
-                    IconButton(
-                        onClick = onBackClick,
-                        enabled = !uiState.isLoading && !uiState.isHabitSaved
+    // Оборачиваем весь экран в градиентный фон Tahoe
+    TahoeGradientBackground(
+        modifier = Modifier.fillMaxSize(),
+        isDarkTheme = isSystemInDarkTheme()
+    ) {
+        Scaffold(
+            containerColor = Color.Transparent, // Делаем фон Scaffold прозрачным
+            contentColor = MaterialTheme.colorScheme.onBackground,
+            topBar = {
+                TopAppBar(
+                    title = { 
+                        Text(
+                            if (uiState.habitId == null) {
+                                stringResource(R.string.habit_new_title)
+                            } else {
+                                "Редактировать привычку"
+                            }
+                        )
+                    },
+                    navigationIcon = {
+                        IconButton(
+                            onClick = onBackClick,
+                            enabled = !uiState.isLoading && !uiState.isHabitSaved
+                        ) {
+                            Icon(
+                                imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                                contentDescription = stringResource(R.string.cd_back)
+                            )
+                        }
+                    },
+                    colors = TopAppBarDefaults.topAppBarColors(
+                        containerColor = Color.Transparent,
+                        scrolledContainerColor = Color.Transparent
+                    ),
+                    actions = {
+                        if (uiState.isLoading) {
+                            CircularProgressIndicator(
+                                modifier = Modifier
+                                    .size(24.dp)
+                            )
+                        }
+                    }
+                )
+            },
+            floatingActionButton = {
+                // Анимированная кнопка сохранения
+                val isSaveEnabled = uiState.title.isNotBlank() && !uiState.isLoading && !uiState.isHabitSaved
+                val fabScale by animateFloatAsState(
+                    targetValue = if (uiState.isLoading) 0.8f else 1f,
+                    animationSpec = tween(300),
+                    label = stringResource(R.string.animation_fab_scale)
+                )
+                
+                val fabColor by animateColorAsState(
+                    targetValue = if (!isSaveEnabled || uiState.isLoading)
+                        MaterialTheme.colorScheme.surfaceVariant
+                    else
+                        MaterialTheme.colorScheme.primary,
+                    animationSpec = tween(300),
+                    label = stringResource(R.string.animation_fab_color)
+                )
+                
+                if (isSaveEnabled) {
+                    GlassmorphicFAB(
+                        onClick = { viewModel.saveHabit() },
+                        isDarkTheme = isSystemInDarkTheme(),
+                        modifier = Modifier
+                            .graphicsLayer {
+                                scaleX = fabScale
+                                scaleY = fabScale
+                                alpha = 1f
+                            }
                     ) {
                         Icon(
-                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = stringResource(R.string.cd_back)
-                        )
-                    }
-                },
-                actions = {
-                    if (uiState.isLoading) {
-                        CircularProgressIndicator(
-                            modifier = Modifier
-                                .size(24.dp)
-                                .padding(end = 16.dp)
+                            Icons.Filled.Check,
+                            contentDescription = stringResource(R.string.cd_save),
+                            modifier = Modifier.size(24.dp)
                         )
                     }
                 }
-            )
-        },
-        floatingActionButton = {
-            // Анимированная кнопка сохранения
-            val isSaveEnabled = uiState.title.isNotBlank() && !uiState.isLoading && !uiState.isHabitSaved
-            val fabScale by animateFloatAsState(
-                targetValue = if (uiState.isLoading) 0.8f else 1f,
-                animationSpec = tween(300),
-                label = stringResource(R.string.animation_fab_scale)
-            )
-            
-            val fabColor by animateColorAsState(
-                targetValue = if (!isSaveEnabled || uiState.isLoading)
-                    MaterialTheme.colorScheme.surfaceVariant
-                else
-                    MaterialTheme.colorScheme.primary,
-                animationSpec = tween(300),
-                label = stringResource(R.string.animation_fab_color)
-            )
-            
-            if (isSaveEnabled) {
-                GlassmorphicFAB(
-                    onClick = { viewModel.saveHabit() },
-                    isDarkTheme = isSystemInDarkTheme(),
-                    modifier = Modifier
-                        .graphicsLayer {
-                            scaleX = fabScale
-                            scaleY = fabScale
-                            alpha = 1f
-                        }
-                ) {
-                    Icon(
-                        Icons.Filled.Check,
-                        contentDescription = stringResource(R.string.cd_save),
-                        modifier = Modifier.size(24.dp)
-                    )
-                }
-            }
-        },
-        snackbarHost = { SnackbarHost(snackbarHostState) }
+            },
+            snackbarHost = { SnackbarHost(snackbarHostState) }
     ) { paddingValues ->
-        // Оборачиваем весь контент в градиентный фон Tahoe
-        TahoeGradientBackground(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(paddingValues),
-            isDarkTheme = isSystemInDarkTheme()
-        ) {
             LazyColumn(
                 modifier = Modifier
                     .fillMaxSize()
-                    .padding(12.dp, 6.dp, 12.dp, 56.dp),
+                    .padding(paddingValues).padding(horizontal = 12.dp),
                 verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
             item {

@@ -63,6 +63,7 @@ import androidx.compose.material3.TabRowDefaults.tabIndicatorOffset
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -117,44 +118,48 @@ fun FriendsScreen(
         stringResource(id = R.string.search_friends)
     )
 
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = { Text(text = stringResource(id = R.string.friends_title)) },
-                navigationIcon = {
-                    IconButton(onClick = onNavigateBack) {
-                        Icon(
-                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = stringResource(id = R.string.cd_back)
-                        )
-                    }
-                }
-            )
-        }
-    ) { padding ->
-        // Оборачиваем весь контент в градиентный фон Tahoe
-        TahoeGradientBackground(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(padding),
-            isDarkTheme = isSystemInDarkTheme()
-        ) {
+    // Оборачиваем весь экран в градиентный фон Tahoe
+    TahoeGradientBackground(
+        modifier = Modifier.fillMaxSize(),
+        isDarkTheme = isSystemInDarkTheme()
+    ) {
+        Scaffold(
+            containerColor = Color.Transparent, // Делаем фон Scaffold прозрачным
+            contentColor = MaterialTheme.colorScheme.onBackground,
+            topBar = {
+                TopAppBar(
+                    title = { Text(text = stringResource(id = R.string.friends_title)) },
+                    navigationIcon = {
+                        IconButton(onClick = onNavigateBack) {
+                            Icon(
+                                imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                                contentDescription = stringResource(id = R.string.cd_back)
+                            )
+                        }
+                    },
+                    colors = TopAppBarDefaults.topAppBarColors(
+                        containerColor = Color.Transparent,
+                        scrolledContainerColor = Color.Transparent
+                    )
+                )
+            }
+        ) { padding ->
             Column(
                 modifier = Modifier
                     .fillMaxSize()
+                    .padding(padding)
             ) {
         // 🎨 Modern Header с статистикой
         FriendsHeader(
             friendsCount = uiState.friends.size,
             pendingRequestsCount = uiState.incomingRequests.size
         )
-        
         // 📱 Tab Navigation
         TabRow(
             selectedTabIndex = selectedTab,
             modifier = Modifier.fillMaxWidth(),
-            containerColor = MaterialTheme.colorScheme.surface,
-            contentColor = MaterialTheme.colorScheme.primary,
+            containerColor = Color.Transparent,
+            contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
             indicator = { tabPositions ->
                 TabRowDefaults.SecondaryIndicator(
                     modifier = Modifier.tabIndicatorOffset(tabPositions[selectedTab]),
@@ -224,7 +229,7 @@ fun FriendsScreen(
             }
         }
         }
-        }
+    }
     }
     // Диалог подтверждения удаления друга
     if (showRemoveDialog) {
