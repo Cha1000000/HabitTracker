@@ -91,8 +91,13 @@ import coil.request.ImageRequest
 import com.habittracker.R
 import com.habittracker.domain.model.FriendRequestWithUsers
 import com.habittracker.domain.model.User
+import com.habittracker.presentation.ui.theme.GlassBlack10
+import com.habittracker.presentation.ui.theme.GlassBlack30
+import com.habittracker.presentation.ui.theme.GlassWhite30
+import com.habittracker.presentation.ui.theme.GlassWhite40
 import com.habittracker.presentation.ui.theme.GlassmorphicCard
 import com.habittracker.presentation.ui.theme.TahoeGradientBackground
+import com.habittracker.presentation.ui.theme.TahoeLightAccent
 import com.habittracker.presentation.viewmodel.FriendsViewModel
 
 /**
@@ -952,6 +957,7 @@ private fun SearchResultCard(
     user: User,
     onSendRequest: () -> Unit
 ) {
+    val isDarkTheme = isSystemInDarkTheme()
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(16.dp),
@@ -993,9 +999,31 @@ private fun SearchResultCard(
             }
             
             // Кнопка отправки запроса
+            val backgroundColor = if (isDarkTheme) {
+                GlassWhite30
+            } else {
+                Color.White.copy(alpha = 0.9f)
+            }
+
+            val borderColor = if (isDarkTheme) {
+                GlassWhite40
+            } else {
+                GlassBlack10
+            }
+
             FilledTonalButton(
                 onClick = onSendRequest,
-                shape = RoundedCornerShape(12.dp)
+                shape = RoundedCornerShape(12.dp),
+                colors = ButtonDefaults.filledTonalButtonColors(
+                    containerColor = backgroundColor,
+                    contentColor = if (isDarkTheme) Color.White else TahoeLightAccent,
+                    disabledContainerColor = backgroundColor.copy(alpha = 0.5f),
+                    disabledContentColor = if (isDarkTheme) GlassWhite30 else GlassBlack30
+                ),
+                border = BorderStroke(
+                    width = 1.dp,
+                    color = borderColor
+                ),
             ) {
                 Icon(
                     Icons.Default.PersonAdd,

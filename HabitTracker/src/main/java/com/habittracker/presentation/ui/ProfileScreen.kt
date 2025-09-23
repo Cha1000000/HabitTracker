@@ -11,6 +11,8 @@ import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -30,8 +32,6 @@ import androidx.compose.material.icons.filled.CameraAlt
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.EmojiEvents
 import androidx.compose.material3.Button
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
@@ -65,6 +65,8 @@ import coil.request.ImageRequest
 import com.habittracker.BuildConfig
 import com.habittracker.R
 import com.habittracker.presentation.navigation.Screen
+import com.habittracker.presentation.ui.theme.GlassmorphicButton
+import com.habittracker.presentation.ui.theme.GlassmorphicCard
 import com.habittracker.presentation.ui.theme.TahoeGradientBackground
 import com.habittracker.presentation.viewmodel.AuthViewModel
 import com.habittracker.presentation.viewmodel.ProfileViewModel
@@ -78,6 +80,7 @@ fun ProfileScreen(
 ) {
     val authState by authViewModel.authState.collectAsState()
     val uiState by profileViewModel.state.collectAsState()
+    val isDarkTheme = isSystemInDarkTheme()
 
     // Handle navigation after successful sign out
     LaunchedEffect(authState) {
@@ -209,18 +212,40 @@ fun ProfileScreen(
                         }
                     }
                     if (uiState.isOwnProfile) {
-                        IconButton(
-                            onClick = { imagePicker.launch("image/*") },
+                        // Glassmorphic круглая кнопка камеры
+                        Box(
                             modifier = Modifier
-                                .size(40.dp)
-                                .clip(CircleShape)
-                                .background(MaterialTheme.colorScheme.primary)
+                                .size(52.dp)
                                 .align(Alignment.BottomEnd)
+                                .clip(CircleShape)
+                                .background(
+                                    color = if (isDarkTheme) {
+                                        Color.White.copy(alpha = 0.2f)
+                                    } else {
+                                        Color.White.copy(alpha = 0.8f)
+                                    }
+                                )
+                                .border(
+                                    width = 1.dp,
+                                    color = if (isDarkTheme) {
+                                        Color.White.copy(alpha = 0.3f)
+                                    } else {
+                                        Color.Black.copy(alpha = 0.1f)
+                                    },
+                                    shape = CircleShape
+                                )
+                                .clickable { imagePicker.launch("image/*") },
+                            contentAlignment = Alignment.Center
                         ) {
                             Icon(
                                 imageVector = Icons.Filled.CameraAlt,
                                 contentDescription = null,
-                                tint = MaterialTheme.colorScheme.onPrimary
+                                tint = if (isDarkTheme) {
+                                    Color.White
+                                } else {
+                                    MaterialTheme.colorScheme.primary
+                                },
+                                modifier = Modifier.size(22.dp)
                             )
                         }
                     }
@@ -329,10 +354,11 @@ fun ProfileScreen(
                     horizontalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
                     // Кнопка статистики
-                    Card(
-                        modifier = Modifier.weight(1f),
-                        onClick = { navController.navigate(Screen.Stats.route) },
-                        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+                    GlassmorphicCard(
+                        modifier = Modifier
+                            .weight(1f)
+                            .clickable { navController.navigate(Screen.Stats.route) },
+                        isDarkTheme = isDarkTheme
                     ) {
                         Column(
                             modifier = Modifier.padding(16.dp),
@@ -352,10 +378,11 @@ fun ProfileScreen(
                     }
 
                     // Кнопка достижений
-                    Card(
-                        modifier = Modifier.weight(1f),
-                        onClick = { navController.navigate(Screen.Achievements.route) },
-                        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+                    GlassmorphicCard(
+                        modifier = Modifier
+                            .weight(1f)
+                            .clickable { navController.navigate(Screen.Achievements.route) },
+                        isDarkTheme = isDarkTheme
                     ) {
                         Column(
                             modifier = Modifier.padding(16.dp),
@@ -385,7 +412,7 @@ fun ProfileScreen(
                 ) {
                     Column(modifier = Modifier.fillMaxWidth()) {
                         Spacer(modifier = Modifier.height(16.dp))
-                        Button(
+                        GlassmorphicButton(
                             onClick = { profileViewModel.saveChanges() },
                             enabled = !uiState.isSaving,
                             modifier = Modifier.fillMaxWidth()
@@ -402,7 +429,7 @@ fun ProfileScreen(
                 Spacer(modifier = Modifier.height(24.dp))
 
                 // Sign out button
-                Button(
+                GlassmorphicButton(
                     onClick = { authViewModel.onEvent(com.habittracker.presentation.viewmodel.AuthEvent.SignOut) },
                     enabled = authState !is com.habittracker.presentation.viewmodel.AuthState.Loading,
                     modifier = Modifier.fillMaxWidth()
@@ -426,7 +453,7 @@ fun ProfileScreen(
                 // Debug button for FCM testing
                 if (BuildConfig.DEBUG) {
                     Spacer(modifier = Modifier.height(16.dp))
-                    Button(onClick = { navController.navigate(Screen.FCMTest.route) }) {
+                    GlassmorphicButton(onClick = { navController.navigate(Screen.FCMTest.route) }) {
                         Text("🧪 FCM Test")
                     }
                 }
