@@ -90,14 +90,12 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.window.Dialog
 import androidx.core.graphics.toColorInt
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
@@ -108,6 +106,7 @@ import com.habittracker.domain.model.HabitType
 import com.habittracker.domain.model.User
 import com.habittracker.presentation.ui.components.FieldValidationFeedback
 import com.habittracker.presentation.ui.habits.components.InviteCodeCard
+import com.habittracker.presentation.ui.habits.components.TimePickerDialog
 import com.habittracker.presentation.ui.permission.NotificationPermissionHandler
 import com.habittracker.presentation.ui.permission.hasNotificationPermission
 import com.habittracker.presentation.ui.theme.GlassmorphicButton
@@ -116,199 +115,13 @@ import com.habittracker.presentation.ui.theme.GlassmorphicFAB
 import com.habittracker.presentation.ui.theme.TahoeElectricBlue
 import com.habittracker.presentation.ui.theme.TahoeGradientBackground
 import com.habittracker.presentation.ui.theme.TahoeLightSurface
-import com.habittracker.presentation.ui.theme.TahoeSkyBlue
 import com.habittracker.presentation.viewmodel.AddEditHabitUiState
 import com.habittracker.presentation.viewmodel.AddEditHabitViewModel
 import com.habittracker.presentation.viewmodel.IAddEditHabitViewModel
 import kotlinx.datetime.DayOfWeek
 import kotlinx.datetime.LocalTime
 
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-private fun TimePickerDialog(
-    initialTime: LocalTime,
-    onTimeSelected: (LocalTime) -> Unit,
-    onDismiss: () -> Unit
-) {
-    val isDarkTheme = isSystemInDarkTheme()
-    
-    // Initialize time state with the provided initial time
-    val timeState = rememberTimePickerState(
-        initialHour = initialTime.hour,
-        initialMinute = initialTime.minute,
-        is24Hour = true
-    )
-    
-    Dialog(onDismissRequest = onDismiss) {
-        // Glassmorphic dialog container
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .clip(RoundedCornerShape(24.dp))
-                .background(
-                    color = if (isDarkTheme) {
-                        Color.Black.copy(alpha = 0.6f)
-                    } else {
-                        Color.White.copy(alpha = 0.85f)
-                    }
-                )
-                .border(
-                    width = 1.dp,
-                    color = if (isDarkTheme) {
-                        Color.White.copy(alpha = 0.2f)
-                    } else {
-                        Color.Black.copy(alpha = 0.1f)
-                    },
-                    shape = RoundedCornerShape(24.dp)
-                )
-        ) {
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(24.dp),
-                horizontalAlignment = Alignment.CenterHorizontally
-            ) {
-                // Title
-                Text(
-                    text = stringResource(R.string.habit_select_time),
-                    style = MaterialTheme.typography.titleLarge,
-                    color = if (isDarkTheme) Color.White else MaterialTheme.colorScheme.onBackground,
-                    fontWeight = FontWeight.Bold
-                )
-                
-                Spacer(modifier = Modifier.height(24.dp))
-                
-                // Time Picker with Tahoe colors
-                TimePicker(
-                    state = timeState,
-                    modifier = Modifier.padding(horizontal = 8.dp),
-                    colors = TimePickerDefaults.colors(
-                        clockDialColor = if (isDarkTheme) {
-                            Color.White.copy(alpha = 0.1f)
-                        } else {
-                            MaterialTheme.colorScheme.primary.copy(alpha = 0.1f)
-                        },
-                        selectorColor = if (isDarkTheme) {
-                            TahoeSkyBlue
-                        } else {
-                            MaterialTheme.colorScheme.primary
-                        },
-                        clockDialUnselectedContentColor = if (isDarkTheme) {
-                            Color.White.copy(alpha = 0.7f)
-                        } else {
-                            MaterialTheme.colorScheme.onSurfaceVariant
-                        },
-                        clockDialSelectedContentColor = if (isDarkTheme) {
-                            Color.Black
-                        } else {
-                            Color.White
-                        },
-                        containerColor = Color.Transparent,
-                        periodSelectorBorderColor = if (isDarkTheme) {
-                            TahoeSkyBlue
-                        } else {
-                            MaterialTheme.colorScheme.primary
-                        },
-                        periodSelectorSelectedContainerColor = if (isDarkTheme) {
-                            TahoeSkyBlue
-                        } else {
-                            MaterialTheme.colorScheme.primary
-                        },
-                        periodSelectorUnselectedContainerColor = Color.Transparent,
-                        periodSelectorSelectedContentColor = if (isDarkTheme) {
-                            Color.Black
-                        } else {
-                            Color.White
-                        },
-                        periodSelectorUnselectedContentColor = if (isDarkTheme) {
-                            Color.White.copy(alpha = 0.7f)
-                        } else {
-                            MaterialTheme.colorScheme.onSurfaceVariant
-                        },
-                        timeSelectorSelectedContainerColor = if (isDarkTheme) {
-                            TahoeSkyBlue
-                        } else {
-                            MaterialTheme.colorScheme.primary
-                        },
-                        timeSelectorUnselectedContainerColor = if (isDarkTheme) {
-                            Color.White.copy(alpha = 0.1f)
-                        } else {
-                            MaterialTheme.colorScheme.primary.copy(alpha = 0.1f)
-                        },
-                        timeSelectorSelectedContentColor = if (isDarkTheme) {
-                            Color.Black
-                        } else {
-                            Color.White
-                        },
-                        timeSelectorUnselectedContentColor = if (isDarkTheme) {
-                            Color.White.copy(alpha = 0.7f)
-                        } else {
-                            MaterialTheme.colorScheme.onSurfaceVariant
-                        }
-                    )
-                )
-                
-                Spacer(modifier = Modifier.height(16.dp))
-                
-                // Selected time preview in glassmorphic container
-                Box(
-                    modifier = Modifier
-                        .clip(RoundedCornerShape(12.dp))
-                        .background(
-                            color = if (isDarkTheme) {
-                                Color.White.copy(alpha = 0.1f)
-                            } else {
-                                Color.Black.copy(alpha = 0.05f)
-                            }
-                        )
-                        .padding(horizontal = 24.dp, vertical = 12.dp)
-                ) {
-                    Text(
-                        text = "%02d:%02d".format(timeState.hour, timeState.minute),
-                        style = MaterialTheme.typography.displaySmall,
-                        color = if (isDarkTheme) Color.White else MaterialTheme.colorScheme.onBackground
-                    )
-                }
-                
-                Spacer(modifier = Modifier.height(24.dp))
-                
-                // Action buttons
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.End
-                ) {
-                    TextButton(
-                        onClick = onDismiss,
-                        colors = ButtonDefaults.textButtonColors(
-                            contentColor = if (isDarkTheme) {
-                                Color.White.copy(alpha = 0.7f)
-                            } else {
-                                MaterialTheme.colorScheme.onSurfaceVariant
-                            }
-                        )
-                    ) {
-                        Text(stringResource(R.string.action_cancel))
-                    }
-                    
-                    Spacer(modifier = Modifier.width(8.dp))
 
-                    GlassmorphicButton(
-                        onClick = {
-                            val selectedTime = LocalTime(
-                                hour = timeState.hour,
-                                minute = timeState.minute
-                            )
-                            onTimeSelected(selectedTime)
-                            onDismiss()
-                        }
-                    ) {
-                        Text(stringResource(R.string.action_done))
-                    }
-                }
-            }
-        }
-    }
-}
 
 @Composable
 private fun dayShortName(day: DayOfWeek): String = when (day) {
