@@ -23,6 +23,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.tooling.preview.Preview
 import com.habittracker.R
 import com.habittracker.domain.model.User
 
@@ -56,6 +57,53 @@ fun ConfirmDialog(
             }
         }
     )
+}
+
+@Preview
+@Composable
+private fun ConfirmDialogPreview() {
+    MaterialTheme {
+        ConfirmDialog(
+            title = "Confirm action",
+            message = "Are you sure you want to proceed?",
+            confirmLabel = "Apply",
+            onConfirm = {},
+            onDismiss = {}
+        )
+    }
+}
+
+@Preview
+@Composable
+private fun FriendsSelectDialogPreview() {
+    val friends = listOf(
+        User(id = "1", name = "Alice", email = "alice@example.com"),
+        User(id = "2", name = "Bob", email = "bob@example.com"),
+        User(id = "3", name = "Charlie", email = "")
+    )
+    val selected = setOf("1", "3")
+    MaterialTheme {
+        FriendsSelectDialog(
+            friends = friends,
+            selectedIds = selected,
+            onToggle = {},
+            onConfirm = {},
+            onDismiss = {}
+        )
+    }
+}
+
+@Preview
+@Composable
+private fun EmojiPickerDialogPreview() {
+    val emojis = listOf("🏃", "📚", "💧", "🎯", "🌿", "💡", "✅", "🔔")
+    MaterialTheme {
+        EmojiPickerDialog(
+            emojis = emojis,
+            onSelect = {},
+            onDismiss = {}
+        )
+    }
 }
 
 /**

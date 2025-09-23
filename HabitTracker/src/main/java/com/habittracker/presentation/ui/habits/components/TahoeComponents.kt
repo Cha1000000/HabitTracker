@@ -16,13 +16,19 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.scaleIn
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.FloatingActionButtonDefaults
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.runtime.Composable
@@ -37,6 +43,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.tooling.preview.Preview
 import com.habittracker.presentation.ui.theme.GlassBlack10
 import com.habittracker.presentation.ui.theme.GlassBlack20
 import com.habittracker.presentation.ui.theme.GlassBlack30
@@ -95,6 +102,21 @@ fun Modifier.tahoeGradientBackground(
     }
 }
 
+@Preview
+@Composable
+private fun GlassmorphicDialogPreview() {
+    MaterialTheme {
+        GlassmorphicDialog(
+            onDismissRequest = {},
+            title = { Text("Preview title") },
+            content = { Text("Preview content goes here. It can wrap to multiple lines.") },
+            actions = {
+                Text("Action", color = Color.White)
+            }
+        )
+    }
+}
+
 /**
  * Базовый диалог в стиле Glassmorphic Tahoe
  */
@@ -104,6 +126,8 @@ fun GlassmorphicDialog(
     modifier: Modifier = Modifier,
     isDarkTheme: Boolean = isSystemInDarkTheme(),
     cornerRadius: Dp = 24.dp,
+    maxWidthFraction: Float = 0.96f,
+    maxHeight: Dp = 560.dp,
     title: (@Composable (() -> Unit))? = null,
     content: @Composable () -> Unit,
     actions: (@Composable RowScope.() -> Unit)? = null
@@ -121,39 +145,45 @@ fun GlassmorphicDialog(
     }
 
     Dialog(onDismissRequest = onDismissRequest) {
-        Box(
-            modifier = modifier
-                .fillMaxWidth()
-                .clip(RoundedCornerShape(cornerRadius))
-                .background(
-                    brush = Brush.verticalGradient(
-                        colors = listOf(
-                            containerColor,
-                            containerColor.copy(alpha = containerColor.alpha * 0.8f)
+        AnimatedVisibility(
+            visible = true,
+            enter = fadeIn() + scaleIn(initialScale = 0.96f)
+        ) {
+            Box(
+                modifier = modifier
+                    .fillMaxWidth(maxWidthFraction)
+                    .heightIn(max = maxHeight)
+                    .clip(RoundedCornerShape(cornerRadius))
+                    .background(
+                        brush = Brush.verticalGradient(
+                            colors = listOf(
+                                containerColor,
+                                containerColor.copy(alpha = containerColor.alpha * 0.8f)
+                            )
                         )
                     )
-                )
-                .border(1.dp, borderColor, RoundedCornerShape(cornerRadius))
-                .padding(20.dp)
-        ) {
-            Column(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalAlignment = Alignment.Start
+                    .border(1.dp, borderColor, RoundedCornerShape(cornerRadius))
+                    .padding(20.dp)
             ) {
-                if (title != null) {
-                    title()
-                    Spacer(modifier = Modifier.height(16.dp))
-                }
+                Column(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalAlignment = Alignment.Start
+                ) {
+                    if (title != null) {
+                        title()
+                        Spacer(modifier = Modifier.height(16.dp))
+                    }
 
-                content()
+                    content()
 
-                if (actions != null) {
-                    Spacer(modifier = Modifier.height(16.dp))
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.End,
-                        content = actions
-                    )
+                    if (actions != null) {
+                        Spacer(modifier = Modifier.height(16.dp))
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.End,
+                            content = actions
+                        )
+                    }
                 }
             }
         }
