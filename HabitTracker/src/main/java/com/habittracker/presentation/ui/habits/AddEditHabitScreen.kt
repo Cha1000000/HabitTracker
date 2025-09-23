@@ -17,15 +17,11 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
-import androidx.compose.foundation.lazy.grid.GridCells
-import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.text.KeyboardOptions
@@ -41,10 +37,8 @@ import androidx.compose.material.icons.filled.PersonAdd
 import androidx.compose.material.icons.filled.Public
 import androidx.compose.material.icons.filled.Timeline
 import androidx.compose.material.icons.filled.Title
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.AssistChip
 import androidx.compose.material3.Button
-import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -62,7 +56,6 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarDuration
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
@@ -98,17 +91,19 @@ import androidx.navigation.compose.rememberNavController
 import com.habittracker.R
 import com.habittracker.domain.model.HabitFrequency
 import com.habittracker.domain.model.HabitType
-import com.habittracker.domain.model.User
 import com.habittracker.presentation.ui.components.FieldValidationFeedback
-import com.habittracker.presentation.ui.habits.components.InviteCodeCard
-import com.habittracker.presentation.ui.habits.components.TimePickerDialog
-import com.habittracker.presentation.ui.permission.NotificationPermissionHandler
-import com.habittracker.presentation.ui.permission.hasNotificationPermission
+import com.habittracker.presentation.ui.habits.components.ConfirmDialog
+import com.habittracker.presentation.ui.habits.components.EmojiPickerDialog
+import com.habittracker.presentation.ui.habits.components.FriendsSelectDialog
 import com.habittracker.presentation.ui.habits.components.GlassmorphicButton
 import com.habittracker.presentation.ui.habits.components.GlassmorphicCard
 import com.habittracker.presentation.ui.habits.components.GlassmorphicFAB
-import com.habittracker.presentation.ui.theme.TahoeElectricBlue
+import com.habittracker.presentation.ui.habits.components.InviteCodeCard
 import com.habittracker.presentation.ui.habits.components.TahoeGradientBackground
+import com.habittracker.presentation.ui.habits.components.TimePickerDialog
+import com.habittracker.presentation.ui.permission.NotificationPermissionHandler
+import com.habittracker.presentation.ui.permission.hasNotificationPermission
+import com.habittracker.presentation.ui.theme.TahoeElectricBlue
 import com.habittracker.presentation.ui.theme.TahoeLightSurface
 import com.habittracker.presentation.utils.GroupHabitConstants
 import com.habittracker.presentation.viewmodel.AddEditHabitUiState
@@ -178,158 +173,7 @@ private fun DaysOfWeekSelector(
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
-@Composable
-private fun IconPickerDialog(
-    onIconSelected: (String) -> Unit,
-    onDismiss: () -> Unit
-) {
-    val icons = listOf(
-        // Health & Fitness
-        "🏃‍♂️", "💪", "🧘‍♀️", "🏋️‍♀️", "🤸", "🚴", "🏊", "🧗", "🤸‍♂️", "🚶‍♂️",
-        // Food & Drink
-        "🍎", "🥗", "🥦", "🥛", "☕", "💧", "🍵", "🥑", "🥜", "🥝",
-        // Personal Growth
-        "📚", "✍️", "🎯", "🎨", "🎵", "🎸", "📖", "📝", "🧠", "🎓",
-        // Productivity
-        "⏰", "📅", "✅", "📊", "📈", "📱", "💡", "🔔", "🎮", "📱",
-        // Well-being
-        "😴", "💤", "🧘", "🌞", "🌙", "🌱", "🌿", "🌸", "🌍", "🌈",
-        // Social & Family
-        "👨‍👩‍👧‍👦", "👥", "❤️", "🤝", "👨‍👧", "👩‍👧", "👨‍👩‍👧", "🐕", "🐈", "🐦",
-        // Work & Study
-        "💼", "📊", "📝", "📌", "📋", "✂️", "📎", "📏", "📐", "📚",
-        // Other
-        "🎲", "🧩", "🧵", "🧶", "🛁", "🧼", "🛌", "🧹", "🧺", "🧸"
-    )
-    
-    AlertDialog(
-        modifier = Modifier
-            .fillMaxWidth(0.96f)
-            .wrapContentHeight(),
-        onDismissRequest = onDismiss,
-        title = { 
-            Text(
-                text = stringResource(R.string.habit_select_icon),
-                style = MaterialTheme.typography.headlineSmall
-            ) 
-        },
-        text = {
-            LazyVerticalGrid(
-                columns = GridCells.Adaptive(minSize = 48.dp),
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .heightIn(max = 500.dp),
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp),
-                contentPadding = PaddingValues(8.dp)
-            ) {
-                items(icons.size) { index ->
-                    val icon = icons[index]
-                    Surface(
-                        shape = CircleShape,
-                        color = MaterialTheme.colorScheme.surfaceVariant,
-                        modifier = Modifier
-                            .size(48.dp)
-                            .clickable {
-                                onIconSelected(icon)
-                                onDismiss()
-                            },
-                        contentColor = MaterialTheme.colorScheme.onSurfaceVariant
-                    ) {
-                        Box(
-                            contentAlignment = Alignment.Center,
-                            modifier = Modifier.fillMaxSize()
-                        ) {
-                            Text(
-                                text = icon,
-                                style = MaterialTheme.typography.headlineMedium,
-                                textAlign = TextAlign.Center
-                            )
-                        }
-                    }
-                }
-            }
-        },
-        confirmButton = {},
-        dismissButton = {
-            TextButton(onClick = onDismiss) {
-                Text(stringResource(R.string.action_cancel))
-            }
-        },
-    )
-}
-
-@Composable
-private fun FriendSelectorDialog(
-    friends: List<User>,
-    selectedFriends: List<User>,
-    onFriendToggle: (User) -> Unit,
-    onDismiss: () -> Unit
-) {
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = {
-            Text(stringResource(R.string.select_friends_to_invite))
-        },
-        text = {
-            LazyColumn(
-                modifier = Modifier.heightIn(max = 400.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                if (friends.isEmpty()) {
-                    item {
-                        Text(
-                            text = stringResource(R.string.no_friends_available),
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            modifier = Modifier.padding(16.dp)
-                        )
-                    }
-                } else {
-                    items(friends) { friend ->
-                        val isSelected = selectedFriends.contains(friend)
-                        
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .clickable { onFriendToggle(friend) }
-                                .padding(8.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Checkbox(
-                                checked = isSelected,
-                                onCheckedChange = { onFriendToggle(friend) }
-                            )
-                            
-                            Spacer(modifier = Modifier.width(12.dp))
-                            
-                            Column {
-                                Text(
-                                    text = friend.name,
-                                    style = MaterialTheme.typography.bodyLarge
-                                )
-                                if (friend.email.isNotEmpty()) {
-                                    Text(
-                                        text = friend.email,
-                                        style = MaterialTheme.typography.bodySmall,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                                    )
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        },
-        confirmButton = {},
-        dismissButton = {
-            TextButton(onClick = onDismiss) {
-                Text(stringResource(R.string.action_done))
-            }
-        }
-    )
-}
+ 
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -693,10 +537,29 @@ fun AddEditHabitScreen(
         }
     }
 
-    // Показываем диалог выбора иконки
+    // Показываем диалог выбора иконки (Tahoe EmojiPickerDialog)
     if (showIconPicker) {
-        IconPickerDialog(
-            onIconSelected = { viewModel.onIconChange(it) },
+        val icons = listOf(
+            // Fitness & Health
+            "🏃", "🏋️", "🧘", "🚴", "🏊", "🧗", "🤸", "🚶", "🛼", "⛹️",
+            // Food & Drink
+            "🍎", "🥗", "🥦", "🥛", "☕", "💧", "🍵", "🥑", "🥜", "🥝",
+            // Personal Growth
+            "📚", "✍️", "🎯", "🎨", "🎵", "🎸", "📖", "📝", "🧠", "🎓",
+            // Productivity
+            "⏰", "📅", "✅", "📊", "📈", "📱", "💡", "🔔", "🎮", "📱",
+            // Well-being
+            "😴", "💤", "🧘", "🌞", "🌙", "🌱", "🌿", "🌸", "🌍", "🌈",
+            // Social & Family
+            "👨‍👩‍👧‍👦", "👥", "❤️", "🤝", "👨‍👧", "👩‍👧", "👨‍👩‍👧", "🐕", "🐈", "🐦",
+            // Work & Study
+            "💼", "📊", "📝", "📌", "📋", "✂️", "📎", "📏", "📐", "📚",
+            // Other
+            "🎲", "🧩", "🧵", "🧶", "🛁", "🧼", "🛌", "🧹", "🧺", "🧸"
+        )
+        EmojiPickerDialog(
+            emojis = icons,
+            onSelect = { emoji -> viewModel.onIconChange(emoji); showIconPicker = false },
             onDismiss = { showIconPicker = false }
         )
     }
@@ -742,41 +605,36 @@ fun AddEditHabitScreen(
     // Подтверждение применения напоминаний для всех
     var showApplyAllConfirm by remember { mutableStateOf(false) }
     if (showApplyAllConfirm) {
-        AlertDialog(
-            onDismissRequest = { showApplyAllConfirm = false },
-            title = { Text(stringResource(R.string.confirm_apply_reminder_title)) },
-            text = { Text(stringResource(R.string.confirm_apply_reminder_message)) },
-            confirmButton = {
-                TextButton(onClick = {
-                    showApplyAllConfirm = false
-                    (viewModel as? AddEditHabitViewModel)?.applyReminderToAllParticipants()
-                }) {
-                    Text(stringResource(R.string.apply))
-                }
+        ConfirmDialog(
+            title = stringResource(R.string.confirm_apply_reminder_title),
+            message = stringResource(R.string.confirm_apply_reminder_message),
+            confirmLabel = stringResource(R.string.apply),
+            cancelLabel = stringResource(R.string.action_cancel),
+            onConfirm = {
+                showApplyAllConfirm = false
+                (viewModel as? AddEditHabitViewModel)?.applyReminderToAllParticipants()
             },
-            dismissButton = {
-                TextButton(onClick = { showApplyAllConfirm = false }) {
-                    Text(stringResource(R.string.action_cancel))
-                }
-            }
+            onDismiss = { showApplyAllConfirm = false }
         )
     }
 
     // Показываем диалог выбора друзей
     if (uiState.showFriendSelector) {
-        FriendSelectorDialog(
+        FriendsSelectDialog(
             friends = uiState.availableFriends,
-            selectedFriends = uiState.selectedFriendsToInvite,
-            onFriendToggle = { friend ->
-                if (uiState.selectedFriendsToInvite.contains(friend)) {
-                    viewModel.deselectFriend(friend)
-                } else {
-                    viewModel.selectFriend(friend)
+            selectedIds = uiState.selectedFriendsToInvite.map { it.id }.toSet(),
+            onToggle = { userId ->
+                val friend = uiState.availableFriends.firstOrNull { it.id == userId }
+                if (friend != null) {
+                    if (uiState.selectedFriendsToInvite.any { it.id == userId }) {
+                        viewModel.deselectFriend(friend)
+                    } else {
+                        viewModel.selectFriend(friend)
+                    }
                 }
             },
-            onDismiss = { 
-                viewModel.onShowFriendSelector(false)
-            }
+            onConfirm = { viewModel.onShowFriendSelector(false) },
+            onDismiss = { viewModel.onShowFriendSelector(false) }
         )
     }
 
@@ -1030,22 +888,17 @@ fun AddEditHabitScreen(
                 }
 
                 if (showFrequencyConfirm && pendingFrequency != null) {
-                    AlertDialog(
-                        onDismissRequest = { showFrequencyConfirm = false; pendingFrequency = null },
-                        title = { Text(stringResource(R.string.confirm_change_frequency_title)) },
-                        text = { Text(stringResource(R.string.confirm_change_frequency_message)) },
-                        confirmButton = {
-                            TextButton(onClick = {
-                                pendingFrequency?.let { viewModel.onFrequencyChange(it) }
-                                showFrequencyConfirm = false
-                                pendingFrequency = null
-                            }) { Text(stringResource(R.string.apply)) }
+                    ConfirmDialog(
+                        title = stringResource(R.string.confirm_change_frequency_title),
+                        message = stringResource(R.string.confirm_change_frequency_message),
+                        confirmLabel = stringResource(R.string.apply),
+                        cancelLabel = stringResource(R.string.action_cancel),
+                        onConfirm = {
+                            pendingFrequency?.let { viewModel.onFrequencyChange(it) }
+                            showFrequencyConfirm = false
+                            pendingFrequency = null
                         },
-                        dismissButton = {
-                            TextButton(onClick = { showFrequencyConfirm = false; pendingFrequency = null }) {
-                                Text(stringResource(R.string.action_cancel))
-                            }
-                        }
+                        onDismiss = { showFrequencyConfirm = false; pendingFrequency = null }
                     )
                 }
             }

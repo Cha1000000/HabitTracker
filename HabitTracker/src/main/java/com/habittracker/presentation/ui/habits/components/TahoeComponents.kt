@@ -5,13 +5,18 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
@@ -31,6 +36,7 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.window.Dialog
 import com.habittracker.presentation.ui.theme.GlassBlack10
 import com.habittracker.presentation.ui.theme.GlassBlack20
 import com.habittracker.presentation.ui.theme.GlassBlack30
@@ -73,7 +79,6 @@ fun Modifier.tahoeGradientBackground(
             Color(0xFF38BDF8)
         )
     }
-
     return this.drawBehind {
         val angleInRadians = (135f * Math.PI / 160f).toFloat()
         val x = cos(angleInRadians) * size.width
@@ -87,6 +92,71 @@ fun Modifier.tahoeGradientBackground(
             ),
             size = size
         )
+    }
+}
+
+/**
+ * Базовый диалог в стиле Glassmorphic Tahoe
+ */
+@Composable
+fun GlassmorphicDialog(
+    onDismissRequest: () -> Unit,
+    modifier: Modifier = Modifier,
+    isDarkTheme: Boolean = isSystemInDarkTheme(),
+    cornerRadius: Dp = 24.dp,
+    title: (@Composable (() -> Unit))? = null,
+    content: @Composable () -> Unit,
+    actions: (@Composable RowScope.() -> Unit)? = null
+) {
+    val containerColor = if (isDarkTheme) {
+        Color.Black.copy(alpha = 0.6f)
+    } else {
+        Color.White.copy(alpha = 0.85f)
+    }
+
+    val borderColor = if (isDarkTheme) {
+        GlassWhite30
+    } else {
+        GlassBlack10
+    }
+
+    Dialog(onDismissRequest = onDismissRequest) {
+        Box(
+            modifier = modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(cornerRadius))
+                .background(
+                    brush = Brush.verticalGradient(
+                        colors = listOf(
+                            containerColor,
+                            containerColor.copy(alpha = containerColor.alpha * 0.8f)
+                        )
+                    )
+                )
+                .border(1.dp, borderColor, RoundedCornerShape(cornerRadius))
+                .padding(20.dp)
+        ) {
+            Column(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalAlignment = Alignment.Start
+            ) {
+                if (title != null) {
+                    title()
+                    Spacer(modifier = Modifier.height(16.dp))
+                }
+
+                content()
+
+                if (actions != null) {
+                    Spacer(modifier = Modifier.height(16.dp))
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.End,
+                        content = actions
+                    )
+                }
+            }
+        }
     }
 }
 
