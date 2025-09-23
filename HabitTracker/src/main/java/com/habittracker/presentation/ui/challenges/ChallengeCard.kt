@@ -1,5 +1,7 @@
 package com.habittracker.presentation.ui.challenges
 
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -20,6 +22,7 @@ import com.habittracker.R
 import com.habittracker.domain.model.Challenge
 import com.habittracker.domain.model.ChallengeStatus
 import com.habittracker.domain.model.ChallengeType
+import com.habittracker.presentation.ui.theme.GlassmorphicCard
 import kotlinx.datetime.Clock
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.todayIn
@@ -39,12 +42,13 @@ fun ChallengeCard(
     val progress = if (totalDays > 0) {
         maxOf(0f, (totalDays - daysRemaining).toFloat() / totalDays)
     } else 0f
+    val isDarkTheme = isSystemInDarkTheme()
 
-    Card(
-        onClick = onChallengeClick,
-        modifier = modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(12.dp),
-        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+    GlassmorphicCard(
+        modifier = modifier
+            .fillMaxWidth()
+            .clickable { onChallengeClick() },
+        isDarkTheme = isDarkTheme
     ) {
         Column(
             modifier = Modifier.padding(16.dp)

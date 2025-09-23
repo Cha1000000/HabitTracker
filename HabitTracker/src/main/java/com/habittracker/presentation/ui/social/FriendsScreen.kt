@@ -156,8 +156,8 @@ fun FriendsScreen(
         )
         // 📱 Tab Navigation
         TabRow(
-            selectedTabIndex = selectedTab,
             modifier = Modifier.fillMaxWidth(),
+            selectedTabIndex = selectedTab,
             containerColor = Color.Transparent,
             contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
             indicator = { tabPositions ->
