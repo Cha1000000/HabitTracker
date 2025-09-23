@@ -29,7 +29,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import com.habittracker.R
-import com.habittracker.presentation.ui.theme.GlassmorphicButton
 import com.habittracker.presentation.ui.theme.TahoeSkyBlue
 import kotlinx.datetime.LocalTime
 import androidx.compose.ui.res.stringResource

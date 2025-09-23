@@ -19,7 +19,7 @@ import androidx.navigation.NavController
 import com.habittracker.R
 import com.habittracker.domain.usecase.notification.GroupHabitNotification
 import com.habittracker.domain.usecase.notification.NotificationType
-import com.habittracker.presentation.ui.theme.TahoeGradientBackground
+import com.habittracker.presentation.ui.habits.components.TahoeGradientBackground
 import com.habittracker.presentation.viewmodel.NotificationsViewModel
 import kotlinx.datetime.Clock
 

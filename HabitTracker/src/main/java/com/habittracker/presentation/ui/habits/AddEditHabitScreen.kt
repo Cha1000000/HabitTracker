@@ -104,12 +104,13 @@ import com.habittracker.presentation.ui.habits.components.InviteCodeCard
 import com.habittracker.presentation.ui.habits.components.TimePickerDialog
 import com.habittracker.presentation.ui.permission.NotificationPermissionHandler
 import com.habittracker.presentation.ui.permission.hasNotificationPermission
-import com.habittracker.presentation.ui.theme.GlassmorphicButton
-import com.habittracker.presentation.ui.theme.GlassmorphicCard
-import com.habittracker.presentation.ui.theme.GlassmorphicFAB
+import com.habittracker.presentation.ui.habits.components.GlassmorphicButton
+import com.habittracker.presentation.ui.habits.components.GlassmorphicCard
+import com.habittracker.presentation.ui.habits.components.GlassmorphicFAB
 import com.habittracker.presentation.ui.theme.TahoeElectricBlue
-import com.habittracker.presentation.ui.theme.TahoeGradientBackground
+import com.habittracker.presentation.ui.habits.components.TahoeGradientBackground
 import com.habittracker.presentation.ui.theme.TahoeLightSurface
+import com.habittracker.presentation.utils.GroupHabitConstants
 import com.habittracker.presentation.viewmodel.AddEditHabitUiState
 import com.habittracker.presentation.viewmodel.AddEditHabitViewModel
 import com.habittracker.presentation.viewmodel.IAddEditHabitViewModel
@@ -431,7 +432,7 @@ private fun GroupSettings(
                 
                 run {
                     val valueOrNull = uiState.maxParticipantsInput.toIntOrNull()
-                    val exceeds = valueOrNull?.let { it > com.habittracker.presentation.utils.GroupHabitConstants.MAX_PARTICIPANTS } == true
+                    val exceeds = valueOrNull?.let { it > GroupHabitConstants.MAX_PARTICIPANTS } == true
                     val tooLow = valueOrNull == 1
 
                     OutlinedTextField(

@@ -61,8 +61,8 @@ import com.habittracker.domain.model.AchievementType
 import com.habittracker.domain.model.AchievementWithProgress
 import com.habittracker.domain.model.UserAchievement
 import com.habittracker.domain.model.getDisplayTitle
-import com.habittracker.presentation.ui.theme.GlassmorphicCard
-import com.habittracker.presentation.ui.theme.TahoeGradientBackground
+import com.habittracker.presentation.ui.habits.components.GlassmorphicCard
+import com.habittracker.presentation.ui.habits.components.TahoeGradientBackground
 import com.habittracker.presentation.viewmodel.AchievementsViewModel
 import kotlinx.datetime.Instant
 

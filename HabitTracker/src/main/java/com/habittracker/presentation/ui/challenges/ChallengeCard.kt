@@ -13,7 +13,6 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -22,7 +21,7 @@ import com.habittracker.R
 import com.habittracker.domain.model.Challenge
 import com.habittracker.domain.model.ChallengeStatus
 import com.habittracker.domain.model.ChallengeType
-import com.habittracker.presentation.ui.theme.GlassmorphicCard
+import com.habittracker.presentation.ui.habits.components.GlassmorphicCard
 import kotlinx.datetime.Clock
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.todayIn

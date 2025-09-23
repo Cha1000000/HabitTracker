@@ -77,8 +77,8 @@ import com.habittracker.presentation.navigation.Screen
 import com.habittracker.presentation.ui.components.GradientPullRefreshIndicator
 import com.habittracker.presentation.ui.habits.components.EnhancedHabitItem
 import com.habittracker.presentation.ui.notifications.NotificationBadge
-import com.habittracker.presentation.ui.theme.GlassmorphicFAB
-import com.habittracker.presentation.ui.theme.TahoeGradientBackground
+import com.habittracker.presentation.ui.habits.components.GlassmorphicFAB
+import com.habittracker.presentation.ui.habits.components.TahoeGradientBackground
 import com.habittracker.presentation.viewmodel.FriendsViewModel
 import com.habittracker.presentation.viewmodel.HabitWithCompletion
 import com.habittracker.presentation.viewmodel.HabitsViewModel
@@ -86,6 +86,7 @@ import com.habittracker.presentation.viewmodel.NotificationsViewModel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.datetime.Clock
+import kotlin.math.abs
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterialApi::class)
 @Composable
@@ -268,9 +269,9 @@ fun HabitsScreen(
                                             // Фон удаления: проявляется только при свайпе, совпадает по скруглению с карточкой
                                             val shape = MaterialTheme.shapes.medium
                                             val offsetPx = try { dismissState.requireOffset() } catch (_: IllegalStateException) { 0f }
-                                            val targetAlpha = if (kotlin.math.abs(offsetPx) > 0f) {
+                                            val targetAlpha = if (abs(offsetPx) > 0f) {
                                                 // Наращиваем непрозрачность с прогрессом свайпа
-                                                (kotlin.math.abs(offsetPx) / 600f).coerceIn(0f, 1f)
+                                                (abs(offsetPx) / 600f).coerceIn(0f, 1f)
                                             } else 0f
                                             val bgAlpha = animateFloatAsState(targetValue = targetAlpha, label = "swipeBgAlpha").value
                                             val coral = Color(0xFFD74646)

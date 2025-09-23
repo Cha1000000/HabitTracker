@@ -1,4 +1,4 @@
-package com.habittracker.presentation.ui.theme
+package com.habittracker.presentation.ui.habits.components
 
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
@@ -31,6 +31,25 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import com.habittracker.presentation.ui.theme.GlassBlack10
+import com.habittracker.presentation.ui.theme.GlassBlack20
+import com.habittracker.presentation.ui.theme.GlassBlack30
+import com.habittracker.presentation.ui.theme.GlassBlack50
+import com.habittracker.presentation.ui.theme.GlassWhite10
+import com.habittracker.presentation.ui.theme.GlassWhite20
+import com.habittracker.presentation.ui.theme.GlassWhite30
+import com.habittracker.presentation.ui.theme.GlassWhite40
+import com.habittracker.presentation.ui.theme.GlassWhite50
+import com.habittracker.presentation.ui.theme.TahoeAqua
+import com.habittracker.presentation.ui.theme.TahoeDeepBlue
+import com.habittracker.presentation.ui.theme.TahoeElectricBlue
+import com.habittracker.presentation.ui.theme.TahoeLavender
+import com.habittracker.presentation.ui.theme.TahoeLightAccent
+import com.habittracker.presentation.ui.theme.TahoeLightPurpleAccent
+import com.habittracker.presentation.ui.theme.TahoeRoyalBlue
+import com.habittracker.presentation.ui.theme.TahoeSkyBlue
+import kotlin.math.cos
+import kotlin.math.sin
 
 /**
  * Модификатор для создания градиентного фона в стиле Tahoe
@@ -57,8 +76,8 @@ fun Modifier.tahoeGradientBackground(
 
     return this.drawBehind {
         val angleInRadians = (135f * Math.PI / 160f).toFloat()
-        val x = kotlin.math.cos(angleInRadians) * size.width
-        val y = kotlin.math.sin(angleInRadians) * size.height
+        val x = cos(angleInRadians) * size.width
+        val y = sin(angleInRadians) * size.height
 
         drawRect(
             brush = Brush.linearGradient(

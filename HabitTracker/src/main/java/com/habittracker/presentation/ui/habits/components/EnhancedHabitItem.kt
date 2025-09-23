@@ -61,7 +61,6 @@ import com.habittracker.domain.model.Habit
 import com.habittracker.domain.model.HabitFrequency
 import com.habittracker.domain.model.HabitType
 import com.habittracker.domain.model.isGroupHabit
-import com.habittracker.presentation.ui.theme.GlassmorphicCard
 import com.habittracker.presentation.viewmodel.HabitWithCompletion
 import kotlinx.datetime.Clock
 import kotlinx.datetime.LocalTime

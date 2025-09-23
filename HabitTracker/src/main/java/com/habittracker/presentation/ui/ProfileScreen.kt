@@ -66,9 +66,11 @@ import coil.request.ImageRequest
 import com.habittracker.BuildConfig
 import com.habittracker.R
 import com.habittracker.presentation.navigation.Screen
-import com.habittracker.presentation.ui.theme.GlassmorphicButton
-import com.habittracker.presentation.ui.theme.GlassmorphicCard
-import com.habittracker.presentation.ui.theme.TahoeGradientBackground
+import com.habittracker.presentation.ui.habits.components.GlassmorphicButton
+import com.habittracker.presentation.ui.habits.components.GlassmorphicCard
+import com.habittracker.presentation.ui.habits.components.TahoeGradientBackground
+import com.habittracker.presentation.viewmodel.AuthEvent
+import com.habittracker.presentation.viewmodel.AuthState
 import com.habittracker.presentation.viewmodel.AuthViewModel
 import com.habittracker.presentation.viewmodel.ProfileViewModel
 
@@ -431,11 +433,11 @@ fun ProfileScreen(
 
                 // Sign out button
                 GlassmorphicButton(
-                    onClick = { authViewModel.onEvent(com.habittracker.presentation.viewmodel.AuthEvent.SignOut) },
-                    enabled = authState !is com.habittracker.presentation.viewmodel.AuthState.Loading,
+                    onClick = { authViewModel.onEvent(AuthEvent.SignOut) },
+                    enabled = authState !is AuthState.Loading,
                     modifier = Modifier.fillMaxWidth()
                 ) {
-                    if (authState is com.habittracker.presentation.viewmodel.AuthState.Loading) {
+                    if (authState is AuthState.Loading) {
                         CircularProgressIndicator(color = MaterialTheme.colorScheme.onPrimary)
                     } else {
                         Text(
@@ -446,10 +448,10 @@ fun ProfileScreen(
                 }
 
                 // Display error if any
-                if (authState is com.habittracker.presentation.viewmodel.AuthState.Error) {
+                if (authState is AuthState.Error) {
                     Spacer(modifier = Modifier.height(16.dp))
                     Text(
-                        text = (authState as com.habittracker.presentation.viewmodel.AuthState.Error).message,
+                        text = (authState as AuthState.Error).message,
                         color = MaterialTheme.colorScheme.error
                     )
                 }

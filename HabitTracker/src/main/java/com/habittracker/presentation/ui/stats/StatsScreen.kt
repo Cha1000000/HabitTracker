@@ -51,8 +51,8 @@ import com.habittracker.domain.model.gamification.HabitStats
 import com.habittracker.domain.model.gamification.SocialStats
 import com.habittracker.domain.model.gamification.StreakStats
 import com.habittracker.domain.model.gamification.TimeStats
-import com.habittracker.presentation.ui.theme.GlassmorphicCard
-import com.habittracker.presentation.ui.theme.TahoeGradientBackground
+import com.habittracker.presentation.ui.habits.components.GlassmorphicCard
+import com.habittracker.presentation.ui.habits.components.TahoeGradientBackground
 import com.habittracker.presentation.viewmodel.StatsViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)

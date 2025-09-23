@@ -91,12 +91,12 @@ import coil.request.ImageRequest
 import com.habittracker.R
 import com.habittracker.domain.model.FriendRequestWithUsers
 import com.habittracker.domain.model.User
+import com.habittracker.presentation.ui.habits.components.GlassmorphicCard
+import com.habittracker.presentation.ui.habits.components.TahoeGradientBackground
 import com.habittracker.presentation.ui.theme.GlassBlack10
 import com.habittracker.presentation.ui.theme.GlassBlack30
 import com.habittracker.presentation.ui.theme.GlassWhite30
 import com.habittracker.presentation.ui.theme.GlassWhite40
-import com.habittracker.presentation.ui.theme.GlassmorphicCard
-import com.habittracker.presentation.ui.theme.TahoeGradientBackground
 import com.habittracker.presentation.ui.theme.TahoeLightAccent
 import com.habittracker.presentation.viewmodel.FriendsViewModel
 
