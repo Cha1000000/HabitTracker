@@ -43,20 +43,20 @@ fun Modifier.tahoeGradientBackground(
         listOf(
             TahoeDeepBlue,
             TahoeElectricBlue,
-            TahoeDeepPurple,
-            TahoeViolet
+            TahoeRoyalBlue,
+            TahoeSkyBlue
         )
     } else {
         listOf(
-            Color(0xFFE0E7FF),
-            Color(0xFFC7D2FE),
-            Color(0xFFA5B4FC),
-            Color(0xFF8195F8)
+            Color(0xFFE0F2FE),
+            Color(0xFFBAE6FD),
+            Color(0xFF7DD3FC),
+            Color(0xFF38BDF8)
         )
     }
 
     return this.drawBehind {
-        val angleInRadians = (135f * Math.PI / 180f).toFloat()
+        val angleInRadians = (135f * Math.PI / 160f).toFloat()
         val x = kotlin.math.cos(angleInRadians) * size.width
         val y = kotlin.math.sin(angleInRadians) * size.height
 
@@ -81,14 +81,16 @@ fun Modifier.tahoeRadialGradient(
 ): Modifier {
     val gradientColors = if (isDarkTheme) {
         listOf(
-            TahoeRoyalBlue.copy(alpha = 0.8f),
-            TahoeLavender.copy(alpha = 0.6f),
+            Color.Transparent,
+            TahoeSkyBlue.copy(alpha = 0.1f),
+            TahoeAqua.copy(alpha = 0.05f),
             Color.Transparent
         )
     } else {
         listOf(
-            TahoeLightAccent.copy(alpha = 0.5f),
-            TahoeLightPurpleAccent.copy(alpha = 0.3f),
+            Color.Transparent,
+            Color(0x1A38BDF8),  // Светло-голубой с прозрачностью
+            Color(0x0D7DD3FC),  // Очень прозрачный голубой
             Color.Transparent
         )
     }
@@ -120,7 +122,6 @@ fun GlassmorphicCard(
     cornerRadius: Dp = 16.dp,
     glassAlpha: Float = if (isDarkTheme) 0.15f else 0.85f,
     borderAlpha: Float = if (isDarkTheme) 0.3f else 0.15f,
-    blurRadius: Dp = 10.dp,
     elevation: Dp = 0.dp,
     content: @Composable BoxScope.() -> Unit
 ) {

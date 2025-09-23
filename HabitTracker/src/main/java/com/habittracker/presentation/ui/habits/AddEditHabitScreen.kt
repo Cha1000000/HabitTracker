@@ -1,6 +1,5 @@
 package com.habittracker.presentation.ui.habits
 
-import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
@@ -46,7 +45,6 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.AssistChip
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.Card
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenuItem
@@ -109,8 +107,10 @@ import com.habittracker.presentation.ui.components.FieldValidationFeedback
 import com.habittracker.presentation.ui.habits.components.InviteCodeCard
 import com.habittracker.presentation.ui.permission.NotificationPermissionHandler
 import com.habittracker.presentation.ui.permission.hasNotificationPermission
+import com.habittracker.presentation.ui.theme.GlassmorphicCard
 import com.habittracker.presentation.ui.theme.GlassmorphicFAB
 import com.habittracker.presentation.ui.theme.TahoeGradientBackground
+import com.habittracker.presentation.ui.theme.TahoeLightSurface
 import com.habittracker.presentation.viewmodel.AddEditHabitUiState
 import com.habittracker.presentation.viewmodel.AddEditHabitViewModel
 import com.habittracker.presentation.viewmodel.IAddEditHabitViewModel
@@ -236,6 +236,7 @@ private fun DaysOfWeekSelector(
     horizontalArrangement = Arrangement.spacedBy(8.dp),
     verticalArrangement = Arrangement.spacedBy(8.dp)
 ){
+    val isDarkTheme = isSystemInDarkTheme()
     val days = listOf(
         DayOfWeek.MONDAY,
         DayOfWeek.TUESDAY,
@@ -253,7 +254,9 @@ private fun DaysOfWeekSelector(
             label = { Text(dayShortName(day)) },
             enabled = enabled,
             colors = FilterChipDefaults.filterChipColors(
-                selectedContainerColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.48f),
+                selectedContainerColor = if (isDarkTheme)
+                    MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = 0.48f) else
+                        MaterialTheme.colorScheme.tertiary.copy(alpha = 0.48f),
                 selectedLabelColor = MaterialTheme.colorScheme.onPrimaryContainer
             )
         )
@@ -480,11 +483,16 @@ private fun HabitTypeSelector(
 @Composable
 private fun GroupSettings(
     uiState: AddEditHabitUiState,
-    viewModel: IAddEditHabitViewModel,
-    modifier: Modifier = Modifier
+    viewModel: IAddEditHabitViewModel
 ) {
-    Card(
-        modifier = modifier
+    val isDarkTheme = isSystemInDarkTheme()
+    GlassmorphicCard(
+        modifier = Modifier.fillMaxWidth(),
+        isDarkTheme = isDarkTheme,
+        cornerRadius = 16.dp,
+        glassAlpha = if (isDarkTheme) 0.15f else 0.85f,
+        borderAlpha = if (isDarkTheme) 0.3f else 0.15f,
+        elevation = 2.dp
     ) {
         Column(
             modifier = Modifier.padding(16.dp),
@@ -931,16 +939,7 @@ fun AddEditHabitScreen(
                     animationSpec = tween(300),
                     label = stringResource(R.string.animation_fab_scale)
                 )
-                
-                val fabColor by animateColorAsState(
-                    targetValue = if (!isSaveEnabled || uiState.isLoading)
-                        MaterialTheme.colorScheme.surfaceVariant
-                    else
-                        MaterialTheme.colorScheme.primary,
-                    animationSpec = tween(300),
-                    label = stringResource(R.string.animation_fab_color)
-                )
-                
+
                 if (isSaveEnabled) {
                     GlassmorphicFAB(
                         onClick = { viewModel.saveHabit() },
@@ -1076,8 +1075,7 @@ fun AddEditHabitScreen(
                 if (uiState.type == HabitType.GROUP) {
                     GroupSettings(
                         uiState = uiState,
-                        viewModel = viewModel,
-                        modifier = Modifier.fillMaxWidth()
+                        viewModel = viewModel
                     )
                 }
             }
@@ -1171,8 +1169,14 @@ fun AddEditHabitScreen(
             item {
                 Spacer(modifier = Modifier.height(4.dp))
                 // Напоминание
-                Card(
-                    modifier = Modifier.fillMaxWidth()
+                val isDarkTheme = isSystemInDarkTheme()
+                GlassmorphicCard(
+                    modifier = Modifier.fillMaxWidth(),
+                    isDarkTheme = isDarkTheme,
+                    cornerRadius = 16.dp,
+                    glassAlpha = if (isDarkTheme) 0.15f else 0.85f,
+                    borderAlpha = if (isDarkTheme) 0.3f else 0.15f,
+                    elevation = 2.dp
                 ) {
                     Column(
                         modifier = Modifier.padding(16.dp)
@@ -1255,7 +1259,7 @@ fun AddEditHabitScreen(
                                         enabled = !uiState.isLoading && !uiState.isHabitSaved,
                                         colors = SwitchDefaults.colors(
                                             checkedTrackColor = MaterialTheme.colorScheme.primary,
-                                            checkedThumbColor = MaterialTheme.colorScheme.onPrimary,
+                                            checkedThumbColor = TahoeLightSurface,
                                             uncheckedTrackColor = MaterialTheme.colorScheme.surfaceVariant,
                                             uncheckedThumbColor = MaterialTheme.colorScheme.onSurfaceVariant
                                         )
