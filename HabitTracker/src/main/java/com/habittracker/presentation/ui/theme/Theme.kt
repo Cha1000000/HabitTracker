@@ -26,17 +26,17 @@ private val LegacyLightColorScheme = lightColorScheme(
 
 // Tahoe "Liquid Glass" Dark Theme
 private val TahoeDarkColorScheme = darkColorScheme(
-    primary = TahoeRoyalBlue,
-    onPrimary = Color.White,
+    primary = TahoeSkyBlue,
+    onPrimary = Color.Black,
     primaryContainer = TahoeElectricBlue,
     onPrimaryContainer = TahoeLightBlue,
     
-    secondary = TahoeLavender,
-    onSecondary = Color.White,
+    secondary = TahoeLightPurple,
+    onSecondary = Color.Black,
     secondaryContainer = TahoeDeepPurple,
     onSecondaryContainer = TahoePalePurple,
     
-    tertiary = TahoeSkyBlue,
+    tertiary = TahoeLightBlue,
     onTertiary = TahoeDeepBlue,
     tertiaryContainer = TahoeMidnightBlue,
     onTertiaryContainer = TahoeLightBlue,
