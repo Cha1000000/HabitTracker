@@ -12,7 +12,7 @@ val PurpleGrey40 = Color(0xFF625b71)
 val Pink40 = Color(0xFF7D5260)
 
 // Tahoe "Liquid Glass" Color Palette - Blue Dominant
-// Dark Theme Colors (основные цвета для темной темы)
+// Dark Theme Colors (основные цвета для тёмной темы)
 val TahoeDeepBlue = Color(0xFF0A1628)        // Глубокий темно-синий для фона
 val TahoeMidnightBlue = Color(0xFF162544)    // Полуночный синий
 val TahoeElectricBlue = Color(0xFF1E3A8A)    // Электрический синий

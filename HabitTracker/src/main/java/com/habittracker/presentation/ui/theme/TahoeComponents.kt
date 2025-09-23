@@ -176,9 +176,10 @@ fun GlassmorphicButton(
     content: @Composable RowScope.() -> Unit
 ) {
     val backgroundColor = if (isDarkTheme) {
-        if (enabled) GlassWhite30 else GlassWhite10
+        if (enabled) TahoeRoyalBlue else GlassWhite10
     } else {
-        if (enabled) Color.White.copy(alpha = 0.9f) else Color.White.copy(alpha = 0.5f)
+        val actionColor = TahoeLightAccent
+        if (enabled) actionColor.copy(alpha = 0.9f) else actionColor.copy(alpha = 0.5f)
     }
     
     val borderColor = if (isDarkTheme) {
@@ -193,7 +194,7 @@ fun GlassmorphicButton(
         enabled = enabled,
         colors = ButtonDefaults.buttonColors(
             containerColor = backgroundColor,
-            contentColor = if (isDarkTheme) Color.White else TahoeLightAccent,
+            contentColor = Color.White,
             disabledContainerColor = backgroundColor.copy(alpha = 0.5f),
             disabledContentColor = if (isDarkTheme) GlassWhite30 else GlassBlack30
         ),
@@ -201,7 +202,7 @@ fun GlassmorphicButton(
             width = 1.dp,
             color = borderColor
         ),
-        shape = RoundedCornerShape(12.dp),
+        shape = RoundedCornerShape(18.dp),
         content = content
     )
 }

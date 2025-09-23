@@ -58,6 +58,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
 import coil.compose.AsyncImage
@@ -437,7 +438,10 @@ fun ProfileScreen(
                     if (authState is com.habittracker.presentation.viewmodel.AuthState.Loading) {
                         CircularProgressIndicator(color = MaterialTheme.colorScheme.onPrimary)
                     } else {
-                        Text(stringResource(R.string.action_sign_out))
+                        Text(
+                            stringResource(R.string.action_sign_out),
+                            fontSize = 16.sp,
+                        )
                     }
                 }
 
