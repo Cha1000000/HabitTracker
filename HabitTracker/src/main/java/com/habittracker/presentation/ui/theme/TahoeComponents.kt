@@ -3,22 +3,34 @@ package com.habittracker.presentation.ui.theme
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxScope
+import androidx.compose.foundation.layout.RowScope
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.*
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.FloatingActionButton
+import androidx.compose.material3.FloatingActionButtonDefaults
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.graphics.*
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
-import androidx.compose.foundation.isSystemInDarkTheme
-import androidx.compose.ui.draw.blur
-import androidx.compose.ui.draw.shadow
-import androidx.compose.ui.platform.LocalDensity
 
 /**
  * Модификатор для создания градиентного фона в стиле Tahoe
@@ -39,7 +51,7 @@ fun Modifier.tahoeGradientBackground(
             Color(0xFFE0E7FF),
             Color(0xFFC7D2FE),
             Color(0xFFA5B4FC),
-            Color(0xFF818CF8)
+            Color(0xFF8195F8)
         )
     }
 
@@ -203,24 +215,43 @@ fun GlassmorphicFAB(
     isDarkTheme: Boolean = isSystemInDarkTheme(),
     content: @Composable () -> Unit
 ) {
-    FloatingActionButton(
-        onClick = onClick,
-        modifier = modifier
-            .shadow(
-                elevation = 8.dp,
-                shape = RoundedCornerShape(16.dp),
-                ambientColor = if (isDarkTheme) TahoeRoyalBlue.copy(alpha = 0.3f) else TahoeLightAccent.copy(alpha = 0.2f),
-                spotColor = if (isDarkTheme) TahoeLavender.copy(alpha = 0.3f) else TahoeLightPurpleAccent.copy(alpha = 0.2f)
-            ),
-        containerColor = if (isDarkTheme) {
-            GlassWhite30
-        } else {
-            Color.White.copy(alpha = 0.95f)
-        },
-        contentColor = if (isDarkTheme) Color.White else TahoeLightAccent,
-        shape = RoundedCornerShape(16.dp)
-    ) {
-        content()
+    if (isDarkTheme) {
+        // В темной теме используем полностью кастомную реализацию без теней
+        Box(
+            modifier = modifier
+                .size(56.dp)
+                .clip(RoundedCornerShape(16.dp))
+                .background(
+                    color = Color.White.copy(alpha = 0.15f),
+                    shape = RoundedCornerShape(16.dp)
+                )
+                .border(
+                    width = 0.5.dp,
+                    color = Color.White.copy(alpha = 0.2f),
+                    shape = RoundedCornerShape(16.dp)
+                )
+                .clickable(onClick = onClick),
+            contentAlignment = Alignment.Center
+        ) {
+            content()
+        }
+    } else {
+        // В светлой теме используем стандартный FAB с минимальной elevation
+        FloatingActionButton(
+            onClick = onClick,
+            modifier = modifier,
+            containerColor = Color.White.copy(alpha = 0.95f),
+            contentColor = TahoeLightAccent,
+            shape = RoundedCornerShape(16.dp),
+            elevation = FloatingActionButtonDefaults.elevation(
+                defaultElevation = 4.dp,
+                pressedElevation = 8.dp,
+                hoveredElevation = 6.dp,
+                focusedElevation = 6.dp
+            )
+        ) {
+            content()
+        }
     }
 }
 
