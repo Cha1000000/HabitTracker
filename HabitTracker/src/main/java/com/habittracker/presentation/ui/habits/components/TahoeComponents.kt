@@ -8,6 +8,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
@@ -28,6 +29,7 @@ import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.FloatingActionButtonDefaults
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextFieldDefaults
@@ -40,6 +42,7 @@ import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
@@ -49,10 +52,8 @@ import com.habittracker.presentation.ui.theme.GlassBlack20
 import com.habittracker.presentation.ui.theme.GlassBlack30
 import com.habittracker.presentation.ui.theme.GlassBlack50
 import com.habittracker.presentation.ui.theme.GlassWhite10
-import com.habittracker.presentation.ui.theme.GlassWhite20
 import com.habittracker.presentation.ui.theme.GlassWhite30
 import com.habittracker.presentation.ui.theme.GlassWhite40
-import com.habittracker.presentation.ui.theme.GlassWhite50
 import com.habittracker.presentation.ui.theme.TahoeAqua
 import com.habittracker.presentation.ui.theme.TahoeDeepBlue
 import com.habittracker.presentation.ui.theme.TahoeElectricBlue
@@ -428,34 +429,108 @@ fun GlassmorphicTextField(
     modifier: Modifier = Modifier,
     label: @Composable (() -> Unit)? = null,
     placeholder: @Composable (() -> Unit)? = null,
+    leadingIcon: @Composable (() -> Unit)? = null,
+    trailingIcon: @Composable (() -> Unit)? = null,
+    visualTransformation: VisualTransformation = VisualTransformation.None,
+    keyboardOptions: KeyboardOptions = KeyboardOptions.Default,
     isDarkTheme: Boolean = isSystemInDarkTheme(),
     singleLine: Boolean = true
 ) {
     val colors = TextFieldDefaults.colors(
-        focusedContainerColor = if (isDarkTheme) GlassWhite10 else Color.White.copy(alpha = 0.8f),
-        unfocusedContainerColor = if (isDarkTheme) GlassWhite10.copy(alpha = 0.5f) else Color.White.copy(alpha = 0.6f),
-        disabledContainerColor = if (isDarkTheme) GlassBlack30 else Color.Gray.copy(alpha = 0.3f),
-        focusedIndicatorColor = if (isDarkTheme) TahoeRoyalBlue else TahoeLightAccent,
-        unfocusedIndicatorColor = if (isDarkTheme) GlassWhite30 else GlassBlack20,
+        // Фон полей - делаем темную тему прозрачнее
+        focusedContainerColor = if (isDarkTheme) GlassWhite10.copy(alpha = 0.3f) else Color.White.copy(alpha = 0.85f),
+        unfocusedContainerColor = if (isDarkTheme) GlassWhite10.copy(alpha = 0.2f) else Color.White.copy(alpha = 0.7f),
+        disabledContainerColor = if (isDarkTheme) GlassBlack30.copy(alpha = 0.3f) else Color.Gray.copy(alpha = 0.3f),
+        // Индикатор фокуса и курсор - делаем НАМНОГО ярче в темной теме
+        focusedIndicatorColor = if (isDarkTheme) Color(0xFF60A5FA) else TahoeLightAccent, // Используем чистый TahoeSkyBlue без альфы
+        unfocusedIndicatorColor = if (isDarkTheme) GlassWhite30.copy(alpha = 0.5f) else GlassBlack20,
+        cursorColor = if (isDarkTheme) Color(0xFF60A5FA) else TahoeLightAccent, // Яркий синий курсор
+        // Текст - улучшаем контраст
         focusedTextColor = if (isDarkTheme) Color.White else Color.Black,
-        unfocusedTextColor = if (isDarkTheme) GlassWhite50 else GlassBlack50
+        unfocusedTextColor = if (isDarkTheme) Color.White.copy(alpha = 0.9f) else GlassBlack50,
+        // Label - делаем НАМНОГО ярче в темной теме для отличной видимости
+        focusedLabelColor = if (isDarkTheme) Color(0xFF93C5FD) else TahoeLightAccent, // Яркий голубой для фокуса
+        unfocusedLabelColor = if (isDarkTheme) Color.White.copy(alpha = 0.7f) else MaterialTheme.colorScheme.onSurfaceVariant,
+        // Placeholder 
+        focusedPlaceholderColor = if (isDarkTheme) Color.White.copy(alpha = 0.4f) else Color.Gray.copy(alpha = 0.6f),
+        unfocusedPlaceholderColor = if (isDarkTheme) Color.White.copy(alpha = 0.3f) else Color.Gray.copy(alpha = 0.5f),
+        // Иконки - делаем видимыми
+        focusedLeadingIconColor = if (isDarkTheme) Color.White.copy(alpha = 0.8f) else MaterialTheme.colorScheme.onSurfaceVariant,
+        unfocusedLeadingIconColor = if (isDarkTheme) Color.White.copy(alpha = 0.5f) else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
+        focusedTrailingIconColor = if (isDarkTheme) Color.White.copy(alpha = 0.8f) else MaterialTheme.colorScheme.onSurfaceVariant,
+        unfocusedTrailingIconColor = if (isDarkTheme) Color.White.copy(alpha = 0.5f) else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
     )
     
     OutlinedTextField(
         value = value,
         onValueChange = onValueChange,
-        modifier = modifier
-            .clip(RoundedCornerShape(12.dp))
-            .border(
-                width = 1.dp,
-                color = if (isDarkTheme) GlassWhite20 else GlassBlack10,
-                shape = RoundedCornerShape(12.dp)
-            ),
+        modifier = modifier,
         label = label,
         placeholder = placeholder,
+        leadingIcon = leadingIcon,
+        trailingIcon = trailingIcon,
+        visualTransformation = visualTransformation,
+        keyboardOptions = keyboardOptions,
         colors = colors,
         singleLine = singleLine,
         shape = RoundedCornerShape(12.dp)
+    )
+}
+
+/**
+ * Outlined кнопка в стиле Glassmorphic
+ */
+@Composable
+fun GlassmorphicOutlinedButton(
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    enabled: Boolean = true,
+    isDarkTheme: Boolean = isSystemInDarkTheme(),
+    content: @Composable RowScope.() -> Unit
+) {
+    // Оптимизированные цвета для лучшей видимости логотипа Google
+    val backgroundColor = if (isDarkTheme) {
+        // В темной теме делаем фон чуть темнее для контраста с логотипом
+        if (enabled) Color.Black.copy(alpha = 0.3f) else Color.Black.copy(alpha = 0.5f)
+    } else {
+        // В светлой теме делаем более прозрачным для эффекта стекла
+        if (enabled) Color.White.copy(alpha = 0.5f) else Color.White.copy(alpha = 0.3f)
+    }
+    
+    val borderColor = if (isDarkTheme) {
+        if (enabled) Color.White.copy(alpha = 0.2f) else Color.White.copy(alpha = 0.1f)
+    } else {
+        if (enabled) MaterialTheme.colorScheme.primary.copy(alpha = 0.3f) else Color.Gray.copy(alpha = 0.2f)
+    }
+    
+    val contentColor = if (isDarkTheme) {
+        if (enabled) Color.White else Color.White.copy(alpha = 0.5f)
+    } else {
+        if (enabled) MaterialTheme.colorScheme.primary else Color.Gray
+    }
+    
+    // Используем OutlinedButton вместо Button с border для исправления просветов
+    OutlinedButton(
+        onClick = onClick,
+        modifier = modifier,
+        enabled = enabled,
+        colors = ButtonDefaults.outlinedButtonColors(
+            containerColor = backgroundColor,
+            contentColor = contentColor,
+            disabledContainerColor = backgroundColor,
+            disabledContentColor = contentColor
+        ),
+        border = BorderStroke(
+            width = 1.dp,
+            color = borderColor
+        ),
+        shape = RoundedCornerShape(20.dp),
+        elevation = ButtonDefaults.buttonElevation(
+            defaultElevation = 0.dp,
+            pressedElevation = 0.dp,
+            disabledElevation = 0.dp
+        ),
+        content = content
     )
 }
 
