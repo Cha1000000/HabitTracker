@@ -32,6 +32,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
+import com.habittracker.BuildConfig
 import com.habittracker.R
 import com.habittracker.presentation.navigation.Screen
 import com.habittracker.presentation.ui.habits.components.TahoeGradientBackground
@@ -182,7 +183,7 @@ fun SplashScreen(
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
                     Text(
-                        text = "v1.0.0",
+                        text = "v${BuildConfig.VERSION_NAME}",
                         style = MaterialTheme.typography.bodySmall,
                         color = if (isDarkTheme) {
                             Color.White.copy(alpha = 0.5f)
