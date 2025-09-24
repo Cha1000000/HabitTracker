@@ -1,5 +1,8 @@
 package com.habittracker.presentation.ui.habits.components
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.scaleIn
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -20,16 +23,13 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.scaleIn
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.FloatingActionButtonDefaults
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Text
 import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -40,10 +40,10 @@ import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
-import androidx.compose.ui.tooling.preview.Preview
 import com.habittracker.presentation.ui.theme.GlassBlack10
 import com.habittracker.presentation.ui.theme.GlassBlack20
 import com.habittracker.presentation.ui.theme.GlassBlack30
@@ -245,7 +245,7 @@ fun GlassmorphicCard(
     content: @Composable BoxScope.() -> Unit
 ) {
     val backgroundColor = if (isDarkTheme) {
-        GlassWhite20.copy(alpha = glassAlpha)
+        GlassWhite10.copy(alpha = glassAlpha)
     } else {
         Color.White.copy(alpha = glassAlpha)
     }
@@ -259,11 +259,24 @@ fun GlassmorphicCard(
     Box(
         modifier = modifier
             .clip(RoundedCornerShape(cornerRadius))
-            .shadow(
-                elevation = elevation,
-                shape = RoundedCornerShape(cornerRadius),
-                ambientColor = if (isDarkTheme) TahoeRoyalBlue.copy(alpha = 0.2f) else TahoeLightAccent.copy(alpha = 0.1f),
-                spotColor = if (isDarkTheme) TahoeLavender.copy(alpha = 0.2f) else TahoeLightPurpleAccent.copy(alpha = 0.1f)
+            .then(
+                if (isDarkTheme && elevation > 0.dp) {
+                    Modifier.shadow(
+                        elevation = elevation * 0.3f,
+                        shape = RoundedCornerShape(cornerRadius),
+                        ambientColor = Color.White.copy(alpha = 0.05f),
+                        spotColor = Color.White.copy(alpha = 0.05f)
+                    )
+                } else if (!isDarkTheme && elevation > 0.dp) {
+                    Modifier.shadow(
+                        elevation = elevation,
+                        shape = RoundedCornerShape(cornerRadius),
+                        ambientColor = TahoeLightAccent.copy(alpha = 0.1f),
+                        spotColor = TahoeLightPurpleAccent.copy(alpha = 0.1f)
+                    )
+                } else {
+                    Modifier
+                }
             )
             .background(
                 brush = Brush.verticalGradient(
