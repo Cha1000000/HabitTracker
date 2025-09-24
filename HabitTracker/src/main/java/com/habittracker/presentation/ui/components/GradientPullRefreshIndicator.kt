@@ -6,6 +6,7 @@ import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.size
 import androidx.compose.material.ExperimentalMaterialApi
 import androidx.compose.material.pullrefresh.PullRefreshState
@@ -51,6 +52,7 @@ fun GradientPullRefreshIndicator(
             label = "rotation"
         )
     } else remember { mutableFloatStateOf(0f) }
+    val isDarkTheme = isSystemInDarkTheme()
 
     Canvas(modifier = modifier
         .size(size + strokeWidth) // даём место под обводку, чтобы не обрезалось
@@ -70,13 +72,22 @@ fun GradientPullRefreshIndicator(
         val sweep = if (refreshing) 270f else if (progress > 0f) maxOf(minSweep, progress * 360f) else 0f
         val startAngle = -90f // старт сверху
 
-        val brush = Brush.sweepGradient(
+        val brush = if (isDarkTheme) Brush.sweepGradient(
             colorStops = arrayOf(
-                0.00f to Color(0xFF06B6D4), // cyan
-                0.25f to Color(0xDC22D3EE), // sky
-                0.50f to Color(0xFF14B8A6), // teal
-                0.75f to Color(0xAE67E8F9), // light cyan
-                1.00f to Color(0xFF06B6D4)  // back to cyan
+                0.00f to Color(0xFF1E3A8A),
+                0.25f to Color(0xFF3B82F6),
+                0.50f to Color(0xFF2563EB),
+                0.75f to Color(0xFF0EA5E9),
+                1.00f to Color(0xFF1E3A8A)
+            ),
+            center = rect.center
+        ) else Brush.sweepGradient(
+            colorStops = arrayOf(
+                0.00f to Color(0xFF93C5FD),
+                0.25f to Color(0xFF60A5FA),
+                0.50f to Color(0xFF3B82F6),
+                0.75f to Color(0xFF1E3A8A),
+                1.00f to Color(0xFF93C5FD)
             ),
             center = rect.center
         )
