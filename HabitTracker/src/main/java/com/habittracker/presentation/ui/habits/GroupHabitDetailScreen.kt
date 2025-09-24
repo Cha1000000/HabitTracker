@@ -16,37 +16,34 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.ExitToApp
+import androidx.compose.material.icons.automirrored.filled.TrendingUp
 import androidx.compose.material.icons.filled.Cancel
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.Done
-import androidx.compose.material.icons.filled.ExitToApp
 import androidx.compose.material.icons.filled.Group
 import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.PersonAdd
 import androidx.compose.material.icons.filled.PersonRemove
 import androidx.compose.material.icons.filled.Public
 import androidx.compose.material.icons.filled.RadioButtonUnchecked
-import androidx.compose.material.icons.filled.RemoveCircle
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Share
-import androidx.compose.material.icons.filled.TrendingUp
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.AssistChip
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.Divider
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilledTonalButton
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
@@ -92,7 +89,6 @@ import com.habittracker.domain.model.HabitFrequency
 import com.habittracker.domain.model.HabitInvitation
 import com.habittracker.domain.model.User
 import com.habittracker.presentation.ui.components.SectionCard
-import com.habittracker.presentation.ui.habits.components.InviteCodeCard
 import com.habittracker.presentation.viewmodel.GroupHabitDetailViewModel
 import kotlinx.datetime.Clock
 import kotlinx.datetime.TimeZone
@@ -353,7 +349,7 @@ private fun HabitInfoSection(
                             },
                             leadingIcon = {
                                 Icon(
-                                    Icons.Default.TrendingUp,
+                                    Icons.AutoMirrored.Filled.TrendingUp,
                                     contentDescription = null,
                                     modifier = Modifier.size(16.dp)
                                 )
@@ -424,7 +420,7 @@ private fun GroupProgressSection(
             Spacer(modifier = Modifier.height(8.dp))
             
             LinearProgressIndicator(
-                progress = completionRate,
+                progress = { completionRate },
                 modifier = Modifier.fillMaxWidth(),
                 color = when {
                     completionRate >= 0.75f -> MaterialTheme.colorScheme.primary
@@ -453,7 +449,7 @@ private fun GroupProgressSection(
             StatisticItem(
                 value = "$currentStreak",
                 label = stringResource(R.string.streak_days),
-                icon = Icons.Default.TrendingUp
+                icon = Icons.AutoMirrored.Filled.TrendingUp
             )
             
             // Всего участников
@@ -721,7 +717,7 @@ private fun InviteManagementSection(
         }
         
         Spacer(modifier = Modifier.height(16.dp))
-        Divider()
+        HorizontalDivider()
         Spacer(modifier = Modifier.height(16.dp))
         
         // Код приглашения
@@ -963,7 +959,7 @@ private fun LeaveGroupSection(
             content = {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Icon(
-                        imageVector = Icons.Default.ExitToApp,
+                        imageVector = Icons.AutoMirrored.Filled.ExitToApp,
                         contentDescription = null,
                         tint = MaterialTheme.colorScheme.error
                     )
@@ -1014,7 +1010,7 @@ private fun LeaveGroupSection(
         )
     ) {
         Icon(
-            imageVector = Icons.Default.ExitToApp,
+            imageVector = Icons.AutoMirrored.Filled.ExitToApp,
             contentDescription = null,
             modifier = Modifier.size(18.dp)
         )

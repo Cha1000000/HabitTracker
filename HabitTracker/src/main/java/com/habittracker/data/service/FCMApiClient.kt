@@ -4,6 +4,7 @@ import android.util.Log
 import com.google.auth.oauth2.GoogleCredentials
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import okhttp3.MediaType.Companion.toMediaType
@@ -38,6 +39,7 @@ class FCMApiClient @Inject constructor() {
         .writeTimeout(30, TimeUnit.SECONDS)
         .build()
 
+    @OptIn(ExperimentalSerializationApi::class)
     private val json = Json {
         ignoreUnknownKeys = true
         // Не сериализуем значения по умолчанию, чтобы не тащить пустые поля
