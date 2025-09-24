@@ -17,6 +17,7 @@ import com.habittracker.presentation.ui.notifications.NotificationsScreen
 import com.habittracker.presentation.ui.social.FriendsScreen
 import com.habittracker.presentation.ui.ProfileScreen
 import com.habittracker.presentation.ui.achievements.AchievementsScreen
+import com.habittracker.presentation.ui.splash.SplashScreen
 import com.habittracker.presentation.ui.stats.StatsScreen
 
 /**
@@ -24,6 +25,7 @@ import com.habittracker.presentation.ui.stats.StatsScreen
  * Обеспечивает типобезопасность и централизованное управление маршрутами.
  */
 sealed class Screen(val route: String) {
+    object Splash : Screen("splash_screen")
     object Habits : Screen("habits_screen")
     object AddEditHabit : Screen("add_edit_habit_screen")
     object Login : Screen("login_screen")
@@ -56,8 +58,12 @@ fun AppNavHost(
     androidx.compose.runtime.LaunchedEffect(Unit) {
         onNavControllerReady(navController)
     }
-    // TODO: Add logic to check if user is logged in and set start destination accordingly
-    NavHost(navController = navController, startDestination = Screen.Login.route) {
+    // Start with splash screen
+    NavHost(navController = navController, startDestination = Screen.Splash.route) {
+        composable(route = Screen.Splash.route) {
+            SplashScreen(navController = navController)
+        }
+        
         composable(route = Screen.Habits.route) {
             HabitsScreen(navController = navController)
         }
