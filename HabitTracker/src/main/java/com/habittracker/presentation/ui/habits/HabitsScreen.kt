@@ -24,7 +24,6 @@ import androidx.compose.material.icons.filled.People
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.pullrefresh.pullRefresh
 import androidx.compose.material.pullrefresh.rememberPullRefreshState
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -38,7 +37,6 @@ import androidx.compose.material3.SnackbarResult
 import androidx.compose.material3.SwipeToDismissBox
 import androidx.compose.material3.SwipeToDismissBoxValue
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.rememberSwipeToDismissBoxState
@@ -76,9 +74,9 @@ import com.habittracker.domain.model.isGroupHabit
 import com.habittracker.presentation.navigation.Screen
 import com.habittracker.presentation.ui.components.GradientPullRefreshIndicator
 import com.habittracker.presentation.ui.habits.components.EnhancedHabitItem
-import com.habittracker.presentation.ui.notifications.NotificationBadge
 import com.habittracker.presentation.ui.habits.components.GlassmorphicFAB
 import com.habittracker.presentation.ui.habits.components.TahoeGradientBackground
+import com.habittracker.presentation.ui.notifications.NotificationBadge
 import com.habittracker.presentation.viewmodel.FriendsViewModel
 import com.habittracker.presentation.viewmodel.HabitWithCompletion
 import com.habittracker.presentation.viewmodel.HabitsViewModel
@@ -317,54 +315,40 @@ fun HabitsScreen(
                                     }
 
                                     if (showDeleteDialog) {
-                                        AlertDialog(
-                                            onDismissRequest = { showDeleteDialog = false },
-                                            title = { Text(stringResource(id = R.string.confirm_delete_habit_title)) },
-                                            text = { Text(stringResource(id = R.string.confirm_delete_habit_message, habitWithCompletion.habit.title)) },
-                                            confirmButton = {
-                                                TextButton(
-                                                    onClick = {
-                                                        showDeleteDialog = false
-                                                        // Начинаем оптимистичное удаление и предлагаем UNDO
-                                                        viewModel.requestDeleteHabit(habitWithCompletion.habit.id)
-                                                        // Показываем Snackbar и одновременно ставим таймер авто-скрытия (~8 сек)
-                                                        scope.launch {
-                                                            val showJob = launch {
-                                                                val result = snackbarHostState.showSnackbar(
-                                                                    message = habitDeletedText,
-                                                                    actionLabel = undoText,
-                                                                    withDismissAction = true,
-                                                                    duration = SnackbarDuration.Indefinite
-                                                                )
-                                                                if (result == SnackbarResult.ActionPerformed) {
-                                                                    // Пользователь нажал Undo — восстанавливаем
-                                                                    viewModel.cancelPendingDeletion()
-                                                                } else {
-                                                                    // Dismissed (свайпом/таймером) — подтверждаем удаление
-                                                                    viewModel.confirmPendingDeletion()
-                                                                }
-                                                            }
-                                                            val timerJob = launch {
-                                                                delay(5_000)
-                                                                if (showJob.isActive) {
-                                                                    snackbarHostState.currentSnackbarData?.dismiss()
-                                                                }
-                                                            }
-                                                            showJob.invokeOnCompletion { timerJob.cancel() }
+                                        com.habittracker.presentation.ui.habits.components.ConfirmDialog(
+                                            title = stringResource(id = R.string.confirm_delete_habit_title),
+                                            message = stringResource(id = R.string.confirm_delete_habit_message, habitWithCompletion.habit.title),
+                                            confirmLabel = stringResource(id = R.string.delete),
+                                            cancelLabel = stringResource(id = R.string.cancel),
+                                            onConfirm = {
+                                                showDeleteDialog = false
+                                                // Начинаем оптимистичное удаление и предлагаем UNDO
+                                                viewModel.requestDeleteHabit(habitWithCompletion.habit.id)
+                                                // Показываем Snackbar и одновременно ставим таймер авто-скрытия
+                                                scope.launch {
+                                                    val showJob = launch {
+                                                        val result = snackbarHostState.showSnackbar(
+                                                            message = habitDeletedText,
+                                                            actionLabel = undoText,
+                                                            withDismissAction = true,
+                                                            duration = SnackbarDuration.Indefinite
+                                                        )
+                                                        if (result == SnackbarResult.ActionPerformed) {
+                                                            viewModel.cancelPendingDeletion()
+                                                        } else {
+                                                            viewModel.confirmPendingDeletion()
                                                         }
                                                     }
-                                                ) {
-                                                    Text(
-                                                        text = stringResource(id = R.string.delete),
-                                                        color = MaterialTheme.colorScheme.error
-                                                    )
+                                                    val timerJob = launch {
+                                                        delay(5_000)
+                                                        if (showJob.isActive) {
+                                                            snackbarHostState.currentSnackbarData?.dismiss()
+                                                        }
+                                                    }
+                                                    showJob.invokeOnCompletion { timerJob.cancel() }
                                                 }
                                             },
-                                            dismissButton = {
-                                                TextButton(onClick = { showDeleteDialog = false }) {
-                                                    Text(text = stringResource(id = R.string.cancel))
-                                                }
-                                            }
+                                            onDismiss = { showDeleteDialog = false }
                                         )
                                     }
                                 }

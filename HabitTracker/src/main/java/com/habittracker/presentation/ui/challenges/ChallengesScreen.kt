@@ -22,6 +22,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.habittracker.R
 import com.habittracker.presentation.ui.habits.components.TahoeGradientBackground
+import com.habittracker.presentation.ui.habits.components.ConfirmDialog
 import com.habittracker.presentation.viewmodel.ChallengeTab
 import com.habittracker.presentation.viewmodel.ChallengesViewModel
 
@@ -164,30 +165,15 @@ fun ChallengesScreen(
     }
     }
 
-    // Join Challenge Dialog
+    // Join Challenge Dialog (Tahoe)
     if (uiState.showJoinDialog) {
-        AlertDialog(
-            onDismissRequest = { viewModel.onJoinChallengeCancel() },
-            title = {
-                Text(stringResource(R.string.join_challenge))
-            },
-            text = {
-                Text(stringResource(R.string.join_challenge_confirmation))
-            },
-            confirmButton = {
-                TextButton(
-                    onClick = { viewModel.onJoinChallengeConfirm() }
-                ) {
-                    Text(stringResource(R.string.join))
-                }
-            },
-            dismissButton = {
-                TextButton(
-                    onClick = { viewModel.onJoinChallengeCancel() }
-                ) {
-                    Text(stringResource(R.string.cancel))
-                }
-            }
+        ConfirmDialog(
+            title = stringResource(R.string.join_challenge),
+            message = stringResource(R.string.join_challenge_confirmation),
+            confirmLabel = stringResource(R.string.join),
+            cancelLabel = stringResource(R.string.cancel),
+            onConfirm = { viewModel.onJoinChallengeConfirm() },
+            onDismiss = { viewModel.onJoinChallengeCancel() }
         )
     }
 }

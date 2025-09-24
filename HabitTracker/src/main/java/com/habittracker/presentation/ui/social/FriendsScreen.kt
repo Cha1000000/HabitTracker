@@ -236,13 +236,13 @@ fun FriendsScreen(
         }
     }
     }
-    // Диалог подтверждения удаления друга
+    // Диалог подтверждения удаления друга (Tahoe)
     if (showRemoveDialog) {
         val pendingName = pendingRemoveFriendId?.let { id -> uiState.friends.firstOrNull { it.id == id }?.name } ?: ""
-        androidx.compose.material3.AlertDialog(
+        com.habittracker.presentation.ui.habits.components.GlassmorphicDialog(
             onDismissRequest = { showRemoveDialog = false },
             title = { Text(text = stringResource(id = R.string.confirm_remove_friend_title, pendingName)) },
-            text = {
+            content = {
                 Column {
                     Text(text = stringResource(id = R.string.confirm_remove_friend_message))
                     Spacer(modifier = Modifier.height(12.dp))
@@ -256,8 +256,12 @@ fun FriendsScreen(
                     }
                 }
             },
-            confirmButton = {
-                TextButton(
+            actions = {
+                TextButton(onClick = { showRemoveDialog = false }) {
+                    Text(text = stringResource(id = R.string.cancel))
+                }
+                Spacer(modifier = Modifier.width(8.dp))
+                com.habittracker.presentation.ui.habits.components.GlassmorphicButton(
                     onClick = {
                         val id = pendingRemoveFriendId
                         if (id != null) {
@@ -267,11 +271,6 @@ fun FriendsScreen(
                     }
                 ) {
                     Text(text = stringResource(id = R.string.delete))
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = { showRemoveDialog = false }) {
-                    Text(text = stringResource(id = R.string.cancel))
                 }
             }
         )

@@ -955,33 +955,35 @@ private fun LeaveGroupSection(
 ) {
     var showConfirmDialog by remember { mutableStateOf(false) }
     
-    // Диалог подтверждения
+    // Диалог подтверждения (Tahoe)
     if (showConfirmDialog) {
-        AlertDialog(
+        com.habittracker.presentation.ui.habits.components.GlassmorphicDialog(
             onDismissRequest = { showConfirmDialog = false },
-            icon = {
-                Icon(
-                    imageVector = Icons.Default.ExitToApp,
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.error
-                )
+            title = { Text(text = stringResource(R.string.leave_group_title)) },
+            content = {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(
+                        imageVector = Icons.Default.ExitToApp,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.error
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(
+                        text = stringResource(R.string.leave_group_warning),
+                        style = MaterialTheme.typography.bodyMedium
+                    )
+                }
             },
-            title = {
-                Text(text = stringResource(R.string.leave_group_title))
-            },
-            text = {
-                Text(
-                    text = stringResource(R.string.leave_group_warning),
-                    style = MaterialTheme.typography.bodyMedium
-                )
-            },
-            confirmButton = {
-                TextButton(
+            actions = {
+                TextButton(onClick = { showConfirmDialog = false }) {
+                    Text(text = stringResource(R.string.cancel))
+                }
+                Spacer(modifier = Modifier.width(8.dp))
+                com.habittracker.presentation.ui.habits.components.GlassmorphicButton(
                     onClick = {
                         onLeaveGroup()
                         showConfirmDialog = false
-                    },
-                    enabled = !isLoading
+                    }
                 ) {
                     if (isLoading) {
                         CircularProgressIndicator(
@@ -994,13 +996,6 @@ private fun LeaveGroupSection(
                             color = MaterialTheme.colorScheme.error
                         )
                     }
-                }
-            },
-            dismissButton = {
-                TextButton(
-                    onClick = { showConfirmDialog = false }
-                ) {
-                    Text(text = stringResource(R.string.cancel))
                 }
             }
         )
