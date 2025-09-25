@@ -189,7 +189,7 @@ fun EnhancedHabitItem(
                                     text = habit.title,
                                     fontWeight = FontWeight.Bold,
                                     fontSize = 18.sp,
-                                    color = if (habitWithCompletion.isCompletedToday) Color(0xFF4CAF50) else MaterialTheme.colorScheme.onSurface
+                                    color = if (habitWithCompletion.isCompletedToday) successColor else MaterialTheme.colorScheme.onSurface
                                 )
                                 Spacer(modifier = Modifier.width(8.dp))
                                 if (habit.isGroupHabit()) {
@@ -202,7 +202,7 @@ fun EnhancedHabitItem(
                                 Text(
                                     text = habit.description,
                                     style = MaterialTheme.typography.bodyMedium,
-                                    color = if (habitWithCompletion.isCompletedToday) Color(0xFF4CAF50).copy(alpha = 0.7f) else Color.Gray
+                                    color = if (habitWithCompletion.isCompletedToday) successColor.copy(alpha = 0.7f) else Color.Gray
                                 )
                             }
                             Row(horizontalArrangement = Arrangement.spacedBy(16.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -241,7 +241,7 @@ fun EnhancedHabitItem(
                                 Icon(
                                     imageVector = Icons.Default.Check,
                                     contentDescription = if (habitWithCompletion.isCompletedToday) stringResource(R.string.habits_unmark_complete) else stringResource(R.string.habits_mark_complete),
-                                    tint = if (habitWithCompletion.isCompletedToday) Color(0xFF4CAF50) else Color.Gray
+                                    tint = if (habitWithCompletion.isCompletedToday) successColor else Color.Gray
                                 )
                             }
                         }

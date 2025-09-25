@@ -58,7 +58,8 @@ fun TahoeDockBar(
     Box(
         modifier = modifier
             .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 8.dp)
+            .padding(horizontal = 16.dp)
+            .padding(top = 8.dp, bottom = 20.dp)
     ) {
         // Основной контейнер с glassmorphic эффектом
         Box(

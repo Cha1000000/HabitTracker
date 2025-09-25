@@ -44,6 +44,7 @@
     <string name="cd_friends">Друзья</string>
     <string name="cd_stats">Статистика</string>
     <string name="cd_achievements">Достижения</string>
+    <string name="cd_refresh">Обновить</string>
     <string name="cd_habit_icon">Иконка привычки</string>
     <string name="cd_invitation_icon">Иконка приглашения</string>
     
@@ -137,6 +138,9 @@
     <string name="profile_username_label">Имя пользователя</string>
     <string name="profile_level_label">Уровень</string>
     <string name="friends_title">Мои друзья</string>
+    <string name="stats_title">Статистика</string>
+    <string name="stats_error_load">Не удалось загрузить статистику</string>
+    <string name="try_again">Попробовать снова</string>
     
     <!-- Notifications -->
     <string name="notification_permission_title">Разрешение на уведомления</string>
@@ -208,6 +212,55 @@
     <string name="search_try_different_query">Попробуйте изменить поисковый запрос</string>
     <string name="search_enter_name_prompt">Введите имя пользователя для поиска</string>
     <string name="level_points_format">Уровень %1$d • %2$d очков</string>
+    <string name="level_title">Уровень %1$d</string>
+    <string name="level_points_inline">%1$d / %2$d очков</string>
+    <string name="level_next_points">До следующего уровня: %1$d очков</string>
+
+    <!-- Stats section titles -->
+    <string name="stats_habits_title">Привычки</string>
+    <string name="stats_streaks_title">Серии</string>
+    <string name="stats_social_title">Социальные</string>
+    <string name="stats_challenges_title">Челленджи</string>
+    <string name="stats_time_title">Время выполнения</string>
+
+    <!-- Habits labels -->
+    <string name="stats_habits_total">Всего привычек</string>
+    <string name="stats_habits_active">Активных привычек</string>
+    <string name="stats_habits_completed_today">Выполнено сегодня</string>
+    <string name="stats_habits_total_completions">Всего выполнений</string>
+    <string name="stats_habits_week">За эту неделю</string>
+    <string name="stats_habits_month">За этот месяц</string>
+    <string name="stats_habits_avg_completion">Средний процент выполнения</string>
+    <string name="stats_habits_perfect_days">Идеальных дней</string>
+    <string name="stats_habits_best">Лучшая привычка</string>
+
+    <!-- Streaks labels -->
+    <string name="stats_streak_current">Текущая серия</string>
+    <string name="stats_streak_best">Лучшая серия</string>
+    <string name="stats_streak_avg">Средняя серия</string>
+    <string name="stats_streak_active">Активных серий</string>
+
+    <!-- Social labels -->
+    <string name="stats_social_friends">Друзей</string>
+    <string name="stats_social_group_habits">Групповых привычек</string>
+    <string name="stats_social_challenges_participated">Челленджей участвовал</string>
+    <string name="stats_social_challenges_won">Челленджей выиграл</string>
+
+    <!-- Challenges labels -->
+    <string name="stats_challenges_total">Всего челленджей</string>
+    <string name="stats_challenges_active">Активных</string>
+    <string name="stats_challenges_completed">Завершено</string>
+    <string name="stats_challenges_won">Выиграно</string>
+    <string name="stats_challenges_win_rate">Процент побед</string>
+    <string name="stats_challenges_created">Создано</string>
+
+    <!-- Time labels -->
+    <string name="stats_time_morning">Утром (5-11)</string>
+    <string name="stats_time_afternoon">Днем (12-17)</string>
+    <string name="stats_time_evening">Вечером (18-22)</string>
+    <string name="stats_time_consistency">Оценка постоянства</string>
+    <string name="stats_time_average">Среднее время</string>
+    <string name="stats_time_best_hour">Лучший час</string>
     <string name="cd_more">Еще</string>
     <string name="wants_to_add_you">Хочет добавить вас в друзья</string>
     <string name="request_sent">Запрос отправлен</string>
@@ -434,18 +487,6 @@
     <string name="streak_description">Побеждает тот, у кого самая длинная серия выполнений</string>
     <string name="total_days_description">Побеждает тот, кто выполнил привычку больше всего дней</string>
     <string name="first_to_target_description">Побеждает первый, кто достигнет целевого значения</string>
-    
-    <!-- Stats Screen -->
-    <string name="stats_title">Статистика</string>
-    <string name="stats_refresh">Обновить</string>
-    <string name="stats_error_loading">Не удалось загрузить статистику</string>
-    <string name="stats_error_no_user">Пользователь не авторизован</string>
-    <string name="stats_try_again">Попробовать снова</string>
-    
-    <!-- Level Info -->
-    <string name="level_format">Уровень %1$d</string>
-    <string name="points_format">%1$d / %2$d очков</string>
-    <string name="points_to_next_level">До следующего уровня: %1$d очков</string>
     
     <!-- Stats Categories -->
     <string name="stats_habits">Привычки</string>
