@@ -46,7 +46,6 @@ import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.ListItemDefaults
 import androidx.compose.material3.MaterialTheme
@@ -89,6 +88,7 @@ import com.habittracker.domain.model.HabitFrequency
 import com.habittracker.domain.model.HabitInvitation
 import com.habittracker.domain.model.User
 import com.habittracker.presentation.ui.components.SectionCard
+import com.habittracker.presentation.ui.habits.components.GradientProgressBar
 import com.habittracker.presentation.viewmodel.GroupHabitDetailViewModel
 import kotlinx.datetime.Clock
 import kotlinx.datetime.TimeZone
@@ -419,14 +419,24 @@ private fun GroupProgressSection(
             
             Spacer(modifier = Modifier.height(8.dp))
             
-            LinearProgressIndicator(
-                progress = { completionRate },
+            val barColors = when {
+                completionRate >= 0.75f -> listOf(
+                    MaterialTheme.colorScheme.primary,
+                    MaterialTheme.colorScheme.primaryContainer
+                )
+                completionRate >= 0.5f -> listOf(
+                    MaterialTheme.colorScheme.secondary,
+                    MaterialTheme.colorScheme.secondaryContainer
+                )
+                else -> listOf(
+                    MaterialTheme.colorScheme.tertiary,
+                    MaterialTheme.colorScheme.tertiaryContainer
+                )
+            }
+            GradientProgressBar(
+                progress = completionRate,
                 modifier = Modifier.fillMaxWidth(),
-                color = when {
-                    completionRate >= 0.75f -> MaterialTheme.colorScheme.primary
-                    completionRate >= 0.5f -> MaterialTheme.colorScheme.secondary
-                    else -> MaterialTheme.colorScheme.tertiary
-                },
+                colors = barColors,
                 trackColor = MaterialTheme.colorScheme.surfaceVariant
             )
         }

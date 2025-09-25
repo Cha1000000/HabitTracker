@@ -22,6 +22,7 @@ import com.habittracker.domain.model.Challenge
 import com.habittracker.domain.model.ChallengeStatus
 import com.habittracker.domain.model.ChallengeType
 import com.habittracker.presentation.ui.habits.components.GlassmorphicCard
+import com.habittracker.presentation.ui.habits.components.GradientProgressBar
 import kotlinx.datetime.Clock
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.todayIn
@@ -109,16 +110,25 @@ fun ChallengeCard(
                 
                 Spacer(modifier = Modifier.height(4.dp))
                 
-                LinearProgressIndicator(
-                    progress = { progress },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(8.dp),
-                    color = when {
-                        daysRemaining <= 1 -> MaterialTheme.colorScheme.error
-                        daysRemaining <= 3 -> MaterialTheme.colorScheme.tertiary
-                        else -> MaterialTheme.colorScheme.primary
-                    }
+                val barColors = when {
+                    daysRemaining <= 1 -> listOf(
+                        MaterialTheme.colorScheme.error,
+                        MaterialTheme.colorScheme.errorContainer
+                    )
+                    daysRemaining <= 3 -> listOf(
+                        MaterialTheme.colorScheme.tertiary,
+                        MaterialTheme.colorScheme.tertiaryContainer
+                    )
+                    else -> listOf(
+                        MaterialTheme.colorScheme.primary,
+                        MaterialTheme.colorScheme.primaryContainer
+                    )
+                }
+                GradientProgressBar(
+                    progress = progress,
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = barColors,
+                    trackColor = MaterialTheme.colorScheme.surfaceVariant
                 )
             }
 

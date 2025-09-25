@@ -28,7 +28,6 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.ScrollableTabRow
@@ -62,6 +61,7 @@ import com.habittracker.domain.model.AchievementWithProgress
 import com.habittracker.domain.model.UserAchievement
 import com.habittracker.domain.model.getDisplayTitle
 import com.habittracker.presentation.ui.habits.components.GlassmorphicCard
+import com.habittracker.presentation.ui.habits.components.GradientProgressBar
 import com.habittracker.presentation.ui.habits.components.TahoeGradientBackground
 import com.habittracker.presentation.viewmodel.AchievementsViewModel
 import kotlinx.datetime.Instant
@@ -357,10 +357,9 @@ private fun AchievementCard(
                         )
                     }
                     Spacer(modifier = Modifier.height(4.dp))
-                    LinearProgressIndicator(
-                        progress = { achievement.progress },
-                        modifier = Modifier.fillMaxWidth(),
-                        color = MaterialTheme.colorScheme.primary
+                    GradientProgressBar(
+                        progress = achievement.progress,
+                        modifier = Modifier.fillMaxWidth()
                     )
                 }
             }

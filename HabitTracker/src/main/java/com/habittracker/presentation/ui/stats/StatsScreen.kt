@@ -27,7 +27,6 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
@@ -52,6 +51,7 @@ import com.habittracker.domain.model.gamification.SocialStats
 import com.habittracker.domain.model.gamification.StreakStats
 import com.habittracker.domain.model.gamification.TimeStats
 import com.habittracker.presentation.ui.habits.components.GlassmorphicCard
+import com.habittracker.presentation.ui.habits.components.GradientProgressBar
 import com.habittracker.presentation.ui.habits.components.TahoeGradientBackground
 import com.habittracker.presentation.viewmodel.StatsViewModel
 
@@ -219,9 +219,9 @@ private fun UserLevelCard(levelInfo: com.habittracker.domain.model.UserLevelInfo
             
             Spacer(modifier = Modifier.height(8.dp))
             
-            LinearProgressIndicator(
-                progress = { levelInfo.progress },
-                modifier = Modifier.fillMaxWidth(),
+            GradientProgressBar(
+                progress = levelInfo.progress,
+                modifier = Modifier.fillMaxWidth()
             )
             
             if (!levelInfo.isMaxLevel) {

@@ -34,6 +34,7 @@ val TahoeLightBackground = Color(0xFFF0F9FF)  // Очень светлый го�
 val TahoeLightSurface = Color(0xFFE0F2FE)     // Светлая голубая поверхность
 val TahoeLightAccent = Color(0xFF2563EB)      // Насыщенный синий для светлой темы
 val TahoeLightPurpleAccent = Color(0xFF4F46E5) // Индиго для светлой темы
+val TahoeIndigoAccent = Color(0xFF5E5CE6)     // Дополнительный индиго-акцент (используется в светлых градиентах)
 
 // Glass Effect Colors (цвета для эффекта стекла)
 val GlassWhite10 = Color(0x1AFFFFFF)         // 10% белый

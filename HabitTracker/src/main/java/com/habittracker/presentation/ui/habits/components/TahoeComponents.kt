@@ -31,9 +31,10 @@ import androidx.compose.material3.FloatingActionButtonDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.Text
 import androidx.compose.material3.TextFieldDefaults
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -42,6 +43,7 @@ import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Dp
@@ -60,6 +62,7 @@ import com.habittracker.presentation.ui.theme.TahoeElectricBlue
 import com.habittracker.presentation.ui.theme.TahoeLavender
 import com.habittracker.presentation.ui.theme.TahoeLightAccent
 import com.habittracker.presentation.ui.theme.TahoeLightPurpleAccent
+import com.habittracker.presentation.ui.theme.TahoeIndigoAccent
 import com.habittracker.presentation.ui.theme.TahoeRoyalBlue
 import com.habittracker.presentation.ui.theme.TahoeSkyBlue
 import kotlin.math.cos
@@ -541,38 +544,44 @@ fun GlassmorphicOutlinedButton(
 fun GradientProgressBar(
     progress: Float,
     modifier: Modifier = Modifier,
-    isDarkTheme: Boolean = isSystemInDarkTheme()
+    isDarkTheme: Boolean = isSystemInDarkTheme(),
+    colors: List<Color>? = null,
+    trackColor: Color? = null,
+    height: Dp = 8.dp,
+    cornerRadius: Dp = 4.dp,
+    animateProgress: Boolean = true
 ) {
-    val progressColors = if (isDarkTheme) {
-        listOf(
-            TahoeRoyalBlue,
-            TahoeLavender,
-            TahoeSkyBlue
-        )
+    val progressColors = colors ?: if (isDarkTheme) {
+        listOf(TahoeRoyalBlue, TahoeLavender, TahoeSkyBlue)
     } else {
-        listOf(
-            TahoeLightAccent,
-            TahoeLightPurpleAccent,
-            Color(0xFF5E5CE6)
-        )
+        listOf(TahoeLightAccent, TahoeLightPurpleAccent, TahoeIndigoAccent)
+    }
+
+    val bgTrack = trackColor ?: if (isDarkTheme) GlassWhite10 else GlassBlack10
+
+    val clamped = progress.coerceIn(0f, 1f)
+    val animated by if (animateProgress) {
+        animateFloatAsState(targetValue = clamped, label = "gradientProgress")
+    } else {
+        androidx.compose.runtime.remember(clamped) { androidx.compose.runtime.mutableStateOf(clamped) }
     }
     
     Box(
         modifier = modifier
-            .height(8.dp)
-            .clip(RoundedCornerShape(4.dp))
+            .height(height)
+            .clip(RoundedCornerShape(cornerRadius))
             .background(
-                color = if (isDarkTheme) GlassWhite10 else GlassBlack10,
-                shape = RoundedCornerShape(4.dp)
+                color = bgTrack,
+                shape = RoundedCornerShape(cornerRadius)
             )
     ) {
         Box(
             modifier = Modifier
                 .fillMaxHeight()
-                .fillMaxWidth(progress)
+                .fillMaxWidth(animated)
                 .background(
                     brush = Brush.horizontalGradient(colors = progressColors),
-                    shape = RoundedCornerShape(4.dp)
+                    shape = RoundedCornerShape(cornerRadius)
                 )
         )
     }
