@@ -718,6 +718,7 @@ fun AddEditHabitScreen(
                         onClick = { viewModel.saveHabit() },
                         isDarkTheme = isSystemInDarkTheme(),
                         modifier = Modifier
+                            .padding(bottom = 62.dp)
                             .graphicsLayer {
                                 scaleX = fabScale
                                 scaleY = fabScale

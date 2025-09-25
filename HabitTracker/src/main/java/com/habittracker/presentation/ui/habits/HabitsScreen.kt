@@ -75,6 +75,9 @@ import com.habittracker.presentation.navigation.Screen
 import com.habittracker.presentation.ui.components.GradientPullRefreshIndicator
 import com.habittracker.presentation.ui.habits.components.EnhancedHabitItem
 import com.habittracker.presentation.ui.habits.components.GlassmorphicFAB
+import com.habittracker.presentation.ui.habits.components.TahoeDockBar
+import com.habittracker.presentation.ui.habits.components.TahoeDockDivider
+import com.habittracker.presentation.ui.habits.components.TahoeDockItem
 import com.habittracker.presentation.ui.habits.components.TahoeGradientBackground
 import com.habittracker.presentation.ui.notifications.NotificationBadge
 import com.habittracker.presentation.viewmodel.FriendsViewModel
@@ -141,49 +144,7 @@ fun HabitsScreen(
                         scrolledContainerColor = Color.Transparent
                     ),
                 actions = {
-                    // Кнопки геймификации
-                    IconButton(onClick = { 
-                        navController.navigate(Screen.Stats.route) 
-                    }) {
-                        Icon(
-                            imageVector = Icons.AutoMirrored.Filled.TrendingUp,
-                            contentDescription = stringResource(R.string.cd_stats)
-                        )
-                    }
-                    IconButton(onClick = { 
-                        navController.navigate(Screen.Achievements.route) 
-                    }) {
-                        Icon(
-                            imageVector = Icons.Default.EmojiEvents,
-                            contentDescription = stringResource(R.string.cd_achievements)
-                        )
-                    }
-                    
-                    // Существующие кнопки
-                    IconButton(onClick = { 
-                        navController.navigate(Screen.Profile.route) 
-                    }) {
-                        Icon(
-                            imageVector = Icons.Default.Person,
-                            contentDescription = stringResource(R.string.cd_profile)
-                        )
-                    }
-                    Box {
-                        IconButton(onClick = { 
-                            navController.navigate(Screen.Friends.route) 
-                        }) {
-                            Icon(
-                                imageVector = Icons.Default.People,
-                                contentDescription = stringResource(R.string.cd_friends)
-                            )
-                        }
-                        NotificationBadge(
-                            count = friendRequestsBadgeCount,
-                            modifier = Modifier
-                                .align(Alignment.TopEnd)
-                                .offset(x = (-8).dp, y = 6.dp)
-                        )
-                    }
+                    // Оставляем только колокольчик уведомлений
                     Box {
                         IconButton(onClick = {
                             navController.navigate(Screen.Notifications.route)
@@ -206,9 +167,53 @@ fun HabitsScreen(
         floatingActionButton = {
             GlassmorphicFAB(
                 onClick = { navController.navigate(Screen.AddEditHabit.route) },
-                isDarkTheme = isSystemInDarkTheme()
+                isDarkTheme = isSystemInDarkTheme(),
             ) {
                 Icon(Icons.Default.Add, contentDescription = stringResource(R.string.cd_add_habit))
+            }
+        },
+        bottomBar = {
+            TahoeDockBar(
+                isDarkTheme = isSystemInDarkTheme()
+            ) {
+                // Статистика
+                TahoeDockItem(
+                    icon = Icons.AutoMirrored.Filled.TrendingUp,
+                    label = stringResource(R.string.cd_stats),
+                    onClick = { navController.navigate(Screen.Stats.route) },
+                    selected = false
+                )
+
+                TahoeDockDivider()
+                
+                // Достижения
+                TahoeDockItem(
+                    icon = Icons.Default.EmojiEvents,
+                    label = stringResource(R.string.cd_achievements),
+                    onClick = { navController.navigate(Screen.Achievements.route) },
+                    selected = false
+                )
+
+                TahoeDockDivider()
+                
+                // Друзья
+                TahoeDockItem(
+                    icon = Icons.Default.People,
+                    label = stringResource(R.string.cd_friends),
+                    badge = friendRequestsBadgeCount,
+                    onClick = { navController.navigate(Screen.Friends.route) },
+                    selected = false
+                )
+
+                TahoeDockDivider()
+                
+                // Профиль
+                TahoeDockItem(
+                    icon = Icons.Default.Person,
+                    label = stringResource(R.string.cd_profile),
+                    onClick = { navController.navigate(Screen.Profile.route) },
+                    selected = false
+                )
             }
         },
         snackbarHost = { SnackbarHost(snackbarHostState) }
