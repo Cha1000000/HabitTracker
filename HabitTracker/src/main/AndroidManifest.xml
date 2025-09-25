@@ -27,7 +27,7 @@
         <activity
             android:name=".MainActivity"
             android:exported="true"
-            android:theme="@style/Theme.HabitTracker">
+            android:theme="@style/Theme.HabitTracker.Splash">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
 

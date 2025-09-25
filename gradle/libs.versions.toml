@@ -37,11 +37,13 @@ googleid = "1.1.0"
 firebaseBom = "32.7.0"
 calendar = "2.5.1"
 googleAuth = "1.19.0"
+splashscreen = "1.0.1"
 
 [libraries]
 # Core
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
 androidx-appcompat = { module = "androidx.appcompat:appcompat", version.ref = "appcompat" }
+androidx-core-splashscreen = { group = "androidx.core", name = "core-splashscreen", version.ref = "splashscreen" }
 
 # Testing
 firebase-appcheck-debug = { module = "com.google.firebase:firebase-appcheck-debug" }

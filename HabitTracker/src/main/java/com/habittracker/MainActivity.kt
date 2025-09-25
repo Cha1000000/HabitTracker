@@ -10,6 +10,7 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
+import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
@@ -44,6 +45,10 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        // Устанавливаем системный SplashScreen как можно раньше
+        val splash = installSplashScreen()
+        // Не задерживаем систему — сразу продолжаем рендер
+        splash.setKeepOnScreenCondition { false }
         // Ранний захват deep link из push до инициализации UI/подписок
         intent?.getStringExtra("navigate_to")?.let { deep ->
             Log.d("MainActivity", "[push-nav] pre-UI handle navigate_to=$deep")

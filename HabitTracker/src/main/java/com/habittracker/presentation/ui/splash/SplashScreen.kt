@@ -137,13 +137,13 @@ fun SplashScreen(
                             brush = Brush.linearGradient(
                                 colors = if (isDarkTheme) {
                                     listOf(
-                                        Color(0xFF60A5FA), // TahoeSkyBlue
-                                        Color(0xFFA78BFA)  // TahoeLightPurple
+                                        Color(0xFF47D2A0),
+                                        Color(0xFF736AF0)
                                     )
                                 } else {
                                     listOf(
-                                        Color(0xFF5EEAD4), // TahoeLightAccent
-                                        Color(0xFFB4A7F5)  // TahoeLightPurpleAccent
+                                        Color(0xFF0AC2A6),
+                                        Color(0xFFA78BFA)
                                     )
                                 }
                             )

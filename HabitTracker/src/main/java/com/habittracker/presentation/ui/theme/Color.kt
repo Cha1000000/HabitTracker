@@ -19,8 +19,8 @@ val TahoeElectricBlue = Color(0xFF1E3A8A)    // Электрический си�
 val TahoeRoyalBlue = Color(0xFF3B82F6)       // Королевский синий
 val TahoeSkyBlue = Color(0xFF60A5FA)         // Небесный синий
 val TahoeLightBlue = Color(0xFF93C5FD)       // Светло-синий
-val TahoeCyan = Color(0xFF67E8F9)            // Циановый/бирюзовый
-val TahoeAqua = Color(0xFF22D3EE)            // Аква
+val TahoeCyan = Color(0xFF67D7F9)            // Циановый/бирюзовый
+val TahoeAqua = Color(0xFF22C5EE)            // Аква
 
 // Минимальные фиолетовые акценты
 val TahoeDeepPurple = Color(0xFF2E1065)      // Очень глубокий фиолетово-синий
