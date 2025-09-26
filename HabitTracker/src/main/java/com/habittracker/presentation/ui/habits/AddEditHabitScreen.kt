@@ -40,9 +40,7 @@ import androidx.compose.material.icons.filled.Title
 import androidx.compose.material3.AssistChip
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.ExposedDropdownMenuBox
 import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FilterChipDefaults
@@ -51,13 +49,10 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.MenuAnchorType
 import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarDuration
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
-import androidx.compose.material3.Switch
-import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
@@ -97,14 +92,20 @@ import com.habittracker.presentation.ui.habits.components.EmojiPickerDialog
 import com.habittracker.presentation.ui.habits.components.FriendsSelectDialog
 import com.habittracker.presentation.ui.habits.components.GlassmorphicButton
 import com.habittracker.presentation.ui.habits.components.GlassmorphicCard
+import com.habittracker.presentation.ui.habits.components.GlassmorphicDropdownMenu
+import com.habittracker.presentation.ui.habits.components.GlassmorphicDropdownMenuItem
+import com.habittracker.presentation.ui.habits.components.GlassmorphicExposedDropdownMenuBox
 import com.habittracker.presentation.ui.habits.components.GlassmorphicFAB
+import com.habittracker.presentation.ui.habits.components.GlassmorphicSectionHeader
+import com.habittracker.presentation.ui.habits.components.GlassmorphicSwitch
+import com.habittracker.presentation.ui.habits.components.GlassmorphicTextField
 import com.habittracker.presentation.ui.habits.components.InviteCodeCard
 import com.habittracker.presentation.ui.habits.components.TahoeGradientBackground
 import com.habittracker.presentation.ui.habits.components.TimePickerDialog
 import com.habittracker.presentation.ui.permission.NotificationPermissionHandler
 import com.habittracker.presentation.ui.permission.hasNotificationPermission
 import com.habittracker.presentation.ui.theme.TahoeElectricBlue
-import com.habittracker.presentation.ui.theme.TahoeLightSurface
+import com.habittracker.presentation.ui.theme.TahoeLightBlue
 import com.habittracker.presentation.utils.GroupHabitConstants
 import com.habittracker.presentation.viewmodel.AddEditHabitUiState
 import com.habittracker.presentation.viewmodel.AddEditHabitViewModel
@@ -184,40 +185,46 @@ private fun HabitTypeSelector(
 ) {
     var expanded by remember { mutableStateOf(false) }
     val items = HabitType.entries
+    val isDarkTheme = isSystemInDarkTheme()
     
-    ExposedDropdownMenuBox(
+    GlassmorphicExposedDropdownMenuBox(
         expanded = expanded,
         onExpandedChange = { expanded = !expanded },
         modifier = modifier
     ) {
-        OutlinedTextField(
+        GlassmorphicTextField(
             value = when (currentType) {
                 HabitType.PERSONAL -> stringResource(R.string.habit_type_personal)
                 HabitType.GROUP -> stringResource(R.string.habit_type_group)
             },
             onValueChange = {},
-            readOnly = true,
             label = { Text(stringResource(R.string.habit_type_label)) },
             trailingIcon = {
                 ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded)
             },
-            colors = ExposedDropdownMenuDefaults.outlinedTextFieldColors(),
             modifier = Modifier
                 .fillMaxWidth()
-                .menuAnchor(MenuAnchorType.PrimaryNotEditable, enabled = true)
+                .menuAnchor(MenuAnchorType.PrimaryNotEditable, enabled = true),
+            isDarkTheme = isDarkTheme,
+            singleLine = true,
+            readOnly = true
         )
         
-        ExposedDropdownMenu(
+        GlassmorphicDropdownMenu(
             expanded = expanded,
-            onDismissRequest = { expanded = false }
+            onDismissRequest = { expanded = false },
+            isDarkTheme = isDarkTheme
         ) {
             items.forEach { type ->
-                DropdownMenuItem(
+                GlassmorphicDropdownMenuItem(
                     text = { 
-                        Text(when (type) {
-                            HabitType.PERSONAL -> stringResource(R.string.habit_type_personal)
-                            HabitType.GROUP -> stringResource(R.string.habit_type_group)
-                        })
+                        Text(
+                            text = when (type) {
+                                HabitType.PERSONAL -> stringResource(R.string.habit_type_personal)
+                                HabitType.GROUP -> stringResource(R.string.habit_type_group)
+                            },
+                            style = MaterialTheme.typography.bodyMedium,
+                        )
                     },
                     onClick = {
                         onTypeSelected(type)
@@ -231,7 +238,8 @@ private fun HabitTypeSelector(
                             },
                             contentDescription = null
                         )
-                    }
+                    },
+                    isDarkTheme = isDarkTheme
                 )
             }
         }
@@ -257,10 +265,9 @@ private fun GroupSettings(
             modifier = Modifier.padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            Text(
+            GlassmorphicSectionHeader(
                 text = stringResource(R.string.group_habit_settings),
-                style = MaterialTheme.typography.titleMedium,
-                color = MaterialTheme.colorScheme.primary
+                isDarkTheme = isDarkTheme
             )
             
             // Максимальное количество участников
@@ -279,7 +286,7 @@ private fun GroupSettings(
                     val exceeds = valueOrNull?.let { it > GroupHabitConstants.MAX_PARTICIPANTS } == true
                     val tooLow = valueOrNull == 1
 
-                    OutlinedTextField(
+                    GlassmorphicTextField(
                         value = uiState.maxParticipantsInput,
                         onValueChange = { input ->
                             // Разрешаем только цифры и ограничиваем длину до 2 символов
@@ -288,12 +295,11 @@ private fun GroupSettings(
                                 viewModel.onMaxParticipantsInputChange(filtered)
                             }
                         },
-                        label = { Text(stringResource(R.string.max_participants)) },
+                        placeholder = { Text("2") },
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                         singleLine = true,
-                        modifier = Modifier.width(120.dp),
-                        enabled = !uiState.isLoading && !uiState.isHabitSaved,
-                        isError = exceeds || tooLow
+                        modifier = Modifier.width(70.dp),
+                        isDarkTheme = isDarkTheme
                     )
 
                     Text(
@@ -347,10 +353,11 @@ private fun GroupSettings(
                     )
                 }
                 
-                Switch(
+                GlassmorphicSwitch(
                     checked = uiState.isPublic,
                     onCheckedChange = { viewModel.onIsPublicChange(it) },
-                    enabled = !uiState.isLoading && !uiState.isHabitSaved
+                    enabled = !uiState.isLoading && !uiState.isHabitSaved,
+                    isDarkTheme = isDarkTheme
                 )
             }
             
@@ -450,13 +457,13 @@ private fun FrequencySelector(
 ) {
     var expanded by remember { mutableStateOf(false) }
     val items = HabitFrequency.entries
-    
-    ExposedDropdownMenuBox(
+
+    GlassmorphicExposedDropdownMenuBox(
         expanded = expanded && enabled,
         onExpandedChange = { if (enabled) expanded = !expanded },
         modifier = modifier
     ) {
-        OutlinedTextField(
+        GlassmorphicTextField(
             value = when (currentFrequency) {
                 HabitFrequency.DAILY -> stringResource(R.string.frequency_daily)
                 HabitFrequency.WEEKLY -> stringResource(R.string.frequency_weekly)
@@ -466,33 +473,37 @@ private fun FrequencySelector(
                 HabitFrequency.CUSTOM -> stringResource(R.string.frequency_custom)
             },
             onValueChange = {},
-            readOnly = true,
-            enabled = enabled,
             label = { Text(stringResource(R.string.habit_frequency_label)) },
             trailingIcon = {
                 ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded && enabled)
             },
-            colors = ExposedDropdownMenuDefaults.outlinedTextFieldColors(),
             modifier = Modifier
                 .fillMaxWidth()
-                .menuAnchor(MenuAnchorType.PrimaryNotEditable, enabled = enabled)
+                .menuAnchor(MenuAnchorType.PrimaryNotEditable, enabled = enabled),
+            isDarkTheme = isSystemInDarkTheme(),
+            singleLine = true,
+            readOnly = true
         )
         
-        ExposedDropdownMenu(
+        GlassmorphicDropdownMenu(
             expanded = expanded && enabled,
-            onDismissRequest = { expanded = false }
+            onDismissRequest = { expanded = false },
+            isDarkTheme = isSystemInDarkTheme()
         ) {
             items.forEach { frequency ->
-                DropdownMenuItem(
+                GlassmorphicDropdownMenuItem(
                     text = { 
-                        Text(when (frequency) {
-                            HabitFrequency.DAILY -> stringResource(R.string.frequency_daily)
-                            HabitFrequency.WEEKLY -> stringResource(R.string.frequency_weekly)
-                            HabitFrequency.TWICE_A_WEEK -> stringResource(R.string.frequency_twice_weekly)
-                            HabitFrequency.WEEKDAYS -> stringResource(R.string.frequency_weekdays)
-                            HabitFrequency.WEEKENDS -> stringResource(R.string.frequency_weekends)
-                            HabitFrequency.CUSTOM -> stringResource(R.string.frequency_custom)
-                        })
+                        Text(
+                            text = when (frequency) {
+                                HabitFrequency.DAILY -> stringResource(R.string.frequency_daily)
+                                HabitFrequency.WEEKLY -> stringResource(R.string.frequency_weekly)
+                                HabitFrequency.TWICE_A_WEEK -> stringResource(R.string.frequency_twice_weekly)
+                                HabitFrequency.WEEKDAYS -> stringResource(R.string.frequency_weekdays)
+                                HabitFrequency.WEEKENDS -> stringResource(R.string.frequency_weekends)
+                                HabitFrequency.CUSTOM -> stringResource(R.string.frequency_custom)
+                            },
+                            style = MaterialTheme.typography.bodyMedium,
+                        )
                     },
                     onClick = {
                         if (enabled) {
@@ -805,15 +816,14 @@ fun AddEditHabitScreen(
 
             item {
                 // Название
-                OutlinedTextField(
+                GlassmorphicTextField(
                     value = uiState.title,
                     onValueChange = { viewModel.onTitleChange(it) },
                     label = { Text(stringResource(R.string.habit_name_label)) },
                     modifier = Modifier.fillMaxWidth(),
-                    isError = uiState.title.isBlank(),
                     singleLine = true,
                     leadingIcon = { Icon(Icons.Default.Title, null) },
-                    enabled = !uiState.isLoading && !uiState.isHabitSaved
+                    isDarkTheme = isSystemInDarkTheme()
                 )
                 FieldValidationFeedback(
                     errorMessage = uiState.titleError
@@ -823,14 +833,14 @@ fun AddEditHabitScreen(
 
             item {
                 // Описание
-                OutlinedTextField(
+                GlassmorphicTextField(
                     value = uiState.description,
                     onValueChange = { viewModel.onDescriptionChange(it) },
                     label = { Text(stringResource(R.string.habit_description_label)) },
                     modifier = Modifier.fillMaxWidth(),
-                    minLines = 3,
+                    singleLine = false,
                     leadingIcon = { Icon(Icons.Default.Description, null) },
-                    enabled = !uiState.isLoading && !uiState.isHabitSaved
+                    isDarkTheme = isSystemInDarkTheme()
                 )
                 FieldValidationFeedback(uiState.descriptionError)
             }
@@ -906,11 +916,12 @@ fun AddEditHabitScreen(
 
             item {
                 // Целевое значение
+                val isDarkTheme = isSystemInDarkTheme()
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    OutlinedTextField(
+                    GlassmorphicTextField(
                         value = uiState.targetValueInput,
                         onValueChange = { input ->
                             viewModel.onTargetValueInputChange(input)
@@ -920,16 +931,16 @@ fun AddEditHabitScreen(
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                         singleLine = true,
                         leadingIcon = { Icon(Icons.Default.Timeline, null) },
-                        enabled = !uiState.isLoading && !uiState.isHabitSaved
+                        isDarkTheme = isDarkTheme
                     )
                     
-                    OutlinedTextField(
+                    GlassmorphicTextField(
                         value = uiState.unit,
                         onValueChange = { viewModel.onUnitChange(it) },
                         label = { Text(stringResource(R.string.habit_unit_label)) },
                         modifier = Modifier.width(100.dp),
                         singleLine = true,
-                        enabled = !uiState.isLoading && !uiState.isHabitSaved
+                        isDarkTheme = isDarkTheme
                     )
                 }
                 FieldValidationFeedback(uiState.targetValueError)
@@ -957,12 +968,15 @@ fun AddEditHabitScreen(
                             Icon(
                                 Icons.Default.Notifications,
                                 contentDescription = null,
-                                tint = MaterialTheme.colorScheme.primary,
+                                tint = if (isDarkTheme) TahoeLightBlue else MaterialTheme.colorScheme.primary,
                                 modifier = Modifier.padding(end = 16.dp)
                             )
 
                             Column(modifier = Modifier.weight(1f)) {
-                                Text(stringResource(R.string.habit_reminder_label))
+                                GlassmorphicSectionHeader(
+                                    text = stringResource(R.string.habit_reminder_label),
+                                    isDarkTheme = isDarkTheme
+                                )
                                 if (!uiState.isInitialized) {
                                     CircularProgressIndicator(
                                         modifier = Modifier
@@ -1011,7 +1025,7 @@ fun AddEditHabitScreen(
                                 )
                             } else {
                                 CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Ltr) {
-                                    Switch(
+                                    GlassmorphicSwitch(
                                         checked = uiState.reminderEnabled,
                                         onCheckedChange = { isChecked ->
                                             if (isChecked) {
@@ -1026,12 +1040,7 @@ fun AddEditHabitScreen(
                                             }
                                         },
                                         enabled = !uiState.isLoading && !uiState.isHabitSaved,
-                                        colors = SwitchDefaults.colors(
-                                            checkedTrackColor = MaterialTheme.colorScheme.primary,
-                                            checkedThumbColor = TahoeLightSurface,
-                                            uncheckedTrackColor = MaterialTheme.colorScheme.surfaceVariant,
-                                            uncheckedThumbColor = MaterialTheme.colorScheme.onSurfaceVariant
-                                        )
+                                        isDarkTheme = isDarkTheme
                                     )
                                 }
                             }

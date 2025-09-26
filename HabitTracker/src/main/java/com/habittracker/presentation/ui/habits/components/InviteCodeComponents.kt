@@ -2,6 +2,7 @@ package com.habittracker.presentation.ui.habits.components
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -18,7 +19,6 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.QrCode
-import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.filled.VisibilityOff
@@ -31,7 +31,6 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -60,6 +59,7 @@ import com.habittracker.R
  */
 @Composable
 fun InviteCodeCard(
+    modifier: Modifier = Modifier,
     inviteCode: String?,
     isPublic: Boolean,
     isGenerating: Boolean = false,
@@ -67,14 +67,12 @@ fun InviteCodeCard(
     onTogglePublic: (Boolean) -> Unit,
     onShareCode: (String) -> Unit,
     onDisableCode: () -> Unit,
-    modifier: Modifier = Modifier
 ) {
-    Card(
+    val isDarkTheme = isSystemInDarkTheme()
+    GlassmorphicCard(
         modifier = modifier.fillMaxWidth(),
-        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)
-        )
+        isDarkTheme = isDarkTheme,
+        elevation = 2.dp,
     ) {
         Column(
             modifier = Modifier.padding(16.dp)
@@ -97,11 +95,11 @@ fun InviteCodeCard(
                     Icon(
                         imageVector = if (isPublic) Icons.Default.Visibility else Icons.Default.VisibilityOff,
                         contentDescription = null,
-                        tint = if (isPublic) Color(0xFF4CAF50) else MaterialTheme.colorScheme.onSurfaceVariant,
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.size(20.dp)
                     )
                     Spacer(modifier = Modifier.width(8.dp))
-                    Switch(
+                    GlassmorphicSwitch(
                         checked = isPublic,
                         onCheckedChange = onTogglePublic
                     )
