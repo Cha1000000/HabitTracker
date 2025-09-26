@@ -1,7 +1,11 @@
 package com.habittracker.presentation.ui.habits.components
 
+import android.annotation.SuppressLint
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.scaleIn
 import androidx.compose.foundation.BorderStroke
@@ -22,9 +26,11 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.Button
@@ -38,6 +44,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.MenuDefaults
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
@@ -557,8 +564,67 @@ fun GlassmorphicOutlinedButton(
 /**
  * Glassmorphic Switch компонент
  */
+@SuppressLint("UseOfNonLambdaOffsetOverload")
 @Composable
 fun GlassmorphicSwitch(
+    checked: Boolean,
+    onCheckedChange: (Boolean) -> Unit,
+    modifier: Modifier = Modifier,
+    enabled: Boolean = true,
+    isDarkTheme: Boolean = isSystemInDarkTheme(),
+    trackHeight: Dp = 24.dp,
+    trackWidth: Dp = 44.dp,
+    thumbSize: Dp = 20.dp,
+    animationDuration: Int = 300
+) {
+    val checkedTrackColor = if (isDarkTheme) TahoeSkyBlue else MaterialTheme.colorScheme.primary
+    val uncheckedTrackColor = if (isDarkTheme) GlassWhite10 else MaterialTheme.colorScheme.surfaceVariant
+    val thumbColor = Color.White
+
+    // Анимация смещения ползунка
+    val offset by animateDpAsState(
+        targetValue = if (checked) trackWidth - thumbSize - 2.dp else 2.dp,
+        animationSpec = tween(durationMillis = animationDuration), label = ""
+    )
+
+    // Цвет фона трека
+    //val backgroundColor = if (checked) checkedTrackColor else uncheckedTrackColor
+
+    // Анимация цвета фона трека
+    val backgroundColor by animateColorAsState(
+        targetValue = if (checked) checkedTrackColor else uncheckedTrackColor,
+        animationSpec = tween(durationMillis = animationDuration), label = ""
+    )
+
+    Surface(
+        modifier = modifier
+            .size(width = trackWidth, height = trackHeight)
+            .clip(RoundedCornerShape(trackHeight / 2))
+            .background(backgroundColor)
+            .clickable(enabled = enabled) { onCheckedChange(!checked) },
+        color = Color.Transparent,
+        shape = RoundedCornerShape(trackHeight / 2),
+        shadowElevation = 1.dp
+    ) {
+        Box(
+            contentAlignment = Alignment.CenterStart
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(thumbSize)
+                    .offset(x = offset)
+                    .clip(CircleShape)
+                    .background(thumbColor)
+            )
+        }
+    }
+}
+
+/**
+ * Glassmorphic Switch компонент
+ */
+@Composable
+fun GlassmorphicSwitchSimple(
     checked: Boolean,
     onCheckedChange: (Boolean) -> Unit,
     modifier: Modifier = Modifier,
