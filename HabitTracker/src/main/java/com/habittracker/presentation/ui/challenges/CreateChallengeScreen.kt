@@ -231,7 +231,7 @@ private fun HabitSelectionCard(
                     )
                 } else {
                     Text(
-                        text = "Нажмите для выбора привычки",
+                        text = stringResource(R.string.tap_to_select_habit),
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -271,13 +271,13 @@ private fun ParticipantsSelectionCard(
                 )
                 if (selectedParticipants.isNotEmpty()) {
                     Text(
-                        text = "${selectedParticipants.size} участников выбрано",
+                        text = stringResource(R.string.selected_participants, selectedParticipants.size),
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.primary
                     )
                 } else {
                     Text(
-                        text = "Нажмите для выбора участников",
+                        text = stringResource(R.string.tap_to_select_participants),
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )

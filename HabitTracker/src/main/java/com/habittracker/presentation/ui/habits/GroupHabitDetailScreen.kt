@@ -405,12 +405,19 @@ private fun GroupProgressSection(
                 verticalAlignment = Alignment.Bottom
             ) {
                 Text(
-                    text = "$completedToday/$totalParticipants ${stringResource(R.string.completed_today)}",
+                    text = stringResource(
+                        R.string.group_progress_count_format,
+                        completedToday,
+                        totalParticipants
+                    ) + " " + stringResource(R.string.completed_today),
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurface
                 )
                 Text(
-                    text = "${(completionRate * 100).toInt()}%",
+                    text = stringResource(
+                        R.string.percentage_format,
+                        (completionRate * 100).toInt()
+                    ),
                     style = MaterialTheme.typography.bodyMedium,
                     fontWeight = FontWeight.SemiBold,
                     color = MaterialTheme.colorScheme.primary

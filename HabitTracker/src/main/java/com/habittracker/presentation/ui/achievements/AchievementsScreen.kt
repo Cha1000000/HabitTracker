@@ -211,7 +211,7 @@ fun AchievementsScreen(
                             )
                             Spacer(modifier = Modifier.height(8.dp))
                             Text(
-                                text = uiState.error ?: "Неизвестная ошибка",
+                                text = uiState.error ?: stringResource(R.string.achievements_unknown_error),
                                 style = MaterialTheme.typography.bodyMedium,
                                 textAlign = TextAlign.Center,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant

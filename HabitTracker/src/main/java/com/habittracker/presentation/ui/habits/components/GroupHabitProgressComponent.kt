@@ -83,7 +83,7 @@ fun GroupHabitProgressComponent(
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
             Text(
-                text = "$completedToday/$totalParticipants",
+                text = stringResource(R.string.group_progress_count_format, completedToday, totalParticipants),
                 style = MaterialTheme.typography.bodySmall,
                 fontWeight = FontWeight.Medium,
                 color = if (completionPercentage >= 0.5f) Color(0xFF4CAF50) else MaterialTheme.colorScheme.onSurfaceVariant
@@ -91,8 +91,7 @@ fun GroupHabitProgressComponent(
         }
         
         Spacer(modifier = Modifier.height(4.dp))
-        
-        // Прогресс-бар
+
         GradientProgressBar(
             progress = completionPercentage,
             modifier = Modifier.fillMaxWidth()
@@ -226,7 +225,7 @@ private fun ParticipantDetailRow(
         ) {
             // Streak
             Text(
-                text = "${participant.currentStreak}🔥",
+                text = stringResource(R.string.streak_fire_format, participant.currentStreak),
                 style = MaterialTheme.typography.bodySmall,
                 color = if (participant.currentStreak > 0) Color(0xFFFF9800) else MaterialTheme.colorScheme.onSurfaceVariant
             )

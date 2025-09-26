@@ -27,6 +27,7 @@ import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -118,7 +119,7 @@ fun SplashScreen(
                     
                     Image(
                         painter = painterResource(id = R.drawable.ic_launcher_foreground),
-                        contentDescription = "App Logo",
+                        contentDescription = stringResource(R.string.cd_app_logo),
                         modifier = Modifier.size(100.dp)
                     )
                 }
@@ -130,7 +131,7 @@ fun SplashScreen(
                     modifier = Modifier.alpha(titleAlpha.value)
                 ) {
                     Text(
-                        text = "Habit Tracker",
+                        text = stringResource(R.string.app_name_display),
                         style = MaterialTheme.typography.displayMedium.copy(
                             fontSize = 42.sp,
                             fontWeight = FontWeight.Bold,
@@ -156,7 +157,7 @@ fun SplashScreen(
                 
                 // Подзаголовок
                 Text(
-                    text = "Создавайте привычки вместе",
+                    text = stringResource(R.string.splash_subtitle),
                     style = MaterialTheme.typography.titleLarge.copy(
                         fontSize = 18.sp,
                         fontWeight = FontWeight.Normal
@@ -183,7 +184,7 @@ fun SplashScreen(
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
                     Text(
-                        text = "v${BuildConfig.VERSION_NAME}",
+                        text = stringResource(R.string.version_name_format, BuildConfig.VERSION_NAME),
                         style = MaterialTheme.typography.bodySmall,
                         color = if (isDarkTheme) {
                             Color.White.copy(alpha = 0.5f)

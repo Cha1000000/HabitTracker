@@ -20,6 +20,12 @@
     <string name="clear">Очистить</string>
     <string name="done">Готово</string>
     
+    <!-- Splash Screen -->
+    <string name="app_name_display">Habit Tracker</string>
+    <string name="splash_subtitle">Создавайте привычки вместе</string>
+    <string name="cd_app_logo">Логотип приложения</string>
+    <string name="version_name_format">v%1$s</string>
+    
     <!-- Auth Screen -->
     <string name="auth_welcome_title">Добро пожаловать!</string>
     <string name="auth_welcome_subtitle">Войдите в свой аккаунт</string>
@@ -314,6 +320,8 @@
     <string name="group_participants">Участники группы</string>
     <string name="participant_streak">Серия: %d дней</string>
     <string name="participant_completion_rate">%d%% за неделю</string>
+    <string name="group_progress_count_format">%1$d/%2$d</string>
+    <string name="streak_fire_format">%1$d🔥</string>
     <string name="group_habit_invite_code">Код приглашения: %s</string>
     <string name="group_habit_public">Публичная привычка</string>
     <string name="group_habit_private">Приватная привычка</string>
@@ -358,6 +366,12 @@
     <string name="mark_all_as_read">Отметить все как прочитанные</string>
     <string name="no_notifications_title">Нет уведомлений</string>
     <string name="no_notifications_description">Здесь будут отображаться уведомления о прогрессе ваших групповых привычек</string>
+    <string name="time_just_now">Только что</string>
+    <string name="time_minutes_ago">%1$dм назад</string>
+    <string name="time_hours_ago">%1$dч назад</string>
+    <string name="time_days_ago">%1$dд назад</string>
+    <string name="date_dd_mm_yyyy">%1$02d.%2$02d.%3$04d</string>
+    <string name="nine_plus">9+</string>
     <string name="notification_participant_completed">%1$s выполнил(а) привычку \"%2$s\"</string>
     <string name="notification_participant_streak">%1$s поддерживает серию %2$d дней в \"%3$s\"!</string>
     <string name="notification_group_achievement">Все участники выполнили \"%1$s\" сегодня! 🎉</string>
@@ -437,6 +451,10 @@
     <string name="leave_challenge">Покинуть челлендж</string>
     <string name="retry">Повторить</string>
     <string name="dismiss">Закрыть</string>
+    <!-- Create Challenge UI helpers -->
+    <string name="tap_to_select_habit">Нажмите для выбора привычки</string>
+    <string name="tap_to_select_participants">Нажмите для выбора участников</string>
+    <string name="selected_participants">Выбрано участников: %1$d</string>
     
     <!-- Empty states -->
     <string name="no_active_challenges">Нет активных челленджей</string>
@@ -537,6 +555,7 @@
     <string name="percentage_format">%1$d%%</string>
 
     <!-- Achievements Screen -->
+    <string name="achievements_unknown_error">Неизвестная ошибка</string>
     <string name="achievements_title">Достижения</string>
     <string name="achievements_progress">%1$d из %2$d разблокировано</string>
     <string name="achievements_loading">Загрузка достижений…</string>
