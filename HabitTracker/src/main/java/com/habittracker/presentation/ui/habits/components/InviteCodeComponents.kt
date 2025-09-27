@@ -63,6 +63,7 @@ fun InviteCodeCard(
     inviteCode: String?,
     isPublic: Boolean,
     isGenerating: Boolean = false,
+    isNewHabit: Boolean = false,
     onGenerateCode: () -> Unit,
     onTogglePublic: (Boolean) -> Unit,
     onShareCode: (String) -> Unit,
@@ -120,19 +121,31 @@ fun InviteCodeCard(
             
             Spacer(modifier = Modifier.height(16.dp))
             
-            if (inviteCode != null) {
-                // Отображение существующего кода
-                InviteCodeDisplay(
-                    inviteCode = inviteCode,
-                    onShareCode = { onShareCode(inviteCode) },
-                    onDisableCode = onDisableCode
-                )
-            } else {
-                // Генерация нового кода
-                InviteCodeGeneration(
-                    isGenerating = isGenerating,
-                    onGenerateCode = onGenerateCode
-                )
+            when {
+                isNewHabit -> {
+                    // Для новой привычки показываем информационное сообщение
+                    Text(
+                        text = stringResource(R.string.invite_code_after_save),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(vertical = 8.dp)
+                    )
+                }
+                inviteCode != null -> {
+                    // Отображение существующего кода
+                    InviteCodeDisplay(
+                        inviteCode = inviteCode,
+                        onShareCode = { onShareCode(inviteCode) },
+                        onDisableCode = onDisableCode
+                    )
+                }
+                else -> {
+                    // Генерация нового кода
+                    InviteCodeGeneration(
+                        isGenerating = isGenerating,
+                        onGenerateCode = onGenerateCode
+                    )
+                }
             }
         }
     }

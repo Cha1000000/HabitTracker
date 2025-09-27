@@ -3,6 +3,8 @@ package com.habittracker.data.repository
 import android.util.Log
 import com.google.firebase.firestore.FirebaseFirestore
 import com.habittracker.data.local.dao.HabitEntryDao
+import com.habittracker.data.model.FirebaseHabitEntry
+import com.habittracker.data.model.FirebaseHabitEntry.Companion.toDomain
 import com.habittracker.data.local.mappers.toDomain
 import com.habittracker.domain.model.HabitEntry
 import com.habittracker.domain.model.HabitEntryWithUser
@@ -60,7 +62,7 @@ class HabitEntryRepositoryImpl @Inject constructor(
                         return@addSnapshotListener
                     }
                     val list = snapshot?.documents?.mapNotNull { doc ->
-                        try { doc.toObject(HabitEntry::class.java) } catch (e: Exception) {
+                        try { doc.toObject(FirebaseHabitEntry::class.java)?.toDomain() } catch (e: Exception) {
                             Log.d("HabitEntryRepo", "Map doc to HabitEntry failed: ${e.message}")
                             null
                         }
@@ -98,7 +100,7 @@ class HabitEntryRepositoryImpl @Inject constructor(
                         return@addSnapshotListener
                     }
                     val list = snapshot?.documents?.mapNotNull { doc ->
-                        try { doc.toObject(HabitEntry::class.java) } catch (e: Exception) {
+                        try { doc.toObject(FirebaseHabitEntry::class.java)?.toDomain() } catch (e: Exception) {
                             Log.d("HabitEntryRepo", "Map doc to HabitEntry failed: ${e.message}")
                             null
                         }
@@ -137,7 +139,7 @@ class HabitEntryRepositoryImpl @Inject constructor(
                         return@addSnapshotListener
                     }
                     val list = snapshot?.documents?.mapNotNull { doc ->
-                        try { doc.toObject(HabitEntry::class.java) } catch (e: Exception) {
+                        try { doc.toObject(FirebaseHabitEntry::class.java)?.toDomain() } catch (e: Exception) {
                             Log.d("HabitEntryRepo", "Map doc to HabitEntry failed: ${e.message}")
                             null
                         }

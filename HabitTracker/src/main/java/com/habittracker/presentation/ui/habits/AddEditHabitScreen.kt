@@ -34,7 +34,6 @@ import androidx.compose.material.icons.filled.Group
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.PersonAdd
-import androidx.compose.material.icons.filled.Public
 import androidx.compose.material.icons.filled.Timeline
 import androidx.compose.material.icons.filled.Title
 import androidx.compose.material3.AssistChip
@@ -281,6 +280,13 @@ private fun GroupSettings(
                     tint = MaterialTheme.colorScheme.onSurfaceVariant
                 )
                 
+                Text(
+                    text = stringResource(R.string.max_participants),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurface,
+                    modifier = Modifier.weight(1f)
+                )
+                
                 run {
                     val valueOrNull = uiState.maxParticipantsInput.toIntOrNull()
                     val exceeds = valueOrNull?.let { it > GroupHabitConstants.MAX_PARTICIPANTS } == true
@@ -298,14 +304,17 @@ private fun GroupSettings(
                         placeholder = { Text("2") },
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                         singleLine = true,
-                        modifier = Modifier.width(70.dp),
+                        modifier = Modifier
+                            .width(70.dp)
+                            .height(48.dp),
                         isDarkTheme = isDarkTheme
                     )
 
                     Text(
                         text = stringResource(R.string.participants_limit),
                         style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(start = 4.dp)
                     )
 
                     // Компактное сообщение валидации справа, чтобы не тянуть высоту строки
@@ -329,46 +338,23 @@ private fun GroupSettings(
                 }
             }
             
-            // Публичная привычка
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Icon(
-                    Icons.Default.Public,
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.padding(end = 12.dp)
-                )
-                
-                Column(modifier = Modifier.weight(1f)) {
-                    Text(
-                        text = stringResource(R.string.public_habit),
-                        style = MaterialTheme.typography.bodyLarge
-                    )
-                    Text(
-                        text = stringResource(R.string.public_habit_description),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-                
-                GlassmorphicSwitch(
-                    checked = uiState.isPublic,
-                    onCheckedChange = { viewModel.onIsPublicChange(it) },
-                    enabled = !uiState.isLoading && !uiState.isHabitSaved,
-                    isDarkTheme = isDarkTheme
-                )
-            }
-            
+            // Удалено дублирование - теперь только InviteCodeCard управляет публичностью
             InviteCodeCard(
                 inviteCode = uiState.inviteCode,
                 isPublic = uiState.isPublic,
-                isGenerating = uiState.isLoading,
-                onGenerateCode = { viewModel.generateInviteCode() },
+                isGenerating = uiState.isGeneratingInviteCode,
+                onGenerateCode = { 
+                    if (uiState.habitId != null) {
+                        viewModel.generateInviteCode()
+                    } else {
+                        // Для новой привычки показываем информационное сообщение
+                        (viewModel as? AddEditHabitViewModel)?.showMessage("Код приглашения можно создать после сохранения привычки")
+                    }
+                },
                 onTogglePublic = { viewModel.onIsPublicChange(it) },
                 onShareCode = { viewModel.shareInviteCode(it) },
-                onDisableCode = { viewModel.disableInviteCode() }
+                onDisableCode = { viewModel.disableInviteCode() },
+                isNewHabit = uiState.habitId == null
             )
             
             // Кнопка приглашения друзей

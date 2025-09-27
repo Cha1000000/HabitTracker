@@ -355,6 +355,7 @@
     <string name="no_invite_code">У этой привычки пока нет кода приглашения</string>
     <string name="generating_code">Генерируем...</string>
     <string name="generate_invite_code">Создать код приглашения</string>
+    <string name="invite_code_after_save">У этой привычки пока нет кода приглашения</string>
     <string name="join_habit_by_code">Присоединиться по коду</string>
     <string name="join_habit_by_code_description">Введите код приглашения, чтобы присоединиться к групповой привычке</string>
     <string name="joining">Присоединяемся...</string>

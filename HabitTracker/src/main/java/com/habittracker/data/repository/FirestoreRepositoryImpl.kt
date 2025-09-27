@@ -5,6 +5,8 @@ import com.google.firebase.firestore.DocumentSnapshot
 import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.Query
+import com.habittracker.data.model.FirebaseHabitEntry
+import com.habittracker.data.model.FirebaseHabitEntry.Companion.toDomain
 import com.habittracker.domain.model.Habit
 import com.habittracker.domain.model.HabitEntry
 import com.habittracker.domain.model.HabitParticipantSettings
@@ -306,9 +308,10 @@ class FirestoreRepositoryImpl @Inject constructor(
         try {
             Log.d(TAG, "Saving habit entry: ${habitEntry.habitId} for ${habitEntry.date}")
             val entryId = "${habitEntry.habitId}_${habitEntry.userId}_${habitEntry.date}"
+            val firebaseEntry = FirebaseHabitEntry.fromDomain(habitEntry)
             firestore.collection(HABIT_ENTRIES_COLLECTION)
                 .document(entryId)
-                .set(habitEntry)
+                .set(firebaseEntry)
                 .await()
             Log.d(TAG, "Habit entry saved successfully: $entryId")
         } catch (e: Exception) {
@@ -333,7 +336,7 @@ class FirestoreRepositoryImpl @Inject constructor(
 
                 val entries = snapshot?.documents?.mapNotNull { doc ->
                     try {
-                        doc.toObject(HabitEntry::class.java)
+                        doc.toObject(FirebaseHabitEntry::class.java)?.toDomain()
                     } catch (e: Exception) {
                         Log.e(TAG, "Error parsing habit entry: ${doc.id}", e)
                         null
@@ -357,7 +360,7 @@ class FirestoreRepositoryImpl @Inject constructor(
                 .await()
             
             if (document.exists()) {
-                document.toObject(HabitEntry::class.java)
+                document.toObject(FirebaseHabitEntry::class.java)?.toDomain()
             } else {
                 Log.d(TAG, "Habit entry not found: $entryId")
                 null
