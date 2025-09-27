@@ -337,8 +337,7 @@ private fun GroupSettings(
                     }
                 }
             }
-            
-            // Удалено дублирование - теперь только InviteCodeCard управляет публичностью
+
             InviteCodeCard(
                 inviteCode = uiState.inviteCode,
                 isPublic = uiState.isPublic,

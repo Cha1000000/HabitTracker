@@ -698,6 +698,8 @@ fun GlassmorphicDropdownMenu(
     expanded: Boolean,
     onDismissRequest: () -> Unit,
     modifier: Modifier = Modifier,
+    alignment: Alignment = Alignment.TopStart,
+    offset: IntOffset = IntOffset(4, 28),
     isDarkTheme: Boolean = isSystemInDarkTheme(),
     content: @Composable () -> Unit
 ) {
@@ -715,8 +717,8 @@ fun GlassmorphicDropdownMenu(
         
         // Кастомный popup с glassmorphic эффектом
         Popup(
-            alignment = Alignment.TopStart,
-            offset = IntOffset(4, 28),
+            alignment = alignment,
+            offset = offset,
             onDismissRequest = onDismissRequest,
             properties = androidx.compose.ui.window.PopupProperties(
                 focusable = true,

@@ -27,8 +27,6 @@ import androidx.compose.material.icons.filled.Group
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -53,7 +51,7 @@ import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
-import androidx.compose.ui.unit.DpOffset
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.habittracker.R
@@ -255,16 +253,20 @@ fun EnhancedHabitItem(
                 Box(modifier = Modifier
                     .align(Alignment.TopEnd)
                     .offset(x = 8.dp, y = (-4).dp)) {
-                    IconButton(onClick = {
-                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                        showMenu = true
-                    }) {
-                        Icon(imageVector = Icons.Default.MoreVert, contentDescription = stringResource(id = R.string.cd_more))
+                    if (!showMenu) {
+                        IconButton(onClick = {
+                            haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                            showMenu = true
+                        }) {
+                            Icon(imageVector = Icons.Default.MoreVert, contentDescription = stringResource(id = R.string.cd_more))
+                        }
                     }
-                    DropdownMenu(
+                    GlassmorphicDropdownMenu(
                         expanded = showMenu,
                         onDismissRequest = { showMenu = false },
-                        offset = DpOffset(x = (-18).dp, y = (-6).dp)
+                        alignment = Alignment.TopEnd,
+                        offset = IntOffset(-48, 48),
+                        isDarkTheme = isDarkTheme
                     ) {
                         val doneLabel = if (habitWithCompletion.isCompletedToday) {
                             stringResource(id = R.string.habits_unmark_complete)
@@ -284,7 +286,7 @@ fun EnhancedHabitItem(
                             },
                             label = "menuDoneTint"
                         )
-                        DropdownMenuItem(
+                        GlassmorphicDropdownMenuItem(
                             text = {
                                 Crossfade(targetState = doneLabel, label = "menuDoneText") { labelText ->
                                     Text(text = labelText)
@@ -300,7 +302,7 @@ fun EnhancedHabitItem(
                                 onToggleCompletion()
                             }
                         )
-                        DropdownMenuItem(
+                        GlassmorphicDropdownMenuItem(
                             text = { Text(text = stringResource(id = R.string.edit)) },
                             leadingIcon = { Icon(imageVector = Icons.Default.Edit, contentDescription = null) },
                             onClick = {
@@ -308,7 +310,7 @@ fun EnhancedHabitItem(
                                 onEdit(habitWithCompletion)
                             }
                         )
-                        DropdownMenuItem(
+                        GlassmorphicDropdownMenuItem(
                             text = { Text(text = stringResource(id = R.string.delete), color = MaterialTheme.colorScheme.error) },
                             leadingIcon = { Icon(imageVector = Icons.Default.Delete, contentDescription = null, tint = MaterialTheme.colorScheme.error) },
                             onClick = {
