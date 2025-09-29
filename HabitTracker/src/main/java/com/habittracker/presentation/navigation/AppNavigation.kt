@@ -19,6 +19,7 @@ import com.habittracker.presentation.ui.ProfileScreen
 import com.habittracker.presentation.ui.achievements.AchievementsScreen
 import com.habittracker.presentation.ui.splash.SplashScreen
 import com.habittracker.presentation.ui.stats.StatsScreen
+import com.habittracker.presentation.ui.discover.PublicHabitsScreen
 
 /**
  * Запечатанный класс для определения маршрутов навигации.
@@ -40,6 +41,11 @@ sealed class Screen(val route: String) {
     object Achievements : Screen("achievements_screen")
     object GroupHabitDetail : Screen("group_habit_detail_screen/{habitId}") {
         fun createRoute(habitId: String) = "group_habit_detail_screen/$habitId"
+    }
+    object PublicHabits : Screen("public_habits_screen")
+    object JoinByCode : Screen("join_by_code_screen/{code}?") {
+        fun createRoute(code: String? = null) = 
+            if (code != null) "join_by_code_screen/$code" else "join_by_code_screen/"
     }
     // Debug screens (только для debug сборки)
     object FCMTest : Screen("fcm_test_screen")
@@ -153,6 +159,10 @@ fun AppNavHost(
                     navController.popBackStack()
                 }
             )
+        }
+        
+        composable(route = Screen.PublicHabits.route) {
+            PublicHabitsScreen(navController = navController)
         }
         
         composable(route = Screen.FCMTest.route) {

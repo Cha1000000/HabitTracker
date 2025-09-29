@@ -14,6 +14,8 @@ import com.habittracker.domain.usecase.GetHabitsUseCase
 import com.habittracker.domain.usecase.MarkHabitCompletedUseCase
 import com.habittracker.domain.usecase.MarkHabitIncompleteUseCase
 import com.habittracker.domain.usecase.ScheduleHabitReminderUseCase
+import com.habittracker.domain.usecase.habit.JoinHabitByCodeUseCase
+import com.habittracker.presentation.state.HabitsUiState
 import com.habittracker.presentation.ui.habits.components.ParticipantProgress
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -47,15 +49,6 @@ data class HabitWithCompletion(
     val participantsProgress: List<ParticipantProgress> = emptyList() // Прогресс участников для групповых привычек
 )
 
-/**
- * UI State для экрана со списком привычек.
- */
-data class HabitsUiState(
-    val habitsWithCompletion: List<HabitWithCompletion> = emptyList(),
-    val isLoading: Boolean = true,
-    val error: String? = null
-)
-
 @HiltViewModel
 class HabitsViewModel @Inject constructor(
     private val getHabitsUseCase: GetHabitsUseCase,
@@ -66,6 +59,7 @@ class HabitsViewModel @Inject constructor(
     private val deleteHabitUseCase: DeleteHabitUseCase,
     private val ensureMySettingsForHabitUseCase: EnsureMySettingsForHabitUseCase,
     private val scheduleHabitReminderUseCase: ScheduleHabitReminderUseCase,
+    private val joinHabitByCodeUseCase: JoinHabitByCodeUseCase,
     application: Application
 ) : AndroidViewModel(application) {
 
@@ -375,6 +369,47 @@ class HabitsViewModel @Inject constructor(
             }
         }
         _uiState.value = currentState.copy(habitsWithCompletion = updatedHabits)
+    }
+    
+    /**
+     * Присоединяется к привычке по коду приглашения
+     */
+    fun joinByInviteCode(code: String) {
+        viewModelScope.launch {
+            _uiState.value = _uiState.value.copy(isLoading = true, error = null)
+            
+            try {
+                val userId = authRepository.getCurrentUserId()
+                if (userId == null) {
+                    _uiState.value = _uiState.value.copy(
+                        isLoading = false,
+                        error = getApplication<Application>().getString(R.string.join_habit_auth_required)
+                    )
+                    return@launch
+                }
+
+                joinHabitByCodeUseCase(code, userId)
+                    .onSuccess { habit ->
+                        _uiState.value = _uiState.value.copy(
+                            isLoading = false,
+                            error = null,
+                            message = getApplication<Application>().getString(R.string.join_habit_success, habit.title)
+                        )
+                        refresh()
+                    }
+                    .onFailure { exception ->
+                        _uiState.value = _uiState.value.copy(
+                            isLoading = false,
+                            error = exception.message ?: getApplication<Application>().getString(R.string.join_habit_error_generic)
+                        )
+                    }
+            } catch (e: Exception) {
+                _uiState.value = _uiState.value.copy(
+                    isLoading = false,
+                    error = getApplication<Application>().getString(R.string.join_habit_error, e.message ?: "")
+                )
+            }
+        }
     }
     
     /**

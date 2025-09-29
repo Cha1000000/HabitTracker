@@ -106,7 +106,7 @@ import com.habittracker.presentation.ui.permission.hasNotificationPermission
 import com.habittracker.presentation.ui.theme.TahoeElectricBlue
 import com.habittracker.presentation.ui.theme.TahoeLightBlue
 import com.habittracker.presentation.utils.GroupHabitConstants
-import com.habittracker.presentation.viewmodel.AddEditHabitUiState
+import com.habittracker.presentation.state.AddEditHabitUiState
 import com.habittracker.presentation.viewmodel.AddEditHabitViewModel
 import com.habittracker.presentation.viewmodel.IAddEditHabitViewModel
 import kotlinx.datetime.DayOfWeek

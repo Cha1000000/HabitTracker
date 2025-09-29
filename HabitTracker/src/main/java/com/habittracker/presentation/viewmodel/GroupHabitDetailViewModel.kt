@@ -5,9 +5,7 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.habittracker.R
 import com.habittracker.domain.model.FriendshipWithUsers
-import com.habittracker.domain.model.Habit
 import com.habittracker.domain.model.HabitEntry
-import com.habittracker.domain.model.HabitInvitation
 import com.habittracker.domain.model.HabitInvitationStatus
 import com.habittracker.domain.model.User
 import com.habittracker.domain.model.isGroupHabit
@@ -17,6 +15,7 @@ import com.habittracker.domain.usecase.habit.GenerateHabitInviteCodeUseCase
 import com.habittracker.domain.usecase.habit.GetGroupHabitProgressUseCase
 import com.habittracker.domain.usecase.habit.GetHabitInvitationsUseCase
 import com.habittracker.domain.usecase.social.GetFriendsUseCase
+import com.habittracker.presentation.state.GroupHabitDetailUiState
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -354,21 +353,3 @@ class GroupHabitDetailViewModel @Inject constructor(
         _uiState.update { it.copy(successMessage = null) }
     }
 }
-
-/**
- * UI состояние для экрана детальной информации о групповой привычке
- */
-data class GroupHabitDetailUiState(
-    val isLoading: Boolean = false,
-    val habit: Habit? = null,
-    val participants: List<User> = emptyList(),
-    val habitEntries: List<HabitEntry> = emptyList(),
-    val pendingInvitations: List<HabitInvitation> = emptyList(),
-    val inviteCode: String? = null,
-    val isOwner: Boolean = false,
-    val isManageMode: Boolean = false,
-    val isGeneratingCode: Boolean = false,
-    val groupStreak: Int = 0,
-    val error: String? = null,
-    val successMessage: String? = null
-)

@@ -98,4 +98,14 @@ class HabitRepositoryImpl @Inject constructor(
             .map { entities -> entities.map { it.toDomain() } }
             .first()
     }
+    
+    override fun getPublicHabits(): Flow<List<Habit>> {
+        // Получаем все публичные привычки из локальной БД
+        // В будущем можно добавить синхронизацию с Firebase
+        return habitDao.getAllHabits().map { entities ->
+            entities
+                .filter { it.isPublic && it.isActive }
+                .map { it.toDomain() }
+        }
+    }
 }

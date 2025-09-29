@@ -2,9 +2,9 @@ package com.habittracker.presentation.viewmodel
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.habittracker.domain.model.gamification.UserStats
-import com.habittracker.domain.usecase.gamification.GetUserStatsUseCase
 import com.habittracker.domain.repository.AuthRepository
+import com.habittracker.domain.usecase.gamification.GetUserStatsUseCase
+import com.habittracker.presentation.state.StatsUiState
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -62,9 +62,3 @@ class StatsViewModel @Inject constructor(
         _uiState.value = _uiState.value.copy(error = null)
     }
 }
-
-data class StatsUiState(
-    val isLoading: Boolean = false,
-    val userStats: UserStats? = null,
-    val error: String? = null
-)

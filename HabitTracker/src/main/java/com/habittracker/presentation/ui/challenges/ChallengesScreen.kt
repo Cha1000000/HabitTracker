@@ -23,7 +23,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.habittracker.R
 import com.habittracker.presentation.ui.habits.components.TahoeGradientBackground
 import com.habittracker.presentation.ui.habits.components.ConfirmDialog
-import com.habittracker.presentation.viewmodel.ChallengeTab
+import com.habittracker.presentation.state.ChallengeTab
 import com.habittracker.presentation.viewmodel.ChallengesViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)

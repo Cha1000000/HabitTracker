@@ -18,15 +18,16 @@ import com.habittracker.domain.repository.AuthRepository
 import com.habittracker.domain.usecase.AddHabitUseCase
 import com.habittracker.domain.usecase.ApplyReminderToAllParticipantsUseCase
 import com.habittracker.domain.usecase.CancelHabitReminderUseCase
+import com.habittracker.domain.usecase.EnsureMySettingsForHabitUseCase
 import com.habittracker.domain.usecase.GetHabitByIdUseCase
 import com.habittracker.domain.usecase.GetMyHabitReminderSettingsUseCase
 import com.habittracker.domain.usecase.ScheduleHabitReminderUseCase
-import com.habittracker.domain.usecase.EnsureMySettingsForHabitUseCase
 import com.habittracker.domain.usecase.UpdateHabitUseCase
 import com.habittracker.domain.usecase.UpdateMyHabitReminderSettingsUseCase
 import com.habittracker.domain.usecase.habit.GenerateHabitInviteCodeUseCase
 import com.habittracker.domain.usecase.habit.SendHabitInvitationUseCase
 import com.habittracker.domain.usecase.social.GetFriendsUseCase
+import com.habittracker.presentation.state.AddEditHabitUiState
 import com.habittracker.presentation.utils.GroupHabitConstants
 import com.habittracker.presentation.utils.GroupHabitValidationResult
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -35,7 +36,6 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.datetime.DayOfWeek

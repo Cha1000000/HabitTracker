@@ -4,19 +4,16 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.selection.selectable
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material.icons.filled.CalendarToday
-import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Group
 import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -28,7 +25,7 @@ import com.habittracker.domain.model.ChallengeType
 import com.habittracker.domain.model.Habit
 import com.habittracker.domain.model.User
 import com.habittracker.presentation.viewmodel.CreateChallengeViewModel
-import com.habittracker.presentation.viewmodel.DatePickerType
+import com.habittracker.presentation.state.DatePickerType
 import kotlinx.datetime.LocalDate
 import com.habittracker.presentation.ui.habits.components.GlassmorphicDialog
 

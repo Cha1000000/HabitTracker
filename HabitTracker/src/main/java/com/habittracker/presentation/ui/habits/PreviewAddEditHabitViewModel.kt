@@ -10,7 +10,7 @@ import com.habittracker.domain.model.HabitValidation.HabitField
 import com.habittracker.domain.model.User
 import com.habittracker.presentation.utils.GroupHabitConstants
 import com.habittracker.presentation.utils.GroupHabitValidationResult
-import com.habittracker.presentation.viewmodel.AddEditHabitUiState
+import com.habittracker.presentation.state.AddEditHabitUiState
 import com.habittracker.presentation.viewmodel.IAddEditHabitViewModel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow

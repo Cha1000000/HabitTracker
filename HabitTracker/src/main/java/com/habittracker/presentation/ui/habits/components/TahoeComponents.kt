@@ -32,7 +32,11 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Clear
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.DropdownMenuItem
@@ -40,6 +44,9 @@ import androidx.compose.material3.ExposedDropdownMenuBox
 import androidx.compose.material3.ExposedDropdownMenuBoxScope
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.FloatingActionButtonDefaults
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.LocalTextStyle
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.MenuDefaults
 import androidx.compose.material3.OutlinedButton
@@ -50,6 +57,7 @@ import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
@@ -61,7 +69,9 @@ import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.font.FontWeight.Companion.SemiBold
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Dp
@@ -851,5 +861,195 @@ fun GradientProgressBar(
                     shape = RoundedCornerShape(cornerRadius)
                 )
         )
+    }
+}
+
+/**
+ * Glassmorphic поисковая строка в стиле macOS
+ */
+@Composable
+fun GlassmorphicSearchBar(
+    query: String,
+    onQueryChange: (String) -> Unit,
+    modifier: Modifier = Modifier,
+    placeholder: String = "Поиск...",
+    onClear: () -> Unit = {},
+    isDarkTheme: Boolean = isSystemInDarkTheme()
+) {
+    GlassmorphicCard(
+        modifier = modifier,
+        isDarkTheme = isDarkTheme,
+        cornerRadius = 12.dp,
+        glassAlpha = if (isDarkTheme) 0.15f else 0.1f,
+        borderAlpha = if (isDarkTheme) 0.3f else 0.2f
+    ) {
+        OutlinedTextField(
+            value = query,
+            onValueChange = onQueryChange,
+            placeholder = { 
+                Text(
+                    text = placeholder,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
+                )
+            },
+            leadingIcon = {
+                Icon(
+                    Icons.Default.Search,
+                    contentDescription = "Search",
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.size(20.dp)
+                )
+            },
+            trailingIcon = {
+                AnimatedVisibility(visible = query.isNotEmpty()) {
+                    IconButton(
+                        onClick = onClear,
+                        modifier = Modifier.size(36.dp)
+                    ) {
+                        Icon(
+                            Icons.Default.Clear,
+                            contentDescription = "Clear",
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.size(18.dp)
+                        )
+                    }
+                }
+            },
+            singleLine = true,
+            shape = RoundedCornerShape(12.dp),
+            colors = TextFieldDefaults.colors(
+                focusedContainerColor = Color.Transparent,
+                unfocusedContainerColor = Color.Transparent,
+                disabledContainerColor = Color.Transparent,
+                focusedIndicatorColor = Color.Transparent,
+                unfocusedIndicatorColor = Color.Transparent,
+                disabledIndicatorColor = Color.Transparent
+            ),
+            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
+            keyboardActions = KeyboardActions(onSearch = { /* Handle search */ }),
+            modifier = Modifier.fillMaxWidth()
+        )
+    }
+}
+
+/**
+ * Tahoe стиль фильтр-чип
+ */
+@Composable
+fun TahoeFilterChip(
+    selected: Boolean,
+    onClick: () -> Unit,
+    label: @Composable () -> Unit,
+    modifier: Modifier = Modifier,
+    isDarkTheme: Boolean = isSystemInDarkTheme()
+) {
+    val backgroundColor by animateColorAsState(
+        targetValue = if (selected) {
+            MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f)
+        } else {
+            if (isDarkTheme) Color.White.copy(alpha = 0.05f) else Color.Black.copy(alpha = 0.03f)
+        },
+        animationSpec = tween(300),
+        label = "chipBackgroundColor"
+    )
+    
+    val borderColor by animateColorAsState(
+        targetValue = if (selected) {
+            MaterialTheme.colorScheme.primary.copy(alpha = 0.5f)
+        } else {
+            if (isDarkTheme) Color.White.copy(alpha = 0.15f) else Color.Black.copy(alpha = 0.1f)
+        },
+        animationSpec = tween(300),
+        label = "chipBorderColor"
+    )
+    
+    val scale by animateFloatAsState(
+        targetValue = if (selected) 1.05f else 1f,
+        animationSpec = tween(200),
+        label = "chipScale"
+    )
+    
+    Surface(
+        onClick = onClick,
+        color = backgroundColor,
+        shape = RoundedCornerShape(20.dp),
+        border = BorderStroke(
+            width = 1.dp,
+            color = borderColor
+        ),
+        modifier = modifier
+            .scale(scale)
+            .heightIn(min = 32.dp)
+    ) {
+        Row(
+            modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
+            horizontalArrangement = Arrangement.Center,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            CompositionLocalProvider(
+                LocalTextStyle provides MaterialTheme.typography.labelMedium.copy(
+                    color = if (selected) {
+                        MaterialTheme.colorScheme.primary
+                    } else {
+                        MaterialTheme.colorScheme.onSurfaceVariant
+                    }
+                )
+            ) {
+                label()
+            }
+        }
+    }
+}
+
+/**
+ * Tahoe Top Bar с заголовком и подзаголовком
+ */
+@Composable
+fun TahoeTopBar(
+    modifier: Modifier = Modifier,
+    title: String,
+    subtitle: String? = null,
+    navigationIcon: (@Composable () -> Unit)? = null,
+    actions: (@Composable RowScope.() -> Unit)? = null,
+) {
+    Row(
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(vertical = 8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.SpaceBetween
+    ) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier.weight(1f)
+        ) {
+            navigationIcon?.invoke()
+            
+            Column(
+                modifier = Modifier.padding(start = if (navigationIcon != null) 8.dp else 0.dp)
+            ) {
+                Text(
+                    text = title,
+                    style = MaterialTheme.typography.headlineSmall,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+                
+                subtitle?.let {
+                    Text(
+                        text = it,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+        }
+        
+        Row(
+            horizontalArrangement = Arrangement.End,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            actions?.invoke(this)
+        }
     }
 }

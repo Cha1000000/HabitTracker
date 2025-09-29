@@ -15,6 +15,7 @@ import com.habittracker.domain.usecase.GetHabitsUseCase
 import com.habittracker.domain.usecase.MarkHabitCompletedUseCase
 import com.habittracker.domain.usecase.MarkHabitIncompleteUseCase
 import com.habittracker.domain.usecase.ScheduleHabitReminderUseCase
+import com.habittracker.domain.usecase.habit.JoinHabitByCodeUseCase
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.test.advanceUntilIdle
@@ -51,6 +52,7 @@ class HabitsViewModelTest {
     private val deleteHabitUseCase: DeleteHabitUseCase = mock()
     private val ensureMySettingsForHabitUseCase: EnsureMySettingsForHabitUseCase = mock()
     private val scheduleHabitReminderUseCase: ScheduleHabitReminderUseCase = mock()
+    private val joinHabitByCodeUseCase: JoinHabitByCodeUseCase = mock()
     private val application: Application = mock()
     private lateinit var logMock: MockedStatic<Log>
 
@@ -107,6 +109,7 @@ class HabitsViewModelTest {
             deleteHabitUseCase,
             ensureMySettingsForHabitUseCase,
             scheduleHabitReminderUseCase,
+            joinHabitByCodeUseCase,
             application
         )
     }

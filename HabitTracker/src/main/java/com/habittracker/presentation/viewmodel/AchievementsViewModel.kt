@@ -3,9 +3,9 @@ package com.habittracker.presentation.viewmodel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.habittracker.domain.model.AchievementCategory
-import com.habittracker.domain.model.AchievementWithProgress
 import com.habittracker.domain.repository.AuthRepository
 import com.habittracker.domain.usecase.gamification.GetAchievementsUseCase
+import com.habittracker.presentation.state.AchievementsUiState
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -72,11 +72,3 @@ class AchievementsViewModel @Inject constructor(
     }
 }
 
-data class AchievementsUiState(
-    val isLoading: Boolean = false,
-    val achievements: List<AchievementWithProgress> = emptyList(),
-    val unlockedCount: Int = 0,
-    val totalCount: Int = 0,
-    val selectedCategory: AchievementCategory? = null,
-    val error: String? = null
-)

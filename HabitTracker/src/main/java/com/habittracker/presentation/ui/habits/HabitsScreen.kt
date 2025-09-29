@@ -16,7 +16,6 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.material.ExperimentalMaterialApi
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.TrendingUp
-import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.EmojiEvents
 import androidx.compose.material.icons.filled.Notifications
@@ -74,7 +73,8 @@ import com.habittracker.domain.model.isGroupHabit
 import com.habittracker.presentation.navigation.Screen
 import com.habittracker.presentation.ui.components.GradientPullRefreshIndicator
 import com.habittracker.presentation.ui.habits.components.EnhancedHabitItem
-import com.habittracker.presentation.ui.habits.components.GlassmorphicFAB
+import com.habittracker.presentation.ui.habits.components.ExpandableFAB
+import com.habittracker.presentation.ui.habits.components.JoinByCodeDialog
 import com.habittracker.presentation.ui.habits.components.TahoeDockBar
 import com.habittracker.presentation.ui.habits.components.TahoeDockDivider
 import com.habittracker.presentation.ui.habits.components.TahoeDockItem
@@ -165,11 +165,29 @@ fun HabitsScreen(
             )
         },
         floatingActionButton = {
-            GlassmorphicFAB(
-                onClick = { navController.navigate(Screen.AddEditHabit.route) },
-                isDarkTheme = isSystemInDarkTheme(),
-            ) {
-                Icon(Icons.Default.Add, contentDescription = stringResource(R.string.cd_add_habit))
+            var showCodeDialog by remember { mutableStateOf(false) }
+            
+            ExpandableFAB(
+                onCreateHabit = { 
+                    navController.navigate(Screen.AddEditHabit.route) 
+                },
+                onBrowsePublic = { 
+                    navController.navigate(Screen.PublicHabits.route) 
+                },
+                onJoinByCode = { 
+                    showCodeDialog = true 
+                }
+            )
+            
+            // Диалог ввода кода
+            if (showCodeDialog) {
+                JoinByCodeDialog(
+                    onDismiss = { showCodeDialog = false },
+                    onJoin = { code ->
+                        showCodeDialog = false
+                        viewModel.joinByInviteCode(code)
+                    }
+                )
             }
         },
         bottomBar = {

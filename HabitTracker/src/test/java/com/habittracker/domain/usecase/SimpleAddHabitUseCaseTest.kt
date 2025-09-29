@@ -139,5 +139,6 @@ class SimpleAddHabitUseCaseTest {
         override suspend fun removeParticipantFromHabit(habitId: String, userId: String) = throw NotImplementedError()
         override suspend fun getHabitParticipants(habitId: String) = throw NotImplementedError()
         override suspend fun searchHabits(userId: String, query: String) = throw NotImplementedError()
+        override fun getPublicHabits(): Flow<List<Habit>> = flowOf(emptyList())
     }
 }

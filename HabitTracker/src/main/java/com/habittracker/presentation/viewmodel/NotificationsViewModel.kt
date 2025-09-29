@@ -3,22 +3,22 @@ package com.habittracker.presentation.viewmodel
 import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.habittracker.R
+import com.habittracker.domain.model.HabitInvitationStatus
 import com.habittracker.domain.repository.AuthRepository
-import com.habittracker.domain.usecase.habit.GetHabitInvitationsUseCase
 import com.habittracker.domain.usecase.habit.AcceptHabitInvitationUseCase
 import com.habittracker.domain.usecase.habit.DeclineHabitInvitationUseCase
-import com.habittracker.domain.model.HabitInvitation
-import com.habittracker.domain.model.HabitInvitationStatus
+import com.habittracker.domain.usecase.habit.GetHabitInvitationsUseCase
 import com.habittracker.domain.usecase.notification.GroupHabitNotification
 import com.habittracker.domain.usecase.notification.GroupHabitNotificationUseCase
-import com.habittracker.R
+import com.habittracker.presentation.state.NotificationsUiState
 import dagger.hilt.android.lifecycle.HiltViewModel
-import kotlinx.coroutines.flow.map
-import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
@@ -275,21 +275,3 @@ class NotificationsViewModel @Inject constructor(
     }
 }
 
-/**
- * UI состояние экрана уведомлений
- */
-data class NotificationsUiState(
-    val notifications: List<GroupHabitNotification> = emptyList(),
-    val unreadCount: Int = 0,
-    val isLoading: Boolean = false,
-    val error: String? = null,
-    val successMessage: String? = null,
-    val errorResId: Int? = null,
-    val invitesErrorResId: Int? = null,
-    val successResId: Int? = null,
-    // Invitations section
-    val invitations: List<HabitInvitation> = emptyList(),
-    val isInvitesLoading: Boolean = false,
-    val invitesError: String? = null,
-    val processingInvitationIds: Set<String> = emptySet()
-)

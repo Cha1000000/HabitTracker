@@ -10,23 +10,13 @@ import com.habittracker.domain.usecase.RegisterUseCase
 import com.habittracker.domain.usecase.SignInWithGoogleUseCase
 import com.habittracker.domain.usecase.SignOutUseCase
 import com.habittracker.domain.usecase.notification.ManageFCMTokenUseCase
+import com.habittracker.presentation.state.AuthUiState
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import javax.inject.Inject
-
-/**
- * UI State для экранов аутентификации.
- */
-data class AuthUiState(
-    val email: String = "",
-    val password: String = "",
-    val isLoading: Boolean = false,
-    val error: String? = null,
-    val isSuccess: Boolean = false
-)
 
 sealed class AuthEvent {
     data class EmailChanged(val email: String) : AuthEvent()

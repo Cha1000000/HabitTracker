@@ -6,6 +6,7 @@ import com.habittracker.domain.model.HabitType
 import com.habittracker.domain.repository.HabitRepository
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.map
 import kotlinx.datetime.Clock
 import kotlinx.datetime.LocalTime
@@ -112,6 +113,12 @@ class FakeHabitRepository : HabitRepository {
             it.createdBy == testUserId &&
             (it.title.contains(query, ignoreCase = true) ||
              it.description.contains(query, ignoreCase = true))
+        }
+    }
+    
+    override fun getPublicHabits(): Flow<List<Habit>> {
+        return flow {
+            emit(_habits.filter { it.isPublic && it.isActive })
         }
     }
 }
