@@ -7,6 +7,7 @@ import com.habittracker.R
 import com.habittracker.domain.model.Habit
 import com.habittracker.domain.repository.AuthRepository
 import com.habittracker.domain.repository.HabitRepository
+import com.habittracker.domain.usecase.UpdateHabitUseCase
 import com.habittracker.domain.usecase.habit.JoinHabitByCodeUseCase
 import com.habittracker.presentation.state.PublicHabitsUiState
 import com.habittracker.presentation.ui.discover.HabitCategory
@@ -27,6 +28,7 @@ class PublicHabitsViewModel @Inject constructor(
     application: Application,
     private val habitRepository: HabitRepository,
     private val authRepository: AuthRepository,
+    private val updateHabitUseCase: UpdateHabitUseCase,
     private val joinHabitByCodeUseCase: JoinHabitByCodeUseCase
 ) : AndroidViewModel(application) {
     
@@ -173,7 +175,8 @@ class PublicHabitsViewModel @Inject constructor(
                     val updatedHabit = habit.copy(
                         participants = habit.participants + userId
                     )
-                    habitRepository.updateHabit(updatedHabit)
+                    // Используем UpdateHabitUseCase для синхронизации с Firestore
+                    updateHabitUseCase(updatedHabit)
                     
                     _uiState.update {
                         it.copy(
