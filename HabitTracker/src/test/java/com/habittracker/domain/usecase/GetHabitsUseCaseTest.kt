@@ -146,6 +146,7 @@ class GetHabitsUseCaseTest {
         override suspend fun syncData() = throw NotImplementedError()
         override suspend fun getParticipantSettings(habitId: String, userId: String) = null
         override suspend fun setParticipantSettings(settings: HabitParticipantSettings) = throw NotImplementedError()
+        override fun getAllPublicHabits(excludeUserId: String?) = flowOf(emptyList<Habit>())
     }
 
     private class FakeHabitRepository : HabitRepository {

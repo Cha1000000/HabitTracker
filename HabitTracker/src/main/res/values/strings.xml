@@ -416,10 +416,10 @@
     
     <!-- Join by Code Dialog -->
     <string name="join_by_code_title">Введите код приглашения</string>
-    <string name="join_by_code_hint">Код состоит из 6 символов</string>
+    <string name="join_by_code_hint">Код состоит из 8 символов</string>
     <string name="join_by_code_label">Код</string>
-    <string name="join_by_code_placeholder">ABC123</string>
-    <string name="join_by_code_error">Код должен содержать 6 символов</string>
+    <string name="join_by_code_placeholder">ABC123TO</string>
+    <string name="join_by_code_error">Код должен содержать 8 символов</string>
     <string name="join_by_code_button">Присоединиться</string>
     
     <!-- Public Habits -->

@@ -5,12 +5,16 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.habittracker.R
 import com.habittracker.domain.model.Habit
+import com.habittracker.domain.repository.AuthRepository
 import com.habittracker.domain.repository.HabitRepository
 import com.habittracker.domain.usecase.habit.JoinHabitByCodeUseCase
 import com.habittracker.presentation.state.PublicHabitsUiState
 import com.habittracker.presentation.ui.discover.HabitCategory
 import dagger.hilt.android.lifecycle.HiltViewModel
-import kotlinx.coroutines.flow.*
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
@@ -22,6 +26,7 @@ import javax.inject.Inject
 class PublicHabitsViewModel @Inject constructor(
     application: Application,
     private val habitRepository: HabitRepository,
+    private val authRepository: AuthRepository,
     private val joinHabitByCodeUseCase: JoinHabitByCodeUseCase
 ) : AndroidViewModel(application) {
     
@@ -59,7 +64,7 @@ class PublicHabitsViewModel @Inject constructor(
                             )
                         }
                     }
-            } catch (e: Exception) {
+            } catch (_: Exception) {
                 _uiState.update {
                     it.copy(
                         isLoading = false,
@@ -75,8 +80,9 @@ class PublicHabitsViewModel @Inject constructor(
      */
     private fun observeCurrentUser() {
         viewModelScope.launch {
-            // TODO: Получить ID текущего пользователя из AuthRepository
-            _currentUserId.value = "current_user_id" // Заглушка
+            authRepository.getCurrentUser().collect { user ->
+                _currentUserId.value = user?.id
+            }
         }
     }
     

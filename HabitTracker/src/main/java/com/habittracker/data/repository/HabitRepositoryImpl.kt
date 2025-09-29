@@ -4,6 +4,8 @@ import com.habittracker.data.local.dao.HabitDao
 import com.habittracker.data.local.mappers.toDomain
 import com.habittracker.data.local.mappers.toEntity
 import com.habittracker.domain.model.Habit
+import com.habittracker.domain.repository.AuthRepository
+import com.habittracker.domain.repository.FirestoreRepository
 import com.habittracker.domain.repository.HabitRepository
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
@@ -14,7 +16,9 @@ import javax.inject.Singleton
 
 @Singleton
 class HabitRepositoryImpl @Inject constructor(
-    private val habitDao: HabitDao
+    private val habitDao: HabitDao,
+    private val firestoreRepository: FirestoreRepository,
+    private val authRepository: AuthRepository
 ) : HabitRepository {
     
     override suspend fun insertHabit(habit: Habit) {
@@ -100,12 +104,10 @@ class HabitRepositoryImpl @Inject constructor(
     }
     
     override fun getPublicHabits(): Flow<List<Habit>> {
-        // Получаем все публичные привычки из локальной БД
-        // В будущем можно добавить синхронизацию с Firebase
-        return habitDao.getAllHabits().map { entities ->
-            entities
-                .filter { it.isPublic && it.isActive }
-                .map { it.toDomain() }
-        }
+        // Получаем все публичные привычки из Firebase, исключая привычки текущего пользователя
+        val currentUserId = authRepository.getCurrentUserId() 
+            ?: return firestoreRepository.getAllPublicHabits() // На всякий случай, если userId null
+        
+        return firestoreRepository.getAllPublicHabits(excludeUserId = currentUserId)
     }
 }

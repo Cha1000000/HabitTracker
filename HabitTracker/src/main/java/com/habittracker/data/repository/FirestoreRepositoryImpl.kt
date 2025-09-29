@@ -467,4 +467,43 @@ class FirestoreRepositoryImpl @Inject constructor(
         }
     }
     // endregion
+    
+    override fun getAllPublicHabits(excludeUserId: String?): Flow<List<Habit>> = callbackFlow {
+        try {
+            val query: Query = firestore.collection(HABITS_COLLECTION)
+                .whereEqualTo("public", true)
+                .whereEqualTo("isActive", true)
+
+            val listener = query.addSnapshotListener { snapshot, error ->
+                if (error != null) {
+                    Log.e(TAG, "Error getting public habits", error)
+                    trySend(emptyList())
+                    return@addSnapshotListener
+                }
+                
+                if (snapshot != null) {
+                    val habits = snapshot.documents.mapNotNull { doc ->
+                        parseHabitSafely(doc)?.let { habit ->
+                            // Фильтруем привычки текущего пользователя
+                            if (excludeUserId != null && habit.createdBy == excludeUserId) {
+                                null
+                            } else {
+                                habit
+                            }
+                        }
+                    }
+                    
+                    Log.d(TAG, "Got ${habits.size} public habits from Firestore")
+                    trySend(habits)
+                } else {
+                    trySend(emptyList())
+                }
+            }
+            
+            awaitClose { listener.remove() }
+        } catch (e: Exception) {
+            Log.e(TAG, "Error in getAllPublicHabits", e)
+            trySend(emptyList())
+        }
+    }
 }

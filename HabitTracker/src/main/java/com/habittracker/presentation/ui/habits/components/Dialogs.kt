@@ -268,7 +268,7 @@ fun JoinByCodeDialog(
                 OutlinedTextField(
                     value = code.uppercase(),
                     onValueChange = { newCode ->
-                        if (newCode.length <= 6 && newCode.all { it.isLetterOrDigit() }) {
+                        if (newCode.length <= 8 && newCode.all { it.isLetterOrDigit() }) {
                             code = newCode.uppercase()
                             isError = false
                         }
@@ -291,7 +291,7 @@ fun JoinByCodeDialog(
                     ),
                     keyboardActions = KeyboardActions(
                         onDone = {
-                            if (code.length == 6) {
+                            if (code.length == 8) {
                                 onJoin(code)
                             } else {
                                 isError = true
@@ -304,7 +304,7 @@ fun JoinByCodeDialog(
         confirmButton = {
             TextButton(
                 onClick = {
-                    if (code.length == 6) {
+                    if (code.length == 8) {
                         onJoin(code)
                     } else {
                         isError = true
