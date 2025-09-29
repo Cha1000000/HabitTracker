@@ -487,6 +487,10 @@ class AddEditHabitViewModel @Inject constructor(
         _uiState.update { it.copy(successMessage = null) }
     }
     
+    fun showMessage(message: String) {
+        _uiState.update { it.copy(successMessage = message) }
+    }
+    
     // Методы для работы с напоминаниями
     override fun scheduleReminder() {
         viewModelScope.launch {

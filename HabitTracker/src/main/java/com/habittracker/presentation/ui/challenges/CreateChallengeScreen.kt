@@ -30,6 +30,7 @@ import com.habittracker.domain.model.User
 import com.habittracker.presentation.viewmodel.CreateChallengeViewModel
 import com.habittracker.presentation.viewmodel.DatePickerType
 import kotlinx.datetime.LocalDate
+import com.habittracker.presentation.ui.habits.components.GlassmorphicDialog
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -230,7 +231,7 @@ private fun HabitSelectionCard(
                     )
                 } else {
                     Text(
-                        text = "Нажмите для выбора привычки",
+                        text = stringResource(R.string.tap_to_select_habit),
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -270,13 +271,13 @@ private fun ParticipantsSelectionCard(
                 )
                 if (selectedParticipants.isNotEmpty()) {
                     Text(
-                        text = "${selectedParticipants.size} участников выбрано",
+                        text = stringResource(R.string.selected_participants, selectedParticipants.size),
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.primary
                     )
                 } else {
                     Text(
-                        text = "Нажмите для выбора участников",
+                        text = stringResource(R.string.tap_to_select_participants),
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -467,10 +468,10 @@ private fun HabitSelectorDialog(
     onHabitSelected: (Habit) -> Unit,
     onDismiss: () -> Unit
 ) {
-    AlertDialog(
+    GlassmorphicDialog(
         onDismissRequest = onDismiss,
         title = { Text(stringResource(R.string.select_habit)) },
-        text = {
+        content = {
             LazyColumn {
                 items(habits) { habit ->
                     TextButton(
@@ -486,11 +487,8 @@ private fun HabitSelectorDialog(
                 }
             }
         },
-        confirmButton = {},
-        dismissButton = {
-            TextButton(onClick = onDismiss) {
-                Text(stringResource(R.string.cancel))
-            }
+        actions = {
+            TextButton(onClick = onDismiss) { Text(stringResource(R.string.cancel)) }
         }
     )
 }
@@ -502,10 +500,10 @@ private fun ParticipantSelectorDialog(
     onParticipantToggle: (User) -> Unit,
     onDismiss: () -> Unit
 ) {
-    AlertDialog(
+    GlassmorphicDialog(
         onDismissRequest = onDismiss,
         title = { Text(stringResource(R.string.select_participants)) },
-        text = {
+        content = {
             LazyColumn {
                 items(friends) { friend ->
                     Row(
@@ -531,11 +529,8 @@ private fun ParticipantSelectorDialog(
                 }
             }
         },
-        confirmButton = {
-            TextButton(onClick = onDismiss) {
-                Text(stringResource(R.string.done))
-            }
-        },
-        dismissButton = {}
+        actions = {
+            TextButton(onClick = onDismiss) { Text(stringResource(R.string.done)) }
+        }
     )
 }

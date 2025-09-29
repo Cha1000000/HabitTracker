@@ -1,5 +1,6 @@
 package com.habittracker.presentation.ui.stats
 
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -22,21 +23,22 @@ import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material.icons.filled.Whatshot
 import androidx.compose.material3.Button
-import androidx.compose.material3.Card
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -49,6 +51,9 @@ import com.habittracker.domain.model.gamification.HabitStats
 import com.habittracker.domain.model.gamification.SocialStats
 import com.habittracker.domain.model.gamification.StreakStats
 import com.habittracker.domain.model.gamification.TimeStats
+import com.habittracker.presentation.ui.habits.components.GlassmorphicCard
+import com.habittracker.presentation.ui.habits.components.GradientProgressBar
+import com.habittracker.presentation.ui.habits.components.TahoeGradientBackground
 import com.habittracker.presentation.viewmodel.StatsViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -66,44 +71,61 @@ fun StatsScreen(
         }
     }
 
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = { Text(stringResource(R.string.stats_title)) },
-                navigationIcon = {
-                    IconButton(onClick = onNavigateBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Назад")
-                    }
-                },
-                actions = {
-                    IconButton(onClick = { viewModel.refresh() }) {
-                        Icon(Icons.Default.Refresh, contentDescription = "Обновить")
-                    }
-                }
-            )
-        }
-    ) { paddingValues ->
-        when {
-            uiState.isLoading -> {
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(paddingValues),
-                    contentAlignment = Alignment.Center
-                ) {
-                    CircularProgressIndicator()
-                }
+    // Оборачиваем весь экран в градиентный фон Tahoe
+    TahoeGradientBackground(
+        modifier = Modifier.fillMaxSize(),
+        isDarkTheme = isSystemInDarkTheme()
+    ) {
+        Scaffold(
+            containerColor = Color.Transparent, // Делаем фон Scaffold прозрачным
+            contentColor = MaterialTheme.colorScheme.onBackground,
+            topBar = {
+                TopAppBar(
+                    title = { Text(stringResource(R.string.stats_title)) },
+                    navigationIcon = {
+                        IconButton(onClick = onNavigateBack) {
+                            Icon(
+                                Icons.AutoMirrored.Filled.ArrowBack,
+                                contentDescription = stringResource(R.string.cd_back)
+                            )
+                        }
+                    },
+                    actions = {
+                        IconButton(onClick = { viewModel.refresh() }) {
+                            Icon(
+                                Icons.Default.Refresh,
+                                contentDescription = stringResource(R.string.cd_refresh)
+                            )
+                        }
+                    },
+                    colors = TopAppBarDefaults.topAppBarColors(
+                        containerColor = Color.Transparent,
+                        scrolledContainerColor = Color.Transparent
+                    )
+                )
             }
-            
-            uiState.userStats != null -> {
-                val userStats = uiState.userStats!!
-                LazyColumn(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(paddingValues),
-                    contentPadding = PaddingValues(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(16.dp)
-                ) {
+        ) { paddingValues ->
+            when {
+                uiState.isLoading -> {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(paddingValues),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        CircularProgressIndicator()
+                    }
+                }
+                
+                uiState.userStats != null -> {
+                    val userStats = uiState.userStats!!
+                    LazyColumn(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(paddingValues),
+                        contentPadding = PaddingValues(16.dp),
+                        verticalArrangement = Arrangement.spacedBy(16.dp)
+                    ) {
                     item {
                         UserLevelCard(userStats.levelInfo)
                     }
@@ -148,23 +170,33 @@ fun StatsScreen(
                             tint = MaterialTheme.colorScheme.error
                         )
                         Text(
-                            text = uiState.error ?: "Не удалось загрузить статистику",
+                            text = uiState.error ?: stringResource(R.string.stats_error_load),
                             style = MaterialTheme.typography.bodyLarge,
                             textAlign = TextAlign.Center
                         )
                         Button(onClick = { viewModel.refresh() }) {
-                            Text("Попробовать снова")
+                            Text(stringResource(R.string.try_again))
                         }
                     }
                 }
             }
+        }
         }
     }
 }
 
 @Composable
 private fun UserLevelCard(levelInfo: com.habittracker.domain.model.UserLevelInfo) {
-    Card {
+    val isDarkTheme = isSystemInDarkTheme()
+    
+    GlassmorphicCard(
+        modifier = Modifier.fillMaxWidth(),
+        isDarkTheme = isDarkTheme,
+        cornerRadius = 16.dp,
+        glassAlpha = if (isDarkTheme) 0.18f else 0.85f,
+        borderAlpha = if (isDarkTheme) 0.3f else 0.15f,
+        elevation = 2.dp
+    ) {
         Column(
             modifier = Modifier.padding(16.dp)
         ) {
@@ -174,7 +206,7 @@ private fun UserLevelCard(levelInfo: com.habittracker.domain.model.UserLevelInfo
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
-                    text = "Уровень ${levelInfo.currentLevel}",
+                    text = stringResource(R.string.level_title, levelInfo.currentLevel),
                     style = MaterialTheme.typography.headlineSmall,
                     fontWeight = FontWeight.Bold
                 )
@@ -188,21 +220,25 @@ private fun UserLevelCard(levelInfo: com.habittracker.domain.model.UserLevelInfo
             Spacer(modifier = Modifier.height(8.dp))
             
             Text(
-                text = "${levelInfo.currentPoints} / ${levelInfo.pointsForNextLevel} очков",
+                text = stringResource(
+                    R.string.level_points_inline,
+                    levelInfo.currentPoints,
+                    levelInfo.pointsForNextLevel
+                ),
                 style = MaterialTheme.typography.bodyMedium
             )
             
             Spacer(modifier = Modifier.height(8.dp))
             
-            LinearProgressIndicator(
-                progress = { levelInfo.progress },
-                modifier = Modifier.fillMaxWidth(),
+            GradientProgressBar(
+                progress = levelInfo.progress,
+                modifier = Modifier.fillMaxWidth()
             )
             
             if (!levelInfo.isMaxLevel) {
                 Spacer(modifier = Modifier.height(4.dp))
                 Text(
-                    text = "До следующего уровня: ${levelInfo.pointsToNextLevel} очков",
+                    text = stringResource(R.string.level_next_points, levelInfo.pointsToNextLevel),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -214,20 +250,20 @@ private fun UserLevelCard(levelInfo: com.habittracker.domain.model.UserLevelInfo
 @Composable
 private fun HabitStatsCard(habitStats: HabitStats) {
     StatsCard(
-        title = "Привычки",
+        title = stringResource(R.string.stats_habits_title),
         icon = Icons.Default.CheckCircle,
         stats = listOf(
-            "Всего привычек" to habitStats.totalHabits.toString(),
-            "Активных привычек" to habitStats.activeHabits.toString(),
-            "Выполнено сегодня" to habitStats.completedToday.toString(),
-            "Всего выполнений" to habitStats.totalCompletions.toString(),
-            "За эту неделю" to habitStats.completionsThisWeek.toString(),
-            "За этот месяц" to habitStats.completionsThisMonth.toString(),
-            "Средний процент выполнения" to "${habitStats.averageCompletionRate.toInt()}%",
-            "Идеальных дней" to habitStats.perfectDays.toString()
+            stringResource(R.string.stats_habits_total) to habitStats.totalHabits.toString(),
+            stringResource(R.string.stats_habits_active) to habitStats.activeHabits.toString(),
+            stringResource(R.string.stats_habits_completed_today) to habitStats.completedToday.toString(),
+            stringResource(R.string.stats_habits_total_completions) to habitStats.totalCompletions.toString(),
+            stringResource(R.string.stats_habits_week) to habitStats.completionsThisWeek.toString(),
+            stringResource(R.string.stats_habits_month) to habitStats.completionsThisMonth.toString(),
+            stringResource(R.string.stats_habits_avg_completion) to "${habitStats.averageCompletionRate.toInt()}%",
+            stringResource(R.string.stats_habits_perfect_days) to habitStats.perfectDays.toString()
         ).plus(
             habitStats.mostCompletedHabit?.let { 
-                listOf("Лучшая привычка" to it)
+                listOf(stringResource(R.string.stats_habits_best) to it)
             } ?: emptyList()
         )
     )
@@ -236,13 +272,13 @@ private fun HabitStatsCard(habitStats: HabitStats) {
 @Composable
 private fun StreakStatsCard(streakStats: StreakStats) {
     StatsCard(
-        title = "Серии",
+        title = stringResource(R.string.stats_streaks_title),
         icon = Icons.Default.Whatshot,
         stats = listOf(
-            "Текущая серия" to streakStats.currentStreak.toString(),
-            "Лучшая серия" to streakStats.longestStreak.toString(),
-            "Средняя серия" to streakStats.averageStreak.toString(),
-            "Активных серий" to streakStats.activeStreaks.toString()
+            stringResource(R.string.stats_streak_current) to streakStats.currentStreak.toString(),
+            stringResource(R.string.stats_streak_best) to streakStats.longestStreak.toString(),
+            stringResource(R.string.stats_streak_avg) to streakStats.averageStreak.toString(),
+            stringResource(R.string.stats_streak_active) to streakStats.activeStreaks.toString()
         )
     )
 }
@@ -250,13 +286,13 @@ private fun StreakStatsCard(streakStats: StreakStats) {
 @Composable
 private fun SocialStatsCard(socialStats: SocialStats) {
     StatsCard(
-        title = "Социальные",
+        title = stringResource(R.string.stats_social_title),
         icon = Icons.Default.Group,
         stats = listOf(
-            "Друзей" to socialStats.friendsCount.toString(),
-            "Групповых привычек" to socialStats.groupHabitsCount.toString(),
-            "Челленджей участвовал" to socialStats.challengesParticipated.toString(),
-            "Челленджей выиграл" to socialStats.challengesWon.toString()
+            stringResource(R.string.stats_social_friends) to socialStats.friendsCount.toString(),
+            stringResource(R.string.stats_social_group_habits) to socialStats.groupHabitsCount.toString(),
+            stringResource(R.string.stats_social_challenges_participated) to socialStats.challengesParticipated.toString(),
+            stringResource(R.string.stats_social_challenges_won) to socialStats.challengesWon.toString()
         )
     )
 }
@@ -264,15 +300,15 @@ private fun SocialStatsCard(socialStats: SocialStats) {
 @Composable
 private fun ChallengeStatsCard(challengeStats: ChallengeStats) {
     StatsCard(
-        title = "Челленджи",
+        title = stringResource(R.string.stats_challenges_title),
         icon = Icons.Default.EmojiEvents,
         stats = listOf(
-            "Всего челленджей" to challengeStats.totalChallenges.toString(),
-            "Активных" to challengeStats.activeChallenges.toString(),
-            "Завершено" to challengeStats.completedChallenges.toString(),
-            "Выиграно" to challengeStats.wonChallenges.toString(),
-            "Процент побед" to "${challengeStats.winRate.toInt()}%",
-            "Создано" to challengeStats.createdChallenges.toString()
+            stringResource(R.string.stats_challenges_total) to challengeStats.totalChallenges.toString(),
+            stringResource(R.string.stats_challenges_active) to challengeStats.activeChallenges.toString(),
+            stringResource(R.string.stats_challenges_completed) to challengeStats.completedChallenges.toString(),
+            stringResource(R.string.stats_challenges_won) to challengeStats.wonChallenges.toString(),
+            stringResource(R.string.stats_challenges_win_rate) to "${challengeStats.winRate.toInt()}%",
+            stringResource(R.string.stats_challenges_created) to challengeStats.createdChallenges.toString()
         )
     )
 }
@@ -280,20 +316,20 @@ private fun ChallengeStatsCard(challengeStats: ChallengeStats) {
 @Composable
 private fun TimeStatsCard(timeStats: TimeStats) {
     StatsCard(
-        title = "Время выполнения",
+        title = stringResource(R.string.stats_time_title),
         icon = Icons.Default.Schedule,
         stats = listOf(
-            "Утром (5-11)" to timeStats.morningCompletions.toString(),
-            "Днем (12-17)" to timeStats.afternoonCompletions.toString(),
-            "Вечером (18-22)" to timeStats.eveningCompletions.toString(),
-            "Оценка постоянства" to "${(timeStats.consistencyScore * 100).toInt()}%"
+            stringResource(R.string.stats_time_morning) to timeStats.morningCompletions.toString(),
+            stringResource(R.string.stats_time_afternoon) to timeStats.afternoonCompletions.toString(),
+            stringResource(R.string.stats_time_evening) to timeStats.eveningCompletions.toString(),
+            stringResource(R.string.stats_time_consistency) to "${(timeStats.consistencyScore * 100).toInt()}%"
         ).plus(
             timeStats.averageCompletionTime?.let {
-                listOf("Среднее время" to it)
+                listOf(stringResource(R.string.stats_time_average) to it)
             } ?: emptyList()
         ).plus(
             timeStats.mostProductiveHour?.let {
-                listOf("Лучший час" to "${it}:00")
+                listOf(stringResource(R.string.stats_time_best_hour) to "${it}:00")
             } ?: emptyList()
         )
     )
@@ -302,10 +338,19 @@ private fun TimeStatsCard(timeStats: TimeStats) {
 @Composable
 private fun StatsCard(
     title: String,
-    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    icon: ImageVector,
     stats: List<Pair<String, String>>
 ) {
-    Card {
+    val isDarkTheme = isSystemInDarkTheme()
+    
+    GlassmorphicCard(
+        modifier = Modifier.fillMaxWidth(),
+        isDarkTheme = isDarkTheme,
+        cornerRadius = 16.dp,
+        glassAlpha = if (isDarkTheme) 0.18f else 0.85f,
+        borderAlpha = if (isDarkTheme) 0.3f else 0.15f,
+        elevation = 2.dp
+    ) {
         Column(
             modifier = Modifier.padding(16.dp)
         ) {
@@ -316,7 +361,7 @@ private fun StatsCard(
                 Icon(
                     icon,
                     contentDescription = null,
-                    tint = MaterialTheme.colorScheme.primary
+                    tint = if (isDarkTheme) Color(0xFF4DC273) else MaterialTheme.colorScheme.primary
                 )
                 Text(
                     text = title,

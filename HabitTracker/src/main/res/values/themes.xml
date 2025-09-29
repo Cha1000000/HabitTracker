@@ -2,4 +2,16 @@
 <resources>
 
     <style name="Theme.HabitTracker" parent="android:Theme.Material.Light.NoActionBar" />
+
+    <!-- Splash theme: Android 12+ (windowSplashScreen*) и fallback для < 12 (windowBackground) -->
+    <style name="Theme.HabitTracker.Splash" parent="Theme.SplashScreen">
+        <!-- Unified support-library attributes work on API < 31 and 31+ -->
+        <item name="windowSplashScreenAnimatedIcon">@mipmap/ic_launcher</item>
+        <item name="windowSplashScreenAnimationDuration">120</item>
+        <item name="windowSplashScreenBackground">@drawable/splash_bg_tahoe</item>
+        <!-- Fallback background for pre-Android 12 startup window -->
+        <item name="android:windowBackground">@drawable/splash_bg_tahoe</item>
+        <!-- Theme applied after system splash disappears -->
+        <item name="postSplashScreenTheme">@style/Theme.HabitTracker</item>
+    </style>
 </resources>

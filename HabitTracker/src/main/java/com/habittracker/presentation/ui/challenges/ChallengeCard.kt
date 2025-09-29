@@ -1,5 +1,7 @@
 package com.habittracker.presentation.ui.challenges
 
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -11,7 +13,6 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -20,6 +21,8 @@ import com.habittracker.R
 import com.habittracker.domain.model.Challenge
 import com.habittracker.domain.model.ChallengeStatus
 import com.habittracker.domain.model.ChallengeType
+import com.habittracker.presentation.ui.habits.components.GlassmorphicCard
+import com.habittracker.presentation.ui.habits.components.GradientProgressBar
 import kotlinx.datetime.Clock
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.todayIn
@@ -39,12 +42,13 @@ fun ChallengeCard(
     val progress = if (totalDays > 0) {
         maxOf(0f, (totalDays - daysRemaining).toFloat() / totalDays)
     } else 0f
+    val isDarkTheme = isSystemInDarkTheme()
 
-    Card(
-        onClick = onChallengeClick,
-        modifier = modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(12.dp),
-        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+    GlassmorphicCard(
+        modifier = modifier
+            .fillMaxWidth()
+            .clickable { onChallengeClick() },
+        isDarkTheme = isDarkTheme
     ) {
         Column(
             modifier = Modifier.padding(16.dp)
@@ -106,16 +110,25 @@ fun ChallengeCard(
                 
                 Spacer(modifier = Modifier.height(4.dp))
                 
-                LinearProgressIndicator(
-                    progress = { progress },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(8.dp),
-                    color = when {
-                        daysRemaining <= 1 -> MaterialTheme.colorScheme.error
-                        daysRemaining <= 3 -> MaterialTheme.colorScheme.tertiary
-                        else -> MaterialTheme.colorScheme.primary
-                    }
+                val barColors = when {
+                    daysRemaining <= 1 -> listOf(
+                        MaterialTheme.colorScheme.error,
+                        MaterialTheme.colorScheme.errorContainer
+                    )
+                    daysRemaining <= 3 -> listOf(
+                        MaterialTheme.colorScheme.tertiary,
+                        MaterialTheme.colorScheme.tertiaryContainer
+                    )
+                    else -> listOf(
+                        MaterialTheme.colorScheme.primary,
+                        MaterialTheme.colorScheme.primaryContainer
+                    )
+                }
+                GradientProgressBar(
+                    progress = progress,
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = barColors,
+                    trackColor = MaterialTheme.colorScheme.surfaceVariant
                 )
             }
 

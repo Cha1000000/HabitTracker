@@ -8,6 +8,7 @@ import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -62,6 +63,7 @@ import androidx.compose.material3.TabRowDefaults.tabIndicatorOffset
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -89,6 +91,13 @@ import coil.request.ImageRequest
 import com.habittracker.R
 import com.habittracker.domain.model.FriendRequestWithUsers
 import com.habittracker.domain.model.User
+import com.habittracker.presentation.ui.habits.components.GlassmorphicCard
+import com.habittracker.presentation.ui.habits.components.TahoeGradientBackground
+import com.habittracker.presentation.ui.theme.GlassBlack10
+import com.habittracker.presentation.ui.theme.GlassBlack30
+import com.habittracker.presentation.ui.theme.GlassWhite30
+import com.habittracker.presentation.ui.theme.GlassWhite40
+import com.habittracker.presentation.ui.theme.TahoeLightAccent
 import com.habittracker.presentation.viewmodel.FriendsViewModel
 
 /**
@@ -114,39 +123,48 @@ fun FriendsScreen(
         stringResource(id = R.string.search_friends)
     )
 
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = { Text(text = stringResource(id = R.string.friends_title)) },
-                navigationIcon = {
-                    IconButton(onClick = onNavigateBack) {
-                        Icon(
-                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = stringResource(id = R.string.cd_back)
-                        )
-                    }
-                }
-            )
-        }
-    ) { padding ->
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(padding)
-                .background(MaterialTheme.colorScheme.background)
-        ) {
+    // Оборачиваем весь экран в градиентный фон Tahoe
+    TahoeGradientBackground(
+        modifier = Modifier.fillMaxSize(),
+        isDarkTheme = isSystemInDarkTheme()
+    ) {
+        Scaffold(
+            containerColor = Color.Transparent, // Делаем фон Scaffold прозрачным
+            contentColor = MaterialTheme.colorScheme.onBackground,
+            topBar = {
+                TopAppBar(
+                    title = { Text(text = stringResource(id = R.string.friends_title)) },
+                    navigationIcon = {
+                        IconButton(onClick = onNavigateBack) {
+                            Icon(
+                                imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                                contentDescription = stringResource(id = R.string.cd_back)
+                            )
+                        }
+                    },
+                    colors = TopAppBarDefaults.topAppBarColors(
+                        containerColor = Color.Transparent,
+                        scrolledContainerColor = Color.Transparent
+                    )
+                )
+            }
+        ) { padding ->
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(padding)
+            ) {
         // 🎨 Modern Header с статистикой
         FriendsHeader(
             friendsCount = uiState.friends.size,
             pendingRequestsCount = uiState.incomingRequests.size
         )
-        
         // 📱 Tab Navigation
         TabRow(
-            selectedTabIndex = selectedTab,
             modifier = Modifier.fillMaxWidth(),
-            containerColor = MaterialTheme.colorScheme.surface,
-            contentColor = MaterialTheme.colorScheme.primary,
+            selectedTabIndex = selectedTab,
+            containerColor = Color.Transparent,
+            contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
             indicator = { tabPositions ->
                 TabRowDefaults.SecondaryIndicator(
                     modifier = Modifier.tabIndicatorOffset(tabPositions[selectedTab]),
@@ -217,13 +235,14 @@ fun FriendsScreen(
         }
         }
     }
-    // Диалог подтверждения удаления друга
+    }
+    // Диалог подтверждения удаления друга (Tahoe)
     if (showRemoveDialog) {
         val pendingName = pendingRemoveFriendId?.let { id -> uiState.friends.firstOrNull { it.id == id }?.name } ?: ""
-        androidx.compose.material3.AlertDialog(
+        com.habittracker.presentation.ui.habits.components.GlassmorphicDialog(
             onDismissRequest = { showRemoveDialog = false },
             title = { Text(text = stringResource(id = R.string.confirm_remove_friend_title, pendingName)) },
-            text = {
+            content = {
                 Column {
                     Text(text = stringResource(id = R.string.confirm_remove_friend_message))
                     Spacer(modifier = Modifier.height(12.dp))
@@ -237,8 +256,12 @@ fun FriendsScreen(
                     }
                 }
             },
-            confirmButton = {
-                TextButton(
+            actions = {
+                TextButton(onClick = { showRemoveDialog = false }) {
+                    Text(text = stringResource(id = R.string.cancel))
+                }
+                Spacer(modifier = Modifier.width(8.dp))
+                com.habittracker.presentation.ui.habits.components.GlassmorphicButton(
                     onClick = {
                         val id = pendingRemoveFriendId
                         if (id != null) {
@@ -248,11 +271,6 @@ fun FriendsScreen(
                     }
                 ) {
                     Text(text = stringResource(id = R.string.delete))
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = { showRemoveDialog = false }) {
-                    Text(text = stringResource(id = R.string.cancel))
                 }
             }
         )
@@ -625,16 +643,17 @@ private fun FriendCard(
     onRemove: () -> Unit
 ) {
     var showMenu by remember { mutableStateOf(false) }
+    val isDarkTheme = isSystemInDarkTheme()
     
-    Card(
+    GlassmorphicCard(
         modifier = Modifier
             .fillMaxWidth()
             .let { base -> if (!isRemoving) base.clickable { onClick() } else base },
-        shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceVariant
-        ),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+        isDarkTheme = isDarkTheme,
+        cornerRadius = 16.dp,
+        glassAlpha = if (isDarkTheme) 0.15f else 0.85f,
+        borderAlpha = if (isDarkTheme) 0.3f else 0.15f,
+        elevation = 2.dp
     ) {
         Row(
             modifier = Modifier
@@ -783,13 +802,15 @@ private fun IncomingRequestCard(
     onAccept: () -> Unit,
     onDecline: () -> Unit
 ) {
-    Card(
+    val isDarkTheme = isSystemInDarkTheme()
+    
+    GlassmorphicCard(
         modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceVariant
-        ),
-        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+        isDarkTheme = isDarkTheme,
+        cornerRadius = 16.dp,
+        glassAlpha = if (isDarkTheme) 0.2f else 0.9f,
+        borderAlpha = if (isDarkTheme) 0.4f else 0.2f,
+        elevation = 4.dp
     ) {
         Column(
             modifier = Modifier.padding(16.dp)
@@ -935,6 +956,7 @@ private fun SearchResultCard(
     user: User,
     onSendRequest: () -> Unit
 ) {
+    val isDarkTheme = isSystemInDarkTheme()
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(16.dp),
@@ -976,9 +998,31 @@ private fun SearchResultCard(
             }
             
             // Кнопка отправки запроса
+            val backgroundColor = if (isDarkTheme) {
+                GlassWhite30
+            } else {
+                Color.White.copy(alpha = 0.9f)
+            }
+
+            val borderColor = if (isDarkTheme) {
+                GlassWhite40
+            } else {
+                GlassBlack10
+            }
+
             FilledTonalButton(
                 onClick = onSendRequest,
-                shape = RoundedCornerShape(12.dp)
+                shape = RoundedCornerShape(12.dp),
+                colors = ButtonDefaults.filledTonalButtonColors(
+                    containerColor = backgroundColor,
+                    contentColor = if (isDarkTheme) Color.White else TahoeLightAccent,
+                    disabledContainerColor = backgroundColor.copy(alpha = 0.5f),
+                    disabledContentColor = if (isDarkTheme) GlassWhite30 else GlassBlack30
+                ),
+                border = BorderStroke(
+                    width = 1.dp,
+                    color = borderColor
+                ),
             ) {
                 Icon(
                     Icons.Default.PersonAdd,

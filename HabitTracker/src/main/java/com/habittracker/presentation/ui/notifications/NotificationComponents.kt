@@ -446,7 +446,7 @@ fun NotificationBadge(
             containerColor = MaterialTheme.colorScheme.error
         ) {
             Text(
-                text = if (count > 9) "9+" else count.toString(),
+                text = if (count > 9) stringResource(R.string.nine_plus) else count.toString(),
                 style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.onError
             )
@@ -455,21 +455,25 @@ fun NotificationBadge(
 }
 
 /**
- * Форматирует время уведомления для отображения
+ * Форматирует время уведомления для отображения (локализовано)
  */
+@Composable
 private fun formatNotificationTime(timestamp: Instant): String {
     val now = Clock.System.now()
     val notificationTime = timestamp.toLocalDateTime(TimeZone.currentSystemDefault())
-    val currentTime = now.toLocalDateTime(TimeZone.currentSystemDefault())
-    
     val diffMinutes = (now.epochSeconds - timestamp.epochSeconds) / 60
-    
+
     return when {
-        diffMinutes < 1 -> "Только что"
-        diffMinutes < 60 -> "${diffMinutes}м назад"
-        diffMinutes < 1440 -> "${diffMinutes / 60}ч назад"
-        diffMinutes < 10080 -> "${diffMinutes / 1440}д назад"
-        else -> "${notificationTime.dayOfMonth}.${notificationTime.monthNumber}.${notificationTime.year}"
+        diffMinutes < 1 -> stringResource(R.string.time_just_now)
+        diffMinutes < 60 -> stringResource(R.string.time_minutes_ago, diffMinutes)
+        diffMinutes < 1440 -> stringResource(R.string.time_hours_ago, diffMinutes / 60)
+        diffMinutes < 10080 -> stringResource(R.string.time_days_ago, diffMinutes / 1440)
+        else -> stringResource(
+            R.string.date_dd_mm_yyyy,
+            notificationTime.dayOfMonth,
+            notificationTime.monthNumber,
+            notificationTime.year
+        )
     }
 }
 

@@ -6,6 +6,7 @@ import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.LocalIndication
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -25,11 +26,7 @@ import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Group
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Person
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -54,7 +51,7 @@ import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
-import androidx.compose.ui.unit.DpOffset
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.habittracker.R
@@ -88,12 +85,13 @@ fun EnhancedHabitItem(
     val successColor = Color(0xFF4CAF50)
     val outlineColor = MaterialTheme.colorScheme.outline
     val shape = MaterialTheme.shapes.medium
+    val isDarkTheme = isSystemInDarkTheme()
 
     Box(modifier = modifier.fillMaxWidth()) {
         val interaction = remember { MutableInteractionSource() }
         val indication = if (isDone) null else LocalIndication.current
 
-        Card(
+        GlassmorphicCard(
             modifier = Modifier
                 .fillMaxWidth()
                 .combinedClickable(
@@ -105,21 +103,19 @@ fun EnhancedHabitItem(
                         showMenu = true
                     }
                 ),
-            shape = shape,
-            elevation = CardDefaults.cardElevation(
-                defaultElevation = if (isDone) 0.dp else 2.dp,
-                pressedElevation = if (isDone) 0.dp else 3.dp,
-                focusedElevation = if (isDone) 0.dp else 2.dp,
-                hoveredElevation = if (isDone) 0.dp else 3.dp,
-                draggedElevation = if (isDone) 0.dp else 1.dp
-            ),
-            colors = CardDefaults.cardColors(
-                containerColor = if (isDone) {
-                    successColor.copy(alpha = 0.04f)
-                } else {
-                    MaterialTheme.colorScheme.surface
-                }
-            )
+            isDarkTheme = isDarkTheme,
+            cornerRadius = 12.dp,
+            glassAlpha = if (isDone) {
+                if (isDarkTheme) 0.25f else 0.95f
+            } else {
+                if (isDarkTheme) 0.15f else 0.85f
+            },
+            borderAlpha = if (isDone) {
+                if (isDarkTheme) 0.5f else 0.3f
+            } else {
+                if (isDarkTheme) 0.3f else 0.15f
+            },
+            elevation = if (isDone) 4.dp else 2.dp
         ) {
             // Корневой слой без внутреннего отступа, чтобы «⋮» можно было прижать к краю карточки
             Box(
@@ -191,7 +187,7 @@ fun EnhancedHabitItem(
                                     text = habit.title,
                                     fontWeight = FontWeight.Bold,
                                     fontSize = 18.sp,
-                                    color = if (habitWithCompletion.isCompletedToday) Color(0xFF4CAF50) else MaterialTheme.colorScheme.onSurface
+                                    color = if (habitWithCompletion.isCompletedToday) successColor else MaterialTheme.colorScheme.onSurface
                                 )
                                 Spacer(modifier = Modifier.width(8.dp))
                                 if (habit.isGroupHabit()) {
@@ -204,7 +200,7 @@ fun EnhancedHabitItem(
                                 Text(
                                     text = habit.description,
                                     style = MaterialTheme.typography.bodyMedium,
-                                    color = if (habitWithCompletion.isCompletedToday) Color(0xFF4CAF50).copy(alpha = 0.7f) else Color.Gray
+                                    color = if (habitWithCompletion.isCompletedToday) successColor.copy(alpha = 0.7f) else Color.Gray
                                 )
                             }
                             Row(horizontalArrangement = Arrangement.spacedBy(16.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -243,7 +239,7 @@ fun EnhancedHabitItem(
                                 Icon(
                                     imageVector = Icons.Default.Check,
                                     contentDescription = if (habitWithCompletion.isCompletedToday) stringResource(R.string.habits_unmark_complete) else stringResource(R.string.habits_mark_complete),
-                                    tint = if (habitWithCompletion.isCompletedToday) Color(0xFF4CAF50) else Color.Gray
+                                    tint = if (habitWithCompletion.isCompletedToday) successColor else Color.Gray
                                 )
                             }
                         }
@@ -257,16 +253,20 @@ fun EnhancedHabitItem(
                 Box(modifier = Modifier
                     .align(Alignment.TopEnd)
                     .offset(x = 8.dp, y = (-4).dp)) {
-                    IconButton(onClick = {
-                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                        showMenu = true
-                    }) {
-                        Icon(imageVector = Icons.Default.MoreVert, contentDescription = stringResource(id = R.string.cd_more))
+                    if (!showMenu) {
+                        IconButton(onClick = {
+                            haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                            showMenu = true
+                        }) {
+                            Icon(imageVector = Icons.Default.MoreVert, contentDescription = stringResource(id = R.string.cd_more))
+                        }
                     }
-                    DropdownMenu(
+                    GlassmorphicDropdownMenu(
                         expanded = showMenu,
                         onDismissRequest = { showMenu = false },
-                        offset = DpOffset(x = (-18).dp, y = (-6).dp)
+                        alignment = Alignment.TopEnd,
+                        offset = IntOffset(-48, 48),
+                        isDarkTheme = isDarkTheme
                     ) {
                         val doneLabel = if (habitWithCompletion.isCompletedToday) {
                             stringResource(id = R.string.habits_unmark_complete)
@@ -286,7 +286,7 @@ fun EnhancedHabitItem(
                             },
                             label = "menuDoneTint"
                         )
-                        DropdownMenuItem(
+                        GlassmorphicDropdownMenuItem(
                             text = {
                                 Crossfade(targetState = doneLabel, label = "menuDoneText") { labelText ->
                                     Text(text = labelText)
@@ -302,7 +302,7 @@ fun EnhancedHabitItem(
                                 onToggleCompletion()
                             }
                         )
-                        DropdownMenuItem(
+                        GlassmorphicDropdownMenuItem(
                             text = { Text(text = stringResource(id = R.string.edit)) },
                             leadingIcon = { Icon(imageVector = Icons.Default.Edit, contentDescription = null) },
                             onClick = {
@@ -310,7 +310,7 @@ fun EnhancedHabitItem(
                                 onEdit(habitWithCompletion)
                             }
                         )
-                        DropdownMenuItem(
+                        GlassmorphicDropdownMenuItem(
                             text = { Text(text = stringResource(id = R.string.delete), color = MaterialTheme.colorScheme.error) },
                             leadingIcon = { Icon(imageVector = Icons.Default.Delete, contentDescription = null, tint = MaterialTheme.colorScheme.error) },
                             onClick = {

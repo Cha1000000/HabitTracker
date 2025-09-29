@@ -5,7 +5,6 @@ import android.content.pm.PackageManager
 import android.os.Build
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -18,6 +17,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.core.content.ContextCompat
 import com.habittracker.R
+import com.habittracker.presentation.ui.habits.components.GlassmorphicDialog
 
 /**
  * Compose-компонент для обработки запроса разрешения на уведомления
@@ -60,18 +60,14 @@ fun NotificationPermissionHandler(
 
     // Диалог с объяснением необходимости разрешения
     if (showRationale) {
-        AlertDialog(
+        GlassmorphicDialog(
             onDismissRequest = { showRationale = false },
             title = { Text(stringResource(R.string.notification_permission_title)) },
-            text = { 
-                Text(
-                    stringResource(R.string.notification_permission_message)
-                )
+            content = {
+                Text(stringResource(R.string.notification_permission_message))
             },
-            confirmButton = {
-                TextButton(
-                    onClick = { showRationale = false }
-                ) {
+            actions = {
+                TextButton(onClick = { showRationale = false }) {
                     Text(stringResource(R.string.action_ok))
                 }
             }

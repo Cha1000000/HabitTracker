@@ -2,6 +2,7 @@ package com.habittracker.presentation.ui.habits
 
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.background
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -23,10 +24,8 @@ import androidx.compose.material.icons.filled.People
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.pullrefresh.pullRefresh
 import androidx.compose.material.pullrefresh.rememberPullRefreshState
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -38,8 +37,8 @@ import androidx.compose.material3.SnackbarResult
 import androidx.compose.material3.SwipeToDismissBox
 import androidx.compose.material3.SwipeToDismissBoxValue
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.rememberSwipeToDismissBoxState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
@@ -75,6 +74,11 @@ import com.habittracker.domain.model.isGroupHabit
 import com.habittracker.presentation.navigation.Screen
 import com.habittracker.presentation.ui.components.GradientPullRefreshIndicator
 import com.habittracker.presentation.ui.habits.components.EnhancedHabitItem
+import com.habittracker.presentation.ui.habits.components.GlassmorphicFAB
+import com.habittracker.presentation.ui.habits.components.TahoeDockBar
+import com.habittracker.presentation.ui.habits.components.TahoeDockDivider
+import com.habittracker.presentation.ui.habits.components.TahoeDockItem
+import com.habittracker.presentation.ui.habits.components.TahoeGradientBackground
 import com.habittracker.presentation.ui.notifications.NotificationBadge
 import com.habittracker.presentation.viewmodel.FriendsViewModel
 import com.habittracker.presentation.viewmodel.HabitWithCompletion
@@ -83,6 +87,7 @@ import com.habittracker.presentation.viewmodel.NotificationsViewModel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.datetime.Clock
+import kotlin.math.abs
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterialApi::class)
 @Composable
@@ -123,54 +128,23 @@ fun HabitsScreen(
         }
     }
     
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = { Text(stringResource(R.string.habits_title)) },
+    // Оборачиваем весь экран в градиентный фон Tahoe
+    TahoeGradientBackground(
+        modifier = Modifier.fillMaxSize(),
+        isDarkTheme = isSystemInDarkTheme()
+    ) {
+        Scaffold(
+            containerColor = Color.Transparent, // Делаем фон Scaffold прозрачным
+            contentColor = MaterialTheme.colorScheme.onBackground,
+            topBar = {
+                TopAppBar(
+                    title = { Text(stringResource(R.string.habits_title)) },
+                    colors = TopAppBarDefaults.topAppBarColors(
+                        containerColor = Color.Transparent,
+                        scrolledContainerColor = Color.Transparent
+                    ),
                 actions = {
-                    // Кнопки геймификации
-                    IconButton(onClick = { 
-                        navController.navigate(Screen.Stats.route) 
-                    }) {
-                        Icon(
-                            imageVector = Icons.AutoMirrored.Filled.TrendingUp,
-                            contentDescription = stringResource(R.string.cd_stats)
-                        )
-                    }
-                    IconButton(onClick = { 
-                        navController.navigate(Screen.Achievements.route) 
-                    }) {
-                        Icon(
-                            imageVector = Icons.Default.EmojiEvents,
-                            contentDescription = stringResource(R.string.cd_achievements)
-                        )
-                    }
-                    
-                    // Существующие кнопки
-                    IconButton(onClick = { 
-                        navController.navigate(Screen.Profile.route) 
-                    }) {
-                        Icon(
-                            imageVector = Icons.Default.Person,
-                            contentDescription = stringResource(R.string.cd_profile)
-                        )
-                    }
-                    Box {
-                        IconButton(onClick = { 
-                            navController.navigate(Screen.Friends.route) 
-                        }) {
-                            Icon(
-                                imageVector = Icons.Default.People,
-                                contentDescription = stringResource(R.string.cd_friends)
-                            )
-                        }
-                        NotificationBadge(
-                            count = friendRequestsBadgeCount,
-                            modifier = Modifier
-                                .align(Alignment.TopEnd)
-                                .offset(x = (-8).dp, y = 6.dp)
-                        )
-                    }
+                    // Оставляем только колокольчик уведомлений
                     Box {
                         IconButton(onClick = {
                             navController.navigate(Screen.Notifications.route)
@@ -191,10 +165,55 @@ fun HabitsScreen(
             )
         },
         floatingActionButton = {
-            FloatingActionButton(
-                onClick = { navController.navigate(Screen.AddEditHabit.route) }
+            GlassmorphicFAB(
+                onClick = { navController.navigate(Screen.AddEditHabit.route) },
+                isDarkTheme = isSystemInDarkTheme(),
             ) {
                 Icon(Icons.Default.Add, contentDescription = stringResource(R.string.cd_add_habit))
+            }
+        },
+        bottomBar = {
+            TahoeDockBar(
+                isDarkTheme = isSystemInDarkTheme()
+            ) {
+                // Статистика
+                TahoeDockItem(
+                    icon = Icons.AutoMirrored.Filled.TrendingUp,
+                    label = stringResource(R.string.cd_stats),
+                    onClick = { navController.navigate(Screen.Stats.route) },
+                    selected = false
+                )
+
+                TahoeDockDivider()
+                
+                // Достижения
+                TahoeDockItem(
+                    icon = Icons.Default.EmojiEvents,
+                    label = stringResource(R.string.cd_achievements),
+                    onClick = { navController.navigate(Screen.Achievements.route) },
+                    selected = false
+                )
+
+                TahoeDockDivider()
+                
+                // Друзья
+                TahoeDockItem(
+                    icon = Icons.Default.People,
+                    label = stringResource(R.string.cd_friends),
+                    badge = friendRequestsBadgeCount,
+                    onClick = { navController.navigate(Screen.Friends.route) },
+                    selected = false
+                )
+
+                TahoeDockDivider()
+                
+                // Профиль
+                TahoeDockItem(
+                    icon = Icons.Default.Person,
+                    label = stringResource(R.string.cd_profile),
+                    onClick = { navController.navigate(Screen.Profile.route) },
+                    selected = false
+                )
             }
         },
         snackbarHost = { SnackbarHost(snackbarHostState) }
@@ -208,11 +227,11 @@ fun HabitsScreen(
         )
 
         Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(paddingValues),
-            contentAlignment = Alignment.Center
-        ) {
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(paddingValues),
+                contentAlignment = Alignment.Center
+            ) {
             if (uiState.isLoading) {
                 CircularProgressIndicator()
             } else {
@@ -253,9 +272,9 @@ fun HabitsScreen(
                                             // Фон удаления: проявляется только при свайпе, совпадает по скруглению с карточкой
                                             val shape = MaterialTheme.shapes.medium
                                             val offsetPx = try { dismissState.requireOffset() } catch (_: IllegalStateException) { 0f }
-                                            val targetAlpha = if (kotlin.math.abs(offsetPx) > 0f) {
+                                            val targetAlpha = if (abs(offsetPx) > 0f) {
                                                 // Наращиваем непрозрачность с прогрессом свайпа
-                                                (kotlin.math.abs(offsetPx) / 600f).coerceIn(0f, 1f)
+                                                (abs(offsetPx) / 600f).coerceIn(0f, 1f)
                                             } else 0f
                                             val bgAlpha = animateFloatAsState(targetValue = targetAlpha, label = "swipeBgAlpha").value
                                             val coral = Color(0xFFD74646)
@@ -301,54 +320,40 @@ fun HabitsScreen(
                                     }
 
                                     if (showDeleteDialog) {
-                                        AlertDialog(
-                                            onDismissRequest = { showDeleteDialog = false },
-                                            title = { Text(stringResource(id = R.string.confirm_delete_habit_title)) },
-                                            text = { Text(stringResource(id = R.string.confirm_delete_habit_message, habitWithCompletion.habit.title)) },
-                                            confirmButton = {
-                                                TextButton(
-                                                    onClick = {
-                                                        showDeleteDialog = false
-                                                        // Начинаем оптимистичное удаление и предлагаем UNDO
-                                                        viewModel.requestDeleteHabit(habitWithCompletion.habit.id)
-                                                        // Показываем Snackbar и одновременно ставим таймер авто-скрытия (~8 сек)
-                                                        scope.launch {
-                                                            val showJob = launch {
-                                                                val result = snackbarHostState.showSnackbar(
-                                                                    message = habitDeletedText,
-                                                                    actionLabel = undoText,
-                                                                    withDismissAction = true,
-                                                                    duration = SnackbarDuration.Indefinite
-                                                                )
-                                                                if (result == SnackbarResult.ActionPerformed) {
-                                                                    // Пользователь нажал Undo — восстанавливаем
-                                                                    viewModel.cancelPendingDeletion()
-                                                                } else {
-                                                                    // Dismissed (свайпом/таймером) — подтверждаем удаление
-                                                                    viewModel.confirmPendingDeletion()
-                                                                }
-                                                            }
-                                                            val timerJob = launch {
-                                                                delay(5_000)
-                                                                if (showJob.isActive) {
-                                                                    snackbarHostState.currentSnackbarData?.dismiss()
-                                                                }
-                                                            }
-                                                            showJob.invokeOnCompletion { timerJob.cancel() }
+                                        com.habittracker.presentation.ui.habits.components.ConfirmDialog(
+                                            title = stringResource(id = R.string.confirm_delete_habit_title),
+                                            message = stringResource(id = R.string.confirm_delete_habit_message, habitWithCompletion.habit.title),
+                                            confirmLabel = stringResource(id = R.string.delete),
+                                            cancelLabel = stringResource(id = R.string.cancel),
+                                            onConfirm = {
+                                                showDeleteDialog = false
+                                                // Начинаем оптимистичное удаление и предлагаем UNDO
+                                                viewModel.requestDeleteHabit(habitWithCompletion.habit.id)
+                                                // Показываем Snackbar и одновременно ставим таймер авто-скрытия
+                                                scope.launch {
+                                                    val showJob = launch {
+                                                        val result = snackbarHostState.showSnackbar(
+                                                            message = habitDeletedText,
+                                                            actionLabel = undoText,
+                                                            withDismissAction = true,
+                                                            duration = SnackbarDuration.Indefinite
+                                                        )
+                                                        if (result == SnackbarResult.ActionPerformed) {
+                                                            viewModel.cancelPendingDeletion()
+                                                        } else {
+                                                            viewModel.confirmPendingDeletion()
                                                         }
                                                     }
-                                                ) {
-                                                    Text(
-                                                        text = stringResource(id = R.string.delete),
-                                                        color = MaterialTheme.colorScheme.error
-                                                    )
+                                                    val timerJob = launch {
+                                                        delay(5_000)
+                                                        if (showJob.isActive) {
+                                                            snackbarHostState.currentSnackbarData?.dismiss()
+                                                        }
+                                                    }
+                                                    showJob.invokeOnCompletion { timerJob.cancel() }
                                                 }
                                             },
-                                            dismissButton = {
-                                                TextButton(onClick = { showDeleteDialog = false }) {
-                                                    Text(text = stringResource(id = R.string.cancel))
-                                                }
-                                            }
+                                            onDismiss = { showDeleteDialog = false }
                                         )
                                     }
                                 }
@@ -364,6 +369,7 @@ fun HabitsScreen(
                             //.padding(top = 8.dp)
                     )
                 }
+            }
             }
         }
     }

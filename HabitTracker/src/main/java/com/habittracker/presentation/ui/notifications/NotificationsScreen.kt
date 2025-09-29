@@ -1,5 +1,6 @@
 package com.habittracker.presentation.ui.notifications
 
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
@@ -8,6 +9,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.tooling.preview.Preview
@@ -17,6 +19,7 @@ import androidx.navigation.NavController
 import com.habittracker.R
 import com.habittracker.domain.usecase.notification.GroupHabitNotification
 import com.habittracker.domain.usecase.notification.NotificationType
+import com.habittracker.presentation.ui.habits.components.TahoeGradientBackground
 import com.habittracker.presentation.viewmodel.NotificationsViewModel
 import kotlinx.datetime.Clock
 
@@ -33,6 +36,7 @@ fun NotificationsScreen(
     val uiState by viewModel.uiState.collectAsState()
     val snackbarHostState = remember { SnackbarHostState() }
     val context = LocalContext.current
+    val isDarkTheme = isSystemInDarkTheme()
     
     // Обработка сообщений об ошибках
     LaunchedEffect(uiState.error) {
@@ -96,16 +100,23 @@ fun NotificationsScreen(
         }
     }
     
-    Scaffold(
-        topBar = {
-            NotificationsTopBar(
-                unreadCount = uiState.unreadCount,
-                onBackClick = onBackClick,
-                onMarkAllAsRead = { viewModel.markAllAsRead() }
-            )
-        },
-        snackbarHost = { SnackbarHost(snackbarHostState) }
-    ) { paddingValues ->
+    TahoeGradientBackground(
+        modifier = Modifier.fillMaxSize(),
+        isDarkTheme = isDarkTheme
+    ) {
+        Scaffold(
+            containerColor = Color.Transparent,
+            contentColor = MaterialTheme.colorScheme.onBackground,
+            topBar = {
+                NotificationsTopBar(
+                    unreadCount = uiState.unreadCount,
+                    onBackClick = onBackClick,
+                    onMarkAllAsRead = { viewModel.markAllAsRead() },
+                    isDarkTheme = isDarkTheme
+                )
+            },
+            snackbarHost = { SnackbarHost(snackbarHostState) }
+        ) { paddingValues ->
         Column(
             modifier = Modifier
                 .fillMaxSize()
@@ -146,6 +157,7 @@ fun NotificationsScreen(
             }
         }
     }
+    }
 }
 
 /**
@@ -157,6 +169,7 @@ fun NotificationsTopBar(
     unreadCount: Int,
     onBackClick: () -> Unit,
     onMarkAllAsRead: () -> Unit,
+    isDarkTheme: Boolean = isSystemInDarkTheme(),
     modifier: Modifier = Modifier
 ) {
     TopAppBar(
@@ -189,6 +202,13 @@ fun NotificationsTopBar(
                 }
             }
         },
+        colors = TopAppBarDefaults.topAppBarColors(
+            containerColor = Color.Transparent,
+            scrolledContainerColor = Color.Transparent,
+            navigationIconContentColor = if (isDarkTheme) Color.White else MaterialTheme.colorScheme.onBackground,
+            titleContentColor = if (isDarkTheme) Color.White else MaterialTheme.colorScheme.onBackground,
+            actionIconContentColor = if (isDarkTheme) Color.White else MaterialTheme.colorScheme.onBackground
+        ),
         modifier = modifier
     )
 }

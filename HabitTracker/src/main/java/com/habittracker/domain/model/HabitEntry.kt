@@ -6,15 +6,15 @@ import kotlinx.datetime.atStartOfDayIn
 import kotlinx.datetime.toLocalDateTime
 
 data class HabitEntry(
-    val habitId: String,
-    val userId: String,
-    val date: LocalDate,
+    val habitId: String = "",
+    val userId: String = "",
+    val date: LocalDate = LocalDate(2024, 1, 1),
     val completed: Boolean = false,
     val completedAt: Long? = null,
     val value: Int = 1, // сколько раз выполнил (для привычек с targetValue > 1)
     val note: String? = "",
-    val createdAt: Long,
-    val updatedAt: Long
+    val createdAt: Long = System.currentTimeMillis(),
+    val updatedAt: Long = System.currentTimeMillis()
 )
 
 // Модель для UI с дополнительной информацией

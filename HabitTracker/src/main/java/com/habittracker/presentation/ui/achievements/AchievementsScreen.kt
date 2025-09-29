@@ -1,5 +1,6 @@
 package com.habittracker.presentation.ui.achievements
 
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -23,19 +24,17 @@ import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.filled.Whatshot
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.ScrollableTabRow
 import androidx.compose.material3.Tab
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
@@ -61,6 +60,9 @@ import com.habittracker.domain.model.AchievementType
 import com.habittracker.domain.model.AchievementWithProgress
 import com.habittracker.domain.model.UserAchievement
 import com.habittracker.domain.model.getDisplayTitle
+import com.habittracker.presentation.ui.habits.components.GlassmorphicCard
+import com.habittracker.presentation.ui.habits.components.GradientProgressBar
+import com.habittracker.presentation.ui.habits.components.TahoeGradientBackground
 import com.habittracker.presentation.viewmodel.AchievementsViewModel
 import kotlinx.datetime.Instant
 
@@ -72,6 +74,7 @@ fun AchievementsScreen(
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     var selectedTabIndex by remember { mutableIntStateOf(0) }
+    val isDarkTheme = isSystemInDarkTheme()
     
     val categories = listOf(
         AchievementCategory.HABITS to stringResource(R.string.achievements_habits),
@@ -82,10 +85,16 @@ fun AchievementsScreen(
         AchievementCategory.SPECIAL to stringResource(R.string.achievements_special)
     )
 
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = {
+    TahoeGradientBackground(
+        modifier = Modifier.fillMaxSize(),
+        isDarkTheme = isDarkTheme
+    ) {
+        Scaffold(
+            containerColor = Color.Transparent,
+            contentColor = MaterialTheme.colorScheme.onBackground,
+            topBar = {
+                TopAppBar(
+                    title = {
                     Column {
                         Text(
                             text = stringResource(R.string.achievements_title),
@@ -111,7 +120,14 @@ fun AchievementsScreen(
                             contentDescription = stringResource(R.string.cd_back)
                         )
                     }
-                }
+                },
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = Color.Transparent,
+                    scrolledContainerColor = Color.Transparent,
+                    navigationIconContentColor = if (isDarkTheme) Color.White else MaterialTheme.colorScheme.onBackground,
+                    titleContentColor = if (isDarkTheme) Color.White else MaterialTheme.colorScheme.onBackground,
+                    actionIconContentColor = if (isDarkTheme) Color.White else MaterialTheme.colorScheme.onBackground
+                )
             )
         }
     ) { paddingValues ->
@@ -122,8 +138,10 @@ fun AchievementsScreen(
         ) {
             // Вкладки категорий
             ScrollableTabRow(
+                modifier = Modifier.fillMaxWidth(),
                 selectedTabIndex = selectedTabIndex,
-                modifier = Modifier.fillMaxWidth()
+                containerColor = Color.Transparent,
+                contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
             ) {
                 categories.forEachIndexed { index, (category, title) ->
                     Tab(
@@ -193,7 +211,7 @@ fun AchievementsScreen(
                             )
                             Spacer(modifier = Modifier.height(8.dp))
                             Text(
-                                text = uiState.error ?: "Неизвестная ошибка",
+                                text = uiState.error ?: stringResource(R.string.achievements_unknown_error),
                                 style = MaterialTheme.typography.bodyMedium,
                                 textAlign = TextAlign.Center,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
@@ -250,6 +268,7 @@ fun AchievementsScreen(
             }
         }
     }
+    }
 }
 
 @Composable
@@ -257,16 +276,11 @@ private fun AchievementCard(
     achievement: AchievementWithProgress,
     modifier: Modifier = Modifier
 ) {
-    Card(
+    val isDarkTheme = isSystemInDarkTheme()
+    
+    GlassmorphicCard(
         modifier = modifier,
-        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = if (achievement.isUnlocked) {
-                MaterialTheme.colorScheme.secondaryContainer
-            } else {
-                MaterialTheme.colorScheme.surface
-            }
-        )
+        isDarkTheme = isDarkTheme
     ) {
         Column(
             modifier = Modifier.padding(16.dp)
@@ -343,10 +357,9 @@ private fun AchievementCard(
                         )
                     }
                     Spacer(modifier = Modifier.height(4.dp))
-                    LinearProgressIndicator(
-                        progress = { achievement.progress },
-                        modifier = Modifier.fillMaxWidth(),
-                        color = MaterialTheme.colorScheme.primary
+                    GradientProgressBar(
+                        progress = achievement.progress,
+                        modifier = Modifier.fillMaxWidth()
                     )
                 }
             }

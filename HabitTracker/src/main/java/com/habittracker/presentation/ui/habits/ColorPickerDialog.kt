@@ -16,7 +16,6 @@ import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -27,11 +26,11 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.core.graphics.toColorInt
 import com.habittracker.R
+import com.habittracker.presentation.ui.habits.components.GlassmorphicDialog
 
 /**
  * Диалог выбора цвета для привычки
@@ -57,16 +56,15 @@ fun ColorPickerDialog(
         "#3F51B5" to stringResource(R.string.color_indigo)
     )
 
-    AlertDialog(
+    GlassmorphicDialog(
         onDismissRequest = onDismiss,
         title = {
             Text(
                 text = stringResource(R.string.habit_select_color),
-                style = MaterialTheme.typography.headlineSmall,
-                fontWeight = FontWeight.Bold
+                style = MaterialTheme.typography.titleLarge
             )
         },
-        text = {
+        content = {
             LazyVerticalGrid(
                 columns = GridCells.Fixed(4),
                 contentPadding = PaddingValues(8.dp),
@@ -79,7 +77,7 @@ fun ColorPickerDialog(
                         color = colorHex,
                         name = colorName,
                         isSelected = colorHex == selectedColor,
-                        onClick = { 
+                        onClick = {
                             onColorSelected(colorHex)
                             onDismiss()
                         }
@@ -87,7 +85,7 @@ fun ColorPickerDialog(
                 }
             }
         },
-        confirmButton = {
+        actions = {
             TextButton(onClick = onDismiss) {
                 Text(stringResource(R.string.action_cancel))
             }
