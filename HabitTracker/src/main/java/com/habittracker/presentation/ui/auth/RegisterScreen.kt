@@ -116,7 +116,6 @@ fun RegisterScreen(
                         },
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
                         modifier = Modifier.fillMaxWidth(),
-                        isDarkTheme = isDarkTheme,
                         singleLine = true
                     )
                     
@@ -146,7 +145,6 @@ fun RegisterScreen(
                         visualTransformation = if (passwordVisible) VisualTransformation.None else PasswordVisualTransformation(),
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
                         modifier = Modifier.fillMaxWidth(),
-                        isDarkTheme = isDarkTheme,
                         singleLine = true
                     )
                     

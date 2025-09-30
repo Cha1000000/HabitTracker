@@ -55,6 +55,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextFieldColors
 import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
@@ -99,6 +100,45 @@ import com.habittracker.presentation.ui.theme.TahoeRoyalBlue
 import com.habittracker.presentation.ui.theme.TahoeSkyBlue
 import kotlin.math.cos
 import kotlin.math.sin
+
+/**
+ * Возвращает настроенные цвета для TextField в стиле Glassmorphic Tahoe
+ * Поддерживает темную и светлую темы с прозрачными фонами и улучшенным контрастом
+ * 
+ * @param isDarkTheme Флаг темной темы (по умолчанию берется из системы)
+ * @return TextFieldColors с настроенными цветами для glassmorphic стиля
+ */
+@Composable
+fun rememberGlassmorphicTextFieldColors(
+    isDarkTheme: Boolean = isSystemInDarkTheme()
+): TextFieldColors {
+    val onSurfaceVariant = MaterialTheme.colorScheme.onSurfaceVariant
+    
+    return TextFieldDefaults.colors(
+        // Фон полей - делаем темную тему прозрачнее
+        focusedContainerColor = if (isDarkTheme) GlassWhite10.copy(alpha = 0.3f) else Color.White.copy(alpha = 0.85f),
+        unfocusedContainerColor = if (isDarkTheme) GlassWhite10.copy(alpha = 0.2f) else Color.White.copy(alpha = 0.7f),
+        disabledContainerColor = if (isDarkTheme) GlassBlack30.copy(alpha = 0.3f) else Color.Gray.copy(alpha = 0.3f),
+        // Индикатор фокуса и курсор
+        focusedIndicatorColor = if (isDarkTheme) Color(0xFF60A5FA) else TahoeLightAccent,
+        unfocusedIndicatorColor = if (isDarkTheme) GlassWhite30.copy(alpha = 0.5f) else GlassBlack20,
+        cursorColor = if (isDarkTheme) Color(0xFF60A5FA) else TahoeLightAccent,
+        // Текст - улучшаем контраст
+        focusedTextColor = if (isDarkTheme) Color.White else Color.Black,
+        unfocusedTextColor = if (isDarkTheme) Color.White.copy(alpha = 0.9f) else GlassBlack50,
+        // Label - делаем прозрачными для лучшего вида
+        focusedLabelColor = if (isDarkTheme) Color(0xFF93C5FD) else TahoeLightAccent,
+        unfocusedLabelColor = if (isDarkTheme) Color.White.copy(alpha = 0.7f) else onSurfaceVariant,
+        // Placeholder
+        focusedPlaceholderColor = if (isDarkTheme) Color.White.copy(alpha = 0.4f) else Color.Gray.copy(alpha = 0.6f),
+        unfocusedPlaceholderColor = if (isDarkTheme) Color.White.copy(alpha = 0.3f) else Color.Gray.copy(alpha = 0.5f),
+        // Иконки - делаем видимыми
+        focusedLeadingIconColor = if (isDarkTheme) Color.White.copy(alpha = 0.8f) else onSurfaceVariant,
+        unfocusedLeadingIconColor = if (isDarkTheme) Color.White.copy(alpha = 0.5f) else onSurfaceVariant.copy(alpha = 0.7f),
+        focusedTrailingIconColor = if (isDarkTheme) Color.White.copy(alpha = 0.8f) else onSurfaceVariant,
+        unfocusedTrailingIconColor = if (isDarkTheme) Color.White.copy(alpha = 0.5f) else onSurfaceVariant.copy(alpha = 0.7f)
+    )
+}
 
 /**
  * Модификатор для создания градиентного фона в стиле Tahoe
@@ -448,7 +488,6 @@ fun TahoeGradientBackground(
                     center = Offset(0f, 0f)
                 )
         )
-        
         // Контент поверх градиента
         content()
     }
@@ -468,34 +507,10 @@ fun GlassmorphicTextField(
     trailingIcon: @Composable (() -> Unit)? = null,
     visualTransformation: VisualTransformation = VisualTransformation.None,
     keyboardOptions: KeyboardOptions = KeyboardOptions.Default,
-    isDarkTheme: Boolean = isSystemInDarkTheme(),
     singleLine: Boolean = true,
     readOnly: Boolean = false,
 ) {
-    val colors = TextFieldDefaults.colors(
-        // Фон полей - делаем темную тему прозрачнее
-        focusedContainerColor = if (isDarkTheme) GlassWhite10.copy(alpha = 0.3f) else Color.White.copy(alpha = 0.85f),
-        unfocusedContainerColor = if (isDarkTheme) GlassWhite10.copy(alpha = 0.2f) else Color.White.copy(alpha = 0.7f),
-        disabledContainerColor = if (isDarkTheme) GlassBlack30.copy(alpha = 0.3f) else Color.Gray.copy(alpha = 0.3f),
-        // Индикатор фокуса и курсор
-        focusedIndicatorColor = if (isDarkTheme) Color(0xFF60A5FA) else TahoeLightAccent,
-        unfocusedIndicatorColor = if (isDarkTheme) GlassWhite30.copy(alpha = 0.5f) else GlassBlack20,
-        cursorColor = if (isDarkTheme) Color(0xFF60A5FA) else TahoeLightAccent,
-        // Текст - улучшаем контраст
-        focusedTextColor = if (isDarkTheme) Color.White else Color.Black,
-        unfocusedTextColor = if (isDarkTheme) Color.White.copy(alpha = 0.9f) else GlassBlack50,
-        // Label - делаем прозрачными для лучшего вида
-        focusedLabelColor = if (isDarkTheme) Color(0xFF93C5FD) else TahoeLightAccent, // Яркий голубой для фокуса
-        unfocusedLabelColor = if (isDarkTheme) Color.White.copy(alpha = 0.7f) else MaterialTheme.colorScheme.onSurfaceVariant,
-        // Placeholder 
-        focusedPlaceholderColor = if (isDarkTheme) Color.White.copy(alpha = 0.4f) else Color.Gray.copy(alpha = 0.6f),
-        unfocusedPlaceholderColor = if (isDarkTheme) Color.White.copy(alpha = 0.3f) else Color.Gray.copy(alpha = 0.5f),
-        // Иконки - делаем видимыми
-        focusedLeadingIconColor = if (isDarkTheme) Color.White.copy(alpha = 0.8f) else MaterialTheme.colorScheme.onSurfaceVariant,
-        unfocusedLeadingIconColor = if (isDarkTheme) Color.White.copy(alpha = 0.5f) else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
-        focusedTrailingIconColor = if (isDarkTheme) Color.White.copy(alpha = 0.8f) else MaterialTheme.colorScheme.onSurfaceVariant,
-        unfocusedTrailingIconColor = if (isDarkTheme) Color.White.copy(alpha = 0.5f) else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
-    )
+    val colors = rememberGlassmorphicTextFieldColors()
     
     OutlinedTextField(
         value = value,

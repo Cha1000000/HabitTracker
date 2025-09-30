@@ -319,7 +319,7 @@ private fun JoinByCodeDialogContent(
             isError = false
         }
     }
-    
+
     GlassmorphicDialog(
         onDismissRequest = onDismiss,
         isDarkTheme = isSystemInDarkTheme(),
@@ -339,6 +339,7 @@ private fun JoinByCodeDialogContent(
                 Text(
                     text = stringResource(R.string.join_by_code_title),
                     style = MaterialTheme.typography.headlineSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                     textAlign = TextAlign.Center
                 )
             }
@@ -356,6 +357,7 @@ private fun JoinByCodeDialogContent(
                     modifier = Modifier.fillMaxWidth()
                 )
                 Spacer(modifier = Modifier.height(16.dp))
+                val colors = rememberGlassmorphicTextFieldColors()
                 OutlinedTextField(
                     value = code.uppercase(),
                     onValueChange = { newCode ->
@@ -368,6 +370,7 @@ private fun JoinByCodeDialogContent(
                     isError = isError && code.length == 8,
                     singleLine = true,
                     shape = RoundedCornerShape(12.dp),
+                    colors = colors,
                     modifier = Modifier.fillMaxWidth(),
                     supportingText = if (isError && code.length == 8) {
                         { Text(stringResource(R.string.error_invalid_invite_code)) }
@@ -388,7 +391,7 @@ private fun JoinByCodeDialogContent(
                     visualTransformation = VisualTransformation.None,
                     keyboardOptions = KeyboardOptions(
                         capitalization = KeyboardCapitalization.Characters,
-                        autoCorrect = false,
+                        autoCorrectEnabled = false,
                         keyboardType = KeyboardType.Text,
                         imeAction = ImeAction.Done
                     ),

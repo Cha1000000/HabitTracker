@@ -32,7 +32,6 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarDuration
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
-import androidx.compose.material3.SnackbarResult
 import androidx.compose.material3.SwipeToDismissBox
 import androidx.compose.material3.SwipeToDismissBoxValue
 import androidx.compose.material3.Text
@@ -84,7 +83,6 @@ import com.habittracker.presentation.viewmodel.FriendsViewModel
 import com.habittracker.presentation.viewmodel.HabitWithCompletion
 import com.habittracker.presentation.viewmodel.HabitsViewModel
 import com.habittracker.presentation.viewmodel.NotificationsViewModel
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.datetime.Clock
 import kotlin.math.abs
@@ -101,7 +99,6 @@ fun HabitsScreen(
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
     val habitDeletedText = stringResource(id = R.string.habit_deleted)
-    val undoText = stringResource(id = R.string.undo)
     val badgeCount by notificationsViewModel.badgeCount.collectAsState()
     val friendsUiState by friendsViewModel.uiState.collectAsState()
     val friendRequestsBadgeCount = friendsUiState.incomingRequests.size

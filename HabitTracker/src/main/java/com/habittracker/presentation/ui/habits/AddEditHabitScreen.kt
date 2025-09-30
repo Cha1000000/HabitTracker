@@ -85,6 +85,7 @@ import androidx.navigation.compose.rememberNavController
 import com.habittracker.R
 import com.habittracker.domain.model.HabitFrequency
 import com.habittracker.domain.model.HabitType
+import com.habittracker.presentation.state.AddEditHabitUiState
 import com.habittracker.presentation.ui.components.FieldValidationFeedback
 import com.habittracker.presentation.ui.habits.components.ConfirmDialog
 import com.habittracker.presentation.ui.habits.components.EmojiPickerDialog
@@ -106,7 +107,6 @@ import com.habittracker.presentation.ui.permission.hasNotificationPermission
 import com.habittracker.presentation.ui.theme.TahoeElectricBlue
 import com.habittracker.presentation.ui.theme.TahoeLightBlue
 import com.habittracker.presentation.utils.GroupHabitConstants
-import com.habittracker.presentation.state.AddEditHabitUiState
 import com.habittracker.presentation.viewmodel.AddEditHabitViewModel
 import com.habittracker.presentation.viewmodel.IAddEditHabitViewModel
 import kotlinx.datetime.DayOfWeek
@@ -204,7 +204,6 @@ private fun HabitTypeSelector(
             modifier = Modifier
                 .fillMaxWidth()
                 .menuAnchor(MenuAnchorType.PrimaryNotEditable, enabled = true),
-            isDarkTheme = isDarkTheme,
             singleLine = true,
             readOnly = true
         )
@@ -307,7 +306,6 @@ private fun GroupSettings(
                         modifier = Modifier
                             .width(70.dp)
                             .height(48.dp),
-                        isDarkTheme = isDarkTheme
                     )
 
                     Text(
@@ -465,7 +463,6 @@ private fun FrequencySelector(
             modifier = Modifier
                 .fillMaxWidth()
                 .menuAnchor(MenuAnchorType.PrimaryNotEditable, enabled = enabled),
-            isDarkTheme = isSystemInDarkTheme(),
             singleLine = true,
             readOnly = true
         )
@@ -808,7 +805,6 @@ fun AddEditHabitScreen(
                     modifier = Modifier.fillMaxWidth(),
                     singleLine = true,
                     leadingIcon = { Icon(Icons.Default.Title, null) },
-                    isDarkTheme = isSystemInDarkTheme()
                 )
                 FieldValidationFeedback(
                     errorMessage = uiState.titleError
@@ -825,7 +821,6 @@ fun AddEditHabitScreen(
                     modifier = Modifier.fillMaxWidth(),
                     singleLine = false,
                     leadingIcon = { Icon(Icons.Default.Description, null) },
-                    isDarkTheme = isSystemInDarkTheme()
                 )
                 FieldValidationFeedback(uiState.descriptionError)
             }
@@ -916,7 +911,6 @@ fun AddEditHabitScreen(
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                         singleLine = true,
                         leadingIcon = { Icon(Icons.Default.Timeline, null) },
-                        isDarkTheme = isDarkTheme
                     )
                     
                     GlassmorphicTextField(
@@ -925,7 +919,6 @@ fun AddEditHabitScreen(
                         label = { Text(stringResource(R.string.habit_unit_label)) },
                         modifier = Modifier.width(100.dp),
                         singleLine = true,
-                        isDarkTheme = isDarkTheme
                     )
                 }
                 FieldValidationFeedback(uiState.targetValueError)
