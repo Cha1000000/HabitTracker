@@ -169,7 +169,7 @@ fun GlassmorphicDialog(
     actions: (@Composable RowScope.() -> Unit)? = null
 ) {
     val containerColor = if (isDarkTheme) {
-        Color.Black.copy(alpha = 0.6f)
+        Color.Black.copy(alpha = 0.85f)
     } else {
         Color.White.copy(alpha = 0.85f)
     }

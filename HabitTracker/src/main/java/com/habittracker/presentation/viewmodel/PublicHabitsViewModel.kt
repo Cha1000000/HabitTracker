@@ -284,13 +284,13 @@ class PublicHabitsViewModel @Inject constructor(
         val combined = "$titleLower $descriptionLower"
         
         return when {
-            combined.containsAny("спорт", "фитнес", "тренировк", "бег", "физич") -> HabitCategory.SPORT
+            combined.containsAny("спорт", "фитнес", "трениров", "бег", "физич", "плава", "кататься на") -> HabitCategory.SPORT
             combined.containsAny("здоров", "питан", "сон", "вода", "витамин") -> HabitCategory.HEALTH
             combined.containsAny("учеб", "книг", "чтен", "курс", "язык") -> HabitCategory.EDUCATION
-            combined.containsAny("работ", "продуктив", "планирован", "задач") -> HabitCategory.PRODUCTIVITY
+            combined.containsAny("работ", "продуктив", "планирова", "задач") -> HabitCategory.PRODUCTIVITY
             combined.containsAny("медитац", "йог", "дыхан", "осознан") -> HabitCategory.MINDFULNESS
-            combined.containsAny("рисован", "музык", "творч", "искусств") -> HabitCategory.CREATIVITY
-            combined.containsAny("друз", "семь", "общен", "встреч") -> HabitCategory.SOCIAL
+            combined.containsAny("рисован", "музык", "творч", "искусств", "дизайн") -> HabitCategory.CREATIVITY
+            combined.containsAny("друз", "семь", "общен", "встреч", "кореш", "свидан") -> HabitCategory.SOCIAL
             else -> HabitCategory.OTHER
         }
     }
