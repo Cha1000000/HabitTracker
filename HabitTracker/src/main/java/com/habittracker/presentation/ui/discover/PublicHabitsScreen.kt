@@ -44,7 +44,6 @@ import androidx.compose.material.icons.filled.School
 import androidx.compose.material.icons.filled.SelfImprovement
 import androidx.compose.material.icons.filled.SportsTennis
 import androidx.compose.material.icons.filled.TrendingUp
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -54,7 +53,6 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarDuration
 import androidx.compose.material3.SnackbarHost
@@ -453,83 +451,6 @@ fun PublicHabitCard(
             }
         }
     }
-}
-
-/**
- * Диалог ввода кода приглашения
- */
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-fun JoinByCodeDialog(
-    onDismiss: () -> Unit,
-    onJoin: (String) -> Unit
-) {
-    var code by remember { mutableStateOf("") }
-    var isError by remember { mutableStateOf(false) }
-    
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = {
-            Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                Icon(
-                    Icons.Default.QrCode,
-                    contentDescription = null,
-                    modifier = Modifier.size(48.dp),
-                    tint = MaterialTheme.colorScheme.primary
-                )
-                Spacer(Modifier.height(8.dp))
-                Text(stringResource(R.string.join_by_code_title))
-            }
-        },
-        text = {
-            Column {
-                Text(
-                    text = stringResource(R.string.join_by_code_hint),
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    textAlign = TextAlign.Center,
-                    modifier = Modifier.fillMaxWidth()
-                )
-                Spacer(Modifier.height(16.dp))
-                OutlinedTextField(
-                    value = code.uppercase(),
-                    onValueChange = { newCode ->
-                        if (newCode.length <= 6) {
-                            code = newCode.uppercase()
-                            isError = false
-                        }
-                    },
-                    label = { Text("Код") },
-                    isError = isError,
-                    singleLine = true,
-                    shape = RoundedCornerShape(12.dp),
-                    modifier = Modifier.fillMaxWidth(),
-                    supportingText = if (isError) {
-                        { Text("Код должен содержать 6 символов") }
-                    } else null
-                )
-            }
-        },
-        confirmButton = {
-            TextButton(
-                onClick = {
-                    if (code.length == 6) {
-                        onJoin(code)
-                    } else {
-                        isError = true
-                    }
-                },
-                enabled = code.isNotEmpty()
-            ) {
-                Text(stringResource(R.string.join_by_code_button))
-            }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss) {
-                Text(stringResource(R.string.action_cancel))
-            }
-        }
-    )
 }
 
 /**

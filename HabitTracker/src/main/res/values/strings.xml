@@ -467,6 +467,10 @@
     <string name="public_habits_goal_title">Цель</string>
     <string name="public_habits_group_full">Группа заполнена</string>
     <string name="public_habits_join_habit">Присоединиться к привычке</string>
+    
+    <!-- Habit Preview Card -->
+    <string name="habit_preview_author">Автор:</string>
+    <string name="habit_preview_participants">участников</string>
     <string name="public_habits_nothing_found">Ничего не найдено</string>
     <string name="public_habits_no_public">Нет публичных привычек</string>
     <string name="public_habits_try_different">Попробуйте изменить запрос или фильтры</string>
