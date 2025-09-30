@@ -78,6 +78,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.core.graphics.toColorInt
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
@@ -300,19 +301,30 @@ private fun GroupSettings(
                                 viewModel.onMaxParticipantsInputChange(filtered)
                             }
                         },
-                        placeholder = { Text("2") },
+                        placeholder = {
+                            Text(
+                                text = "2",
+                                style = MaterialTheme.typography.labelLarge.copy(
+                                    textAlign = TextAlign.Center,
+                                    lineHeight = 18.sp
+                                ),
+                            ) },
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                         singleLine = true,
                         modifier = Modifier
-                            .width(70.dp)
-                            .height(48.dp),
+                            .width(60.dp)
+                            .height(46.dp),
+                        textStyle = MaterialTheme.typography.labelLarge.copy(
+                            textAlign = TextAlign.Center,
+                            lineHeight = 14.sp
+                        )
                     )
 
                     Text(
                         text = stringResource(R.string.participants_limit),
-                        style = MaterialTheme.typography.bodySmall,
+                        style = MaterialTheme.typography.labelLarge,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.padding(start = 4.dp)
+                        modifier = Modifier.padding(start = 2.dp)
                     )
 
                     // Компактное сообщение валидации справа, чтобы не тянуть высоту строки
@@ -896,7 +908,6 @@ fun AddEditHabitScreen(
 
             item {
                 // Целевое значение
-                val isDarkTheme = isSystemInDarkTheme()
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
@@ -1191,13 +1202,15 @@ fun AddEditHabitScreen(
 fun AddEditHabitScreenPreview() {
     MaterialTheme {
         val navController = rememberNavController()
-        val viewModel = PreviewAddEditHabitViewModel()
+        val viewModel = remember { PreviewAddEditHabitViewModel() }
         
         // Set initial state
-        viewModel.onTitleChange("Бег по утрам")
-        viewModel.onDescriptionChange("Пробежка в парке")
-        viewModel.onIconChange("🏃")
-        viewModel.onTypeChange(HabitType.PERSONAL)
+        LaunchedEffect(Unit) {
+            viewModel.onTitleChange("Бег по утрам")
+            viewModel.onDescriptionChange("Пробежка в парке")
+            viewModel.onIconChange("🏃")
+            viewModel.onTypeChange(HabitType.PERSONAL)
+        }
         
         AddEditHabitScreen(
             navController = navController,
@@ -1211,14 +1224,16 @@ fun AddEditHabitScreenPreview() {
 fun AddEditHabitScreenEditModePreview() {
     MaterialTheme {
         val navController = rememberNavController()
-        val viewModel = PreviewAddEditHabitViewModel()
+        val viewModel = remember { PreviewAddEditHabitViewModel() }
         
         // Set initial state for editing
-        viewModel.onTitleChange("Медитация")
-        viewModel.onDescriptionChange("Утренняя медитация 10 минут")
-        viewModel.onIconChange("🧘")
-        viewModel.onTypeChange(HabitType.GROUP)
-        viewModel.onFrequencyChange(HabitFrequency.DAILY)
+        LaunchedEffect(Unit) {
+            viewModel.onTitleChange("Медитация")
+            viewModel.onDescriptionChange("Утренняя медитация 10 минут")
+            viewModel.onIconChange("🧘")
+            viewModel.onTypeChange(HabitType.GROUP)
+            viewModel.onFrequencyChange(HabitFrequency.DAILY)
+        }
         
         AddEditHabitScreen(
             navController = navController,
@@ -1232,13 +1247,15 @@ fun AddEditHabitScreenEditModePreview() {
 fun AddEditHabitScreenLoadingPreview() {
     MaterialTheme {
         val navController = rememberNavController()
-        val viewModel = PreviewAddEditHabitViewModel(
-            testState = AddEditHabitUiState(
-                isLoading = true,
-                title = "Загрузка...",
-                description = "Загружаем данные привычки"
+        val viewModel = remember {
+            PreviewAddEditHabitViewModel(
+                testState = AddEditHabitUiState(
+                    isLoading = true,
+                    title = "Загрузка...",
+                    description = "Загружаем данные привычки"
+                )
             )
-        )
+        }
         
         AddEditHabitScreen(
             navController = navController,

@@ -70,6 +70,7 @@ import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.font.FontWeight.Companion.SemiBold
 import androidx.compose.ui.text.input.ImeAction
@@ -509,6 +510,7 @@ fun GlassmorphicTextField(
     keyboardOptions: KeyboardOptions = KeyboardOptions.Default,
     singleLine: Boolean = true,
     readOnly: Boolean = false,
+    textStyle: TextStyle = LocalTextStyle.current,
 ) {
     val colors = rememberGlassmorphicTextFieldColors()
     
@@ -526,6 +528,7 @@ fun GlassmorphicTextField(
         singleLine = singleLine,
         shape = RoundedCornerShape(12.dp),
         readOnly = readOnly,
+        textStyle = textStyle
     )
 }
 

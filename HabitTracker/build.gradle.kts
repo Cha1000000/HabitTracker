@@ -31,7 +31,7 @@ val appVersionName = "1.0.0"
 
 android {
     namespace = "com.habittracker"
-    compileSdk = 34
+    compileSdk = 36
 
     defaultConfig {
         applicationId = "com.habittracker"
