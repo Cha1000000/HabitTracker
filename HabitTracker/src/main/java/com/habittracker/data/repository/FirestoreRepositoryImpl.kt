@@ -273,15 +273,18 @@ class FirestoreRepositoryImpl @Inject constructor(
 
     override suspend fun deleteHabit(habitId: String) {
         try {
-            Log.d(TAG, "Deleting habit: $habitId")
-            // Мягкое удаление - помечаем как неактивную
+            Log.d(TAG, "🗑️ [deleteHabit] Deleting habit document from Firestore: $habitId")
+            
+            // ПОЛНОЕ удаление документа из Firestore (hard delete)
+            // Это эквивалентно "Delete document" в консоли Firebase
             firestore.collection(HABITS_COLLECTION)
                 .document(habitId)
-                .update("isActive", false)
+                .delete()
                 .await()
-            Log.d(TAG, "Habit deleted successfully: $habitId")
+            
+            Log.d(TAG, "✅ [deleteHabit] Habit document deleted successfully: $habitId")
         } catch (e: Exception) {
-            Log.e(TAG, "Error deleting habit: $habitId", e)
+            Log.e(TAG, "❌ [deleteHabit] Error deleting habit: $habitId", e)
             throw e
         }
     }
