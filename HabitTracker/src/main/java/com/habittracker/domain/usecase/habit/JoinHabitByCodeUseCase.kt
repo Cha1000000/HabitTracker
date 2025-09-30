@@ -3,14 +3,13 @@ package com.habittracker.domain.usecase.habit
 import android.util.Log
 import com.habittracker.domain.model.Habit
 import com.habittracker.domain.model.canAddParticipants
-import com.habittracker.domain.model.getParticipantsCount
 import com.habittracker.domain.model.isGroupHabit
 import com.habittracker.domain.model.isUserParticipant
+import com.habittracker.domain.repository.FirestoreRepository
 import com.habittracker.domain.repository.HabitRepository
+import com.habittracker.domain.repository.ParticipantSettingsRepository
 import com.habittracker.domain.repository.SocialRepository
 import com.habittracker.domain.usecase.ScheduleHabitReminderUseCase
-import com.habittracker.domain.repository.ParticipantSettingsRepository
-import kotlinx.datetime.Clock
 import javax.inject.Inject
 
 /**
@@ -18,6 +17,7 @@ import javax.inject.Inject
  */
 class JoinHabitByCodeUseCase @Inject constructor(
     private val habitRepository: HabitRepository,
+    private val firestoreRepository: FirestoreRepository,
     private val socialRepository: SocialRepository,
     private val generateInviteCodeUseCase: GenerateHabitInviteCodeUseCase,
     private val scheduleHabitReminderUseCase: ScheduleHabitReminderUseCase,
@@ -73,15 +73,16 @@ class JoinHabitByCodeUseCase @Inject constructor(
             val user = socialRepository.getUserById(userId)
                 ?: return Result.failure(Exception("Пользователь не найден"))
 
-            // Проверяем дружеские связи с создателем (опционально, можно убрать для публичных привычек)
-            val areFriends = socialRepository.areFriends(userId, habit.createdBy)
-            if (!areFriends) {
-                // Для публичных привычек можно разрешить присоединение без дружеских связей
-                // Но отправим уведомление создателю о новом участнике
-            }
-
-            // Добавляем пользователя к участникам привычки
-            habitRepository.addParticipantToHabit(habit.id, userId)
+            // Добавляем пользователя к участникам привычки и синхронизируем с Firebase
+            val updatedHabit = habit.copy(
+                participants = habit.participants + userId
+            )
+            
+            // Сначала обновляем в Firebase для синхронизации
+            firestoreRepository.updateHabit(updatedHabit)
+            
+            // Затем обновляем локально
+            habitRepository.updateHabit(updatedHabit)
 
             // Инициализируем персональные настройки и локально планируем напоминания для нового участника на этом устройстве
             try {
@@ -104,68 +105,16 @@ class JoinHabitByCodeUseCase @Inject constructor(
                     habitTitle = habit.title
                 )
             } catch (e: Exception) {
-                // Игнорируем ошибки уведомлений
+                Log.e("JoinHabitByCodeUC", "Failed to send notification to creator: ${e.message}", e)
             }
 
-            // Возвращаем обновленную привычку
-            val updatedHabit = habitRepository.getHabitById(habit.id)
-                ?: habit // Fallback на исходную привычку
+            // Возвращаем обновленную привычку из базы данных
+            val finalHabit = habitRepository.getHabitById(habit.id)
+                ?: updatedHabit // Fallback на обновленную привычку
 
-            Result.success(updatedHabit)
-        } catch (e: Exception) {
-            Result.failure(e)
-        }
-    }
-
-    /**
-     * Проверяет валидность кода приглашения без присоединения
-     * @param inviteCode Код приглашения
-     * @return Result с информацией о привычке или ошибкой
-     */
-    suspend fun validateInviteCode(inviteCode: String): Result<HabitPreview> {
-        return try {
-            if (!generateInviteCodeUseCase.isValidInviteCodeFormat(inviteCode)) {
-                return Result.failure(Exception("Неверный формат кода приглашения"))
-            }
-
-            val habit = habitRepository.getHabitByInviteCode(inviteCode)
-                ?: return Result.failure(Exception("Привычка с таким кодом не найдена"))
-
-            if (!habit.isActive || !habit.isPublic) {
-                return Result.failure(Exception("Код приглашения недействителен"))
-            }
-
-            val creator = socialRepository.getUserById(habit.createdBy)
-            val preview = HabitPreview(
-                id = habit.id,
-                title = habit.title,
-                description = habit.description,
-                icon = habit.icon,
-                color = habit.color,
-                creatorName = creator?.name ?: "Неизвестный пользователь",
-                participantsCount = habit.getParticipantsCount(),
-                maxParticipants = habit.maxParticipants,
-                hasAvailableSlots = habit.canAddParticipants()
-            )
-
-            Result.success(preview)
+            Result.success(finalHabit)
         } catch (e: Exception) {
             Result.failure(e)
         }
     }
 }
-
-/**
- * Модель для предварительного просмотра привычки по коду приглашения
- */
-data class HabitPreview(
-    val id: String,
-    val title: String,
-    val description: String,
-    val icon: String,
-    val color: String,
-    val creatorName: String,
-    val participantsCount: Int,
-    val maxParticipants: Int,
-    val hasAvailableSlots: Boolean
-)
