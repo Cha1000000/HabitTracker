@@ -26,6 +26,7 @@ class DeleteHabitUseCaseTest {
 
     private lateinit var useCase: DeleteHabitUseCase
     private lateinit var repo: HabitRepository
+    private lateinit var firestoreRepo: com.habittracker.domain.repository.FirestoreRepository
     private lateinit var syncManager: SyncManager
     private lateinit var scheduler: SyncWorkScheduler
     private lateinit var cancelHabitReminderUseCase: CancelHabitReminderUseCase
@@ -33,10 +34,11 @@ class DeleteHabitUseCaseTest {
     @Before
     fun setUp() {
         repo = mock()
+        firestoreRepo = mock()
         syncManager = mock()
         scheduler = mock()
         cancelHabitReminderUseCase = mock()
-        useCase = DeleteHabitUseCase(repo, syncManager, scheduler, cancelHabitReminderUseCase)
+        useCase = DeleteHabitUseCase(repo, firestoreRepo, syncManager, scheduler, cancelHabitReminderUseCase)
     }
 
     private fun baseGroupHabit(
@@ -115,38 +117,31 @@ class DeleteHabitUseCaseTest {
     // --- Interaction tests ---
 
     @Test
-    fun invoke_personalHabit_deletesLocally_andEnqueuesSoftDeleteUpsert_andSchedulesSync() = runTest {
+    fun invoke_personalHabit_deletesLocally_andDeletesDirectlyFromFirestore() = runTest {
         val habit = personalHabit(id = "p1", createdBy = "u1")
         whenever(repo.getHabitById("p1")).thenReturn(habit)
 
         useCase.invoke("p1", userId = "u1")
 
         verify(repo).deleteHabit("p1")
-        val payloadCaptor = argumentCaptor<String>()
-        verify(syncManager).enqueueUpsert(eq("habit"), eq("p1"), payloadCaptor.capture(), any(), any())
-        val json = JsonParser.parseString(payloadCaptor.firstValue).asJsonObject
-        assertTrue(json.has("updatedAt"))
-        // Soft delete flag
-        assertTrue(json.has("isActive"))
-        assertTrue(!json.get("isActive").asBoolean)
-        verify(scheduler, org.mockito.kotlin.atLeastOnce()).scheduleOneTimeSync()
+        // Теперь для персональных привычек делаем ПРЯМОЕ удаление из Firestore
+        verify(firestoreRepo).deleteHabit("p1")
+        // SyncManager не должен вызываться при успешном прямом удалении
+        verify(syncManager, never()).enqueueDelete(any(), any(), any(), any())
     }
 
     @Test
-    fun invoke_group_creatorLeaves_noParticipants_deletes_andEnqueuesSoftDeleteUpsert_andSchedulesSync() = runTest {
+    fun invoke_group_creatorLeaves_noParticipants_deletes_andDeletesDirectlyFromFirestore() = runTest {
         val habit = baseGroupHabit(createdBy = "u1", participants = emptyList()).copy(id = "g1")
         whenever(repo.getHabitById("g1")).thenReturn(habit)
 
         useCase.invoke("g1", userId = "u1")
 
         verify(repo).deleteHabit("g1")
-        val payloadCaptor = argumentCaptor<String>()
-        verify(syncManager).enqueueUpsert(eq("habit"), eq("g1"), payloadCaptor.capture(), any(), any())
-        val json = JsonParser.parseString(payloadCaptor.firstValue).asJsonObject
-        assertTrue(json.has("updatedAt"))
-        assertTrue(json.has("isActive"))
-        assertTrue(!json.get("isActive").asBoolean)
-        verify(scheduler, org.mockito.kotlin.atLeastOnce()).scheduleOneTimeSync()
+        // Теперь для пустых групп делаем ПРЯМОЕ удаление из Firestore
+        verify(firestoreRepo).deleteHabit("g1")
+        // SyncManager не должен вызываться при успешном прямом удалении
+        verify(syncManager, never()).enqueueDelete(any(), any(), any(), any())
     }
 
     @Test
@@ -156,12 +151,10 @@ class DeleteHabitUseCaseTest {
 
         useCase.invoke("g2", userId = "u1")
 
-        val captor = argumentCaptor<Habit>()
-        verify(repo).updateHabit(captor.capture())
-        val updated = captor.firstValue
-        assertEquals(HabitType.GROUP, updated.type)
-        assertEquals("u2", updated.createdBy)
-        assertEquals(listOf("u3"), updated.participants)
+        // Создатель покидает группу - привычка удаляется локально
+        verify(repo).deleteHabit("g2")
+        // Не должно быть вызова updateHabit
+        verify(repo, never()).updateHabit(any())
 
         // Capture payload and validate JSON content
         val payloadCaptor = argumentCaptor<String>()
@@ -212,14 +205,17 @@ class DeleteHabitUseCaseTest {
 
         useCase.invoke("g4", userId = "u2")
 
-        val captor = argumentCaptor<Habit>()
-        verify(repo).updateHabit(captor.capture())
-        val updated = captor.firstValue
-        assertEquals(HabitType.GROUP, updated.type)
-        assertEquals("u1", updated.createdBy)
-        assertEquals(listOf("u3"), updated.participants)
+        // Участник покидает группу - привычка удаляется локально
+        verify(repo).deleteHabit("g4")
+        // Не должно быть вызова updateHabit
+        verify(repo, never()).updateHabit(any())
 
-        verify(syncManager).enqueueUpsert(eq("habit"), eq("g4"), any(), any(), any())
+        // Проверяем, что в Firestore отправляется правильный payload с обновленными участниками
+        val payloadCaptor = argumentCaptor<String>()
+        verify(syncManager).enqueueUpsert(eq("habit"), eq("g4"), payloadCaptor.capture(), any(), any())
+        val json = JsonParser.parseString(payloadCaptor.firstValue).asJsonObject
+        val participantsArr = json.getAsJsonArray("participants").map { it.asString }
+        assertEquals(listOf("u3"), participantsArr)
         verify(scheduler).scheduleOneTimeSync()
     }
 
@@ -275,47 +271,49 @@ class DeleteHabitUseCaseTest {
     }
 
     @Test
-    fun syncManager_throws_swallowed_andSyncScheduled() = runTest {
+    fun firestoreDelete_throws_fallsBackToSyncManager() = runTest {
         val habit = personalHabit(id = "p3", createdBy = "u1")
         whenever(repo.getHabitById("p3")).thenReturn(habit)
-        // Force SyncManager to throw during enqueueUpsert; should be swallowed
-        whenever(syncManager.enqueueUpsert(any(), any(), any(), any(), any())).thenThrow(RuntimeException("outbox insert failed"))
-        // Void методы в моках по умолчанию ничего не делают
+        // Force FirestoreRepository to throw during delete; should fallback to SyncManager
+        whenever(firestoreRepo.deleteHabit("p3")).thenThrow(RuntimeException("Firestore delete failed"))
 
         // Should not throw
         useCase.invoke("p3", userId = "u1")
 
-        // Sync should still be scheduled in finally
+        // Should fallback to SyncManager enqueue
+        verify(syncManager).enqueueDelete(eq("habit"), eq("p3"), any(), any())
         verify(scheduler, org.mockito.kotlin.atLeastOnce()).scheduleOneTimeSync()
     }
 
     @Test
-    fun kickSync_calls_drainPending_on_successful_enqueue() = runTest {
-        // Создаем локальный use case с моком CancelHabitReminderUseCase
-        val localCancelHabitReminderUseCase: CancelHabitReminderUseCase = mock()
-        val localUseCase = DeleteHabitUseCase(repo, syncManager, scheduler, localCancelHabitReminderUseCase)
+    fun personalHabit_deletesDirectlyFromFirestore_withoutSyncManager() = runTest {
+        // Проверяем, что для персональных привычек используется прямое удаление из Firestore
         val habit = personalHabit(id = "p7", createdBy = "u1")
         whenever(repo.getHabitById("p7")).thenReturn(habit)
 
-        localUseCase.invoke("p7", userId = "u1")
+        useCase.invoke("p7", userId = "u1")
         advanceUntilIdle()
 
-        verify(syncManager, org.mockito.kotlin.atLeastOnce()).drainPending()
+        // Должен быть вызван прямой delete из Firestore
+        verify(firestoreRepo).deleteHabit("p7")
+        // SyncManager НЕ должен вызываться при успешном прямом удалении
+        verify(syncManager, never()).enqueueDelete(any(), any(), any(), any())
+        verify(syncManager, never()).drainPending()
     }
 
     @Test
-    fun kickSync_calls_drainPending_even_when_enqueue_throws() = runTest {
-        val localCancelHabitReminderUseCase: CancelHabitReminderUseCase = mock()
-        val localUseCase = DeleteHabitUseCase(repo, syncManager, scheduler, localCancelHabitReminderUseCase)
+    fun personalHabit_firestoreFails_usesSyncManagerFallback() = runTest {
         val habit = personalHabit(id = "p8", createdBy = "u1")
         whenever(repo.getHabitById("p8")).thenReturn(habit)
-        whenever(syncManager.enqueueUpsert(any(), any(), any(), any(), any())).thenThrow(RuntimeException("outbox insert failed"))
-        // Void методы в моках по умолчанию ничего не делают
+        // Firestore падает - должен использоваться fallback через SyncManager
+        whenever(firestoreRepo.deleteHabit("p8")).thenThrow(RuntimeException("Firestore unavailable"))
 
         // Не должно упасть
-        localUseCase.invoke("p8", userId = "u1")
+        useCase.invoke("p8", userId = "u1")
         advanceUntilIdle()
 
+        // Должен быть вызван fallback через SyncManager
+        verify(syncManager).enqueueDelete(eq("habit"), eq("p8"), any(), any())
         verify(syncManager, org.mockito.kotlin.atLeastOnce()).drainPending()
     }
 }

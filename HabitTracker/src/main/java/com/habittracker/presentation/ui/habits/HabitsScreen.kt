@@ -345,30 +345,15 @@ fun HabitsScreen(
                                             cancelLabel = stringResource(id = R.string.cancel),
                                             onConfirm = {
                                                 showDeleteDialog = false
-                                                // Начинаем оптимистичное удаление и предлагаем UNDO
-                                                viewModel.requestDeleteHabit(habitWithCompletion.habit.id)
-                                                // Показываем Snackbar и одновременно ставим таймер авто-скрытия
+                                                // Мгновенно удаляем (локально + Firestore) без UNDO, чтобы элемент не возвращался при refresh
+                                                viewModel.deleteHabit(habitWithCompletion.habit.id)
+                                                // Показываем короткое уведомление об успехе
                                                 scope.launch {
-                                                    val showJob = launch {
-                                                        val result = snackbarHostState.showSnackbar(
-                                                            message = habitDeletedText,
-                                                            actionLabel = undoText,
-                                                            withDismissAction = true,
-                                                            duration = SnackbarDuration.Indefinite
-                                                        )
-                                                        if (result == SnackbarResult.ActionPerformed) {
-                                                            viewModel.cancelPendingDeletion()
-                                                        } else {
-                                                            viewModel.confirmPendingDeletion()
-                                                        }
-                                                    }
-                                                    val timerJob = launch {
-                                                        delay(5_000)
-                                                        if (showJob.isActive) {
-                                                            snackbarHostState.currentSnackbarData?.dismiss()
-                                                        }
-                                                    }
-                                                    showJob.invokeOnCompletion { timerJob.cancel() }
+                                                    snackbarHostState.showSnackbar(
+                                                        message = habitDeletedText,
+                                                        withDismissAction = true,
+                                                        duration = SnackbarDuration.Short
+                                                    )
                                                 }
                                             },
                                             onDismiss = { showDeleteDialog = false }

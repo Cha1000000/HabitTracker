@@ -38,7 +38,7 @@ class HabitRepositoryImpl @Inject constructor(
     }
     
     override suspend fun getHabitByInviteCode(inviteCode: String): Habit? {
-        return habitDao.getHabitByInviteCode(inviteCode)?.toDomain()
+        return firestoreRepository.getHabitByInviteCode(inviteCode)
     }
     
     override fun getHabitByIdFlow(habitId: String): Flow<Habit?> {

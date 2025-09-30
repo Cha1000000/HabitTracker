@@ -3,8 +3,8 @@ package com.habittracker.domain.usecase.habit
 import com.habittracker.domain.model.canAddParticipants
 import com.habittracker.domain.model.isGroupHabit
 import com.habittracker.domain.repository.HabitRepository
+import com.habittracker.domain.usecase.UpdateHabitUseCase
 import kotlinx.datetime.Clock
-import kotlinx.datetime.Instant
 import javax.inject.Inject
 import kotlin.random.Random
 
@@ -12,7 +12,8 @@ import kotlin.random.Random
  * Use case для генерации уникальных кодов приглашения в групповые привычки
  */
 class GenerateHabitInviteCodeUseCase @Inject constructor(
-    private val habitRepository: HabitRepository
+    private val habitRepository: HabitRepository,
+    private val updateHabitUseCase: UpdateHabitUseCase
 ) {
     
     companion object {
@@ -66,7 +67,8 @@ class GenerateHabitInviteCodeUseCase @Inject constructor(
                 updatedAt = Clock.System.now().toEpochMilliseconds()
             )
 
-            habitRepository.updateHabit(updatedHabit)
+            // Используем UpdateHabitUseCase для синхронизации с Firestore
+            updateHabitUseCase(updatedHabit)
 
             Result.success(inviteCode)
         } catch (e: Exception) {
@@ -98,7 +100,8 @@ class GenerateHabitInviteCodeUseCase @Inject constructor(
                 updatedAt = Clock.System.now().toEpochMilliseconds()
             )
 
-            habitRepository.updateHabit(updatedHabit)
+            // Используем UpdateHabitUseCase для синхронизации с Firestore
+            updateHabitUseCase(updatedHabit)
             Result.success(Unit)
         } catch (e: Exception) {
             Result.failure(e)

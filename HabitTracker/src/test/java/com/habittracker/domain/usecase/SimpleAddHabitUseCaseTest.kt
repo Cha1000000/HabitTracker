@@ -105,6 +105,7 @@ class SimpleAddHabitUseCaseTest {
         override suspend fun getParticipantSettings(habitId: String, userId: String) = null
         override suspend fun setParticipantSettings(settings: HabitParticipantSettings) = throw NotImplementedError()
         override fun getAllPublicHabits(excludeUserId: String?) = flowOf(emptyList<Habit>())
+        override suspend fun getHabitByInviteCode(inviteCode: String) = throw NotImplementedError()
     }
 
     private class FakeHabitRepository : HabitRepository {

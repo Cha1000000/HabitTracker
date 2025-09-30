@@ -92,4 +92,12 @@ interface FirestoreRepository {
      * @return Flow со списком публичных привычек
      */
     fun getAllPublicHabits(excludeUserId: String? = null): Flow<List<Habit>>
+    
+    /**
+     * Ищет привычку по коду приглашения в Firestore.
+     *
+     * @param inviteCode Код приглашения
+     * @return Привычка или null, если не найдена
+     */
+    suspend fun getHabitByInviteCode(inviteCode: String): Habit?
 }

@@ -287,6 +287,8 @@ class AddEditHabitViewModel @Inject constructor(
                     Log.d("AddEditHabitViewModel", "✅ [saveHabit] Habit saved successfully: ${newHabit.id}")
                     // Важно: установить текущую привычку для дальнейших операций (например, отправки приглашений)
                     currentHabit = newHabit
+                    // Обновляем habitId в uiState для корректной работы методов после сохранения
+                    _uiState.update { it.copy(habitId = newHabit.id) }
                     
                     // Планируем напоминание для новой привычки
                     if (newHabit.reminderTime != null) {
@@ -357,6 +359,8 @@ class AddEditHabitViewModel @Inject constructor(
                     }
                     // Обновим ссылку на текущую привычку
                     currentHabit = updatedHabit
+                    // Обновляем habitId в uiState для корректной работы методов после сохранения
+                    _uiState.update { it.copy(habitId = updatedHabit.id) }
                 }
                 
                 _uiState.update { it.copy(
@@ -639,7 +643,12 @@ class AddEditHabitViewModel @Inject constructor(
                 val currentUserId = authRepository.getCurrentUserId()
                     ?: throw Exception("Пользователь не авторизован")
                 
-                val habitId = currentHabit?.id ?: throw Exception("Привычка не найдена")
+                // Используем habitId из uiState для корректной работы после отключения кода
+                Log.d("AddEditHabitViewModel", "[generateInviteCode] currentState.habitId=${currentState.habitId}, currentHabit?.id=${currentHabit?.id}")
+                val habitId = currentState.habitId 
+                    ?: currentHabit?.id 
+                    ?: throw Exception("Привычка не найдена")
+                Log.d("AddEditHabitViewModel", "[generateInviteCode] Using habitId=$habitId")
                 
                 val result = generateHabitInviteCodeUseCase.invoke(habitId, currentUserId)
                 result.onSuccess { inviteCode: String ->
@@ -683,7 +692,10 @@ class AddEditHabitViewModel @Inject constructor(
                 val currentUserId = authRepository.getCurrentUserId()
                     ?: throw Exception("Пользователь не авторизован")
                 
-                val habitId = currentHabit?.id ?: throw Exception("Привычка не найдена")
+                // Используем habitId из uiState для корректной работы при редактировании
+                val habitId = _uiState.value.habitId 
+                    ?: currentHabit?.id 
+                    ?: throw Exception("Привычка не найдена")
                 
                 val result = generateHabitInviteCodeUseCase.disableInviteCode(habitId, currentUserId)
                 result.onSuccess {
