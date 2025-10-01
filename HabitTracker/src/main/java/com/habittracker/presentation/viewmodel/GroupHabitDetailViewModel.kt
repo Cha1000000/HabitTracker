@@ -33,7 +33,7 @@ import javax.inject.Inject
 
 /**
  * ViewModel для экрана детальной информации о групповой привычке
- * 
+ *
  * Основные функции:
  * - Загрузка информации о привычке и участниках
  * - Управление приглашениями и кодами
@@ -73,7 +73,7 @@ class GroupHabitDetailViewModel @Inject constructor(
                 // Загружаем привычку
                 val habit = getHabitByIdUseCase(habitId)
                 if (habit == null) {
-                    _uiState.update { 
+                    _uiState.update {
                         it.copy(
                             isLoading = false,
                             error = application.getString(R.string.error_habit_not_found)
@@ -89,7 +89,7 @@ class GroupHabitDetailViewModel @Inject constructor(
                 val participants: List<User> = if (habit.isGroupHabit()) {
                     try {
                         // Получаем всех участников (создатель + участники из списка)
-                        val allParticipantIds = listOf(habit.createdBy) + habit.participants
+                        val allParticipantIds = (listOf(habit.createdBy) + habit.participants).distinct()
                         
                         // Загружаем информацию о каждом участнике через UserRepository
                         val participantUsers = allParticipantIds.mapNotNull { userId ->
@@ -99,7 +99,7 @@ class GroupHabitDetailViewModel @Inject constructor(
                                 null
                             }
                         }
-                        
+
                         participantUsers
                     } catch (_: Exception) {
                         emptyList()
@@ -138,7 +138,7 @@ class GroupHabitDetailViewModel @Inject constructor(
                     entry.userId == currentUserId && entry.date == today && entry.completed
                 }
 
-                _uiState.update { 
+                _uiState.update {
                     it.copy(
                         isLoading = false,
                         habit = habit,
@@ -153,16 +153,17 @@ class GroupHabitDetailViewModel @Inject constructor(
 
                 // Загружаем приглашения (только для владельца)
                 if (isOwner) {
-                    getHabitInvitationsUseCase.getOutgoingInvitations(currentUserId).collect { invitations ->
-                        val habitInvitations = invitations.filter { 
-                            it.habitId == habitId && it.status == HabitInvitationStatus.PENDING 
+                    getHabitInvitationsUseCase.getOutgoingInvitations(currentUserId)
+                        .collect { invitations ->
+                            val habitInvitations = invitations.filter {
+                                it.habitId == habitId && it.status == HabitInvitationStatus.PENDING
+                            }
+                            _uiState.update { it.copy(pendingInvitations = habitInvitations) }
                         }
-                        _uiState.update { it.copy(pendingInvitations = habitInvitations) }
-                    }
                 }
 
-            } catch (e: Exception) {
-                _uiState.update { 
+            } catch (_: Exception) {
+                _uiState.update {
                     it.copy(
                         isLoading = false,
                         error = application.getString(R.string.error_loading_habit_details)
@@ -178,43 +179,40 @@ class GroupHabitDetailViewModel @Inject constructor(
     fun toggleHabitCompletion() {
         val habit = _uiState.value.habit ?: return
         val today = Clock.System.todayIn(TimeZone.currentSystemDefault())
-        
-        //viewModelScope.launch {
-            try {
-                _uiState.update { it.copy(isLoading = true) }
-                
-                // Переключаем статус выполнения
-                val wasCompleted = _uiState.value.isCompletedToday
-                viewModelScope.launch {
-                    if (wasCompleted) {
-                        markHabitIncompleteUseCase(habit.id, currentUserId, today)
-                    } else {
-                        markHabitCompletedUseCase(habit.id, currentUserId, today)
-                    }
-                }
-                // Перезагружаем данные для обновления статуса
-                loadHabitDetails(habit.id)
-                
-                val message = if (!_uiState.value.isCompletedToday) {
-                    application.getString(R.string.habit_marked_complete)
+        try {
+            _uiState.update { it.copy(isLoading = true) }
+
+            // Переключаем статус выполнения
+            val wasCompleted = _uiState.value.isCompletedToday
+            viewModelScope.launch {
+                if (wasCompleted) {
+                    markHabitIncompleteUseCase(habit.id, currentUserId, today)
                 } else {
-                    application.getString(R.string.habit_marked_incomplete)
-                }
-                
-                _uiState.update { 
-                    it.copy(
-                        successMessage = message
-                    )
-                }
-            } catch (_: Exception) {
-                _uiState.update { 
-                    it.copy(
-                        isLoading = false,
-                        error = application.getString(R.string.error_updating_habit)
-                    )
+                    markHabitCompletedUseCase(habit.id, currentUserId, today)
                 }
             }
-        //}
+            // Перезагружаем данные для обновления статуса
+            loadHabitDetails(habit.id)
+
+            val message = if (!_uiState.value.isCompletedToday) {
+                application.getString(R.string.habit_marked_complete)
+            } else {
+                application.getString(R.string.habit_marked_incomplete)
+            }
+
+            _uiState.update {
+                it.copy(
+                    successMessage = message
+                )
+            }
+        } catch (_: Exception) {
+            _uiState.update {
+                it.copy(
+                    isLoading = false,
+                    error = application.getString(R.string.error_updating_habit)
+                )
+            }
+        }
     }
 
     /**
@@ -229,15 +227,15 @@ class GroupHabitDetailViewModel @Inject constructor(
      */
     fun generateInviteCode() {
         val habit = _uiState.value.habit ?: return
-        
+
         viewModelScope.launch {
             try {
                 _uiState.update { it.copy(isGeneratingCode = true) }
-                
+
                 val result = generateHabitInviteCodeUseCase(habit.id, currentUserId)
                 result.fold(
                     onSuccess = { inviteCode ->
-                        _uiState.update { 
+                        _uiState.update {
                             it.copy(
                                 isGeneratingCode = false,
                                 inviteCode = inviteCode,
@@ -246,16 +244,17 @@ class GroupHabitDetailViewModel @Inject constructor(
                         }
                     },
                     onFailure = { error ->
-                        _uiState.update { 
+                        _uiState.update {
                             it.copy(
                                 isGeneratingCode = false,
-                                error = error.message ?: application.getString(R.string.error_generating_invite_code)
+                                error = error.message
+                                    ?: application.getString(R.string.error_generating_invite_code)
                             )
                         }
                     }
                 )
             } catch (e: Exception) {
-                _uiState.update { 
+                _uiState.update {
                     it.copy(
                         isGeneratingCode = false,
                         error = application.getString(R.string.error_generating_invite_code)
@@ -277,20 +276,20 @@ class GroupHabitDetailViewModel @Inject constructor(
                 type = "text/plain"
                 addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
             }
-            
+
             val shareIntent = Intent.createChooser(sendIntent, null).apply {
                 addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
             }
-            
+
             application.startActivity(shareIntent)
-            
-            _uiState.update { 
+
+            _uiState.update {
                 it.copy(
                     successMessage = application.getString(R.string.invite_code_shared)
                 )
             }
         } catch (_: Exception) {
-            _uiState.update { 
+            _uiState.update {
                 it.copy(
                     error = application.getString(R.string.error_sharing_invite_code)
                 )
@@ -303,16 +302,16 @@ class GroupHabitDetailViewModel @Inject constructor(
      */
     fun disableInviteCode() {
         val habit = _uiState.value.habit ?: return
-        
+
         viewModelScope.launch {
             try {
                 _uiState.update { it.copy(isLoading = true) }
-                
+
                 // Отключаем invite-код через обновление привычки
                 val updatedHabit = habit.copy(inviteCode = null)
                 updateHabitUseCase(updatedHabit)
-                
-                _uiState.update { 
+
+                _uiState.update {
                     it.copy(
                         isLoading = false,
                         habit = updatedHabit,
@@ -321,7 +320,7 @@ class GroupHabitDetailViewModel @Inject constructor(
                     )
                 }
             } catch (_: Exception) {
-                _uiState.update { 
+                _uiState.update {
                     it.copy(
                         isLoading = false,
                         error = application.getString(R.string.error_disabling_invite_code)
@@ -336,15 +335,15 @@ class GroupHabitDetailViewModel @Inject constructor(
      */
     fun togglePublicAccess(isPublic: Boolean) {
         val habit = _uiState.value.habit ?: return
-        
+
         viewModelScope.launch {
             try {
                 _uiState.update { it.copy(isLoading = true) }
-                
+
                 val updatedHabit = habit.copy(isPublic = isPublic)
                 updateHabitUseCase(updatedHabit)
-                
-                _uiState.update { 
+
+                _uiState.update {
                     it.copy(
                         isLoading = false,
                         habit = updatedHabit,
@@ -356,7 +355,7 @@ class GroupHabitDetailViewModel @Inject constructor(
                     )
                 }
             } catch (_: Exception) {
-                _uiState.update { 
+                _uiState.update {
                     it.copy(
                         isLoading = false,
                         error = application.getString(R.string.error_updating_habit)
@@ -371,25 +370,25 @@ class GroupHabitDetailViewModel @Inject constructor(
      */
     fun removeParticipant(userId: String) {
         val habit = _uiState.value.habit ?: return
-        
+
         viewModelScope.launch {
             try {
                 _uiState.update { it.copy(isLoading = true) }
-                
+
                 // Удаляем участника через обновление привычки
                 val updatedParticipants = habit.participants.filter { it != userId }
                 val updatedHabit = habit.copy(participants = updatedParticipants)
                 updateHabitUseCase(updatedHabit)
-                
+
                 // Перезагружаем данные
                 loadHabitDetails(habit.id)
-                _uiState.update { 
+                _uiState.update {
                     it.copy(
                         successMessage = application.getString(R.string.participant_removed)
                     )
                 }
             } catch (_: Exception) {
-                _uiState.update { 
+                _uiState.update {
                     it.copy(
                         isLoading = false,
                         error = application.getString(R.string.error_removing_participant)
@@ -404,18 +403,18 @@ class GroupHabitDetailViewModel @Inject constructor(
      */
     fun leaveGroup() {
         val habit = _uiState.value.habit ?: return
-        
+
         viewModelScope.launch {
             try {
                 _uiState.update { it.copy(isLoading = true) }
-                
+
                 // Удаляем текущего пользователя из списка участников
                 val updatedParticipants = habit.participants.filter { it != currentUserId }
                 val updatedHabit = habit.copy(participants = updatedParticipants)
-                
+
                 updateHabitUseCase(updatedHabit)
-                
-                _uiState.update { 
+
+                _uiState.update {
                     it.copy(
                         isLoading = false,
                         successMessage = application.getString(R.string.left_group_successfully),
@@ -424,7 +423,7 @@ class GroupHabitDetailViewModel @Inject constructor(
                 }
 
             } catch (_: Exception) {
-                _uiState.update { 
+                _uiState.update {
                     it.copy(
                         isLoading = false,
                         error = application.getString(R.string.error_leaving_group)
