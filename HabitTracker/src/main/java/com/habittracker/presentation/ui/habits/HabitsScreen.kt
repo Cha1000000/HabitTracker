@@ -111,6 +111,8 @@ fun HabitsScreen(
         val observer = LifecycleEventObserver { _, event ->
             if (event == Lifecycle.Event.ON_RESUME) {
                 recomposeKey++
+                // Перезагружаем привычки при возврате на экран для обновления статусов
+                viewModel.refresh()
             }
         }
         lifecycleOwner.lifecycle.addObserver(observer)
