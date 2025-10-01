@@ -25,6 +25,7 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.ExitToApp
 import androidx.compose.material.icons.automirrored.filled.TrendingUp
 import androidx.compose.material.icons.filled.Cancel
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.ContentCopy
@@ -38,7 +39,6 @@ import androidx.compose.material.icons.filled.RadioButtonUnchecked
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material3.AssistChip
-import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -77,7 +77,6 @@ import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -136,6 +135,14 @@ fun GroupHabitDetailScreen(
                 duration = SnackbarDuration.Short
             )
             viewModel.clearSuccessMessage()
+        }
+    }
+    
+    // Обработка навигации назад после выхода из группы
+    LaunchedEffect(uiState.shouldNavigateBack) {
+        if (uiState.shouldNavigateBack) {
+            onBackClick()
+            viewModel.onNavigatedBack()
         }
     }
 
@@ -208,6 +215,8 @@ fun GroupHabitDetailScreen(
                     item {
                         HabitInfoSection(
                             habit = uiState.habit,
+                            isCompletedToday = uiState.isCompletedToday,
+                            onToggleCompletion = { viewModel.toggleHabitCompletion() },
                             modifier = Modifier.fillMaxWidth()
                         )
                     }
@@ -227,7 +236,6 @@ fun GroupHabitDetailScreen(
                         ParticipantsSection(
                             participants = uiState.participants,
                             habitEntries = uiState.habitEntries,
-                            isOwner = uiState.isOwner,
                             isManageMode = uiState.isManageMode,
                             onRemoveParticipant = { userId ->
                                 viewModel.removeParticipant(userId)
@@ -285,6 +293,8 @@ fun GroupHabitDetailScreen(
 @Composable
 private fun HabitInfoSection(
     habit: Habit?,
+    isCompletedToday: Boolean,
+    onToggleCompletion: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     habit?.let { h ->
@@ -386,6 +396,27 @@ private fun HabitInfoSection(
                             )
                         }
                     }
+                }
+                
+                // Кнопка отметки выполнения
+                IconButton(
+                    onClick = onToggleCompletion,
+                    modifier = Modifier.size(56.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Check,
+                        contentDescription = if (isCompletedToday) {
+                            stringResource(R.string.habits_unmark_complete)
+                        } else {
+                            stringResource(R.string.habits_mark_complete)
+                        },
+                        tint = if (isCompletedToday) {
+                            Color(0xFF4CAF50)
+                        } else {
+                            MaterialTheme.colorScheme.onSurfaceVariant
+                        },
+                        modifier = Modifier.size(32.dp)
+                    )
                 }
             }
         }
@@ -538,7 +569,6 @@ private fun StatisticItem(
 private fun ParticipantsSection(
     participants: List<User>,
     habitEntries: List<HabitEntry>,
-    isOwner: Boolean,
     isManageMode: Boolean,
     onRemoveParticipant: (String) -> Unit,
     modifier: Modifier = Modifier
@@ -1053,57 +1083,6 @@ private fun LeaveGroupSection(
             text = stringResource(R.string.leave_group),
             style = MaterialTheme.typography.labelLarge
         )
-    }
-}
-
-/**
- * Кнопка выхода из группы
- */
-@Composable
-private fun LeaveGroupButton(
-    onLeaveGroup: () -> Unit,
-    isLoading: Boolean,
-    modifier: Modifier = Modifier
-) {
-    Card(
-        modifier = modifier,
-        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.3f)
-        )
-    ) {
-        Column(
-            modifier = Modifier.padding(16.dp),
-            horizontalAlignment = Alignment.CenterHorizontally
-        ) {
-            Text(
-                text = stringResource(R.string.leave_group_warning),
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                textAlign = TextAlign.Center
-            )
-            
-            Spacer(modifier = Modifier.height(12.dp))
-            
-            Button(
-                onClick = onLeaveGroup,
-                enabled = !isLoading,
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = MaterialTheme.colorScheme.error
-                ),
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                if (isLoading) {
-                    CircularProgressIndicator(
-                        modifier = Modifier.size(18.dp),
-                        strokeWidth = 2.dp,
-                        color = MaterialTheme.colorScheme.onError
-                    )
-                    Spacer(modifier = Modifier.width(8.dp))
-                }
-                Text(stringResource(R.string.leave_group))
-            }
-        }
     }
 }
 

@@ -232,13 +232,20 @@ fun EnhancedHabitItem(
                                 }
                             }
                         }
-                        IconButton(onClick = onToggleCompletion, enabled = !habitWithCompletion.isLoading) {
+                        IconButton(
+                            onClick = onToggleCompletion,
+                            enabled = !habitWithCompletion.isLoading
+                        ) {
                             if (habitWithCompletion.isLoading) {
                                 CircularProgressIndicator(modifier = Modifier.size(24.dp), strokeWidth = 2.dp)
                             } else {
                                 Icon(
                                     imageVector = Icons.Default.Check,
-                                    contentDescription = if (habitWithCompletion.isCompletedToday) stringResource(R.string.habits_unmark_complete) else stringResource(R.string.habits_mark_complete),
+                                    contentDescription = if (habitWithCompletion.isCompletedToday) {
+                                        stringResource(R.string.habits_unmark_complete)
+                                    } else {
+                                        stringResource(R.string.habits_mark_complete)
+                                    },
                                     tint = if (habitWithCompletion.isCompletedToday) successColor else Color.Gray
                                 )
                             }

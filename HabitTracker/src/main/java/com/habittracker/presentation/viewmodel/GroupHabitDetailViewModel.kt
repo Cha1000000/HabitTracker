@@ -1,20 +1,23 @@
 package com.habittracker.presentation.viewmodel
 
 import android.app.Application
+import android.content.Intent
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.habittracker.R
-import com.habittracker.domain.model.FriendshipWithUsers
-import com.habittracker.domain.model.HabitEntry
 import com.habittracker.domain.model.HabitInvitationStatus
 import com.habittracker.domain.model.User
 import com.habittracker.domain.model.isGroupHabit
+import com.habittracker.domain.repository.AuthRepository
+import com.habittracker.domain.repository.HabitEntryRepository
+import com.habittracker.domain.repository.UserRepository
 import com.habittracker.domain.usecase.GetHabitByIdUseCase
+import com.habittracker.domain.usecase.MarkHabitCompletedUseCase
+import com.habittracker.domain.usecase.MarkHabitIncompleteUseCase
 import com.habittracker.domain.usecase.UpdateHabitUseCase
 import com.habittracker.domain.usecase.habit.GenerateHabitInviteCodeUseCase
 import com.habittracker.domain.usecase.habit.GetGroupHabitProgressUseCase
 import com.habittracker.domain.usecase.habit.GetHabitInvitationsUseCase
-import com.habittracker.domain.usecase.social.GetFriendsUseCase
 import com.habittracker.presentation.state.GroupHabitDetailUiState
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -23,26 +26,41 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.datetime.Clock
+import kotlinx.datetime.TimeZone
+import kotlinx.datetime.todayIn
 import javax.inject.Inject
 
 /**
  * ViewModel для экрана детальной информации о групповой привычке
+ * 
+ * Основные функции:
+ * - Загрузка информации о привычке и участниках
+ * - Управление приглашениями и кодами
+ * - Отметка выполнения привычки
+ * - Управление участниками группы
  */
 @HiltViewModel
 class GroupHabitDetailViewModel @Inject constructor(
     private val application: Application,
+    private val authRepository: AuthRepository,
+    private val userRepository: UserRepository,
     private val getHabitByIdUseCase: GetHabitByIdUseCase,
-    private val getFriendsUseCase: GetFriendsUseCase,
     private val getHabitInvitationsUseCase: GetHabitInvitationsUseCase,
     private val generateHabitInviteCodeUseCase: GenerateHabitInviteCodeUseCase,
     private val getGroupHabitProgressUseCase: GetGroupHabitProgressUseCase,
+    private val habitEntryRepository: HabitEntryRepository,
+    private val markHabitCompletedUseCase: MarkHabitCompletedUseCase,
+    private val markHabitIncompleteUseCase: MarkHabitIncompleteUseCase,
     private val updateHabitUseCase: UpdateHabitUseCase
 ) : AndroidViewModel(application) {
 
     private val _uiState = MutableStateFlow(GroupHabitDetailUiState())
     val uiState: StateFlow<GroupHabitDetailUiState> = _uiState.asStateFlow()
 
-    private val currentUserId = "DUMMY_USER_ID" // TODO: Заменить на реальный ID
+    // Получаем текущий ID пользователя из AuthRepository
+    private val currentUserId: String
+        get() = authRepository.getCurrentUserId() ?: ""
 
     /**
      * Загрузка детальной информации о привычке
@@ -70,44 +88,54 @@ class GroupHabitDetailViewModel @Inject constructor(
                 // Загружаем участников групповой привычки
                 val participants: List<User> = if (habit.isGroupHabit()) {
                     try {
-                        // Получаем всех друзей пользователя
-                        val friends: List<FriendshipWithUsers> = getFriendsUseCase(currentUserId).first()
-                        
-                        // Получаем всех участников привычки (создатель + участники)
+                        // Получаем всех участников (создатель + участники из списка)
                         val allParticipantIds = listOf(habit.createdBy) + habit.participants
                         
-                        // Фильтруем друзей, оставляя только участников привычки
-                        val participantUsers = friends.mapNotNull { friendship: FriendshipWithUsers ->
-                            val otherUser = friendship.getOtherUser(currentUserId)
-                            if (otherUser != null && allParticipantIds.contains(otherUser.id)) {
-                                otherUser
-                            } else null
+                        // Загружаем информацию о каждом участнике через UserRepository
+                        val participantUsers = allParticipantIds.mapNotNull { userId ->
+                            try {
+                                userRepository.getUserById(userId)
+                            } catch (e: Exception) {
+                                null
+                            }
                         }
                         
                         participantUsers
-                    } catch (e: Exception) {
-                        // В случае ошибки возвращаем пустой список
-                        emptyList<User>()
+                    } catch (_: Exception) {
+                        emptyList()
                     }
                 } else {
-                    emptyList<User>()
+                    emptyList()
                 }
 
-                // Загружаем полную статистику групповой привычки
-                val (habitEntries, groupStreak) = if (habit.isGroupHabit()) {
+                // Загружаем записи о выполнении привычки
+                val habitEntries = if (habit.isGroupHabit()) {
                     try {
-                        val groupProgress = getGroupHabitProgressUseCase(habitId).first()
-                        if (groupProgress != null) {
-                            // Используем групповую серию из прогресса
-                            Pair(emptyList<HabitEntry>(), groupProgress.groupStreak)
-                        } else {
-                            Pair(emptyList<HabitEntry>(), 0)
-                        }
-                    } catch (e: Exception) {
-                        Pair(emptyList<HabitEntry>(), 0)
+                        // Загружаем все записи привычки за последние 30 дней
+                        habitEntryRepository.getEntriesForHabit(habitId).first()
+                    } catch (_: Exception) {
+                        emptyList()
                     }
                 } else {
-                    Pair(emptyList<HabitEntry>(), 0)
+                    emptyList()
+                }
+
+                // Загружаем статистику групповой привычки
+                val groupStreak = if (habit.isGroupHabit()) {
+                    try {
+                        val groupProgress = getGroupHabitProgressUseCase(habitId).first()
+                        groupProgress?.groupStreak ?: 0
+                    } catch (e: Exception) {
+                        0
+                    }
+                } else {
+                    0
+                }
+
+                // Проверяем, выполнена ли привычка сегодня текущим пользователем
+                val today = Clock.System.todayIn(TimeZone.currentSystemDefault())
+                val isCompletedToday = habitEntries.any { entry ->
+                    entry.userId == currentUserId && entry.date == today && entry.completed
                 }
 
                 _uiState.update { 
@@ -118,7 +146,8 @@ class GroupHabitDetailViewModel @Inject constructor(
                         habitEntries = habitEntries,
                         inviteCode = habit.inviteCode,
                         isOwner = isOwner,
-                        groupStreak = groupStreak
+                        groupStreak = groupStreak,
+                        isCompletedToday = isCompletedToday
                     )
                 }
 
@@ -141,6 +170,51 @@ class GroupHabitDetailViewModel @Inject constructor(
                 }
             }
         }
+    }
+
+    /**
+     * Переключение выполнения привычки за сегодня
+     */
+    fun toggleHabitCompletion() {
+        val habit = _uiState.value.habit ?: return
+        val today = Clock.System.todayIn(TimeZone.currentSystemDefault())
+        
+        //viewModelScope.launch {
+            try {
+                _uiState.update { it.copy(isLoading = true) }
+                
+                // Переключаем статус выполнения
+                val wasCompleted = _uiState.value.isCompletedToday
+                viewModelScope.launch {
+                    if (wasCompleted) {
+                        markHabitIncompleteUseCase(habit.id, currentUserId, today)
+                    } else {
+                        markHabitCompletedUseCase(habit.id, currentUserId, today)
+                    }
+                }
+                // Перезагружаем данные для обновления статуса
+                loadHabitDetails(habit.id)
+                
+                val message = if (!_uiState.value.isCompletedToday) {
+                    application.getString(R.string.habit_marked_complete)
+                } else {
+                    application.getString(R.string.habit_marked_incomplete)
+                }
+                
+                _uiState.update { 
+                    it.copy(
+                        successMessage = message
+                    )
+                }
+            } catch (_: Exception) {
+                _uiState.update { 
+                    it.copy(
+                        isLoading = false,
+                        error = application.getString(R.string.error_updating_habit)
+                    )
+                }
+            }
+        //}
     }
 
     /**
@@ -192,14 +266,35 @@ class GroupHabitDetailViewModel @Inject constructor(
     }
 
     /**
-     * Поделиться invite-кодом
+     * Поделиться invite-кодом через системный Share Intent
      */
     fun shareInviteCode(inviteCode: String) {
-        // TODO: Реализовать системный диалог поделиться
-        _uiState.update { 
-            it.copy(
-                successMessage = application.getString(R.string.invite_code_copied)
-            )
+        try {
+            val shareText = application.getString(R.string.invite_code_share_text, inviteCode)
+            val sendIntent = Intent().apply {
+                action = Intent.ACTION_SEND
+                putExtra(Intent.EXTRA_TEXT, shareText)
+                type = "text/plain"
+                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            }
+            
+            val shareIntent = Intent.createChooser(sendIntent, null).apply {
+                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            }
+            
+            application.startActivity(shareIntent)
+            
+            _uiState.update { 
+                it.copy(
+                    successMessage = application.getString(R.string.invite_code_shared)
+                )
+            }
+        } catch (_: Exception) {
+            _uiState.update { 
+                it.copy(
+                    error = application.getString(R.string.error_sharing_invite_code)
+                )
+            }
         }
     }
 
@@ -225,7 +320,7 @@ class GroupHabitDetailViewModel @Inject constructor(
                         successMessage = application.getString(R.string.invite_code_disabled)
                     )
                 }
-            } catch (e: Exception) {
+            } catch (_: Exception) {
                 _uiState.update { 
                     it.copy(
                         isLoading = false,
@@ -260,7 +355,7 @@ class GroupHabitDetailViewModel @Inject constructor(
                         }
                     )
                 }
-            } catch (e: Exception) {
+            } catch (_: Exception) {
                 _uiState.update { 
                     it.copy(
                         isLoading = false,
@@ -272,7 +367,7 @@ class GroupHabitDetailViewModel @Inject constructor(
     }
 
     /**
-     * Удаление участника из группы (упрощенная версия)
+     * Удаление участника из группы
      */
     fun removeParticipant(userId: String) {
         val habit = _uiState.value.habit ?: return
@@ -293,7 +388,7 @@ class GroupHabitDetailViewModel @Inject constructor(
                         successMessage = application.getString(R.string.participant_removed)
                     )
                 }
-            } catch (e: Exception) {
+            } catch (_: Exception) {
                 _uiState.update { 
                     it.copy(
                         isLoading = false,
@@ -323,12 +418,12 @@ class GroupHabitDetailViewModel @Inject constructor(
                 _uiState.update { 
                     it.copy(
                         isLoading = false,
-                        successMessage = application.getString(R.string.left_group_successfully)
+                        successMessage = application.getString(R.string.left_group_successfully),
+                        shouldNavigateBack = true
                     )
                 }
-                // Можно добавить навигацию назад
-                
-            } catch (e: Exception) {
+
+            } catch (_: Exception) {
                 _uiState.update { 
                     it.copy(
                         isLoading = false,
@@ -351,5 +446,12 @@ class GroupHabitDetailViewModel @Inject constructor(
      */
     fun clearSuccessMessage() {
         _uiState.update { it.copy(successMessage = null) }
+    }
+
+    /**
+     * Сброс флага навигации назад
+     */
+    fun onNavigatedBack() {
+        _uiState.update { it.copy(shouldNavigateBack = false) }
     }
 }

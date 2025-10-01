@@ -517,6 +517,11 @@
     <string name="error_removing_participant">Ошибка удаления участника</string>
     <string name="left_group_successfully">Вы покинули группу</string>
     <string name="error_leaving_group">Ошибка выхода из группы</string>
+    <string name="invite_code_share_text">Присоединяйтесь к моей привычке! Код: %1$s</string>
+    <string name="invite_code_shared">Код приглашения отправлен</string>
+    <string name="error_sharing_invite_code">Ошибка отправки кода приглашения</string>
+    <string name="habit_marked_complete">Привычка отмечена как выполненная</string>
+    <string name="habit_marked_incomplete">Отметка выполнения снята</string>
 
     <!-- Challenge strings -->
     <string name="challenges_title">Челленджи</string>
