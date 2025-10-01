@@ -29,21 +29,12 @@ import androidx.compose.material.icons.Icons.AutoMirrored.Filled
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.TrendingUp
 import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.Apps
 import androidx.compose.material.icons.filled.CalendarToday
-import androidx.compose.material.icons.filled.Category
-import androidx.compose.material.icons.filled.FitnessCenter
 import androidx.compose.material.icons.filled.Flag
 import androidx.compose.material.icons.filled.Group
 import androidx.compose.material.icons.filled.GroupAdd
-import androidx.compose.material.icons.filled.Groups
-import androidx.compose.material.icons.filled.Palette
 import androidx.compose.material.icons.filled.QrCode
 import androidx.compose.material.icons.filled.Schedule
-import androidx.compose.material.icons.filled.School
-import androidx.compose.material.icons.filled.SelfImprovement
-import androidx.compose.material.icons.filled.SportsTennis
-import androidx.compose.material.icons.filled.TrendingUp
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -68,14 +59,12 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -96,25 +85,6 @@ import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale.getDefault
 
-/**
- * Категории публичных привычек
- */
-enum class HabitCategory(
-    val icon: ImageVector,
-    val emoji: String,
-    val stringResId: Int
-) {
-    ALL(Icons.Default.Apps, "✨", R.string.public_habits_category_all),
-    HEALTH(Icons.Default.FitnessCenter, "💪", R.string.public_habits_category_health),
-    SPORT(Icons.Default.SportsTennis, "⚽", R.string.public_habits_category_sport),
-    EDUCATION(Icons.Default.School, "📚", R.string.public_habits_category_education),
-    PRODUCTIVITY(Filled.TrendingUp, "📈", R.string.public_habits_category_productivity),
-    MINDFULNESS(Icons.Default.SelfImprovement, "🧘", R.string.public_habits_category_mindfulness),
-    CREATIVITY(Icons.Default.Palette, "🎨", R.string.public_habits_category_creativity),
-    SOCIAL(Icons.Default.Groups, "👥", R.string.public_habits_category_social),
-    OTHER(Icons.Default.Category, "🔮", R.string.public_habits_category_other)
-}
-
 @Composable
 fun HabitCategory.getDisplayName(): String = stringResource(stringResId)
 
@@ -129,8 +99,6 @@ fun PublicHabitsScreen(
     viewModel: PublicHabitsViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
-    val scope = rememberCoroutineScope()
-    val focusManager = LocalFocusManager.current
     val snackbarHostState = remember { SnackbarHostState() }
     var showJoinCodeDialog by remember { mutableStateOf(false) }
     var selectedHabit by remember { mutableStateOf<Habit?>(null) }
@@ -276,7 +244,7 @@ fun PublicHabitsScreen(
                     )
                 ) {
                     Icon(
-                        imageVector = if (uiState.sortByPopularity) Icons.Default.TrendingUp else Icons.Default.Schedule,
+                        imageVector = if (uiState.sortByPopularity) Filled.TrendingUp else Icons.Default.Schedule,
                         contentDescription = null,
                         modifier = Modifier.size(16.dp)
                     )

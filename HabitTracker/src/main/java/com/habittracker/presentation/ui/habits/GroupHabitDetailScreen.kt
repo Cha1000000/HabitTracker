@@ -3,6 +3,7 @@ package com.habittracker.presentation.ui.habits
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -19,6 +20,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.Icons.AutoMirrored.Filled
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.ExitToApp
 import androidx.compose.material.icons.automirrored.filled.TrendingUp
@@ -58,6 +60,7 @@ import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -68,6 +71,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
@@ -89,6 +93,7 @@ import com.habittracker.domain.model.HabitInvitation
 import com.habittracker.domain.model.User
 import com.habittracker.presentation.ui.components.SectionCard
 import com.habittracker.presentation.ui.habits.components.GradientProgressBar
+import com.habittracker.presentation.ui.habits.components.TahoeGradientBackground
 import com.habittracker.presentation.viewmodel.GroupHabitDetailViewModel
 import kotlinx.datetime.Clock
 import kotlinx.datetime.TimeZone
@@ -133,128 +138,140 @@ fun GroupHabitDetailScreen(
             viewModel.clearSuccessMessage()
         }
     }
-    
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = {
-                    Text(
-                        text = uiState.habit?.title ?: stringResource(R.string.group_habit_details),
-                        style = MaterialTheme.typography.titleLarge
+
+    TahoeGradientBackground(
+        modifier = Modifier.fillMaxSize(),
+        isDarkTheme = isSystemInDarkTheme()
+    ) {
+        Scaffold(
+            containerColor = Color.Transparent, // Прозрачный фон Scaffold
+            contentColor = MaterialTheme.colorScheme.onBackground,
+            topBar = {
+                TopAppBar(
+                    title = {
+                        Text(
+                            text = uiState.habit?.title
+                                ?: stringResource(R.string.group_habit_details),
+                            style = MaterialTheme.typography.titleLarge
+                        )
+                    },
+                    navigationIcon = {
+                        IconButton(onClick = onBackClick) {
+                            Icon(
+                                imageVector = Filled.ArrowBack,
+                                contentDescription = stringResource(R.string.action_back)
+                            )
+                        }
+                    },
+                    actions = {
+                        // Меню действий
+                        if (uiState.isOwner) {
+                            IconButton(
+                                onClick = { viewModel.toggleManageMode() }
+                            ) {
+                                Icon(
+                                    imageVector = if (uiState.isManageMode) Icons.Default.Done else Icons.Default.Settings,
+                                    contentDescription = stringResource(R.string.manage_group)
+                                )
+                            }
+                        }
+                    },
+                    colors = TopAppBarDefaults.topAppBarColors(
+                        containerColor = Color.Transparent,
+                        navigationIconContentColor = MaterialTheme.colorScheme.onBackground,
+                        titleContentColor = MaterialTheme.colorScheme.onBackground
                     )
-                },
-                navigationIcon = {
-                    IconButton(onClick = onBackClick) {
-                        Icon(
-                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = stringResource(R.string.action_back)
+                )
+            },
+            snackbarHost = { SnackbarHost(snackbarHostState) }
+        ) { paddingValues ->
+            if (uiState.isLoading && uiState.habit == null) {
+                // Индикатор загрузки
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(paddingValues),
+                    contentAlignment = Alignment.Center
+                ) {
+                    CircularProgressIndicator()
+                }
+            } else {
+                LazyColumn(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(paddingValues),
+                    contentPadding = PaddingValues(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(16.dp)
+                ) {
+
+                    // Основная информация о привычке
+                    item {
+                        HabitInfoSection(
+                            habit = uiState.habit,
+                            modifier = Modifier.fillMaxWidth()
                         )
                     }
-                },
-                actions = {
-                    // Меню действий
+
+                    // Прогресс группы
+                    item {
+                        GroupProgressSection(
+                            participants = uiState.participants,
+                            habitEntries = uiState.habitEntries,
+                            currentStreak = uiState.groupStreak,
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                    }
+
+                    // Участники группы
+                    item {
+                        ParticipantsSection(
+                            participants = uiState.participants,
+                            habitEntries = uiState.habitEntries,
+                            isOwner = uiState.isOwner,
+                            isManageMode = uiState.isManageMode,
+                            onRemoveParticipant = { userId ->
+                                viewModel.removeParticipant(userId)
+                            },
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                    }
+
+                    // Управление приглашениями (только для владельца)
                     if (uiState.isOwner) {
-                        IconButton(
-                            onClick = { viewModel.toggleManageMode() }
-                        ) {
-                            Icon(
-                                imageVector = if (uiState.isManageMode) Icons.Default.Done else Icons.Default.Settings,
-                                contentDescription = stringResource(R.string.manage_group)
+                        item {
+                            InviteManagementSection(
+                                habit = uiState.habit,
+                                inviteCode = uiState.inviteCode,
+                                pendingInvitations = uiState.pendingInvitations,
+                                isGeneratingCode = uiState.isGeneratingCode,
+                                onGenerateCode = { viewModel.generateInviteCode() },
+                                onShareCode = { code -> viewModel.shareInviteCode(code) },
+                                onDisableCode = { viewModel.disableInviteCode() },
+                                onTogglePublic = { isPublic -> viewModel.togglePublicAccess(isPublic) },
+                                modifier = Modifier.fillMaxWidth()
                             )
                         }
                     }
-                }
-            )
-        },
-        snackbarHost = { SnackbarHost(snackbarHostState) }
-    ) { paddingValues ->
-        
-        if (uiState.isLoading && uiState.habit == null) {
-            // Индикатор загрузки
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(paddingValues),
-                contentAlignment = Alignment.Center
-            ) {
-                CircularProgressIndicator()
-            }
-        } else {
-            LazyColumn(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(paddingValues),
-                contentPadding = PaddingValues(16.dp),
-                verticalArrangement = Arrangement.spacedBy(16.dp)
-            ) {
-                
-                // Основная информация о привычке
-                item {
-                    HabitInfoSection(
-                        habit = uiState.habit,
-                        modifier = Modifier.fillMaxWidth()
-                    )
-                }
-                
-                // Прогресс группы
-                item {
-                    GroupProgressSection(
-                        participants = uiState.participants,
-                        habitEntries = uiState.habitEntries,
-                        currentStreak = uiState.groupStreak,
-                        modifier = Modifier.fillMaxWidth()
-                    )
-                }
-                
-                // Участники группы
-                item {
-                    ParticipantsSection(
-                        participants = uiState.participants,
-                        habitEntries = uiState.habitEntries,
-                        isOwner = uiState.isOwner,
-                        isManageMode = uiState.isManageMode,
-                        onRemoveParticipant = { userId ->
-                            viewModel.removeParticipant(userId)
-                        },
-                        modifier = Modifier.fillMaxWidth()
-                    )
-                }
-                
-                // Управление приглашениями (только для владельца)
-                if (uiState.isOwner) {
+
+                    // История активности
                     item {
-                        InviteManagementSection(
-                            habit = uiState.habit,
-                            inviteCode = uiState.inviteCode,
-                            pendingInvitations = uiState.pendingInvitations,
-                            isGeneratingCode = uiState.isGeneratingCode,
-                            onGenerateCode = { viewModel.generateInviteCode() },
-                            onShareCode = { code -> viewModel.shareInviteCode(code) },
-                            onDisableCode = { viewModel.disableInviteCode() },
-                            onTogglePublic = { isPublic -> viewModel.togglePublicAccess(isPublic) },
+                        ActivityHistorySection(
+                            habitEntries = uiState.habitEntries,
+                            participants = uiState.participants,
                             modifier = Modifier.fillMaxWidth()
                         )
                     }
-                }
-                
-                // История активности
-                item {
-                    ActivityHistorySection(
-                        habitEntries = uiState.habitEntries,
-                        participants = uiState.participants,
-                        modifier = Modifier.fillMaxWidth()
-                    )
-                }
-                
-                // Кнопка выхода из группы (для участников)
-                if (!uiState.isOwner) {
-                    item {
-                        Spacer(modifier = Modifier.height(8.dp))
-                        LeaveGroupSection(
-                            onLeaveGroup = { viewModel.leaveGroup() },
-                            isLoading = uiState.isLoading,
-                            modifier = Modifier.fillMaxWidth()
-                        )
+
+                    // Кнопка выхода из группы (для участников)
+                    if (!uiState.isOwner) {
+                        item {
+                            Spacer(modifier = Modifier.height(8.dp))
+                            LeaveGroupSection(
+                                onLeaveGroup = { viewModel.leaveGroup() },
+                                isLoading = uiState.isLoading,
+                                modifier = Modifier.fillMaxWidth()
+                            )
+                        }
                     }
                 }
             }
@@ -349,7 +366,7 @@ private fun HabitInfoSection(
                             },
                             leadingIcon = {
                                 Icon(
-                                    Icons.AutoMirrored.Filled.TrendingUp,
+                                    Filled.TrendingUp,
                                     contentDescription = null,
                                     modifier = Modifier.size(16.dp)
                                 )
@@ -466,7 +483,7 @@ private fun GroupProgressSection(
             StatisticItem(
                 value = "$currentStreak",
                 label = stringResource(R.string.streak_days),
-                icon = Icons.AutoMirrored.Filled.TrendingUp
+                icon = Filled.TrendingUp
             )
             
             // Всего участников
@@ -486,7 +503,7 @@ private fun GroupProgressSection(
 private fun StatisticItem(
     value: String,
     label: String,
-    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    icon: ImageVector,
     modifier: Modifier = Modifier
 ) {
     Column(
@@ -976,7 +993,7 @@ private fun LeaveGroupSection(
             content = {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Icon(
-                        imageVector = Icons.AutoMirrored.Filled.ExitToApp,
+                        imageVector = Filled.ExitToApp,
                         contentDescription = null,
                         tint = MaterialTheme.colorScheme.error
                     )
@@ -1027,7 +1044,7 @@ private fun LeaveGroupSection(
         )
     ) {
         Icon(
-            imageVector = Icons.AutoMirrored.Filled.ExitToApp,
+            imageVector = Filled.ExitToApp,
             contentDescription = null,
             modifier = Modifier.size(18.dp)
         )

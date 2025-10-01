@@ -491,7 +491,7 @@
     <string name="group_progress">Прогресс группы</string>
     <string name="not_completed_today">Не выполнено сегодня</string>
     <string name="group_streak_days">дней подряд</string>
-    <string name="participants">Участники (%1$d)</string>
+    <string name="participants">Участники</string>
     <string name="tap_to_remove">Нажмите для удаления</string>
     <string name="remove_participant">Удалить участника</string>
     <string name="invite_management">Управление приглашениями</string>
