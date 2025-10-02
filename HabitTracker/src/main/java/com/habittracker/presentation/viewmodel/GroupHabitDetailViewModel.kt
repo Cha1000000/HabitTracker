@@ -2,6 +2,7 @@ package com.habittracker.presentation.viewmodel
 
 import android.app.Application
 import android.content.Intent
+import android.util.Log
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.habittracker.R
@@ -13,7 +14,6 @@ import com.habittracker.domain.repository.AuthRepository
 import com.habittracker.domain.repository.HabitEntryRepository
 import com.habittracker.domain.repository.UserRepository
 import com.habittracker.domain.usecase.GetHabitByIdUseCase
-import com.habittracker.domain.usecase.GetHabitCompletionStatusUseCase
 import com.habittracker.domain.usecase.MarkHabitCompletedUseCase
 import com.habittracker.domain.usecase.MarkHabitIncompleteUseCase
 import com.habittracker.domain.usecase.UpdateHabitUseCase
@@ -21,9 +21,11 @@ import com.habittracker.domain.usecase.habit.GenerateHabitInviteCodeUseCase
 import com.habittracker.domain.usecase.habit.GetHabitInvitationsUseCase
 import com.habittracker.presentation.state.GroupHabitDetailUiState
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.datetime.Clock
@@ -43,7 +45,6 @@ class GroupHabitDetailViewModel @Inject constructor(
     private val userRepository: UserRepository,
     private val habitEntryRepository: HabitEntryRepository,
     private val getHabitByIdUseCase: GetHabitByIdUseCase,
-    private val getHabitCompletionStatusUseCase: GetHabitCompletionStatusUseCase,
     private val markHabitCompletedUseCase: MarkHabitCompletedUseCase,
     private val markHabitIncompleteUseCase: MarkHabitIncompleteUseCase,
     private val getHabitInvitationsUseCase: GetHabitInvitationsUseCase,
@@ -56,11 +57,19 @@ class GroupHabitDetailViewModel @Inject constructor(
 
     private val currentUserId: String
         get() = authRepository.getCurrentUserId() ?: ""
+    
+    // Job для отслеживания подписок на Flow
+    private var entriesCollectionJob: Job? = null
+    private var invitationsCollectionJob: Job? = null
 
     /**
      * Загрузка детальной информации о привычке
      */
     fun loadHabitDetails(habitId: String) {
+        // Отменяем предыдущие подписки
+        entriesCollectionJob?.cancel()
+        invitationsCollectionJob?.cancel()
+        
         viewModelScope.launch {
             try {
                 _uiState.update { it.copy(isLoading = true, error = null) }
@@ -107,65 +116,35 @@ class GroupHabitDetailViewModel @Inject constructor(
                     emptyList()
                 }
 
-                // Загружаем полную статистику групповой привычки
-                val (habitEntries, groupStreak) = if (habit.isGroupHabit()) {
-                    try {
-                        // Загружаем записи о выполнении для всех участников
-                        val allEntries = mutableListOf<HabitEntry>()
-                        val today = Clock.System.todayIn(TimeZone.currentSystemDefault())
-                        
-                        // Загружаем записи для каждого участника за последние 30 дней
-                        for (participant in participants) {
-                            val userHabitEntries = habitEntryRepository.getEntriesForUserAndPeriod(
-                                habitId = habitId,
-                                userId = participant.id,
-                                startDate = today.minus(DatePeriod(days = 30)),
-                                endDate = today
-                            )
-                            allEntries.addAll(userHabitEntries)
-                        }
-                        
-                        // Рассчитываем групповую серию
-                        val streak = calculateGroupStreak(allEntries, participants.map { it.id })
-                        Pair(allEntries, streak)
-                    } catch (_: Exception) {
-                        Pair(emptyList<HabitEntry>(), 0)
-                    }
-                } else {
-                    Pair(emptyList<HabitEntry>(), 0)
-                }
-
-                // Проверяем, выполнена ли привычка сегодня
-                val isCompletedToday = try {
-                    val today = Clock.System.todayIn(TimeZone.currentSystemDefault())
-                    getHabitCompletionStatusUseCase(habitId, currentUserId, today)
-                } catch (_: Exception) {
-                    false
-                }
-                
+                // Обновляем базовую информацию о привычке
                 _uiState.update { 
                     it.copy(
                         isLoading = false,
                         habit = habit,
                         participants = participants,
-                        habitEntries = habitEntries,
                         inviteCode = habit.inviteCode,
-                        isOwner = isOwner,
-                        groupStreak = groupStreak,
-                        isCompletedToday = isCompletedToday
+                        isOwner = isOwner
                     )
+                }
+
+                // Подписываемся на изменения записей о выполнении привычки
+                if (habit.isGroupHabit()) {
+                    collectHabitEntries(habitId, participants.map { it.id })
                 }
 
                 // Загружаем приглашения (только для владельца)
                 if (isOwner) {
-                    getHabitInvitationsUseCase.getOutgoingInvitations(currentUserId).collect { invitations ->
-                        val habitInvitations = invitations.filter { 
-                            it.habitId == habitId && it.status == HabitInvitationStatus.PENDING 
-                        }
-                        _uiState.update { it.copy(pendingInvitations = habitInvitations) }
+                    invitationsCollectionJob = viewModelScope.launch {
+                        getHabitInvitationsUseCase.getOutgoingInvitations(currentUserId)
+                            .catch { /* Игнорируем ошибки */ }
+                            .collect { invitations ->
+                                val habitInvitations = invitations.filter { 
+                                    it.habitId == habitId && it.status == HabitInvitationStatus.PENDING 
+                                }
+                                _uiState.update { it.copy(pendingInvitations = habitInvitations) }
+                            }
                     }
                 }
-
             } catch (_: Exception) {
                 _uiState.update { 
                     it.copy(
@@ -174,6 +153,47 @@ class GroupHabitDetailViewModel @Inject constructor(
                     )
                 }
             }
+        }
+    }
+    
+    /**
+     * Подписка на изменения записей о выполнении привычки для всех участников
+     */
+    private fun collectHabitEntries(habitId: String, participantIds: List<String>) {
+        entriesCollectionJob?.cancel()
+        entriesCollectionJob = viewModelScope.launch {
+            habitEntryRepository.getEntriesForHabit(habitId)
+                .catch { e ->
+                    // Логируем ошибку, но не прерываем поток
+                    Log.e("GroupHabitDetailVM", "Error collecting entries", e)
+                }
+                .collect { allEntries ->
+                    val today = Clock.System.todayIn(TimeZone.currentSystemDefault())
+                    
+                    // Фильтруем записи только для участников группы
+                    val relevantEntries = allEntries.filter { entry ->
+                        entry.userId in participantIds
+                    }
+                    
+                    // Проверяем статус выполнения для текущего пользователя
+                    val isCompletedToday = relevantEntries.any { entry ->
+                        entry.userId == currentUserId && 
+                        entry.date == today && 
+                        entry.completed
+                    }
+                    
+                    // Рассчитываем групповую серию
+                    val groupStreak = calculateGroupStreak(relevantEntries, participantIds)
+                    
+                    // Обновляем UI состояние
+                    _uiState.update { state ->
+                        state.copy(
+                            habitEntries = relevantEntries,
+                            groupStreak = groupStreak,
+                            isCompletedToday = isCompletedToday
+                        )
+                    }
+                }
         }
     }
 
@@ -457,6 +477,13 @@ class GroupHabitDetailViewModel @Inject constructor(
                 }
             }
         }
+    }
+    
+    override fun onCleared() {
+        super.onCleared()
+        // Отменяем все активные подписки при уничтожении ViewModel
+        entriesCollectionJob?.cancel()
+        invitationsCollectionJob?.cancel()
     }
     
     /**

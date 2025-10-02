@@ -231,7 +231,6 @@ fun GroupHabitDetailScreen(
                         ParticipantsSection(
                             participants = uiState.participants,
                             habitEntries = uiState.habitEntries,
-                            isOwner = uiState.isOwner,
                             isManageMode = uiState.isManageMode,
                             onRemoveParticipant = { userId ->
                                 viewModel.removeParticipant(userId)
@@ -315,7 +314,7 @@ private fun HabitInfoSection(
                         .background(
                             color = try {
                                 Color(h.color.toColorInt()).copy(alpha = 0.1f)
-                            } catch (e: Exception) {
+                            } catch (_: Exception) {
                                 MaterialTheme.colorScheme.surfaceVariant
                             }
                         ),
@@ -326,7 +325,7 @@ private fun HabitInfoSection(
                         style = MaterialTheme.typography.headlineMedium,
                         color = try {
                             Color(h.color.toColorInt())
-                        } catch (e: Exception) {
+                        } catch (_: Exception) {
                             MaterialTheme.colorScheme.primary
                         }
                     )
@@ -588,7 +587,6 @@ private fun StatisticItem(
 private fun ParticipantsSection(
     participants: List<User>,
     habitEntries: List<HabitEntry>,
-    isOwner: Boolean,
     isManageMode: Boolean,
     onRemoveParticipant: (String) -> Unit,
     modifier: Modifier = Modifier
@@ -728,7 +726,7 @@ private fun ParticipantListItem(
                     modifier = Modifier.size(24.dp)
                 )
                 if (isManageMode && !isOwner) {
-                    Spacer(modifier = Modifier.width(8.dp))
+                    Spacer(modifier = Modifier.width(12.dp))
                     Icon(
                         imageVector = Icons.Default.PersonRemove,
                         contentDescription = stringResource(R.string.remove_participant),
@@ -742,7 +740,7 @@ private fun ParticipantListItem(
 }
 
 /**
- * Секция управления приглашениями
+ * Секция управления приглашениями (для автора/владельца привычки)
  */
 @Composable
 private fun InviteManagementSection(
