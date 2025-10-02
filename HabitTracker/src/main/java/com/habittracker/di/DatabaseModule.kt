@@ -10,6 +10,7 @@ import com.habittracker.data.local.dao.HabitDao
 import com.habittracker.data.local.dao.HabitParticipantSettingsDao
 import com.habittracker.data.local.dao.HabitEntryDao
 import com.habittracker.data.local.dao.HabitInvitationDao
+import com.habittracker.data.local.dao.NotificationDao
 import com.habittracker.data.local.dao.UserAchievementDao
 import com.habittracker.data.local.dao.SyncOutboxDao
 import com.habittracker.data.local.dao.UserDao
@@ -63,4 +64,7 @@ object DatabaseModule {
     @Provides
     fun provideHabitParticipantSettingsDao(database: HabitTrackerDatabase): HabitParticipantSettingsDao =
         database.habitParticipantSettingsDao()
+    
+    @Provides
+    fun provideNotificationDao(database: HabitTrackerDatabase): NotificationDao = database.notificationDao()
 }

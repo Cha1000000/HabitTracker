@@ -1,13 +1,15 @@
 package com.habittracker.domain.usecase.notification
 
+import android.util.Log
 import com.habittracker.domain.model.Habit
 import com.habittracker.domain.model.HabitEntry
-import com.habittracker.domain.model.HabitType
 import com.habittracker.domain.model.User
-import com.habittracker.domain.repository.HabitRepository
 import com.habittracker.domain.repository.HabitEntryRepository
+import com.habittracker.domain.repository.HabitRepository
+import com.habittracker.domain.repository.NotificationRepository
 import com.habittracker.domain.repository.SocialRepository
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flow
 import kotlinx.datetime.Clock
 import kotlinx.datetime.DateTimeUnit
@@ -16,7 +18,6 @@ import kotlinx.datetime.LocalDate
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.minus
 import kotlinx.datetime.todayIn
-import java.util.UUID
 import javax.inject.Inject
 
 /**
@@ -25,7 +26,8 @@ import javax.inject.Inject
 class GroupHabitNotificationUseCase @Inject constructor(
     private val habitRepository: HabitRepository,
     private val habitEntryRepository: HabitEntryRepository,
-    private val socialRepository: SocialRepository
+    private val socialRepository: SocialRepository,
+    private val notificationRepository: NotificationRepository
 ) {
     
     /**
@@ -33,24 +35,46 @@ class GroupHabitNotificationUseCase @Inject constructor(
      */
     fun getGroupHabitNotifications(userId: String): Flow<List<GroupHabitNotification>> = flow {
         try {
+            Log.d(TAG, "getGroupHabitNotifications called for userId=$userId")
             val notifications = mutableListOf<GroupHabitNotification>()
+            
+            // Получаем сохраненные статусы прочтения
+            val readStatuses = notificationRepository.getReadStatusesForUser(userId).first()
+            Log.d(TAG, "Loaded ${readStatuses.size} read statuses")
             
             // Получаем групповые привычки пользователя
             habitRepository.getGroupHabits(userId).collect { groupHabits ->
+                Log.d(TAG, "Found ${groupHabits.size} group habits for user")
                 for (habit in groupHabits) {
+                    Log.d(TAG, "Processing habit: ${habit.title} (${habit.id})")
                     // Генерируем уведомления для каждой групповой привычки
-                    notifications.addAll(generateNotificationsForHabit(habit, userId))
+                    val habitNotifications = generateNotificationsForHabit(habit, userId)
+                    Log.d(TAG, "Generated ${habitNotifications.size} notifications for habit ${habit.title}")
+                    
+                    // Применяем сохраненные статусы прочтения
+                    val notificationsWithStatus = habitNotifications.map { notification ->
+                        val isRead = readStatuses[notification.id] ?: false
+                        notification.copy(isRead = isRead)
+                    }
+                    
+                    notifications.addAll(notificationsWithStatus)
                 }
                 
+                Log.d(TAG, "Total notifications to emit: ${notifications.size}")
                 emit(notifications.sortedByDescending { it.timestamp })
             }
         } catch (e: Exception) {
+            Log.e(TAG, "Error loading notifications", e)
             emit(emptyList())
         }
     }
     
+    companion object {
+        private const val TAG = "GroupHabitNotifUseCase"
+    }
+    
     /**
-     * Генерирует уведомления для конкретной привычки
+     * Генерирует уведомления для конкретной привычки и сохраняет их статусы
      */
     private suspend fun generateNotificationsForHabit(
         habit: Habit,
@@ -60,11 +84,15 @@ class GroupHabitNotificationUseCase @Inject constructor(
         val today = Clock.System.todayIn(TimeZone.currentSystemDefault())
         
         try {
+            // Получаем полный список участников (создатель + participants)
+            val allParticipantIds = (listOf(habit.createdBy) + habit.participants).distinct()
+            Log.d(TAG, "Habit ${habit.title}: ${allParticipantIds.size} participants (creator + ${habit.participants.size} others)")
+            
             // Получаем записи выполнения за последние 7 дней для каждого участника
             val startDate = today.minus(7, DateTimeUnit.DAY)
             val allEntries = mutableListOf<HabitEntry>()
             
-            for (participantId in habit.participants) {
+            for (participantId in allParticipantIds) {
                 val participantEntries = habitEntryRepository.getEntriesForUserAndPeriod(
                     habitId = habit.id,
                     userId = participantId,
@@ -74,11 +102,13 @@ class GroupHabitNotificationUseCase @Inject constructor(
                 allEntries.addAll(participantEntries)
             }
             
+            Log.d(TAG, "Loaded ${allEntries.size} total entries for habit ${habit.title}")
+            
             // Группируем записи по участникам
             val entriesByUser = allEntries.groupBy { it.userId }
             
             // Генерируем уведомления о выполнении участниками
-            for (participantId in habit.participants) {
+            for (participantId in allParticipantIds) {
                 if (participantId == currentUserId) continue // Не уведомляем о собственных действиях
                 
                 val participantEntries = entriesByUser[participantId] ?: emptyList()
@@ -86,56 +116,86 @@ class GroupHabitNotificationUseCase @Inject constructor(
                 
                 // Уведомление о выполнении сегодня
                 val todayEntry = participantEntries.find { entry -> entry.date == today && entry.completed }
+                Log.d(TAG, "Participant $participantId: todayEntry=${todayEntry != null}")
                 if (todayEntry != null) {
-                    notifications.add(
-                        GroupHabitNotification(
-                            id = UUID.randomUUID().toString(),
-                            type = NotificationType.PARTICIPANT_COMPLETED,
-                            habitId = habit.id,
-                            habitTitle = habit.title,
-                            participantName = participant?.name ?: "Участник",
-                            message = "${participant?.name ?: "Участник"} выполнил(а) привычку \"${habit.title}\"",
-                            timestamp = Clock.System.now(),
-                            isRead = false
-                        )
+                    // Генерируем стабильный ID на основе данных уведомления
+                    val notificationId = generateNotificationId(
+                        type = "PARTICIPANT_COMPLETED",
+                        habitId = habit.id,
+                        participantId = participantId,
+                        date = today.toString()
                     )
+                    
+                    val notification = GroupHabitNotification(
+                        id = notificationId,
+                        type = NotificationType.PARTICIPANT_COMPLETED,
+                        habitId = habit.id,
+                        habitTitle = habit.title,
+                        participantName = participant?.name ?: "Участник",
+                        message = "${participant?.name ?: "Участник"} выполнил(а) привычку \"${habit.title}\"",
+                        timestamp = todayEntry.completedAt?.let { Instant.fromEpochMilliseconds(it) } ?: Clock.System.now(),
+                        isRead = false
+                    )
+                    notifications.add(notification)
+                    
+                    // Сохраняем статус нового уведомления
+                    saveNotificationStatus(notification, currentUserId)
                 }
                 
                 // Уведомление о серии выполнений
                 val streak = calculateStreak(participantEntries, today)
                 if (streak >= 7 && streak % 7 == 0) {
-                    notifications.add(
-                        GroupHabitNotification(
-                            id = UUID.randomUUID().toString(),
-                            type = NotificationType.PARTICIPANT_STREAK,
-                            habitId = habit.id,
-                            habitTitle = habit.title,
-                            participantName = participant?.name ?: "Участник",
-                            message = "${participant?.name ?: "Участник"} поддерживает серию $streak дней в \"${habit.title}\"!",
-                            timestamp = Clock.System.now(),
-                            isRead = false
-                        )
+                    val notificationId = generateNotificationId(
+                        type = "PARTICIPANT_STREAK",
+                        habitId = habit.id,
+                        participantId = participantId,
+                        date = today.toString(),
+                        extra = streak.toString()
                     )
+                    
+                    val notification = GroupHabitNotification(
+                        id = notificationId,
+                        type = NotificationType.PARTICIPANT_STREAK,
+                        habitId = habit.id,
+                        habitTitle = habit.title,
+                        participantName = participant?.name ?: "Участник",
+                        message = "${participant?.name ?: "Участник"} поддерживает серию $streak дней в \"${habit.title}\"!",
+                        timestamp = Clock.System.now(),
+                        isRead = false
+                    )
+                    notifications.add(notification)
+                    
+                    // Сохраняем статус нового уведомления
+                    saveNotificationStatus(notification, currentUserId)
                 }
             }
             
             // Уведомление о групповом достижении
             if (checkGroupAchievement(habit, entriesByUser, today)) {
-                notifications.add(
-                    GroupHabitNotification(
-                        id = UUID.randomUUID().toString(),
-                        type = NotificationType.GROUP_ACHIEVEMENT,
-                        habitId = habit.id,
-                        habitTitle = habit.title,
-                        message = "Все участники выполнили \"${habit.title}\" сегодня! ",
-                        timestamp = Clock.System.now(),
-                        isRead = false
-                    )
+                val notificationId = generateNotificationId(
+                    type = "GROUP_ACHIEVEMENT",
+                    habitId = habit.id,
+                    participantId = "group",
+                    date = today.toString()
                 )
+                
+                val notification = GroupHabitNotification(
+                    id = notificationId,
+                    type = NotificationType.GROUP_ACHIEVEMENT,
+                    habitId = habit.id,
+                    habitTitle = habit.title,
+                    message = "Все участники выполнили \"${habit.title}\" сегодня! ",
+                    timestamp = Clock.System.now(),
+                    isRead = false
+                )
+                notifications.add(notification)
+                
+                // Сохраняем статус нового уведомления
+                saveNotificationStatus(notification, currentUserId)
             }
             
         } catch (e: Exception) {
-            // Логируем ошибку, но не прерываем работу
+            Log.e(TAG, "Error generating notifications for habit ${habit.title}", e)
         }
         
         return notifications
@@ -183,11 +243,48 @@ class GroupHabitNotificationUseCase @Inject constructor(
         entriesByUser: Map<String, List<HabitEntry>>,
         today: LocalDate
     ): Boolean {
-        if (habit.participants.size <= 1) return false
+        // Получаем полный список участников (создатель + participants)
+        val allParticipantIds = (listOf(habit.createdBy) + habit.participants).distinct()
         
-        return habit.participants.all { participantId ->
+        if (allParticipantIds.size <= 1) return false
+        
+        return allParticipantIds.all { participantId ->
             val userEntries = entriesByUser[participantId] ?: emptyList()
             userEntries.any { it.date == today && it.completed }
+        }
+    }
+    
+    /**
+     * Генерирует стабильный ID для уведомления на основе его данных
+     */
+    private fun generateNotificationId(
+        type: String,
+        habitId: String,
+        participantId: String,
+        date: String,
+        extra: String = ""
+    ): String {
+        val components = listOf(type, habitId, participantId, date, extra)
+        return components.joinToString("_")
+    }
+    
+    /**
+     * Сохраняет статус нового уведомления в базу данных
+     */
+    private suspend fun saveNotificationStatus(
+        notification: GroupHabitNotification,
+        userId: String
+    ) {
+        try {
+            notificationRepository.saveReadStatus(
+                notificationId = notification.id,
+                userId = userId,
+                habitId = notification.habitId,
+                isRead = notification.isRead,
+                readAt = null
+            )
+        } catch (e: Exception) {
+            // Логируем ошибку, но не прерываем генерацию уведомлений
         }
     }
     
@@ -196,8 +293,7 @@ class GroupHabitNotificationUseCase @Inject constructor(
      */
     suspend fun markNotificationAsRead(notificationId: String): Result<Unit> {
         return try {
-            // TODO: Реализовать сохранение состояния уведомлений в базе данных
-            // Пока возвращаем успех
+            notificationRepository.markAsRead(notificationId, Clock.System.now())
             Result.success(Unit)
         } catch (e: Exception) {
             Result.failure(e)
@@ -209,8 +305,7 @@ class GroupHabitNotificationUseCase @Inject constructor(
      */
     suspend fun markAllNotificationsAsRead(userId: String): Result<Unit> {
         return try {
-            // TODO: Реализовать массовую отметку уведомлений
-            // Пока возвращаем успех
+            notificationRepository.markAllAsReadForUser(userId, Clock.System.now())
             Result.success(Unit)
         } catch (e: Exception) {
             Result.failure(e)

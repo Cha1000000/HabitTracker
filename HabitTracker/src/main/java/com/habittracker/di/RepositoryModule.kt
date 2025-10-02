@@ -53,4 +53,10 @@ abstract class RepositoryModule {
     abstract fun bindParticipantSettingsRepository(
         participantSettingsRepositoryImpl: ParticipantSettingsRepositoryImpl
     ): ParticipantSettingsRepository
+    
+    @Binds
+    @Singleton
+    abstract fun bindNotificationRepository(
+        notificationRepositoryImpl: NotificationRepositoryImpl
+    ): NotificationRepository
 }

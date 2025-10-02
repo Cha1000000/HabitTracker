@@ -17,6 +17,7 @@ import com.habittracker.data.local.entity.HabitEntity
 import com.habittracker.data.local.entity.HabitParticipantSettingsEntity
 import com.habittracker.data.local.entity.HabitEntryEntity
 import com.habittracker.data.local.entity.HabitInvitationEntity
+import com.habittracker.data.local.entity.NotificationReadStatusEntity
 import com.habittracker.data.local.entity.PendingNotificationEntity
 import com.habittracker.data.local.entity.UserAchievementEntity
 import com.habittracker.data.local.entity.SyncOutboxEntity
@@ -35,9 +36,10 @@ import com.habittracker.data.local.entity.UserEntity
         UserAchievementEntity::class,
         PendingNotificationEntity::class,
         SyncOutboxEntity::class,
-        HabitParticipantSettingsEntity::class
+        HabitParticipantSettingsEntity::class,
+        NotificationReadStatusEntity::class
     ],
-    version = 10,
+    version = 11,
     exportSchema = false // Для простоты отключаем экспорт схемы
 )
 @TypeConverters(Converters::class)
@@ -55,6 +57,7 @@ abstract class HabitTrackerDatabase : RoomDatabase() {
     abstract fun pendingNotificationDao(): PendingNotificationDao
     abstract fun syncOutboxDao(): SyncOutboxDao
     abstract fun habitParticipantSettingsDao(): HabitParticipantSettingsDao
+    abstract fun notificationDao(): NotificationDao
 
     companion object {
         const val DATABASE_NAME = "habit_tracker_db"
@@ -78,7 +81,8 @@ abstract class HabitTrackerDatabase : RoomDatabase() {
                     MIGRATION_6_7,
                     MIGRATION_7_8,
                     MIGRATION_8_9,
-                    MIGRATION_9_10
+                    MIGRATION_9_10,
+                    MIGRATION_10_11
                 )
 
                 if (BuildConfig.DEBUG) {
@@ -287,6 +291,27 @@ abstract class HabitTrackerDatabase : RoomDatabase() {
                     """
                 )
                 db.execSQL("CREATE INDEX IF NOT EXISTS index_hps_habit_user ON habit_participant_settings(habitId, userId)")
+            }
+        }
+        
+        // Миграция с версии 10 на 11 (статусы прочитанных уведомлений)
+        val MIGRATION_10_11 = object : Migration(10, 11) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
+                    """
+                    CREATE TABLE IF NOT EXISTS notification_read_status (
+                        notificationId TEXT NOT NULL PRIMARY KEY,
+                        userId TEXT NOT NULL,
+                        habitId TEXT NOT NULL,
+                        isRead INTEGER NOT NULL,
+                        readAt INTEGER,
+                        createdAt INTEGER NOT NULL
+                    )
+                    """
+                )
+                db.execSQL("CREATE INDEX IF NOT EXISTS index_notification_read_status_userId ON notification_read_status(userId)")
+                db.execSQL("CREATE INDEX IF NOT EXISTS index_notification_read_status_habitId ON notification_read_status(habitId)")
+                db.execSQL("CREATE INDEX IF NOT EXISTS index_notification_read_status_isRead ON notification_read_status(isRead)")
             }
         }
     }
