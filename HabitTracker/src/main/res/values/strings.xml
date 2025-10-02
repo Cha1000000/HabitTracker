@@ -296,7 +296,11 @@
     <string name="friend_since">Друзья с %1$s</string>
     <string name="request_sent_at">Запрос отправлен %1$s</string>
     
-    <!-- Групповые привычки -->
+    <!-- Групповые привычки - дополнительные строки -->
+    <string name="share_invite_code_text">Присоединяйтесь к групповой привычке "%1$s"!\n\nКод приглашения: %2$s\n\nВведите этот код в приложении HabitTracker, чтобы присоединиться к нашей группе.</string>
+    <string name="share_invite_code_subject">Приглашение в групповую привычку</string>
+    <string name="share_invite_code_title">Поделиться кодом приглашения</string>
+    <string name="invite_code_shared">Код приглашения отправлен</string>
     <string name="group_habit_settings">Настройки групповой привычки</string>
     <string name="max_participants">Максимум участников</string>
     <string name="participants_limit">из 10</string>

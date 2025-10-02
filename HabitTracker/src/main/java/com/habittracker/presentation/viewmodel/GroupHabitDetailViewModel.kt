@@ -1,28 +1,33 @@
 package com.habittracker.presentation.viewmodel
 
 import android.app.Application
+import android.content.Intent
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.habittracker.R
-import com.habittracker.domain.model.FriendshipWithUsers
 import com.habittracker.domain.model.HabitEntry
 import com.habittracker.domain.model.HabitInvitationStatus
 import com.habittracker.domain.model.User
 import com.habittracker.domain.model.isGroupHabit
+import com.habittracker.domain.repository.AuthRepository
+import com.habittracker.domain.repository.HabitEntryRepository
+import com.habittracker.domain.repository.UserRepository
 import com.habittracker.domain.usecase.GetHabitByIdUseCase
 import com.habittracker.domain.usecase.UpdateHabitUseCase
 import com.habittracker.domain.usecase.habit.GenerateHabitInviteCodeUseCase
-import com.habittracker.domain.usecase.habit.GetGroupHabitProgressUseCase
 import com.habittracker.domain.usecase.habit.GetHabitInvitationsUseCase
-import com.habittracker.domain.usecase.social.GetFriendsUseCase
 import com.habittracker.presentation.state.GroupHabitDetailUiState
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.datetime.Clock
+import kotlinx.datetime.DatePeriod
+import kotlinx.datetime.TimeZone
+import kotlinx.datetime.minus
+import kotlinx.datetime.todayIn
 import javax.inject.Inject
 
 /**
@@ -31,18 +36,20 @@ import javax.inject.Inject
 @HiltViewModel
 class GroupHabitDetailViewModel @Inject constructor(
     private val application: Application,
+    private val authRepository: AuthRepository,
+    private val userRepository: UserRepository,
+    private val habitEntryRepository: HabitEntryRepository,
     private val getHabitByIdUseCase: GetHabitByIdUseCase,
-    private val getFriendsUseCase: GetFriendsUseCase,
     private val getHabitInvitationsUseCase: GetHabitInvitationsUseCase,
     private val generateHabitInviteCodeUseCase: GenerateHabitInviteCodeUseCase,
-    private val getGroupHabitProgressUseCase: GetGroupHabitProgressUseCase,
     private val updateHabitUseCase: UpdateHabitUseCase
 ) : AndroidViewModel(application) {
 
     private val _uiState = MutableStateFlow(GroupHabitDetailUiState())
     val uiState: StateFlow<GroupHabitDetailUiState> = _uiState.asStateFlow()
 
-    private val currentUserId = "DUMMY_USER_ID" // TODO: Заменить на реальный ID
+    private val currentUserId: String
+        get() = authRepository.getCurrentUserId() ?: ""
 
     /**
      * Загрузка детальной информации о привычке
@@ -70,40 +77,52 @@ class GroupHabitDetailViewModel @Inject constructor(
                 // Загружаем участников групповой привычки
                 val participants: List<User> = if (habit.isGroupHabit()) {
                     try {
-                        // Получаем всех друзей пользователя
-                        val friends: List<FriendshipWithUsers> = getFriendsUseCase(currentUserId).first()
+                        // Загружаем данные о каждом участнике
+                        val participantUsers = mutableListOf<User>()
                         
-                        // Получаем всех участников привычки (создатель + участники)
-                        val allParticipantIds = listOf(habit.createdBy) + habit.participants
+                        // Загружаем создателя
+                        userRepository.getUserById(habit.createdBy)?.let { creator ->
+                            participantUsers.add(creator)
+                        }
                         
-                        // Фильтруем друзей, оставляя только участников привычки
-                        val participantUsers = friends.mapNotNull { friendship: FriendshipWithUsers ->
-                            val otherUser = friendship.getOtherUser(currentUserId)
-                            if (otherUser != null && allParticipantIds.contains(otherUser.id)) {
-                                otherUser
-                            } else null
+                        // Загружаем остальных участников
+                        for (participantId in habit.participants) {
+                            userRepository.getUserById(participantId)?.let { participant ->
+                                participantUsers.add(participant)
+                            }
                         }
                         
                         participantUsers
-                    } catch (e: Exception) {
+                    } catch (_: Exception) {
                         // В случае ошибки возвращаем пустой список
-                        emptyList<User>()
+                        emptyList()
                     }
                 } else {
-                    emptyList<User>()
+                    emptyList()
                 }
 
                 // Загружаем полную статистику групповой привычки
                 val (habitEntries, groupStreak) = if (habit.isGroupHabit()) {
                     try {
-                        val groupProgress = getGroupHabitProgressUseCase(habitId).first()
-                        if (groupProgress != null) {
-                            // Используем групповую серию из прогресса
-                            Pair(emptyList<HabitEntry>(), groupProgress.groupStreak)
-                        } else {
-                            Pair(emptyList<HabitEntry>(), 0)
+                        // Загружаем записи о выполнении для всех участников
+                        val allEntries = mutableListOf<HabitEntry>()
+                        val today = Clock.System.todayIn(TimeZone.currentSystemDefault())
+                        
+                        // Загружаем записи для каждого участника за последние 30 дней
+                        for (participant in participants) {
+                            val userHabitEntries = habitEntryRepository.getEntriesForUserAndPeriod(
+                                habitId = habitId,
+                                userId = participant.id,
+                                startDate = today.minus(DatePeriod(days = 30)),
+                                endDate = today
+                            )
+                            allEntries.addAll(userHabitEntries)
                         }
-                    } catch (e: Exception) {
+                        
+                        // Рассчитываем групповую серию
+                        val streak = calculateGroupStreak(allEntries, participants.map { it.id })
+                        Pair(allEntries, streak)
+                    } catch (_: Exception) {
                         Pair(emptyList<HabitEntry>(), 0)
                     }
                 } else {
@@ -132,7 +151,7 @@ class GroupHabitDetailViewModel @Inject constructor(
                     }
                 }
 
-            } catch (e: Exception) {
+            } catch (_: Exception) {
                 _uiState.update { 
                     it.copy(
                         isLoading = false,
@@ -180,7 +199,7 @@ class GroupHabitDetailViewModel @Inject constructor(
                         }
                     }
                 )
-            } catch (e: Exception) {
+            } catch (_: Exception) {
                 _uiState.update { 
                     it.copy(
                         isGeneratingCode = false,
@@ -195,10 +214,33 @@ class GroupHabitDetailViewModel @Inject constructor(
      * Поделиться invite-кодом
      */
     fun shareInviteCode(inviteCode: String) {
-        // TODO: Реализовать системный диалог поделиться
+        val habit = _uiState.value.habit ?: return
+        
+        // Создаем Intent для отправки текста
+        val shareIntent = Intent().apply {
+            action = Intent.ACTION_SEND
+            type = "text/plain"
+            putExtra(Intent.EXTRA_TEXT, application.getString(
+                R.string.share_invite_code_text,
+                habit.title,
+                inviteCode
+            ))
+            putExtra(Intent.EXTRA_SUBJECT, application.getString(R.string.share_invite_code_subject))
+        }
+        
+        // Создаем chooser для выбора приложения
+        val chooserIntent = Intent.createChooser(
+            shareIntent,
+            application.getString(R.string.share_invite_code_title)
+        )
+        chooserIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        
+        // Запускаем системный диалог
+        application.startActivity(chooserIntent)
+        
         _uiState.update { 
             it.copy(
-                successMessage = application.getString(R.string.invite_code_copied)
+                successMessage = application.getString(R.string.invite_code_shared)
             )
         }
     }
@@ -225,7 +267,7 @@ class GroupHabitDetailViewModel @Inject constructor(
                         successMessage = application.getString(R.string.invite_code_disabled)
                     )
                 }
-            } catch (e: Exception) {
+            } catch (_: Exception) {
                 _uiState.update { 
                     it.copy(
                         isLoading = false,
@@ -260,7 +302,7 @@ class GroupHabitDetailViewModel @Inject constructor(
                         }
                     )
                 }
-            } catch (e: Exception) {
+            } catch (_: Exception) {
                 _uiState.update { 
                     it.copy(
                         isLoading = false,
@@ -293,7 +335,7 @@ class GroupHabitDetailViewModel @Inject constructor(
                         successMessage = application.getString(R.string.participant_removed)
                     )
                 }
-            } catch (e: Exception) {
+            } catch (_: Exception) {
                 _uiState.update { 
                     it.copy(
                         isLoading = false,
@@ -307,7 +349,7 @@ class GroupHabitDetailViewModel @Inject constructor(
     /**
      * Выход из групповой привычки
      */
-    fun leaveGroup() {
+    fun leaveGroup(onSuccess: () -> Unit) {
         val habit = _uiState.value.habit ?: return
         
         viewModelScope.launch {
@@ -326,9 +368,11 @@ class GroupHabitDetailViewModel @Inject constructor(
                         successMessage = application.getString(R.string.left_group_successfully)
                     )
                 }
-                // Можно добавить навигацию назад
                 
-            } catch (e: Exception) {
+                // Вызываем callback для навигации назад
+                onSuccess()
+                
+            } catch (_: Exception) {
                 _uiState.update { 
                     it.copy(
                         isLoading = false,
@@ -351,5 +395,45 @@ class GroupHabitDetailViewModel @Inject constructor(
      */
     fun clearSuccessMessage() {
         _uiState.update { it.copy(successMessage = null) }
+    }
+    
+    /**
+     * Рассчитывает групповую серию выполнения привычки
+     * Групповая серия считается только для дней, когда ВСЕ участники выполнили привычку
+     */
+    private fun calculateGroupStreak(
+        entries: List<HabitEntry>,
+        participantIds: List<String>
+    ): Int {
+        if (entries.isEmpty() || participantIds.isEmpty()) return 0
+        
+        val today = Clock.System.todayIn(TimeZone.currentSystemDefault())
+        var currentDate = today
+        var streak = 0
+        
+        // Идем назад от сегодняшнего дня
+        while (true) {
+            // Проверяем, выполнили ли все участники привычку в этот день
+            val entriesForDate = entries.filter { it.date == currentDate }
+            val completedUserIds = entriesForDate.filter { it.completed }.map { it.userId }.toSet()
+            
+            // Если не все участники выполнили привычку, прерываем серию
+            if (!participantIds.all { it in completedUserIds }) {
+                // Если это сегодня и никто не выполнил, серия может продолжаться со вчерашнего дня
+                if (currentDate == today && completedUserIds.isEmpty()) {
+                    currentDate = currentDate.minus(DatePeriod(days = 1))
+                    continue
+                }
+                break
+            }
+            
+            streak++
+            currentDate = currentDate.minus(DatePeriod(days = 1))
+            
+            // Ограничиваем проверку 365 днями
+            if (streak > 365) break
+        }
+        
+        return streak
     }
 }

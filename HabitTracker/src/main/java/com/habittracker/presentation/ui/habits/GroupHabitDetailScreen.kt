@@ -38,7 +38,6 @@ import androidx.compose.material.icons.filled.RadioButtonUnchecked
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material3.AssistChip
-import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -77,7 +76,6 @@ import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -94,8 +92,10 @@ import com.habittracker.domain.model.User
 import com.habittracker.presentation.ui.components.SectionCard
 import com.habittracker.presentation.ui.habits.components.GradientProgressBar
 import com.habittracker.presentation.ui.habits.components.TahoeGradientBackground
+import com.habittracker.presentation.utils.DateTimeFormatter
 import com.habittracker.presentation.viewmodel.GroupHabitDetailViewModel
 import kotlinx.datetime.Clock
+import kotlinx.datetime.Instant.Companion.fromEpochMilliseconds
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.todayIn
 
@@ -267,7 +267,11 @@ fun GroupHabitDetailScreen(
                         item {
                             Spacer(modifier = Modifier.height(8.dp))
                             LeaveGroupSection(
-                                onLeaveGroup = { viewModel.leaveGroup() },
+                                onLeaveGroup = { 
+                                    viewModel.leaveGroup {
+                                        navController.popBackStack()
+                                    }
+                                },
                                 isLoading = uiState.isLoading,
                                 modifier = Modifier.fillMaxWidth()
                             )
@@ -532,7 +536,7 @@ private fun StatisticItem(
 }
 
 /**
- * Секция участников группы с улучшенным дизайном
+ * Секция участников группы
  */
 @Composable
 private fun ParticipantsSection(
@@ -583,7 +587,7 @@ private fun ParticipantsSection(
 }
 
 /**
- * Элемент списка участника с Material 3 дизайном
+ * Элемент списка участника
  */
 @Composable
 private fun ParticipantListItem(
@@ -692,7 +696,7 @@ private fun ParticipantListItem(
 }
 
 /**
- * Секция управления приглашениями с современным дизайном
+ * Секция управления приглашениями
  */
 @Composable
 private fun InviteManagementSection(
@@ -846,7 +850,7 @@ private fun InviteManagementSection(
 }
 
 /**
- * Секция истории активности с улучшенным дизайном
+ * Секция истории активности
  */
 @Composable
 private fun ActivityHistorySection(
@@ -958,13 +962,13 @@ private fun ActivityItem(
             
             entry.completedAt?.let { completedAt ->
                 Text(
-                    text = completedAt.toString(), // TODO: Форматирование времени
+                    text = DateTimeFormatter.formatRelativeTime(fromEpochMilliseconds(completedAt)),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
         }
-        
+
         Icon(
             imageVector = if (entry.completed) Icons.Default.CheckCircle else Icons.Default.Cancel,
             contentDescription = null,
@@ -985,7 +989,7 @@ private fun LeaveGroupSection(
 ) {
     var showConfirmDialog by remember { mutableStateOf(false) }
     
-    // Диалог подтверждения (Tahoe)
+    // Диалог подтверждения
     if (showConfirmDialog) {
         com.habittracker.presentation.ui.habits.components.GlassmorphicDialog(
             onDismissRequest = { showConfirmDialog = false },
@@ -1053,57 +1057,6 @@ private fun LeaveGroupSection(
             text = stringResource(R.string.leave_group),
             style = MaterialTheme.typography.labelLarge
         )
-    }
-}
-
-/**
- * Кнопка выхода из группы
- */
-@Composable
-private fun LeaveGroupButton(
-    onLeaveGroup: () -> Unit,
-    isLoading: Boolean,
-    modifier: Modifier = Modifier
-) {
-    Card(
-        modifier = modifier,
-        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.3f)
-        )
-    ) {
-        Column(
-            modifier = Modifier.padding(16.dp),
-            horizontalAlignment = Alignment.CenterHorizontally
-        ) {
-            Text(
-                text = stringResource(R.string.leave_group_warning),
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                textAlign = TextAlign.Center
-            )
-            
-            Spacer(modifier = Modifier.height(12.dp))
-            
-            Button(
-                onClick = onLeaveGroup,
-                enabled = !isLoading,
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = MaterialTheme.colorScheme.error
-                ),
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                if (isLoading) {
-                    CircularProgressIndicator(
-                        modifier = Modifier.size(18.dp),
-                        strokeWidth = 2.dp,
-                        color = MaterialTheme.colorScheme.onError
-                    )
-                    Spacer(modifier = Modifier.width(8.dp))
-                }
-                Text(stringResource(R.string.leave_group))
-            }
-        }
     }
 }
 
