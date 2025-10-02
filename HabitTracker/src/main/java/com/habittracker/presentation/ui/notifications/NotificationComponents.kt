@@ -33,15 +33,11 @@ import androidx.compose.material.icons.filled.PersonAdd
 import androidx.compose.material.icons.filled.Whatshot
 import androidx.compose.material3.AssistChip
 import androidx.compose.material3.Badge
-import androidx.compose.material3.Button
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -59,6 +55,9 @@ import com.habittracker.domain.model.getCreatedTimeText
 import com.habittracker.domain.model.getStatusText
 import com.habittracker.domain.usecase.notification.GroupHabitNotification
 import com.habittracker.domain.usecase.notification.NotificationType
+import com.habittracker.presentation.ui.habits.components.GlassmorphicButton
+import com.habittracker.presentation.ui.habits.components.GlassmorphicCard
+import com.habittracker.presentation.ui.habits.components.GlassmorphicOutlinedButton
 import kotlinx.datetime.Clock
 import kotlinx.datetime.Instant
 import kotlinx.datetime.TimeZone
@@ -169,12 +168,9 @@ fun InvitationItem(
     onDecline: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    Card(
+    GlassmorphicCard(
         modifier = modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surface
-        ),
-        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+        elevation = 2.dp
     ) {
         Column(
             modifier = Modifier
@@ -235,7 +231,7 @@ fun InvitationItem(
             Row(
                 horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                OutlinedButton(
+                GlassmorphicOutlinedButton(
                     onClick = onDecline,
                     enabled = !isProcessing
                 ) {
@@ -245,7 +241,7 @@ fun InvitationItem(
                     }
                     Text(stringResource(R.string.decline_invitation))
                 }
-                Button(
+                GlassmorphicButton(
                     onClick = onAccept,
                     enabled = !isProcessing
                 ) {
@@ -271,19 +267,12 @@ fun NotificationItem(
     onMarkAsRead: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    Card(
+    GlassmorphicCard(
         modifier = modifier
             .fillMaxWidth()
             .clickable { onClick() },
-        elevation = CardDefaults.cardElevation(
-            defaultElevation = if (notification.isRead) 2.dp else 4.dp
-        ),
-        colors = CardDefaults.cardColors(
-            containerColor = if (notification.isRead) 
-                MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
-            else 
-                MaterialTheme.colorScheme.surface
-        )
+        elevation = if (notification.isRead) 2.dp else 4.dp,
+        dimmed = notification.isRead
     ) {
         Row(
             modifier = Modifier
