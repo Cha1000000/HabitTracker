@@ -111,6 +111,7 @@ fun HabitsScreen(
         val observer = LifecycleEventObserver { _, event ->
             if (event == Lifecycle.Event.ON_RESUME) {
                 recomposeKey++
+                viewModel.refresh()
             }
         }
         lifecycleOwner.lifecycle.addObserver(observer)

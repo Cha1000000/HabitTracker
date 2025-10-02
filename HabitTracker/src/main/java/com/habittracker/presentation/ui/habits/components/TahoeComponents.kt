@@ -417,6 +417,62 @@ fun GlassmorphicButton(
 }
 
 /**
+ * Outlined кнопка в стиле Glassmorphic
+ */
+@Composable
+fun GlassmorphicOutlinedButton(
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    isDarkTheme: Boolean = isSystemInDarkTheme(),
+    enabled: Boolean = true,
+    content: @Composable RowScope.() -> Unit
+) {
+    // Оптимизированные цвета для лучшей видимости логотипа Google
+    val backgroundColor = if (isDarkTheme) {
+        // В темной теме делаем фон чуть темнее для контраста с логотипом
+        if (enabled) Color.Black.copy(alpha = 0.3f) else Color.Black.copy(alpha = 0.5f)
+    } else {
+        // В светлой теме делаем более прозрачным для эффекта стекла
+        if (enabled) Color.White.copy(alpha = 0.5f) else Color.White.copy(alpha = 0.3f)
+    }
+
+    val borderColor = if (isDarkTheme) {
+        if (enabled) Color.White.copy(alpha = 0.2f) else Color.White.copy(alpha = 0.1f)
+    } else {
+        if (enabled) MaterialTheme.colorScheme.primary.copy(alpha = 0.3f) else Color.Gray.copy(alpha = 0.2f)
+    }
+
+    val contentColor = if (isDarkTheme) {
+        if (enabled) Color.White else Color.White.copy(alpha = 0.5f)
+    } else {
+        if (enabled) MaterialTheme.colorScheme.primary else Color.Gray
+    }
+
+    OutlinedButton(
+        onClick = onClick,
+        modifier = modifier,
+        enabled = enabled,
+        colors = ButtonDefaults.outlinedButtonColors(
+            containerColor = backgroundColor,
+            contentColor = contentColor,
+            disabledContainerColor = backgroundColor,
+            disabledContentColor = contentColor
+        ),
+        border = BorderStroke(
+            width = 1.dp,
+            color = borderColor
+        ),
+        shape = RoundedCornerShape(20.dp),
+        elevation = ButtonDefaults.buttonElevation(
+            defaultElevation = 0.dp,
+            pressedElevation = 0.dp,
+            disabledElevation = 0.dp
+        ),
+        content = content
+    )
+}
+
+/**
  * Floating Action Button в стиле Glassmorphic
  */
 @Composable
@@ -529,63 +585,6 @@ fun GlassmorphicTextField(
         shape = RoundedCornerShape(12.dp),
         readOnly = readOnly,
         textStyle = textStyle
-    )
-}
-
-/**
- * Outlined кнопка в стиле Glassmorphic
- */
-@Composable
-fun GlassmorphicOutlinedButton(
-    onClick: () -> Unit,
-    modifier: Modifier = Modifier,
-    enabled: Boolean = true,
-    isDarkTheme: Boolean = isSystemInDarkTheme(),
-    content: @Composable RowScope.() -> Unit
-) {
-    // Оптимизированные цвета для лучшей видимости логотипа Google
-    val backgroundColor = if (isDarkTheme) {
-        // В темной теме делаем фон чуть темнее для контраста с логотипом
-        if (enabled) Color.Black.copy(alpha = 0.3f) else Color.Black.copy(alpha = 0.5f)
-    } else {
-        // В светлой теме делаем более прозрачным для эффекта стекла
-        if (enabled) Color.White.copy(alpha = 0.5f) else Color.White.copy(alpha = 0.3f)
-    }
-    
-    val borderColor = if (isDarkTheme) {
-        if (enabled) Color.White.copy(alpha = 0.2f) else Color.White.copy(alpha = 0.1f)
-    } else {
-        if (enabled) MaterialTheme.colorScheme.primary.copy(alpha = 0.3f) else Color.Gray.copy(alpha = 0.2f)
-    }
-    
-    val contentColor = if (isDarkTheme) {
-        if (enabled) Color.White else Color.White.copy(alpha = 0.5f)
-    } else {
-        if (enabled) MaterialTheme.colorScheme.primary else Color.Gray
-    }
-    
-    // Используем OutlinedButton вместо Button с border для исправления просветов
-    OutlinedButton(
-        onClick = onClick,
-        modifier = modifier,
-        enabled = enabled,
-        colors = ButtonDefaults.outlinedButtonColors(
-            containerColor = backgroundColor,
-            contentColor = contentColor,
-            disabledContainerColor = backgroundColor,
-            disabledContentColor = contentColor
-        ),
-        border = BorderStroke(
-            width = 1.dp,
-            color = borderColor
-        ),
-        shape = RoundedCornerShape(20.dp),
-        elevation = ButtonDefaults.buttonElevation(
-            defaultElevation = 0.dp,
-            pressedElevation = 0.dp,
-            disabledElevation = 0.dp
-        ),
-        content = content
     )
 }
 

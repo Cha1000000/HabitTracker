@@ -1,6 +1,7 @@
 package com.habittracker.presentation.viewmodel
 
 import android.app.Application
+import android.content.Intent
 import android.util.Log
 import androidx.core.graphics.toColorInt
 import androidx.lifecycle.AndroidViewModel
@@ -45,6 +46,7 @@ import javax.inject.Inject
 
 @HiltViewModel
 class AddEditHabitViewModel @Inject constructor(
+    private val application: Application,
     private val addHabitUseCase: AddHabitUseCase,
     private val updateHabitUseCase: UpdateHabitUseCase,
     private val getHabitByIdUseCase: GetHabitByIdUseCase,
@@ -59,7 +61,6 @@ class AddEditHabitViewModel @Inject constructor(
     private val ensureMySettingsForHabitUseCase: EnsureMySettingsForHabitUseCase,
     private val authRepository: AuthRepository,
     savedStateHandle: SavedStateHandle,
-    application: Application
 ) : AndroidViewModel(application), IAddEditHabitViewModel {
 
     private val _uiState = MutableStateFlow(AddEditHabitUiState())
@@ -726,10 +727,34 @@ class AddEditHabitViewModel @Inject constructor(
     }
     
     override fun shareInviteCode(inviteCode: String) {
-        // Этот метод будет вызываться из UI для шаринга кода
-        // Логика шаринга будет в UI компоненте
-        _uiState.update { 
-            it.copy(successMessage = "Код скопирован в буфер обмена")
+        if (_uiState.value.habitId == null) return
+
+        // Создаем Intent для отправки текста
+        val shareIntent = Intent().apply {
+            action = Intent.ACTION_SEND
+            type = "text/plain"
+            putExtra(Intent.EXTRA_TEXT, application.getString(
+                R.string.share_invite_code_text,
+                _uiState.value.title,
+                inviteCode
+            ))
+            putExtra(Intent.EXTRA_SUBJECT, application.getString(R.string.share_invite_code_subject))
+        }
+
+        // Создаем chooser для выбора приложения
+        val chooserIntent = Intent.createChooser(
+            shareIntent,
+            application.getString(R.string.share_invite_code_title)
+        )
+        chooserIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+
+        // Запускаем системный диалог
+        application.startActivity(chooserIntent)
+
+        _uiState.update {
+            it.copy(
+                successMessage = application.getString(R.string.invite_code_shared)
+            )
         }
     }
 

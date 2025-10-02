@@ -301,6 +301,9 @@
     <string name="share_invite_code_subject">Приглашение в групповую привычку</string>
     <string name="share_invite_code_title">Поделиться кодом приглашения</string>
     <string name="invite_code_shared">Код приглашения отправлен</string>
+    <string name="habit_marked_complete">Привычка отмечена как выполненная</string>
+    <string name="habit_marked_incomplete">Отметка о выполнении снята</string>
+    <string name="error_updating_habit_status">Ошибка обновления статуса привычки</string>
     <string name="group_habit_settings">Настройки групповой привычки</string>
     <string name="max_participants">Максимум участников</string>
     <string name="participants_limit">из 10</string>

@@ -19,6 +19,8 @@ data class GroupHabitDetailUiState(
     val isManageMode: Boolean = false,
     val isGeneratingCode: Boolean = false,
     val groupStreak: Int = 0,
+    val isCompletedToday: Boolean = false,
+    val isMarkingCompletion: Boolean = false,
     val error: String? = null,
     val successMessage: String? = null
 )

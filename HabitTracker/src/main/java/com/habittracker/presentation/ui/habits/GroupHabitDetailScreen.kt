@@ -25,6 +25,7 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.ExitToApp
 import androidx.compose.material.icons.automirrored.filled.TrendingUp
 import androidx.compose.material.icons.filled.Cancel
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.ContentCopy
@@ -90,6 +91,7 @@ import com.habittracker.domain.model.HabitFrequency
 import com.habittracker.domain.model.HabitInvitation
 import com.habittracker.domain.model.User
 import com.habittracker.presentation.ui.components.SectionCard
+import com.habittracker.presentation.ui.habits.components.GlassmorphicDialog
 import com.habittracker.presentation.ui.habits.components.GradientProgressBar
 import com.habittracker.presentation.ui.habits.components.TahoeGradientBackground
 import com.habittracker.presentation.utils.DateTimeFormatter
@@ -203,11 +205,13 @@ fun GroupHabitDetailScreen(
                     contentPadding = PaddingValues(16.dp),
                     verticalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
-
                     // Основная информация о привычке
                     item {
                         HabitInfoSection(
                             habit = uiState.habit,
+                            isCompletedToday = uiState.isCompletedToday,
+                            isMarkingCompletion = uiState.isMarkingCompletion,
+                            onToggleCompletion = { viewModel.toggleHabitCompletion() },
                             modifier = Modifier.fillMaxWidth()
                         )
                     }
@@ -289,7 +293,10 @@ fun GroupHabitDetailScreen(
 @Composable
 private fun HabitInfoSection(
     habit: Habit?,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    isCompletedToday: Boolean = false,
+    isMarkingCompletion: Boolean = false,
+    onToggleCompletion: () -> Unit = {},
 ) {
     habit?.let { h ->
         SectionCard(
@@ -389,6 +396,45 @@ private fun HabitInfoSection(
                                 }
                             )
                         }
+                    }
+                }
+                
+                // Кнопка отметки выполнения
+                IconButton(
+                    onClick = onToggleCompletion,
+                    enabled = !isMarkingCompletion,
+                    modifier = Modifier
+                        .size(48.dp)
+                        .clip(CircleShape)
+                        .background(
+                            if (isCompletedToday) {
+                                Color(0xFF4CAF50).copy(alpha = 0.1f)
+                            } else {
+                                MaterialTheme.colorScheme.surfaceVariant
+                            }
+                        )
+                ) {
+                    if (isMarkingCompletion) {
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(24.dp),
+                            strokeWidth = 2.dp,
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                    } else {
+                        Icon(
+                            imageVector = Icons.Default.Check,
+                            contentDescription = if (isCompletedToday) {
+                                stringResource(R.string.habits_unmark_complete)
+                            } else {
+                                stringResource(R.string.habits_mark_complete)
+                            },
+                            tint = if (isCompletedToday) {
+                                Color(0xFF4CAF50)
+                            } else {
+                                MaterialTheme.colorScheme.onSurfaceVariant
+                            },
+                            modifier = Modifier.size(24.dp)
+                        )
                     }
                 }
             }
@@ -991,7 +1037,7 @@ private fun LeaveGroupSection(
     
     // Диалог подтверждения
     if (showConfirmDialog) {
-        com.habittracker.presentation.ui.habits.components.GlassmorphicDialog(
+        GlassmorphicDialog(
             onDismissRequest = { showConfirmDialog = false },
             title = { Text(text = stringResource(R.string.leave_group_title)) },
             content = {

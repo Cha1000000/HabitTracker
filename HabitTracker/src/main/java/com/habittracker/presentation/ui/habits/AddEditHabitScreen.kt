@@ -37,7 +37,6 @@ import androidx.compose.material.icons.filled.PersonAdd
 import androidx.compose.material.icons.filled.Timeline
 import androidx.compose.material.icons.filled.Title
 import androidx.compose.material3.AssistChip
-import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExposedDropdownMenuDefaults
@@ -97,6 +96,7 @@ import com.habittracker.presentation.ui.habits.components.GlassmorphicDropdownMe
 import com.habittracker.presentation.ui.habits.components.GlassmorphicDropdownMenuItem
 import com.habittracker.presentation.ui.habits.components.GlassmorphicExposedDropdownMenuBox
 import com.habittracker.presentation.ui.habits.components.GlassmorphicFAB
+import com.habittracker.presentation.ui.habits.components.GlassmorphicOutlinedButton
 import com.habittracker.presentation.ui.habits.components.GlassmorphicSectionHeader
 import com.habittracker.presentation.ui.habits.components.GlassmorphicSwitch
 import com.habittracker.presentation.ui.habits.components.GlassmorphicTextField
@@ -367,7 +367,7 @@ private fun GroupSettings(
             )
             
             // Кнопка приглашения друзей
-            OutlinedButton(
+            GlassmorphicOutlinedButton(
                 onClick = { viewModel.onShowFriendSelector(true) },
                 modifier = Modifier.fillMaxWidth(),
                 enabled = !uiState.isLoading && !uiState.isHabitSaved
@@ -413,7 +413,7 @@ private fun GroupSettings(
                 val enabled = uiState.selectedFriendsToInvite.isNotEmpty() && !uiState.isSendingInvitations
                 val wouldExceedLimit = (uiState.participants.size + uiState.selectedFriendsToInvite.size) > uiState.maxParticipants
 
-                Button(
+                GlassmorphicButton(
                     onClick = { viewModel.requestInvitations() },
                     enabled = enabled,
                     modifier = Modifier.fillMaxWidth()

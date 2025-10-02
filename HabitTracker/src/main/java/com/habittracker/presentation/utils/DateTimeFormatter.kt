@@ -89,7 +89,7 @@ object DateTimeFormatter {
      * Форматирует дату для отображения в статистике
      */
     fun formatStatDate(date: LocalDate): String {
-        val formatter = SimpleDateFormat("d MMMM", Locale("ru"))
+        val formatter = SimpleDateFormat("d MMMM", Locale.forLanguageTag("ru-RU"))
         // Конвертируем LocalDate в java.util.Date для форматирования
         val epochMillis = date.toEpochDays() * 24 * 60 * 60 * 1000L
         return formatter.format(Date(epochMillis))

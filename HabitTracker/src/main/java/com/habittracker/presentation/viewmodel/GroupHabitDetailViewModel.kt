@@ -13,6 +13,9 @@ import com.habittracker.domain.repository.AuthRepository
 import com.habittracker.domain.repository.HabitEntryRepository
 import com.habittracker.domain.repository.UserRepository
 import com.habittracker.domain.usecase.GetHabitByIdUseCase
+import com.habittracker.domain.usecase.GetHabitCompletionStatusUseCase
+import com.habittracker.domain.usecase.MarkHabitCompletedUseCase
+import com.habittracker.domain.usecase.MarkHabitIncompleteUseCase
 import com.habittracker.domain.usecase.UpdateHabitUseCase
 import com.habittracker.domain.usecase.habit.GenerateHabitInviteCodeUseCase
 import com.habittracker.domain.usecase.habit.GetHabitInvitationsUseCase
@@ -40,6 +43,9 @@ class GroupHabitDetailViewModel @Inject constructor(
     private val userRepository: UserRepository,
     private val habitEntryRepository: HabitEntryRepository,
     private val getHabitByIdUseCase: GetHabitByIdUseCase,
+    private val getHabitCompletionStatusUseCase: GetHabitCompletionStatusUseCase,
+    private val markHabitCompletedUseCase: MarkHabitCompletedUseCase,
+    private val markHabitIncompleteUseCase: MarkHabitIncompleteUseCase,
     private val getHabitInvitationsUseCase: GetHabitInvitationsUseCase,
     private val generateHabitInviteCodeUseCase: GenerateHabitInviteCodeUseCase,
     private val updateHabitUseCase: UpdateHabitUseCase
@@ -92,7 +98,7 @@ class GroupHabitDetailViewModel @Inject constructor(
                             }
                         }
                         
-                        participantUsers
+                        participantUsers.distinct()
                     } catch (_: Exception) {
                         // В случае ошибки возвращаем пустой список
                         emptyList()
@@ -129,6 +135,14 @@ class GroupHabitDetailViewModel @Inject constructor(
                     Pair(emptyList<HabitEntry>(), 0)
                 }
 
+                // Проверяем, выполнена ли привычка сегодня
+                val isCompletedToday = try {
+                    val today = Clock.System.todayIn(TimeZone.currentSystemDefault())
+                    getHabitCompletionStatusUseCase(habitId, currentUserId, today)
+                } catch (_: Exception) {
+                    false
+                }
+                
                 _uiState.update { 
                     it.copy(
                         isLoading = false,
@@ -137,7 +151,8 @@ class GroupHabitDetailViewModel @Inject constructor(
                         habitEntries = habitEntries,
                         inviteCode = habit.inviteCode,
                         isOwner = isOwner,
-                        groupStreak = groupStreak
+                        groupStreak = groupStreak,
+                        isCompletedToday = isCompletedToday
                     )
                 }
 
@@ -395,6 +410,53 @@ class GroupHabitDetailViewModel @Inject constructor(
      */
     fun clearSuccessMessage() {
         _uiState.update { it.copy(successMessage = null) }
+    }
+    
+    /**
+     * Переключение состояния выполнения привычки
+     */
+    fun toggleHabitCompletion() {
+        val habit = _uiState.value.habit ?: return
+        val isCompleted = _uiState.value.isCompletedToday
+        
+        viewModelScope.launch {
+            try {
+                _uiState.update { it.copy(isMarkingCompletion = true) }
+                
+                val today = Clock.System.todayIn(TimeZone.currentSystemDefault())
+                
+                if (isCompleted) {
+                    // Снимаем отметку о выполнении
+                    markHabitIncompleteUseCase(habit.id, currentUserId, today)
+                } else {
+                    // Отмечаем как выполненное
+                    markHabitCompletedUseCase(habit.id, currentUserId, today)
+                }
+                
+                _uiState.update { 
+                    it.copy(
+                        isMarkingCompletion = false,
+                        isCompletedToday = !isCompleted,
+                        successMessage = if (!isCompleted) {
+                            application.getString(R.string.habit_marked_complete)
+                        } else {
+                            application.getString(R.string.habit_marked_incomplete)
+                        }
+                    )
+                }
+                
+                // Перезагружаем данные для обновления статистики
+                loadHabitDetails(habit.id)
+                
+            } catch (_: Exception) {
+                _uiState.update { 
+                    it.copy(
+                        isMarkingCompletion = false,
+                        error = application.getString(R.string.error_updating_habit_status)
+                    )
+                }
+            }
+        }
     }
     
     /**
