@@ -4,10 +4,10 @@ package com.habittracker.presentation.viewmodel
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.habittracker.domain.model.FriendRequestWithUsers
 import com.habittracker.domain.model.User
 import com.habittracker.domain.repository.AuthRepository
 import com.habittracker.domain.repository.SocialRepository
+import com.habittracker.presentation.state.FriendsUiState
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -239,17 +239,3 @@ class FriendsViewModel @Inject constructor(
     }
 }
 
-/**
- * 📱 UI состояние экрана друзей
- */
-data class FriendsUiState(
-    val friends: List<User> = emptyList(),
-    val incomingRequests: List<FriendRequestWithUsers> = emptyList(),
-    val outgoingRequests: List<FriendRequestWithUsers> = emptyList(),
-    val searchQuery: String = "",
-    val searchResults: List<User> = emptyList(),
-    val isSearching: Boolean = false,
-    val isLoading: Boolean = false,
-    val error: String? = null,
-    val removingIds: Set<String> = emptySet()
-)

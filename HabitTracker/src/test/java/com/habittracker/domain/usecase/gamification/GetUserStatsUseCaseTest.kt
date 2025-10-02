@@ -112,6 +112,7 @@ class GetUserStatsUseCaseTest {
                 override suspend fun removeParticipantFromHabit(habitId: String, userId: String) {}
                 override suspend fun getHabitParticipants(habitId: String): List<String> = emptyList()
                 override suspend fun searchHabits(userId: String, query: String): List<Habit> = habits
+                override fun getPublicHabits(): Flow<List<Habit>> = flowOf(emptyList())
             },
             habitEntryRepository = object : HabitEntryRepository {
                 override suspend fun insertEntry(entry: HabitEntry) {}

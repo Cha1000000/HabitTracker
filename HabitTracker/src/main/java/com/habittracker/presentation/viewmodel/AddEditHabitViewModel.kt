@@ -1,6 +1,7 @@
 package com.habittracker.presentation.viewmodel
 
 import android.app.Application
+import android.content.Intent
 import android.util.Log
 import androidx.core.graphics.toColorInt
 import androidx.lifecycle.AndroidViewModel
@@ -18,15 +19,16 @@ import com.habittracker.domain.repository.AuthRepository
 import com.habittracker.domain.usecase.AddHabitUseCase
 import com.habittracker.domain.usecase.ApplyReminderToAllParticipantsUseCase
 import com.habittracker.domain.usecase.CancelHabitReminderUseCase
+import com.habittracker.domain.usecase.EnsureMySettingsForHabitUseCase
 import com.habittracker.domain.usecase.GetHabitByIdUseCase
 import com.habittracker.domain.usecase.GetMyHabitReminderSettingsUseCase
 import com.habittracker.domain.usecase.ScheduleHabitReminderUseCase
-import com.habittracker.domain.usecase.EnsureMySettingsForHabitUseCase
 import com.habittracker.domain.usecase.UpdateHabitUseCase
 import com.habittracker.domain.usecase.UpdateMyHabitReminderSettingsUseCase
 import com.habittracker.domain.usecase.habit.GenerateHabitInviteCodeUseCase
 import com.habittracker.domain.usecase.habit.SendHabitInvitationUseCase
 import com.habittracker.domain.usecase.social.GetFriendsUseCase
+import com.habittracker.presentation.state.AddEditHabitUiState
 import com.habittracker.presentation.utils.GroupHabitConstants
 import com.habittracker.presentation.utils.GroupHabitValidationResult
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -35,7 +37,6 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.datetime.DayOfWeek
@@ -45,6 +46,7 @@ import javax.inject.Inject
 
 @HiltViewModel
 class AddEditHabitViewModel @Inject constructor(
+    private val application: Application,
     private val addHabitUseCase: AddHabitUseCase,
     private val updateHabitUseCase: UpdateHabitUseCase,
     private val getHabitByIdUseCase: GetHabitByIdUseCase,
@@ -59,7 +61,6 @@ class AddEditHabitViewModel @Inject constructor(
     private val ensureMySettingsForHabitUseCase: EnsureMySettingsForHabitUseCase,
     private val authRepository: AuthRepository,
     savedStateHandle: SavedStateHandle,
-    application: Application
 ) : AndroidViewModel(application), IAddEditHabitViewModel {
 
     private val _uiState = MutableStateFlow(AddEditHabitUiState())
@@ -287,6 +288,8 @@ class AddEditHabitViewModel @Inject constructor(
                     Log.d("AddEditHabitViewModel", "✅ [saveHabit] Habit saved successfully: ${newHabit.id}")
                     // Важно: установить текущую привычку для дальнейших операций (например, отправки приглашений)
                     currentHabit = newHabit
+                    // Обновляем habitId в uiState для корректной работы методов после сохранения
+                    _uiState.update { it.copy(habitId = newHabit.id) }
                     
                     // Планируем напоминание для новой привычки
                     if (newHabit.reminderTime != null) {
@@ -357,6 +360,8 @@ class AddEditHabitViewModel @Inject constructor(
                     }
                     // Обновим ссылку на текущую привычку
                     currentHabit = updatedHabit
+                    // Обновляем habitId в uiState для корректной работы методов после сохранения
+                    _uiState.update { it.copy(habitId = updatedHabit.id) }
                 }
                 
                 _uiState.update { it.copy(
@@ -639,7 +644,12 @@ class AddEditHabitViewModel @Inject constructor(
                 val currentUserId = authRepository.getCurrentUserId()
                     ?: throw Exception("Пользователь не авторизован")
                 
-                val habitId = currentHabit?.id ?: throw Exception("Привычка не найдена")
+                // Используем habitId из uiState для корректной работы после отключения кода
+                Log.d("AddEditHabitViewModel", "[generateInviteCode] currentState.habitId=${currentState.habitId}, currentHabit?.id=${currentHabit?.id}")
+                val habitId = currentState.habitId 
+                    ?: currentHabit?.id 
+                    ?: throw Exception("Привычка не найдена")
+                Log.d("AddEditHabitViewModel", "[generateInviteCode] Using habitId=$habitId")
                 
                 val result = generateHabitInviteCodeUseCase.invoke(habitId, currentUserId)
                 result.onSuccess { inviteCode: String ->
@@ -683,7 +693,10 @@ class AddEditHabitViewModel @Inject constructor(
                 val currentUserId = authRepository.getCurrentUserId()
                     ?: throw Exception("Пользователь не авторизован")
                 
-                val habitId = currentHabit?.id ?: throw Exception("Привычка не найдена")
+                // Используем habitId из uiState для корректной работы при редактировании
+                val habitId = _uiState.value.habitId 
+                    ?: currentHabit?.id 
+                    ?: throw Exception("Привычка не найдена")
                 
                 val result = generateHabitInviteCodeUseCase.disableInviteCode(habitId, currentUserId)
                 result.onSuccess {
@@ -714,10 +727,34 @@ class AddEditHabitViewModel @Inject constructor(
     }
     
     override fun shareInviteCode(inviteCode: String) {
-        // Этот метод будет вызываться из UI для шаринга кода
-        // Логика шаринга будет в UI компоненте
-        _uiState.update { 
-            it.copy(successMessage = "Код скопирован в буфер обмена")
+        if (_uiState.value.habitId == null) return
+
+        // Создаем Intent для отправки текста
+        val shareIntent = Intent().apply {
+            action = Intent.ACTION_SEND
+            type = "text/plain"
+            putExtra(Intent.EXTRA_TEXT, application.getString(
+                R.string.share_invite_code_text,
+                _uiState.value.title,
+                inviteCode
+            ))
+            putExtra(Intent.EXTRA_SUBJECT, application.getString(R.string.share_invite_code_subject))
+        }
+
+        // Создаем chooser для выбора приложения
+        val chooserIntent = Intent.createChooser(
+            shareIntent,
+            application.getString(R.string.share_invite_code_title)
+        )
+        chooserIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+
+        // Запускаем системный диалог
+        application.startActivity(chooserIntent)
+
+        _uiState.update {
+            it.copy(
+                successMessage = application.getString(R.string.invite_code_shared)
+            )
         }
     }
 

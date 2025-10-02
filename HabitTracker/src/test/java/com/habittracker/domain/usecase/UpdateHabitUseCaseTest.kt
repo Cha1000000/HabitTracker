@@ -103,6 +103,8 @@ class UpdateHabitUseCaseTest {
         override suspend fun syncData() = throw NotImplementedError()
         override suspend fun getParticipantSettings(habitId: String, userId: String) = null
         override suspend fun setParticipantSettings(settings: HabitParticipantSettings) = throw NotImplementedError()
+        override fun getAllPublicHabits(excludeUserId: String?) = flowOf(emptyList<Habit>())
+        override suspend fun getHabitByInviteCode(inviteCode: String) = throw NotImplementedError()
     }
 
     private class FakeHabitRepository : HabitRepository {
@@ -137,5 +139,6 @@ class UpdateHabitUseCaseTest {
         override suspend fun removeParticipantFromHabit(habitId: String, userId: String) = throw NotImplementedError()
         override suspend fun getHabitParticipants(habitId: String) = throw NotImplementedError()
         override suspend fun searchHabits(userId: String, query: String) = throw NotImplementedError()
+        override fun getPublicHabits(): Flow<List<Habit>> = flowOf(emptyList())
     }
 }

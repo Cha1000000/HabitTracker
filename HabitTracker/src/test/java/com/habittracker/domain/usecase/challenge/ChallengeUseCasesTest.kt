@@ -84,6 +84,7 @@ class ChallengeUseCasesTest {
         override suspend fun removeParticipantFromHabit(habitId: String, userId: String) {}
         override suspend fun getHabitParticipants(habitId: String): List<String> = emptyList()
         override suspend fun searchHabits(userId: String, query: String): List<Habit> = emptyList()
+        override fun getPublicHabits(): Flow<List<Habit>> = MutableStateFlow(emptyList())
     }
 
     private class FakeHabitEntryRepository : HabitEntryRepository {

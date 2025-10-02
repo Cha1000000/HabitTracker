@@ -37,7 +37,6 @@ import androidx.compose.material.icons.filled.PersonAdd
 import androidx.compose.material.icons.filled.Timeline
 import androidx.compose.material.icons.filled.Title
 import androidx.compose.material3.AssistChip
-import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExposedDropdownMenuDefaults
@@ -78,6 +77,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.core.graphics.toColorInt
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
@@ -85,6 +85,7 @@ import androidx.navigation.compose.rememberNavController
 import com.habittracker.R
 import com.habittracker.domain.model.HabitFrequency
 import com.habittracker.domain.model.HabitType
+import com.habittracker.presentation.state.AddEditHabitUiState
 import com.habittracker.presentation.ui.components.FieldValidationFeedback
 import com.habittracker.presentation.ui.habits.components.ConfirmDialog
 import com.habittracker.presentation.ui.habits.components.EmojiPickerDialog
@@ -95,6 +96,7 @@ import com.habittracker.presentation.ui.habits.components.GlassmorphicDropdownMe
 import com.habittracker.presentation.ui.habits.components.GlassmorphicDropdownMenuItem
 import com.habittracker.presentation.ui.habits.components.GlassmorphicExposedDropdownMenuBox
 import com.habittracker.presentation.ui.habits.components.GlassmorphicFAB
+import com.habittracker.presentation.ui.habits.components.GlassmorphicOutlinedButton
 import com.habittracker.presentation.ui.habits.components.GlassmorphicSectionHeader
 import com.habittracker.presentation.ui.habits.components.GlassmorphicSwitch
 import com.habittracker.presentation.ui.habits.components.GlassmorphicTextField
@@ -106,7 +108,6 @@ import com.habittracker.presentation.ui.permission.hasNotificationPermission
 import com.habittracker.presentation.ui.theme.TahoeElectricBlue
 import com.habittracker.presentation.ui.theme.TahoeLightBlue
 import com.habittracker.presentation.utils.GroupHabitConstants
-import com.habittracker.presentation.viewmodel.AddEditHabitUiState
 import com.habittracker.presentation.viewmodel.AddEditHabitViewModel
 import com.habittracker.presentation.viewmodel.IAddEditHabitViewModel
 import kotlinx.datetime.DayOfWeek
@@ -204,7 +205,6 @@ private fun HabitTypeSelector(
             modifier = Modifier
                 .fillMaxWidth()
                 .menuAnchor(MenuAnchorType.PrimaryNotEditable, enabled = true),
-            isDarkTheme = isDarkTheme,
             singleLine = true,
             readOnly = true
         )
@@ -301,20 +301,30 @@ private fun GroupSettings(
                                 viewModel.onMaxParticipantsInputChange(filtered)
                             }
                         },
-                        placeholder = { Text("2") },
+                        placeholder = {
+                            Text(
+                                text = "2",
+                                style = MaterialTheme.typography.labelLarge.copy(
+                                    textAlign = TextAlign.Center,
+                                    lineHeight = 18.sp
+                                ),
+                            ) },
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                         singleLine = true,
                         modifier = Modifier
-                            .width(70.dp)
-                            .height(48.dp),
-                        isDarkTheme = isDarkTheme
+                            .width(60.dp)
+                            .height(46.dp),
+                        textStyle = MaterialTheme.typography.labelLarge.copy(
+                            textAlign = TextAlign.Center,
+                            lineHeight = 14.sp
+                        )
                     )
 
                     Text(
                         text = stringResource(R.string.participants_limit),
-                        style = MaterialTheme.typography.bodySmall,
+                        style = MaterialTheme.typography.labelLarge,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.padding(start = 4.dp)
+                        modifier = Modifier.padding(start = 2.dp)
                     )
 
                     // Компактное сообщение валидации справа, чтобы не тянуть высоту строки
@@ -357,7 +367,7 @@ private fun GroupSettings(
             )
             
             // Кнопка приглашения друзей
-            OutlinedButton(
+            GlassmorphicOutlinedButton(
                 onClick = { viewModel.onShowFriendSelector(true) },
                 modifier = Modifier.fillMaxWidth(),
                 enabled = !uiState.isLoading && !uiState.isHabitSaved
@@ -403,7 +413,7 @@ private fun GroupSettings(
                 val enabled = uiState.selectedFriendsToInvite.isNotEmpty() && !uiState.isSendingInvitations
                 val wouldExceedLimit = (uiState.participants.size + uiState.selectedFriendsToInvite.size) > uiState.maxParticipants
 
-                Button(
+                GlassmorphicButton(
                     onClick = { viewModel.requestInvitations() },
                     enabled = enabled,
                     modifier = Modifier.fillMaxWidth()
@@ -465,7 +475,6 @@ private fun FrequencySelector(
             modifier = Modifier
                 .fillMaxWidth()
                 .menuAnchor(MenuAnchorType.PrimaryNotEditable, enabled = enabled),
-            isDarkTheme = isSystemInDarkTheme(),
             singleLine = true,
             readOnly = true
         )
@@ -808,7 +817,6 @@ fun AddEditHabitScreen(
                     modifier = Modifier.fillMaxWidth(),
                     singleLine = true,
                     leadingIcon = { Icon(Icons.Default.Title, null) },
-                    isDarkTheme = isSystemInDarkTheme()
                 )
                 FieldValidationFeedback(
                     errorMessage = uiState.titleError
@@ -825,7 +833,6 @@ fun AddEditHabitScreen(
                     modifier = Modifier.fillMaxWidth(),
                     singleLine = false,
                     leadingIcon = { Icon(Icons.Default.Description, null) },
-                    isDarkTheme = isSystemInDarkTheme()
                 )
                 FieldValidationFeedback(uiState.descriptionError)
             }
@@ -901,7 +908,6 @@ fun AddEditHabitScreen(
 
             item {
                 // Целевое значение
-                val isDarkTheme = isSystemInDarkTheme()
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
@@ -916,7 +922,6 @@ fun AddEditHabitScreen(
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                         singleLine = true,
                         leadingIcon = { Icon(Icons.Default.Timeline, null) },
-                        isDarkTheme = isDarkTheme
                     )
                     
                     GlassmorphicTextField(
@@ -925,7 +930,6 @@ fun AddEditHabitScreen(
                         label = { Text(stringResource(R.string.habit_unit_label)) },
                         modifier = Modifier.width(100.dp),
                         singleLine = true,
-                        isDarkTheme = isDarkTheme
                     )
                 }
                 FieldValidationFeedback(uiState.targetValueError)
@@ -1198,13 +1202,15 @@ fun AddEditHabitScreen(
 fun AddEditHabitScreenPreview() {
     MaterialTheme {
         val navController = rememberNavController()
-        val viewModel = PreviewAddEditHabitViewModel()
+        val viewModel = remember { PreviewAddEditHabitViewModel() }
         
         // Set initial state
-        viewModel.onTitleChange("Бег по утрам")
-        viewModel.onDescriptionChange("Пробежка в парке")
-        viewModel.onIconChange("🏃")
-        viewModel.onTypeChange(HabitType.PERSONAL)
+        LaunchedEffect(Unit) {
+            viewModel.onTitleChange("Бег по утрам")
+            viewModel.onDescriptionChange("Пробежка в парке")
+            viewModel.onIconChange("🏃")
+            viewModel.onTypeChange(HabitType.PERSONAL)
+        }
         
         AddEditHabitScreen(
             navController = navController,
@@ -1218,14 +1224,16 @@ fun AddEditHabitScreenPreview() {
 fun AddEditHabitScreenEditModePreview() {
     MaterialTheme {
         val navController = rememberNavController()
-        val viewModel = PreviewAddEditHabitViewModel()
+        val viewModel = remember { PreviewAddEditHabitViewModel() }
         
         // Set initial state for editing
-        viewModel.onTitleChange("Медитация")
-        viewModel.onDescriptionChange("Утренняя медитация 10 минут")
-        viewModel.onIconChange("🧘")
-        viewModel.onTypeChange(HabitType.GROUP)
-        viewModel.onFrequencyChange(HabitFrequency.DAILY)
+        LaunchedEffect(Unit) {
+            viewModel.onTitleChange("Медитация")
+            viewModel.onDescriptionChange("Утренняя медитация 10 минут")
+            viewModel.onIconChange("🧘")
+            viewModel.onTypeChange(HabitType.GROUP)
+            viewModel.onFrequencyChange(HabitFrequency.DAILY)
+        }
         
         AddEditHabitScreen(
             navController = navController,
@@ -1239,13 +1247,15 @@ fun AddEditHabitScreenEditModePreview() {
 fun AddEditHabitScreenLoadingPreview() {
     MaterialTheme {
         val navController = rememberNavController()
-        val viewModel = PreviewAddEditHabitViewModel(
-            testState = AddEditHabitUiState(
-                isLoading = true,
-                title = "Загрузка...",
-                description = "Загружаем данные привычки"
+        val viewModel = remember {
+            PreviewAddEditHabitViewModel(
+                testState = AddEditHabitUiState(
+                    isLoading = true,
+                    title = "Загрузка...",
+                    description = "Загружаем данные привычки"
+                )
             )
-        )
+        }
         
         AddEditHabitScreen(
             navController = navController,

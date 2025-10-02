@@ -296,7 +296,14 @@
     <string name="friend_since">Друзья с %1$s</string>
     <string name="request_sent_at">Запрос отправлен %1$s</string>
     
-    <!-- Групповые привычки -->
+    <!-- Групповые привычки - дополнительные строки -->
+    <string name="share_invite_code_text">Присоединяйтесь к групповой привычке "%1$s"!\n\nКод приглашения: %2$s\n\nВведите этот код в приложении HabitTracker, чтобы присоединиться к нашей группе.</string>
+    <string name="share_invite_code_subject">Приглашение в групповую привычку</string>
+    <string name="share_invite_code_title">Поделиться кодом приглашения</string>
+    <string name="invite_code_shared">Код приглашения отправлен</string>
+    <string name="habit_marked_complete">Привычка отмечена как выполненная</string>
+    <string name="habit_marked_incomplete">Отметка о выполнении снята</string>
+    <string name="error_updating_habit_status">Ошибка обновления статуса привычки</string>
     <string name="group_habit_settings">Настройки групповой привычки</string>
     <string name="max_participants">Максимум участников</string>
     <string name="participants_limit">из 10</string>
@@ -398,6 +405,84 @@
     <string name="error_accept_invitation">Ошибка принятия приглашения</string>
     <string name="success_invitation_declined">Приглашение отклонено</string>
     <string name="error_decline_invitation">Ошибка отклонения приглашения</string>
+    
+    <!-- Expandable FAB -->
+    <string name="fab_enter_code">Ввести код приглашения</string>
+    <string name="fab_find_habit">Выбрать из каталога</string>
+    <string name="fab_create_habit">Создать привычку</string>
+    <string name="fab_open_menu">Открыть меню</string>
+    <string name="fab_close_menu">Закрыть</string>
+    <string name="fab_add">Добавить</string>
+    <string name="fab_add_habit_title">Добавить привычку</string>
+    <string name="fab_create_new_title">Создать новую</string>
+    <string name="fab_create_new_desc">Создайте личную или групповую привычку</string>
+    <string name="fab_browse_catalog_title">Найти в каталоге</string>
+    <string name="fab_browse_catalog_desc">Присоединитесь к публичным привычкам</string>
+    <string name="fab_enter_code_title">Ввести код</string>
+    <string name="fab_enter_code_desc">Присоединитесь по коду приглашения</string>
+    
+    <!-- Join by Code Dialog -->
+    <string name="join_by_code_title">Введите код приглашения</string>
+    <string name="join_by_code_hint">Код состоит из 8 символов</string>
+    <string name="join_by_code_label">Код</string>
+    <string name="join_by_code_placeholder">ABC123TO</string>
+    <string name="join_by_code_error">Код должен содержать 8 символов</string>
+    <string name="join_by_code_button">Присоединиться</string>
+    
+    <!-- Public Habits -->
+    <string name="public_habits_title">Публичные привычки</string>
+    <string name="public_habits_subtitle">Найдите привычки, которые вам интересны</string>
+    <string name="public_habits_found">Найдено</string>
+    <string name="public_habits_search_hint">Поиск привычек...</string>
+    <string name="public_habits_category_all">Все</string>
+    <string name="public_habits_category_health">Здоровье</string>
+    <string name="public_habits_category_sport">Спорт</string>
+    <string name="public_habits_category_education">Образование</string>
+    <string name="public_habits_category_productivity">Продуктивность</string>
+    <string name="public_habits_category_mindfulness">Осознанность</string>
+    <string name="public_habits_category_creativity">Творчество</string>
+    <string name="public_habits_category_social">Социальные</string>
+    <string name="public_habits_category_other">Другое</string>
+    <string name="public_habits_sort_popularity">По популярности</string>
+    <string name="public_habits_sort_newest">Сначала новые</string>
+    <string name="public_habits_participants">участников</string>
+    <string name="public_habits_participants_one">участник</string>
+    <string name="public_habits_participants_few">участника</string>
+    <string name="public_habits_no_habits">Нет доступных публичных привычек</string>
+    <string name="public_habits_loading">Загрузка...</string>
+    <string name="public_habits_join">Присоединиться</string>
+    <string name="public_habits_details">Подробности</string>
+    <string name="public_habits_created_by">Создано:</string>
+    <string name="public_habits_date_created">Дата создания:</string>
+    
+    <!-- Habits View Model Messages -->
+    <string name="join_habit_auth_required">Необходимо войти в систему</string>
+    <string name="join_habit_success">Вы успешно присоединились к привычке \"%1$s\"</string>
+    <string name="join_habit_error_generic">Не удалось присоединиться по коду</string>
+    <string name="join_habit_error">Произошла ошибка: %1$s</string>
+    
+    <!-- Public Habits View Model Messages -->
+    <string name="public_habits_error_load">Не удалось загрузить публичные привычки</string>
+    <string name="public_habits_joining">Присоединяемся...</string>
+    <string name="public_habits_join_success">Вы присоединились к привычке!</string>
+    <string name="public_habits_join_error">Не удалось присоединиться к привычке</string>
+    <string name="error_already_participating">Вы уже участвуете в этой привычке</string>
+    <string name="error_invalid_invite_code">Неверный код приглашения</string>
+    <string name="public_habits_participants_title">Участники</string>
+    <string name="public_habits_frequency_title">Частота</string>
+    <string name="public_habits_created_title">Создана</string>
+    <string name="public_habits_goal_title">Цель</string>
+    <string name="public_habits_group_full">Группа заполнена</string>
+    <string name="public_habits_join_habit">Присоединиться к привычке</string>
+    
+    <!-- Habit Preview Card -->
+    <string name="habit_preview_author">Автор:</string>
+    <string name="habit_preview_participants">участников</string>
+    <string name="public_habits_nothing_found">Ничего не найдено</string>
+    <string name="public_habits_no_public">Нет публичных привычек</string>
+    <string name="public_habits_try_different">Попробуйте изменить запрос или фильтры</string>
+    <string name="public_habits_be_first">Будьте первым, кто создаст публичную привычку!</string>
+    <string name="public_habits_create_habit">Создать привычку</string>
 
     <!-- Validation Messages -->
     <string name="validation_all_good">Все поля заполнены корректно</string>
@@ -413,7 +498,7 @@
     <string name="group_progress">Прогресс группы</string>
     <string name="not_completed_today">Не выполнено сегодня</string>
     <string name="group_streak_days">дней подряд</string>
-    <string name="participants">Участники (%1$d)</string>
+    <string name="participants">Участники</string>
     <string name="tap_to_remove">Нажмите для удаления</string>
     <string name="remove_participant">Удалить участника</string>
     <string name="invite_management">Управление приглашениями</string>

@@ -14,7 +14,9 @@ import com.habittracker.domain.repository.FirestoreRepository
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
+import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.tasks.await
+import kotlin.coroutines.resume
 import kotlinx.datetime.LocalDate
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -136,6 +138,7 @@ class FirestoreRepositoryImpl @Inject constructor(
         // Берем все документы и фильтруем на клиенте. При желании можно добавить whereEqualTo("active", true),
         // но поле может называться по-разному ("active"/"isActive") на старых данных, поэтому безопаснее без фильтра.
         val listener = firestore.collection(HABITS_COLLECTION)
+            .whereEqualTo("isActive", true)
             .addSnapshotListener { snapshot, error ->
                 if (error != null) {
                     Log.e(TAG, "❌ [getUserHabits] Error getting habits for user: $userId", error)
@@ -270,15 +273,18 @@ class FirestoreRepositoryImpl @Inject constructor(
 
     override suspend fun deleteHabit(habitId: String) {
         try {
-            Log.d(TAG, "Deleting habit: $habitId")
-            // Мягкое удаление - помечаем как неактивную
+            Log.d(TAG, "🗑️ [deleteHabit] Deleting habit document from Firestore: $habitId")
+            
+            // ПОЛНОЕ удаление документа из Firestore (hard delete)
+            // Это эквивалентно "Delete document" в консоли Firebase
             firestore.collection(HABITS_COLLECTION)
                 .document(habitId)
-                .update("isActive", false)
+                .delete()
                 .await()
-            Log.d(TAG, "Habit deleted successfully: $habitId")
+            
+            Log.d(TAG, "✅ [deleteHabit] Habit document deleted successfully: $habitId")
         } catch (e: Exception) {
-            Log.e(TAG, "Error deleting habit: $habitId", e)
+            Log.e(TAG, "❌ [deleteHabit] Error deleting habit: $habitId", e)
             throw e
         }
     }
@@ -467,4 +473,69 @@ class FirestoreRepositoryImpl @Inject constructor(
         }
     }
     // endregion
+    
+    override fun getAllPublicHabits(excludeUserId: String?): Flow<List<Habit>> = callbackFlow {
+        try {
+            val query: Query = firestore.collection(HABITS_COLLECTION)
+                .whereEqualTo("public", true)
+                .whereEqualTo("isActive", true)
+
+            val listener = query.addSnapshotListener { snapshot, error ->
+                if (error != null) {
+                    Log.e(TAG, "Error getting public habits", error)
+                    trySend(emptyList())
+                    return@addSnapshotListener
+                }
+                
+                if (snapshot != null) {
+                    val habits = snapshot.documents.mapNotNull { doc ->
+                        parseHabitSafely(doc)?.let { habit ->
+                            // Фильтруем привычки текущего пользователя
+                            if (excludeUserId != null && habit.createdBy == excludeUserId) {
+                                null
+                            } else {
+                                habit
+                            }
+                        }
+                    }
+                    
+                    Log.d(TAG, "Got ${habits.size} public habits from Firestore")
+                    trySend(habits)
+                } else {
+                    trySend(emptyList())
+                }
+            }
+            
+            awaitClose { listener.remove() }
+        } catch (e: Exception) {
+            Log.e(TAG, "Error in getAllPublicHabits", e)
+            trySend(emptyList())
+        }
+    }
+    
+    override suspend fun getHabitByInviteCode(inviteCode: String): Habit? = suspendCancellableCoroutine { continuation ->
+        Log.d(TAG, "🔍 [getHabitByInviteCode] Searching for habit with invite code: $inviteCode")
+        
+        firestore.collection(HABITS_COLLECTION)
+            .whereEqualTo("inviteCode", inviteCode)
+            .whereEqualTo("isActive", true)
+            .get()
+            .addOnSuccessListener { documents ->
+                val habit = documents.documents.firstOrNull()?.let { doc ->
+                    parseHabitSafely(doc)
+                }
+                
+                if (habit != null) {
+                    Log.d(TAG, "✅ [getHabitByInviteCode] Found habit: ${habit.title} (${habit.id})")
+                } else {
+                    Log.d(TAG, "❌ [getHabitByInviteCode] No habit found with code: $inviteCode")
+                }
+                
+                continuation.resume(habit)
+            }
+            .addOnFailureListener { exception ->
+                Log.e(TAG, "❌ [getHabitByInviteCode] Error searching for habit", exception)
+                continuation.resume(null)
+            }
+    }
 }

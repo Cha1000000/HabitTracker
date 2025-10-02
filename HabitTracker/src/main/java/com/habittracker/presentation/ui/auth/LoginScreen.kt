@@ -149,7 +149,6 @@ fun LoginScreen(
                         },
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
                         modifier = Modifier.fillMaxWidth(),
-                        isDarkTheme = isDarkTheme,
                         singleLine = true
                     )
 
@@ -179,7 +178,6 @@ fun LoginScreen(
                         visualTransformation = if (passwordVisible) VisualTransformation.None else PasswordVisualTransformation(),
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
                         modifier = Modifier.fillMaxWidth(),
-                        isDarkTheme = isDarkTheme,
                         singleLine = true
                     )
 

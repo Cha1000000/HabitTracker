@@ -16,7 +16,6 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.material.ExperimentalMaterialApi
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.TrendingUp
-import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.EmojiEvents
 import androidx.compose.material.icons.filled.Notifications
@@ -33,7 +32,6 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarDuration
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
-import androidx.compose.material3.SnackbarResult
 import androidx.compose.material3.SwipeToDismissBox
 import androidx.compose.material3.SwipeToDismissBoxValue
 import androidx.compose.material3.Text
@@ -74,7 +72,8 @@ import com.habittracker.domain.model.isGroupHabit
 import com.habittracker.presentation.navigation.Screen
 import com.habittracker.presentation.ui.components.GradientPullRefreshIndicator
 import com.habittracker.presentation.ui.habits.components.EnhancedHabitItem
-import com.habittracker.presentation.ui.habits.components.GlassmorphicFAB
+import com.habittracker.presentation.ui.habits.components.ExpandableFAB
+import com.habittracker.presentation.ui.habits.components.JoinByCodeDialog
 import com.habittracker.presentation.ui.habits.components.TahoeDockBar
 import com.habittracker.presentation.ui.habits.components.TahoeDockDivider
 import com.habittracker.presentation.ui.habits.components.TahoeDockItem
@@ -84,7 +83,6 @@ import com.habittracker.presentation.viewmodel.FriendsViewModel
 import com.habittracker.presentation.viewmodel.HabitWithCompletion
 import com.habittracker.presentation.viewmodel.HabitsViewModel
 import com.habittracker.presentation.viewmodel.NotificationsViewModel
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.datetime.Clock
 import kotlin.math.abs
@@ -101,7 +99,6 @@ fun HabitsScreen(
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
     val habitDeletedText = stringResource(id = R.string.habit_deleted)
-    val undoText = stringResource(id = R.string.undo)
     val badgeCount by notificationsViewModel.badgeCount.collectAsState()
     val friendsUiState by friendsViewModel.uiState.collectAsState()
     val friendRequestsBadgeCount = friendsUiState.incomingRequests.size
@@ -114,6 +111,7 @@ fun HabitsScreen(
         val observer = LifecycleEventObserver { _, event ->
             if (event == Lifecycle.Event.ON_RESUME) {
                 recomposeKey++
+                viewModel.refresh()
             }
         }
         lifecycleOwner.lifecycle.addObserver(observer)
@@ -165,11 +163,29 @@ fun HabitsScreen(
             )
         },
         floatingActionButton = {
-            GlassmorphicFAB(
-                onClick = { navController.navigate(Screen.AddEditHabit.route) },
-                isDarkTheme = isSystemInDarkTheme(),
-            ) {
-                Icon(Icons.Default.Add, contentDescription = stringResource(R.string.cd_add_habit))
+            var showCodeDialog by remember { mutableStateOf(false) }
+            
+            ExpandableFAB(
+                onCreateHabit = { 
+                    navController.navigate(Screen.AddEditHabit.route) 
+                },
+                onBrowsePublic = { 
+                    navController.navigate(Screen.PublicHabits.route) 
+                },
+                onJoinByCode = { 
+                    showCodeDialog = true 
+                }
+            )
+            
+            // Диалог ввода кода
+            if (showCodeDialog) {
+                JoinByCodeDialog(
+                    onDismiss = { showCodeDialog = false },
+                    onJoin = { code ->
+                        showCodeDialog = false
+                        viewModel.joinByInviteCode(code)
+                    }
+                )
             }
         },
         bottomBar = {
@@ -327,30 +343,15 @@ fun HabitsScreen(
                                             cancelLabel = stringResource(id = R.string.cancel),
                                             onConfirm = {
                                                 showDeleteDialog = false
-                                                // Начинаем оптимистичное удаление и предлагаем UNDO
-                                                viewModel.requestDeleteHabit(habitWithCompletion.habit.id)
-                                                // Показываем Snackbar и одновременно ставим таймер авто-скрытия
+                                                // Мгновенно удаляем (локально + Firestore) без UNDO, чтобы элемент не возвращался при refresh
+                                                viewModel.deleteHabit(habitWithCompletion.habit.id)
+                                                // Показываем короткое уведомление об успехе
                                                 scope.launch {
-                                                    val showJob = launch {
-                                                        val result = snackbarHostState.showSnackbar(
-                                                            message = habitDeletedText,
-                                                            actionLabel = undoText,
-                                                            withDismissAction = true,
-                                                            duration = SnackbarDuration.Indefinite
-                                                        )
-                                                        if (result == SnackbarResult.ActionPerformed) {
-                                                            viewModel.cancelPendingDeletion()
-                                                        } else {
-                                                            viewModel.confirmPendingDeletion()
-                                                        }
-                                                    }
-                                                    val timerJob = launch {
-                                                        delay(5_000)
-                                                        if (showJob.isActive) {
-                                                            snackbarHostState.currentSnackbarData?.dismiss()
-                                                        }
-                                                    }
-                                                    showJob.invokeOnCompletion { timerJob.cancel() }
+                                                    snackbarHostState.showSnackbar(
+                                                        message = habitDeletedText,
+                                                        withDismissAction = true,
+                                                        duration = SnackbarDuration.Short
+                                                    )
                                                 }
                                             },
                                             onDismiss = { showDeleteDialog = false }

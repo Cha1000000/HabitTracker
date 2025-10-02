@@ -9,6 +9,7 @@ import com.habittracker.domain.repository.FirestoreRepository
 import com.habittracker.domain.repository.HabitRepository
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.test.runTest
 import kotlinx.datetime.Clock
@@ -131,9 +132,11 @@ class GetHabitByIdUseCaseTest {
         override suspend fun saveHabitEntry(habitEntry: HabitEntry) = throw NotImplementedError()
         override suspend fun getHabitEntry(habitId: String, userId: String, date: LocalDate) = throw NotImplementedError()
         override fun getHabitEntries(habitId: String, userId: String) = throw NotImplementedError()
+        override suspend fun getHabitByInviteCode(inviteCode: String) = throw NotImplementedError()
         override suspend fun syncData() = throw NotImplementedError()
         override suspend fun getParticipantSettings(habitId: String, userId: String) = null
         override suspend fun setParticipantSettings(settings: HabitParticipantSettings) = throw NotImplementedError()
+        override fun getAllPublicHabits(excludeUserId: String?) = flowOf(emptyList<Habit>())
     }
 
     private class FakeHabitRepository : HabitRepository {
@@ -165,5 +168,6 @@ class GetHabitByIdUseCaseTest {
         override suspend fun removeParticipantFromHabit(habitId: String, userId: String) = throw NotImplementedError()
         override suspend fun getHabitParticipants(habitId: String) = throw NotImplementedError()
         override suspend fun searchHabits(userId: String, query: String) = throw NotImplementedError()
+        override fun getPublicHabits(): Flow<List<Habit>> = flow { emit(emptyList()) }
     }
 }

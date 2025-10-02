@@ -1,12 +1,12 @@
-package com.habittracker.presentation.viewmodel
+package com.habittracker.presentation.state
 
 import com.habittracker.domain.model.HabitFrequency
 import com.habittracker.domain.model.HabitType
 import com.habittracker.domain.model.User
 import com.habittracker.presentation.utils.GroupHabitConstants
 import com.habittracker.presentation.utils.GroupHabitValidationResult
-import kotlinx.datetime.LocalTime
 import kotlinx.datetime.DayOfWeek
+import kotlinx.datetime.LocalTime
 
 data class AddEditHabitUiState(
     // Основные поля
@@ -16,23 +16,23 @@ data class AddEditHabitUiState(
     val icon: String = "",
     val color: Int = 0xFF2196F3.toInt(), // Цвет привычки как Int
     val type: HabitType = HabitType.PERSONAL,
-    
+
     // Настройки частоты
     val frequency: HabitFrequency = HabitFrequency.DAILY,
-    
+
     // Напоминание
     // Явный флаг включения напоминаний (не завязан на nullability времени)
     val reminderEnabled: Boolean = false,
     val reminderTime: LocalTime? = null,
     // Выбранные дни недели для напоминаний (используются для WEEKLY/TWICE_A_WEEK/CUSTOM)
     val reminderDaysInput: Set<DayOfWeek> = emptySet(),
-    
+
     // Целевые значения
     val targetValue: Int = 1,
     // Текстовое состояние для поля «Целевое значение», чтобы поддерживать промежуточные значения (пустая строка, ведущие нули и т.п.)
     val targetValueInput: String = "1",
     val unit: String = "раз",
-    
+
     // Групповые привычки
     val maxParticipants: Int = GroupHabitConstants.DEFAULT_MAX_PARTICIPANTS,
     // Строковое состояние для поля ввода «Максимум участников»
@@ -44,14 +44,14 @@ data class AddEditHabitUiState(
     val selectedFriendsToInvite: List<User> = emptyList(),
     val showFriendSelector: Boolean = false,
     val availableFriends: List<User> = emptyList(),
-    
+
     // Состояния загрузки
     val isHabitSaved: Boolean = false,
     val isLoading: Boolean = false,
     val isGeneratingInviteCode: Boolean = false,
     val isLoadingFriends: Boolean = false,
     val isSendingInvitations: Boolean = false,
-    
+
     // Обработка ошибок и валидации
     val error: String? = null,
     val successMessage: String? = null,
@@ -61,7 +61,7 @@ data class AddEditHabitUiState(
     val participantsError: String? = null,
     val inviteCodeError: String? = null,
     val groupHabitValidationResult: GroupHabitValidationResult? = null,
-    
+
     // UX улучшения
     val showValidationErrors: Boolean = false,
     val canSaveHabit: Boolean = true,
@@ -69,7 +69,7 @@ data class AddEditHabitUiState(
     val lastInvitationSentAt: Long? = null,
     // Можно ли применить напоминание для всех (создатель групповой привычки)
     val canApplyReminderToAll: Boolean = false,
-    
+
     // Индикаторы состояния
     val hasUnsavedChanges: Boolean = false,
     val isFormValid: Boolean = true,

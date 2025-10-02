@@ -32,4 +32,6 @@ interface HabitRepository {
     suspend fun getHabitParticipants(habitId: String): List<String>
     
     suspend fun searchHabits(userId: String, query: String): List<Habit>
+    
+    fun getPublicHabits(): Flow<List<Habit>>
 }

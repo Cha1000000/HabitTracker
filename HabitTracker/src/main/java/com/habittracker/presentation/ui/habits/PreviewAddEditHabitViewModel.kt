@@ -8,9 +8,9 @@ import com.habittracker.domain.model.HabitType
 import com.habittracker.domain.model.HabitValidation
 import com.habittracker.domain.model.HabitValidation.HabitField
 import com.habittracker.domain.model.User
+import com.habittracker.presentation.state.AddEditHabitUiState
 import com.habittracker.presentation.utils.GroupHabitConstants
 import com.habittracker.presentation.utils.GroupHabitValidationResult
-import com.habittracker.presentation.viewmodel.AddEditHabitUiState
 import com.habittracker.presentation.viewmodel.IAddEditHabitViewModel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -18,8 +18,8 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-import kotlinx.datetime.LocalTime
 import kotlinx.datetime.DayOfWeek
+import kotlinx.datetime.LocalTime
 import javax.inject.Inject
 
 /**
@@ -27,7 +27,7 @@ import javax.inject.Inject
  * Реализует IAddEditHabitViewModel для работы в превью с поддержкой валидации.
  */
 class PreviewAddEditHabitViewModel @Inject constructor(
-    private val testState: AddEditHabitUiState = AddEditHabitUiState()
+    testState: AddEditHabitUiState = AddEditHabitUiState()
 ) : ViewModel(), IAddEditHabitViewModel {
     private val _uiState = MutableStateFlow(testState)
     override val uiState: StateFlow<AddEditHabitUiState> = _uiState.asStateFlow()

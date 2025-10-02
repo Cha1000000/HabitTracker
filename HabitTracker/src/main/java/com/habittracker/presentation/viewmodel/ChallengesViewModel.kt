@@ -2,37 +2,20 @@ package com.habittracker.presentation.viewmodel
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.habittracker.domain.model.Challenge
 import com.habittracker.domain.model.ChallengeStatus
 import com.habittracker.domain.usecase.GetCurrentUserUseCase
 import com.habittracker.domain.usecase.challenge.GetActiveChallengesUseCase
 import com.habittracker.domain.usecase.challenge.GetChallengeResultsUseCase
 import com.habittracker.domain.usecase.challenge.JoinChallengeUseCase
 import com.habittracker.domain.usecase.challenge.LeaveChallengeUseCase
+import com.habittracker.presentation.state.ChallengeTab
+import com.habittracker.presentation.state.ChallengesUiState
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.combine
-import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.launch
 import javax.inject.Inject
-
-data class ChallengesUiState(
-    val activeChallenges: List<Challenge> = emptyList(),
-    val endingSoonChallenges: List<Challenge> = emptyList(),
-    val isLoading: Boolean = false,
-    val errorMessage: String? = null,
-    val selectedTab: ChallengeTab = ChallengeTab.ACTIVE,
-    val showJoinDialog: Boolean = false,
-    val joinChallengeId: String? = null
-)
-
-enum class ChallengeTab {
-    ACTIVE,
-    ENDING_SOON,
-    COMPLETED
-}
 
 @HiltViewModel
 class ChallengesViewModel @Inject constructor(
