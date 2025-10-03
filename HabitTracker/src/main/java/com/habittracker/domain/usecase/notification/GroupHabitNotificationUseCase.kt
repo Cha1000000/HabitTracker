@@ -11,6 +11,7 @@ import com.habittracker.domain.repository.SocialRepository
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.datetime.Clock
 import kotlinx.datetime.DateTimeUnit
 import kotlinx.datetime.Instant
@@ -88,21 +89,16 @@ class GroupHabitNotificationUseCase @Inject constructor(
             val allParticipantIds = (listOf(habit.createdBy) + habit.participants).distinct()
             Log.d(TAG, "Habit ${habit.title}: ${allParticipantIds.size} participants (creator + ${habit.participants.size} others)")
             
-            // Получаем записи выполнения за последние 7 дней для каждого участника
+            // Получаем ВСЕ записи выполнения для привычки (для всех участников)
             val startDate = today.minus(7, DateTimeUnit.DAY)
-            val allEntries = mutableListOf<HabitEntry>()
+            val allHabitEntries = habitEntryRepository.getEntriesForHabit(habit.id).first()
             
-            for (participantId in allParticipantIds) {
-                val participantEntries = habitEntryRepository.getEntriesForUserAndPeriod(
-                    habitId = habit.id,
-                    userId = participantId,
-                    startDate = startDate,
-                    endDate = today
-                )
-                allEntries.addAll(participantEntries)
+            // Фильтруем записи за последние 7 дней
+            val allEntries = allHabitEntries.filter { entry ->
+                entry.date >= startDate && entry.date <= today
             }
             
-            Log.d(TAG, "Loaded ${allEntries.size} total entries for habit ${habit.title}")
+            Log.d(TAG, "Loaded ${allEntries.size} total entries for habit ${habit.title} (from ${allHabitEntries.size} total)")
             
             // Группируем записи по участникам
             val entriesByUser = allEntries.groupBy { it.userId }

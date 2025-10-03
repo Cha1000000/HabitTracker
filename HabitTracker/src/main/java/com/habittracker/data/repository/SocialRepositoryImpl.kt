@@ -1929,20 +1929,25 @@ class SocialRepositoryImpl @Inject constructor(
         data: Map<String, String>
     ) {
         try {
+            Log.d(TAG, "sendPushNotification: Sending to FCM, title=$title, body=$body")
             // Используем FCMApiClient для реальной отправки
             val result = fcmApiClient.sendPushNotification(fcmToken, title, body, data)
             
             result.onSuccess {
-                // Уведомление успешно отправлено
+                Log.d(TAG, "Push notification sent successfully: $title")
             }.onFailure { error ->
                 // Логируем ошибку, но не прерываем выполнение
                 // В production здесь можно добавить retry логику или отправку в аналитику
-                println("Ошибка отправки push-уведомления: ${error.message}")
+                Log.e(TAG, "Error sending push notification: ${error.message}", error)
             }
             
         } catch (e: Exception) {
             // Логируем ошибку, но не прерываем выполнение
-            println("Исключение при отправке push-уведомления: ${e.message}")
+            Log.e(TAG, "Exception while sending push notification: ${e.message}", e)
         }
+    }
+    
+    companion object {
+        private const val TAG = "SocialRepository"
     }
 }

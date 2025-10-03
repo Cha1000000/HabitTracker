@@ -1,5 +1,6 @@
 package com.habittracker.domain.usecase.notification
 
+import android.util.Log
 import com.habittracker.domain.model.Habit
 import com.habittracker.domain.model.User
 import com.habittracker.domain.model.isGroupHabit
@@ -17,6 +18,10 @@ class SendGroupHabitPushNotificationUseCase @Inject constructor(
     private val socialRepository: SocialRepository,
     private val habitRepository: HabitRepository
 ) {
+    
+    companion object {
+        private const val TAG = "SendGroupHabitPush"
+    }
 
     /**
      * Отправляет уведомление о выполнении привычки участником
@@ -26,15 +31,22 @@ class SendGroupHabitPushNotificationUseCase @Inject constructor(
         completedByUserId: String
     ): Result<Unit> {
         return try {
+            Log.d(TAG, "invoke: habitId=$habitId, completedByUserId=$completedByUserId")
+            
             val habit = habitRepository.getHabitById(habitId)
             val completedByUser = socialRepository.getUserById(completedByUserId)
+            
+            Log.d(TAG, "Habit loaded: ${habit?.title}, type=${habit?.type}, isGroup=${habit?.isGroupHabit()}, participants=${habit?.participants?.size}")
+            Log.d(TAG, "User loaded: ${completedByUser?.name}")
 
             if (habit != null && completedByUser != null && habit.isGroupHabit()) {
                 val participants = getHabitParticipants(habit, completedByUserId)
+                Log.d(TAG, "Sending push to ${participants.size} participants")
 
                 coroutineScope {
                     participants.map { participant ->
                         async {
+                            Log.d(TAG, "Sending push to participant: ${participant.name} (${participant.id})")
                             sendPushNotification(
                                 toUserId = participant.id,
                                 type = "group_habit_completed",
@@ -50,9 +62,12 @@ class SendGroupHabitPushNotificationUseCase @Inject constructor(
                         }
                     }.awaitAll()
                 }
+            } else {
+                Log.w(TAG, "Push not sent: habit=${habit != null}, user=${completedByUser != null}, isGroup=${habit?.isGroupHabit()}")
             }
             Result.success(Unit)
         } catch (e: Exception) {
+            Log.e(TAG, "Error sending push notification", e)
             Result.failure(e)
         }
     }
@@ -200,11 +215,14 @@ class SendGroupHabitPushNotificationUseCase @Inject constructor(
     }
 
     /**
-     * Получает список участников привычки, исключая одного пользователя
+     * Получает список участников привычки (включая создателя), исключая одного пользователя
      */
     private suspend fun getHabitParticipants(habit: Habit?, excludeUserId: String?): List<User> {
         if (habit == null) return emptyList()
-        val participantIds = habit.participants.filter { it != excludeUserId }
+        
+        // Включаем создателя и всех участников
+        val allParticipantIds = (listOf(habit.createdBy) + habit.participants).distinct()
+        val participantIds = allParticipantIds.filter { it != excludeUserId }
 
         return coroutineScope {
             participantIds.map {
@@ -224,10 +242,14 @@ class SendGroupHabitPushNotificationUseCase @Inject constructor(
         data: Map<String, String>
     ): Result<Unit> {
         return try {
+            Log.d(TAG, "sendPushNotification to user: $toUserId")
             val user = socialRepository.getUserById(toUserId)
             val fcmToken = user?.fcmToken
+            
+            Log.d(TAG, "User FCM token: ${if (fcmToken.isNullOrBlank()) "EMPTY" else "EXISTS"}")
 
             if (fcmToken != null && fcmToken.isNotBlank()) {
+                Log.d(TAG, "Sending push via socialRepository: $title")
                 socialRepository.sendPushNotification(
                     fcmToken = fcmToken,
                     title = title,
@@ -239,9 +261,13 @@ class SendGroupHabitPushNotificationUseCase @Inject constructor(
                         "recipientUserId" to toUserId
                     )
                 )
+                Log.d(TAG, "Push sent successfully to $toUserId")
+            } else {
+                Log.w(TAG, "FCM token is empty for user $toUserId")
             }
             Result.success(Unit)
         } catch (e: Exception) {
+            Log.e(TAG, "Failed to send push to $toUserId", e)
             Result.failure(e)
         }
     }

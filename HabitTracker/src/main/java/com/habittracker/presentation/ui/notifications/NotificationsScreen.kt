@@ -38,6 +38,11 @@ fun NotificationsScreen(
     val context = LocalContext.current
     val isDarkTheme = isSystemInDarkTheme()
     
+    // Обновляем уведомления при возврате на экран
+    LaunchedEffect(Unit) {
+        viewModel.refreshNotifications()
+    }
+    
     // Обработка сообщений об ошибках
     LaunchedEffect(uiState.error) {
         uiState.error?.let { error ->
