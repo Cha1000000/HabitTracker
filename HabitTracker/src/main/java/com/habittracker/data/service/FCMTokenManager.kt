@@ -6,8 +6,10 @@ import com.habittracker.BuildConfig
 import com.habittracker.domain.repository.AuthRepository
 import com.habittracker.domain.repository.SocialRepository
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.tasks.await
+import kotlinx.coroutines.withContext
 import java.util.concurrent.atomic.AtomicBoolean
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -70,12 +72,15 @@ class FCMTokenManager @Inject constructor(
                         Log.d(TAG, "[fcm] Got token (masked): $masked on attempt $attempt")
                     }
 
-                    // Обновляем токен в базе данных
+                    // Обновляем токен в базе данных (неотменяемо!)
                     if (BuildConfig.DEBUG) {
                         Log.d(TAG, "[fcm] Updating token for user=$currentUserId")
                     }
 
-                    socialRepository.updateUserFcmToken(currentUserId, token)
+                    // Используем NonCancellable, чтобы гарантировать сохранение токена
+                    withContext(NonCancellable) {
+                        socialRepository.updateUserFcmToken(currentUserId, token)
+                    }
                     if (BuildConfig.DEBUG) {
                         Log.d(TAG, "[fcm] Token saved for user=$currentUserId")
                     }

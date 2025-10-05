@@ -34,13 +34,16 @@ class SendGroupHabitPushNotificationUseCase @Inject constructor(
         return try {
             Log.d(TAG, "invoke: habitId=$habitId, completedByUserId=$completedByUserId")
             
-            // Сначала пробуем получить из локальной базы, если нет - из Firestore напрямую
-            var habit = habitRepository.getHabitById(habitId)
+            // ВСЕГДА загружаем привычку из Firestore для получения актуального списка участников
+            // Локальная БД может быть не синхронизирована
+            Log.d(TAG, "Loading habit from Firestore to get fresh participant list...")
+            var habit = firestoreRepository.getHabitById(habitId)
+            Log.d(TAG, "Firestore result: ${if (habit != null) "found ${habit.title}" else "not found"}")
+            
+            // Если не нашли в Firestore, пробуем локальную БД (fallback)
             if (habit == null) {
-                Log.d(TAG, "Habit not found in local DB, trying Firestore directly...")
-                // Получаем напрямую из Firestore
-                habit = firestoreRepository.getHabitById(habitId)
-                Log.d(TAG, "Firestore result: ${if (habit != null) "found ${habit.title}" else "not found"}")
+                Log.d(TAG, "Habit not found in Firestore, trying local DB...")
+                habit = habitRepository.getHabitById(habitId)
             }
             
             val completedByUser = socialRepository.getUserById(completedByUserId)
