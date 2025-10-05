@@ -8,19 +8,33 @@ import androidx.room.TypeConverters
 import androidx.room.migration.Migration
 import androidx.sqlite.db.SupportSQLiteDatabase
 import com.habittracker.BuildConfig
-import com.habittracker.data.local.dao.*
+import com.habittracker.data.local.dao.AchievementDao
+import com.habittracker.data.local.dao.ChallengeDao
+import com.habittracker.data.local.dao.FriendRequestDao
+import com.habittracker.data.local.dao.FriendshipDao
+import com.habittracker.data.local.dao.GroupHabitNotificationDao
+import com.habittracker.data.local.dao.HabitDao
+import com.habittracker.data.local.dao.HabitEntryDao
+import com.habittracker.data.local.dao.HabitInvitationDao
+import com.habittracker.data.local.dao.HabitParticipantSettingsDao
+import com.habittracker.data.local.dao.NotificationDao
+import com.habittracker.data.local.dao.PendingNotificationDao
+import com.habittracker.data.local.dao.SyncOutboxDao
+import com.habittracker.data.local.dao.UserAchievementDao
+import com.habittracker.data.local.dao.UserDao
 import com.habittracker.data.local.entity.AchievementEntity
 import com.habittracker.data.local.entity.ChallengeEntity
 import com.habittracker.data.local.entity.FriendRequestEntity
 import com.habittracker.data.local.entity.FriendshipEntity
+import com.habittracker.data.local.entity.GroupHabitNotificationEntity
 import com.habittracker.data.local.entity.HabitEntity
-import com.habittracker.data.local.entity.HabitParticipantSettingsEntity
 import com.habittracker.data.local.entity.HabitEntryEntity
 import com.habittracker.data.local.entity.HabitInvitationEntity
+import com.habittracker.data.local.entity.HabitParticipantSettingsEntity
 import com.habittracker.data.local.entity.NotificationReadStatusEntity
 import com.habittracker.data.local.entity.PendingNotificationEntity
-import com.habittracker.data.local.entity.UserAchievementEntity
 import com.habittracker.data.local.entity.SyncOutboxEntity
+import com.habittracker.data.local.entity.UserAchievementEntity
 import com.habittracker.data.local.entity.UserEntity
 
 @Database(
@@ -37,9 +51,10 @@ import com.habittracker.data.local.entity.UserEntity
         PendingNotificationEntity::class,
         SyncOutboxEntity::class,
         HabitParticipantSettingsEntity::class,
-        NotificationReadStatusEntity::class
+        NotificationReadStatusEntity::class,
+        GroupHabitNotificationEntity::class
     ],
-    version = 11,
+    version = 12,
     exportSchema = false // Для простоты отключаем экспорт схемы
 )
 @TypeConverters(Converters::class)
@@ -58,6 +73,7 @@ abstract class HabitTrackerDatabase : RoomDatabase() {
     abstract fun syncOutboxDao(): SyncOutboxDao
     abstract fun habitParticipantSettingsDao(): HabitParticipantSettingsDao
     abstract fun notificationDao(): NotificationDao
+    abstract fun groupHabitNotificationDao(): GroupHabitNotificationDao
 
     companion object {
         const val DATABASE_NAME = "habit_tracker_db"
@@ -82,7 +98,8 @@ abstract class HabitTrackerDatabase : RoomDatabase() {
                     MIGRATION_7_8,
                     MIGRATION_8_9,
                     MIGRATION_9_10,
-                    MIGRATION_10_11
+                    MIGRATION_10_11,
+                    MIGRATION_11_12
                 )
 
                 if (BuildConfig.DEBUG) {
@@ -312,6 +329,33 @@ abstract class HabitTrackerDatabase : RoomDatabase() {
                 db.execSQL("CREATE INDEX IF NOT EXISTS index_notification_read_status_userId ON notification_read_status(userId)")
                 db.execSQL("CREATE INDEX IF NOT EXISTS index_notification_read_status_habitId ON notification_read_status(habitId)")
                 db.execSQL("CREATE INDEX IF NOT EXISTS index_notification_read_status_isRead ON notification_read_status(isRead)")
+            }
+        }
+        
+        // Миграция с версии 11 на 12 (уведомления групповых привычек)
+        val MIGRATION_11_12 = object : Migration(11, 12) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
+                    """
+                    CREATE TABLE IF NOT EXISTS group_habit_notifications (
+                        id TEXT NOT NULL PRIMARY KEY,
+                        userId TEXT NOT NULL,
+                        habitId TEXT NOT NULL,
+                        type TEXT NOT NULL,
+                        participantId TEXT NOT NULL,
+                        participantName TEXT NOT NULL,
+                        habitTitle TEXT NOT NULL,
+                        message TEXT NOT NULL,
+                        isRead INTEGER NOT NULL DEFAULT 0,
+                        readAt INTEGER,
+                        createdAt INTEGER NOT NULL
+                    )
+                    """
+                )
+                db.execSQL("CREATE INDEX IF NOT EXISTS index_group_habit_notifications_userId ON group_habit_notifications(userId)")
+                db.execSQL("CREATE INDEX IF NOT EXISTS index_group_habit_notifications_habitId ON group_habit_notifications(habitId)")
+                db.execSQL("CREATE INDEX IF NOT EXISTS index_group_habit_notifications_isRead ON group_habit_notifications(isRead)")
+                db.execSQL("CREATE INDEX IF NOT EXISTS index_group_habit_notifications_createdAt ON group_habit_notifications(createdAt)")
             }
         }
     }

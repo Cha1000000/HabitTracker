@@ -1,6 +1,7 @@
 package com.habittracker.presentation.ui.notifications
 
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInVertically
@@ -24,6 +25,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.EmojiEvents
 import androidx.compose.material.icons.filled.Group
 import androidx.compose.material.icons.filled.Mail
@@ -492,5 +494,162 @@ fun NotificationItemPreview() {
 fun EmptyNotificationsPreview() {
     MaterialTheme {
         EmptyNotificationsState()
+    }
+}
+
+/**
+ * Компонент для отображения сохраненного уведомления с swipe-to-delete
+ */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun StoredNotificationItem(
+    notification: com.habittracker.domain.model.GroupHabitNotificationModel,
+    onClick: () -> Unit,
+    onDelete: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val dismissState = androidx.compose.material3.rememberSwipeToDismissBoxState(
+        confirmValueChange = { dismissValue ->
+            if (dismissValue == androidx.compose.material3.SwipeToDismissBoxValue.EndToStart && notification.isRead) {
+                onDelete()
+            }
+            false
+        }
+    )
+
+    androidx.compose.material3.SwipeToDismissBox(
+        state = dismissState,
+        backgroundContent = {
+            if (notification.isRead) {
+                val shape = MaterialTheme.shapes.medium
+                val offsetPx = try { dismissState.requireOffset() } catch (_: IllegalStateException) { 0f }
+                val targetAlpha = if (kotlin.math.abs(offsetPx) > 0f) {
+                    // Наращиваем непрозрачность с прогрессом свайпа
+                    (kotlin.math.abs(offsetPx) / 600f).coerceIn(0f, 1f)
+                } else 0f
+                val bgAlpha = animateFloatAsState(
+                    targetValue = targetAlpha, 
+                    label = "swipeBgAlpha"
+                ).value
+
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(horizontal = 4.dp)
+                        .clip(shape)
+                        .background(MaterialTheme.colorScheme.error.copy(alpha = bgAlpha)),
+                    contentAlignment = Alignment.CenterEnd
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Delete,
+                        contentDescription = "Удалить",
+                        tint = Color.White.copy(alpha = bgAlpha),
+                        modifier = Modifier.padding(end = 24.dp)
+                    )
+                }
+            }
+        },
+        enableDismissFromStartToEnd = false,
+        enableDismissFromEndToStart = notification.isRead,
+        modifier = modifier
+    ) {
+        GlassmorphicCard(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clickable(onClick = onClick),
+            elevation = if (notification.isRead) 1.dp else 4.dp
+        ) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(16.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                // Иконка типа уведомления
+                Box(
+                    modifier = Modifier
+                        .size(48.dp)
+                        .clip(CircleShape)
+                        .background(
+                            if (notification.isRead) 
+                                MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
+                            else 
+                                MaterialTheme.colorScheme.primaryContainer
+                        ),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.CheckCircle,
+                        contentDescription = null,
+                        tint = if (notification.isRead) 
+                            MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
+                        else 
+                            MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.size(24.dp)
+                    )
+                }
+
+                Spacer(modifier = Modifier.width(12.dp))
+
+                // Контент уведомления
+                Column(
+                    modifier = Modifier.weight(1f)
+                ) {
+                    Text(
+                        text = notification.habitTitle,
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = if (notification.isRead) FontWeight.Normal else FontWeight.Bold,
+                        color = if (notification.isRead) 
+                            MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+                        else 
+                            MaterialTheme.colorScheme.onSurface,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                    
+                    Text(
+                        text = notification.message,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = if (notification.isRead) 
+                            MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
+                        else 
+                            MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                    
+                    Text(
+                        text = formatTimestamp(notification.createdAt),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
+                    )
+                }
+
+                // Индикатор непрочитанного
+                if (!notification.isRead) {
+                    Box(
+                        modifier = Modifier
+                            .size(12.dp)
+                            .clip(CircleShape)
+                            .background(MaterialTheme.colorScheme.primary)
+                    )
+                }
+            }
+        }
+    }
+}
+
+/**
+ * Форматирует timestamp в читаемый формат
+ */
+private fun formatTimestamp(timestamp: Long): String {
+    val now = System.currentTimeMillis()
+    val diff = now - timestamp
+    
+    return when {
+        diff < 60_000 -> "Только что"
+        diff < 3600_000 -> "${diff / 60_000} мин назад"
+        diff < 86400_000 -> "${diff / 3600_000} ч назад"
+        else -> "${diff / 86400_000} дн назад"
     }
 }

@@ -399,6 +399,7 @@
     <string name="error_loading_invitations">Не удалось загрузить приглашения</string>
     <string name="error_processing_notification">Ошибка обработки уведомления</string>
     <string name="error_mark_notification">Не удалось отметить уведомление</string>
+    <string name="error_delete_notification">Не удалось удалить уведомление</string>
     <string name="success_all_marked_read">Все уведомления отмечены как прочитанные</string>
     <string name="error_mark_all_notifications">Не удалось отметить все уведомления</string>
     <string name="success_invitation_accepted">Приглашение принято</string>

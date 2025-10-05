@@ -33,7 +33,8 @@ class NotificationsViewModel @Inject constructor(
     private val authRepository: AuthRepository,
     private val getHabitInvitationsUseCase: GetHabitInvitationsUseCase,
     private val acceptHabitInvitationUseCase: AcceptHabitInvitationUseCase,
-    private val declineHabitInvitationUseCase: DeclineHabitInvitationUseCase
+    private val declineHabitInvitationUseCase: DeclineHabitInvitationUseCase,
+    private val groupHabitNotificationRepository: com.habittracker.domain.repository.GroupHabitNotificationRepository
 ) : ViewModel() {
     
     companion object {
@@ -45,8 +46,11 @@ class NotificationsViewModel @Inject constructor(
     
     // Количество ожидающих приглашений (Room+Firestore синхронизация обеспечена на уровне репозитория)
     private val pendingInvitationsCount = MutableStateFlow(0)
+    
+    // Количество непрочитанных сохраненных уведомлений (для внутреннего использования)
+    private val storedUnreadCount = MutableStateFlow(0)
 
-    // Итоговый бейдж: непрочитанные системные уведомления + приглашения к привычкам
+    // Итоговый бейдж: unreadCount уже включает все уведомления (старые + сохраненные)
     val badgeCount: StateFlow<Int> = combine(
         _uiState.map { it.unreadCount },
         pendingInvitationsCount
@@ -59,8 +63,10 @@ class NotificationsViewModel @Inject constructor(
     
     init {
         loadNotifications()
+        loadStoredNotifications() // Загружаем уведомления из базы данных
         observeInvitationsCount()
         loadInvitations()
+        cleanupOldNotifications() // Автоматически очищаем старые прочитанные уведомления
     }
     
     /**
@@ -80,10 +86,15 @@ class NotificationsViewModel @Inject constructor(
                 groupHabitNotificationUseCase.getGroupHabitNotifications(currentUserId)
                     .collect { notifications ->
                         Log.d(TAG, "Received ${notifications.size} notifications")
-                        _uiState.update { 
-                            it.copy(
+                        _uiState.update { state ->
+                            // Считаем общее количество непрочитанных (старые + сохраненные)
+                            val oldNotificationsUnread = notifications.count { !it.isRead }
+                            val storedNotificationsUnread = state.storedNotifications.count { !it.isRead }
+                            val totalUnread = oldNotificationsUnread + storedNotificationsUnread
+                            
+                            state.copy(
                                 notifications = notifications,
-                                unreadCount = notifications.count { !it.isRead },
+                                unreadCount = totalUnread,
                                 isLoading = false,
                                 error = null
                             )
@@ -92,6 +103,45 @@ class NotificationsViewModel @Inject constructor(
             } catch (e: Exception) {
                 Log.e(TAG, "Error loading notifications", e)
                 _uiState.update { it.copy(isLoading = false, errorResId = R.string.error_loading_notifications) }
+            }
+        }
+    }
+
+    /**
+     * Загружает сохраненные уведомления из базы данных
+     */
+    private fun loadStoredNotifications() {
+        Log.d(TAG, "loadStoredNotifications called")
+        viewModelScope.launch {
+            try {
+                val currentUserId = authRepository.getCurrentUserId()
+                    ?: throw Exception("Пользователь не авторизован")
+                
+                Log.d(TAG, "Loading stored notifications for user: $currentUserId")
+                
+                // Наблюдаем за уведомлениями из базы данных
+                groupHabitNotificationRepository.getNotificationsForUser(currentUserId)
+                    .collect { storedNotifications ->
+                        Log.d(TAG, "Received ${storedNotifications.size} stored notifications from DB")
+                        val unreadStoredCount = storedNotifications.count { !it.isRead }
+                        
+                        // Обновляем счетчик непрочитанных сохраненных уведомлений
+                        storedUnreadCount.value = unreadStoredCount
+                        
+                        // Обновляем состояние с сохраненными уведомлениями
+                        _uiState.update { state ->
+                            // Считаем общее количество непрочитанных
+                            val oldNotificationsUnread = state.notifications.count { !it.isRead }
+                            val totalUnread = oldNotificationsUnread + unreadStoredCount
+                            
+                            state.copy(
+                                storedNotifications = storedNotifications,
+                                unreadCount = totalUnread
+                            )
+                        }
+                    }
+            } catch (e: Exception) {
+                Log.e(TAG, "Error loading stored notifications", e)
             }
         }
     }
@@ -190,7 +240,7 @@ class NotificationsViewModel @Inject constructor(
     }
     
     /**
-     * Отмечает все уведомления как прочитанные
+     * Отмечает все уведомления как прочитанные (включая сохраненные в базе)
      */
     fun markAllAsRead() {
         viewModelScope.launch {
@@ -198,9 +248,10 @@ class NotificationsViewModel @Inject constructor(
                 val currentUserId = authRepository.getCurrentUserId()
                     ?: throw Exception("Пользователь не авторизован")
                 
+                // Отмечаем старые уведомления (из GroupHabitNotificationUseCase)
                 val result = groupHabitNotificationUseCase.markAllNotificationsAsRead(currentUserId)
                 result.onSuccess {
-                    // Обновляем локальное состояние
+                    // Обновляем локальное состояние старых уведомлений
                     _uiState.update { state ->
                         val updatedNotifications = state.notifications.map { notification ->
                             notification.copy(isRead = true)
@@ -214,7 +265,27 @@ class NotificationsViewModel @Inject constructor(
                 }.onFailure { error ->
                     _uiState.update { it.copy(errorResId = R.string.error_mark_all_notifications) }
                 }
+                
+                // Отмечаем все сохраненные уведомления в базе данных
+                val storedToUpdate = _uiState.value.storedNotifications.filter { !it.isRead }
+                storedToUpdate.forEach { notification ->
+                    groupHabitNotificationRepository.markAsRead(notification.id)
+                }
+                
+                // Сразу обновляем локальное состояние для UI
+                _uiState.update { state ->
+                    val updatedStoredNotifications = state.storedNotifications.map { notification ->
+                        notification.copy(isRead = true)
+                    }
+                    state.copy(
+                        storedNotifications = updatedStoredNotifications,
+                        unreadCount = 0
+                    )
+                }
+                
+                Log.d(TAG, "All notifications marked as read")
             } catch (e: Exception) {
+                Log.e(TAG, "Error marking all notifications as read", e)
                 _uiState.update { it.copy(errorResId = R.string.error_mark_all_notifications) }
             }
         }
@@ -282,6 +353,51 @@ class NotificationsViewModel @Inject constructor(
      */
     fun onSuccessMessageShown() {
         _uiState.update { it.copy(successMessage = null, successResId = null) }
+    }
+    
+    /**
+     * Отмечает уведомление как прочитанное
+     */
+    fun markNotificationAsRead(notificationId: String) {
+        viewModelScope.launch {
+            try {
+                groupHabitNotificationRepository.markAsRead(notificationId)
+                Log.d(TAG, "Notification marked as read: $notificationId")
+            } catch (e: Exception) {
+                Log.e(TAG, "Error marking notification as read", e)
+            }
+        }
+    }
+    
+    /**
+     * Удаляет уведомление
+     */
+    fun deleteNotification(notificationId: String) {
+        viewModelScope.launch {
+            try {
+                groupHabitNotificationRepository.deleteNotification(notificationId)
+                Log.d(TAG, "Notification deleted: $notificationId")
+            } catch (e: Exception) {
+                Log.e(TAG, "Error deleting notification", e)
+                _uiState.update { it.copy(errorResId = R.string.error_delete_notification) }
+            }
+        }
+    }
+    
+    /**
+     * Очищает старые прочитанные уведомления (старше 1 дня)
+     */
+    fun cleanupOldNotifications() {
+        viewModelScope.launch {
+            try {
+                val currentUserId = authRepository.getCurrentUserId() ?: return@launch
+                val oneDayAgo = System.currentTimeMillis() - (24 * 60 * 60 * 1000)
+                groupHabitNotificationRepository.deleteReadNotificationsOlderThan(currentUserId, oneDayAgo)
+                Log.d(TAG, "Old notifications cleaned up")
+            } catch (e: Exception) {
+                Log.e(TAG, "Error cleaning up old notifications", e)
+            }
+        }
     }
 }
 

@@ -45,6 +45,10 @@ class HabitTrackerFirebaseMessagingService : FirebaseMessagingService() {
     private val pendingDao: PendingNotificationDao by lazy {
         HabitTrackerDatabase.getDatabase(applicationContext).pendingNotificationDao()
     }
+    
+    private val groupHabitNotificationDao by lazy {
+        HabitTrackerDatabase.getDatabase(applicationContext).groupHabitNotificationDao()
+    }
 
     companion object {
         private const val TAG = "FCMService"
@@ -145,6 +149,17 @@ class HabitTrackerFirebaseMessagingService : FirebaseMessagingService() {
             body = bodyToShow,
             data = data
         )
+        
+        // Сохраняем уведомление в базу данных для отображения на экране уведомлений
+        if (notificationType == "group_habit_completed" && recipientUserId != null) {
+            serviceScope.launch {
+                try {
+                    saveGroupHabitNotification(data, recipientUserId)
+                } catch (e: Exception) {
+                    Log.e(TAG, "Ошибка сохранения уведомления в базу", e)
+                }
+            }
+        }
 
         // После успешного показа попробуем доставить очередь для текущего пользователя
         serviceScope.launch {
@@ -339,5 +354,32 @@ class HabitTrackerFirebaseMessagingService : FirebaseMessagingService() {
         val dbgHabitId = intent.getStringExtra("habit_id")
         Log.d(TAG, "[push-nav] Built intent navigate_to=${dbgNavigateTo} habit_id=${dbgHabitId}")
         return intent
+    }
+    
+    /**
+     * Сохраняет уведомление о выполнении групповой привычки в базу данных
+     */
+    private suspend fun saveGroupHabitNotification(data: Map<String, String>, userId: String) {
+        val habitId = data["habit_id"] ?: return
+        val participantName = data["participant_name"] ?: "Участник"
+        val habitTitle = data["habit_title"] ?: "Привычка"
+        val body = data["body"] ?: "$participantName выполнил привычку!"
+        
+        val notification = com.habittracker.data.local.entity.GroupHabitNotificationEntity(
+            id = "${habitId}_${userId}_${System.currentTimeMillis()}",
+            userId = userId,
+            habitId = habitId,
+            type = "PARTICIPANT_COMPLETED",
+            participantId = data["participantId"] ?: "",
+            participantName = participantName,
+            habitTitle = habitTitle,
+            message = body,
+            isRead = false,
+            readAt = null,
+            createdAt = System.currentTimeMillis()
+        )
+        
+        groupHabitNotificationDao.insertNotification(notification)
+        Log.d(TAG, "Уведомление сохранено в базу: ${notification.id}")
     }
 }

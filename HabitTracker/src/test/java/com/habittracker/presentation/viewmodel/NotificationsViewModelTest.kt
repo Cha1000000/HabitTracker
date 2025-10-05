@@ -37,13 +37,17 @@ class NotificationsViewModelTest {
     private val acceptHabitInvitationUseCase: AcceptHabitInvitationUseCase = mock()
     private val declineHabitInvitationUseCase: DeclineHabitInvitationUseCase = mock()
 
-    private fun createViewModel(): NotificationsViewModel = NotificationsViewModel(
-        groupHabitNotificationUseCase,
-        authRepository,
-        getHabitInvitationsUseCase,
-        acceptHabitInvitationUseCase,
-        declineHabitInvitationUseCase
-    )
+    private fun createViewModel(): NotificationsViewModel {
+        val mockGroupHabitNotificationRepository = mock<com.habittracker.domain.repository.GroupHabitNotificationRepository>()
+        return NotificationsViewModel(
+            groupHabitNotificationUseCase,
+            authRepository,
+            getHabitInvitationsUseCase,
+            acceptHabitInvitationUseCase,
+            declineHabitInvitationUseCase,
+            mockGroupHabitNotificationRepository
+        )
+    }
 
     @Test
     fun `loads notifications and computes unread count`() = runTest {

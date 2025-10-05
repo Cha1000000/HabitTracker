@@ -1,17 +1,41 @@
 package com.habittracker.presentation.ui.notifications
 
 import androidx.compose.foundation.isSystemInDarkTheme
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.DoneAll
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarDuration
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.Text
+import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -147,16 +171,45 @@ fun NotificationsScreen(
                             modifier = Modifier.align(Alignment.Center)
                         )
                     }
+                    uiState.notifications.isEmpty() && uiState.storedNotifications.isEmpty() -> {
+                        EmptyNotificationsState()
+                    }
                     else -> {
-                        NotificationsList(
-                            notifications = uiState.notifications,
-                            onNotificationClick = { notification ->
-                                viewModel.onNotificationClick(notification)
-                            },
-                            onMarkAsRead = { notificationId ->
-                                viewModel.markAsRead(notificationId)
+                        // Отображаем сохраненные уведомления из базы данных
+                        LazyColumn(
+                            modifier = Modifier.fillMaxSize(),
+                            contentPadding = PaddingValues(16.dp),
+                            verticalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            items(
+                                items = uiState.storedNotifications,
+                                key = { "${it.id}_${it.isRead}" }
+                            ) { notification ->
+                                StoredNotificationItem(
+                                    notification = notification,
+                                    onClick = {
+                                        if (!notification.isRead) {
+                                            viewModel.markNotificationAsRead(notification.id)
+                                        }
+                                    },
+                                    onDelete = {
+                                        viewModel.deleteNotification(notification.id)
+                                    }
+                                )
                             }
-                        )
+                            
+                            // Старые уведомления (из GroupHabitNotificationUseCase)
+                            items(
+                                items = uiState.notifications,
+                                key = { it.id }
+                            ) { notification ->
+                                NotificationItem(
+                                    notification = notification,
+                                    onClick = { viewModel.onNotificationClick(notification) },
+                                    onMarkAsRead = { viewModel.markAsRead(notification.id) }
+                                )
+                            }
+                        }
                     }
                 }
             }

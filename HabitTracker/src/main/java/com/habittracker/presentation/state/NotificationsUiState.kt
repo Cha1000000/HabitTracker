@@ -1,5 +1,6 @@
 package com.habittracker.presentation.state
 
+import com.habittracker.domain.model.GroupHabitNotificationModel
 import com.habittracker.domain.model.HabitInvitation
 import com.habittracker.domain.usecase.notification.GroupHabitNotification
 
@@ -8,6 +9,7 @@ import com.habittracker.domain.usecase.notification.GroupHabitNotification
  */
 data class NotificationsUiState(
     val notifications: List<GroupHabitNotification> = emptyList(),
+    val storedNotifications: List<GroupHabitNotificationModel> = emptyList(), // Уведомления из базы данных
     val unreadCount: Int = 0,
     val isLoading: Boolean = false,
     val error: String? = null,
