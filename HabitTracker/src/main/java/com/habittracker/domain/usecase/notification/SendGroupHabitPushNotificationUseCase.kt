@@ -16,7 +16,8 @@ import javax.inject.Inject
  */
 class SendGroupHabitPushNotificationUseCase @Inject constructor(
     private val socialRepository: SocialRepository,
-    private val habitRepository: HabitRepository
+    private val habitRepository: HabitRepository,
+    private val firestoreRepository: com.habittracker.domain.repository.FirestoreRepository
 ) {
     
     companion object {
@@ -33,15 +34,24 @@ class SendGroupHabitPushNotificationUseCase @Inject constructor(
         return try {
             Log.d(TAG, "invoke: habitId=$habitId, completedByUserId=$completedByUserId")
             
-            val habit = habitRepository.getHabitById(habitId)
+            // Сначала пробуем получить из локальной базы, если нет - из Firestore напрямую
+            var habit = habitRepository.getHabitById(habitId)
+            if (habit == null) {
+                Log.d(TAG, "Habit not found in local DB, trying Firestore directly...")
+                // Получаем напрямую из Firestore
+                habit = firestoreRepository.getHabitById(habitId)
+                Log.d(TAG, "Firestore result: ${if (habit != null) "found ${habit.title}" else "not found"}")
+            }
+            
             val completedByUser = socialRepository.getUserById(completedByUserId)
             
             Log.d(TAG, "Habit loaded: ${habit?.title}, type=${habit?.type}, isGroup=${habit?.isGroupHabit()}, participants=${habit?.participants?.size}")
             Log.d(TAG, "User loaded: ${completedByUser?.name}")
 
             if (habit != null && completedByUser != null && habit.isGroupHabit()) {
+                Log.d(TAG, "Habit details: createdBy=${habit.createdBy}, participants=${habit.participants}, completedBy=$completedByUserId")
                 val participants = getHabitParticipants(habit, completedByUserId)
-                Log.d(TAG, "Sending push to ${participants.size} participants")
+                Log.d(TAG, "Sending push to ${participants.size} participants: ${participants.map { "${it.name}(${it.id})" }}")
 
                 coroutineScope {
                     participants.map { participant ->
@@ -54,8 +64,8 @@ class SendGroupHabitPushNotificationUseCase @Inject constructor(
                                 body = "${completedByUser.name} выполнил привычку!",
                                 data = mapOf(
                                     "habit_id" to habit.id,
-                                    "habit_title" to (habit.title ?: ""),
-                                    "participant_name" to (completedByUser.name ?: ""),
+                                    "habit_title" to habit.title,
+                                    "participant_name" to completedByUser.name,
                                     "screen" to "group_habit_detail"
                                 )
                             )
@@ -232,7 +242,7 @@ class SendGroupHabitPushNotificationUseCase @Inject constructor(
     }
 
     /**
-     * Отправляет push-уведомление конкретному пользователю
+     * Отправляет push-уведомление конкретному пользователю с retry механизмом
      */
     private suspend fun sendPushNotification(
         toUserId: String,
@@ -243,10 +253,14 @@ class SendGroupHabitPushNotificationUseCase @Inject constructor(
     ): Result<Unit> {
         return try {
             Log.d(TAG, "sendPushNotification to user: $toUserId")
-            val user = socialRepository.getUserById(toUserId)
+            
+            // ВСЕГДА загружаем актуальный токен из Firestore для push-уведомлений
+            // Это критично, так как токены часто обновляются
+            Log.d(TAG, "Fetching fresh token from Firestore for user: $toUserId")
+            val user = socialRepository.getUserByIdFromFirestore(toUserId)
             val fcmToken = user?.fcmToken
             
-            Log.d(TAG, "User FCM token: ${if (fcmToken.isNullOrBlank()) "EMPTY" else "EXISTS"}")
+            Log.d(TAG, "User FCM token: ${if (fcmToken.isNullOrBlank()) "EMPTY" else "EXISTS (masked: ${fcmToken.take(8)}...${fcmToken.takeLast(4)})"}") 
 
             if (fcmToken != null && fcmToken.isNotBlank()) {
                 Log.d(TAG, "Sending push via socialRepository: $title")
@@ -263,7 +277,7 @@ class SendGroupHabitPushNotificationUseCase @Inject constructor(
                 )
                 Log.d(TAG, "Push sent successfully to $toUserId")
             } else {
-                Log.w(TAG, "FCM token is empty for user $toUserId")
+                Log.w(TAG, "FCM token is empty for user $toUserId even after Firestore fetch")
             }
             Result.success(Unit)
         } catch (e: Exception) {

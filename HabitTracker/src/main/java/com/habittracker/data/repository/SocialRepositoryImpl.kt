@@ -13,6 +13,7 @@ import com.habittracker.data.local.mappers.toEntity
 import com.habittracker.data.remote.mappers.toDomain
 import com.habittracker.data.remote.model.FriendRequestRemote
 import com.habittracker.data.service.FCMApiClient
+import com.habittracker.data.service.UnregisteredTokenException
 import com.habittracker.data.sync.SyncManager
 import com.habittracker.data.sync.SyncWorkScheduler
 import com.habittracker.domain.model.FriendRequest
@@ -149,6 +150,36 @@ class SocialRepositoryImpl @Inject constructor(
             }
         } catch (e: Exception) {
             Log.w("SocialRepository", "getUserById Firestore failed for userId=$userId: ${e.message}", e)
+            null
+        }
+    }
+
+    override suspend fun getUserByIdFromFirestore(userId: String): User? {
+        return try {
+            Log.d("SocialRepository", "🔄 Fetching user from Firestore: $userId")
+            val doc = firestore.collection("users").document(userId).get().await()
+            if (doc.exists()) {
+                val data = doc.data ?: emptyMap()
+                Log.d("SocialRepository", "📋 Firestore data for $userId: fcmToken=${data["fcmToken"]?.toString()?.take(20)}...")
+                
+                val user = UserFirestoreConverter.fromFirestore(data, doc.id)
+                // Обновляем локальный кэш с актуальными данными
+                user?.let {
+                    try {
+                        userDao.insertUser(it.toEntity())
+                        Log.d("SocialRepository", "✅ Local cache updated for user $userId")
+                    } catch (e: Exception) {
+                        Log.w("SocialRepository", "Failed to update local cache for user $userId", e)
+                    }
+                }
+                Log.d("SocialRepository", "✅ User fetched: ${user?.name}, fcmToken: ${user?.fcmToken?.take(8)}...${user?.fcmToken?.takeLast(4)}")
+                user
+            } else {
+                Log.w("SocialRepository", "❌ User not found in Firestore: $userId")
+                null
+            }
+        } catch (e: Exception) {
+            Log.e("SocialRepository", "❌ getUserByIdFromFirestore failed for userId=$userId", e)
             null
         }
     }
@@ -1936,9 +1967,42 @@ class SocialRepositoryImpl @Inject constructor(
             result.onSuccess {
                 Log.d(TAG, "Push notification sent successfully: $title")
             }.onFailure { error ->
-                // Логируем ошибку, но не прерываем выполнение
-                // В production здесь можно добавить retry логику или отправку в аналитику
-                Log.e(TAG, "Error sending push notification: ${error.message}", error)
+                when (error) {
+                    is UnregisteredTokenException -> {
+                        // Токен невалиден - удаляем его из базы
+                        Log.w(TAG, "FCM token is UNREGISTERED (${maskToken(fcmToken)}). Removing from database...")
+                        // Находим пользователя по токену и удаляем невалидный токен
+                        repoScope.launch {
+                            try {
+                                // Ищем пользователя с этим токеном
+                                val usersQuery = firestore.collection("users")
+                                    .whereEqualTo("fcmToken", fcmToken)
+                                    .get().await()
+                                
+                                usersQuery.documents.forEach { doc ->
+                                    Log.d(TAG, "Found user ${doc.id} with UNREGISTERED token, removing...")
+                                    safelyRemoveInvalidFcmToken(doc.id, fcmToken)
+                                }
+                                
+                                // Также проверяем массив fcmTokens
+                                val tokensQuery = firestore.collection("users")
+                                    .whereArrayContains("fcmTokens", fcmToken)
+                                    .get().await()
+                                
+                                tokensQuery.documents.forEach { doc ->
+                                    Log.d(TAG, "Found user ${doc.id} with UNREGISTERED token in array, removing...")
+                                    safelyRemoveInvalidFcmToken(doc.id, fcmToken)
+                                }
+                            } catch (e: Exception) {
+                                Log.w(TAG, "Failed to remove UNREGISTERED token: ${e.message}")
+                            }
+                        }
+                    }
+                    else -> {
+                        // Логируем другие ошибки
+                        Log.e(TAG, "Error sending push notification: ${error.message}", error)
+                    }
+                }
             }
             
         } catch (e: Exception) {

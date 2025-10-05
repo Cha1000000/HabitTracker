@@ -36,6 +36,10 @@ class NotificationsViewModel @Inject constructor(
     private val declineHabitInvitationUseCase: DeclineHabitInvitationUseCase
 ) : ViewModel() {
     
+    companion object {
+        private const val TAG = "NotificationsViewModel"
+    }
+    
     private val _uiState = MutableStateFlow(NotificationsUiState())
     val uiState: StateFlow<NotificationsUiState> = _uiState.asStateFlow()
     
@@ -63,6 +67,7 @@ class NotificationsViewModel @Inject constructor(
      * Загружает уведомления пользователя
      */
     private fun loadNotifications() {
+        Log.d(TAG, "loadNotifications called")
         viewModelScope.launch {
             try {
                 _uiState.update { it.copy(isLoading = true, error = null) }
@@ -70,8 +75,11 @@ class NotificationsViewModel @Inject constructor(
                 val currentUserId = authRepository.getCurrentUserId()
                     ?: throw Exception("Пользователь не авторизован")
                 
+                Log.d(TAG, "Loading notifications for user: $currentUserId")
+                
                 groupHabitNotificationUseCase.getGroupHabitNotifications(currentUserId)
                     .collect { notifications ->
+                        Log.d(TAG, "Received ${notifications.size} notifications")
                         _uiState.update { 
                             it.copy(
                                 notifications = notifications,
@@ -82,6 +90,7 @@ class NotificationsViewModel @Inject constructor(
                         }
                     }
             } catch (e: Exception) {
+                Log.e(TAG, "Error loading notifications", e)
                 _uiState.update { it.copy(isLoading = false, errorResId = R.string.error_loading_notifications) }
             }
         }
@@ -256,6 +265,7 @@ class NotificationsViewModel @Inject constructor(
      * Обновляет уведомления (pull-to-refresh)
      */
     fun refreshNotifications() {
+        Log.d(TAG, "refreshNotifications called")
         loadNotifications()
         loadInvitations()
     }

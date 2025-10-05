@@ -13,6 +13,7 @@ interface SocialRepository {
     // User search and management
     suspend fun searchUsers(query: String, currentUserId: String): List<User>
     suspend fun getUserById(userId: String): User?
+    suspend fun getUserByIdFromFirestore(userId: String): User?
     suspend fun updateUserFcmToken(userId: String, token: String)
     suspend fun updateFriendsCount(userId: String, count: Int)
     
