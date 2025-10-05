@@ -1,17 +1,36 @@
 package com.habittracker.domain.usecase.challenge
 
-import com.habittracker.domain.model.*
-import com.habittracker.domain.repository.*
-import kotlinx.coroutines.runBlocking
+import com.habittracker.domain.model.Challenge
+import com.habittracker.domain.model.ChallengeRules
+import com.habittracker.domain.model.ChallengeStatus
+import com.habittracker.domain.model.ChallengeType
+import com.habittracker.domain.model.FriendRequest
+import com.habittracker.domain.model.FriendRequestWithUsers
+import com.habittracker.domain.model.Friendship
+import com.habittracker.domain.model.FriendshipWithUsers
+import com.habittracker.domain.model.Habit
+import com.habittracker.domain.model.HabitEntry
+import com.habittracker.domain.model.HabitEntryWithUser
+import com.habittracker.domain.model.HabitFrequency
+import com.habittracker.domain.model.HabitInvitation
+import com.habittracker.domain.model.HabitType
+import com.habittracker.domain.model.User
+import com.habittracker.domain.repository.ChallengeRepository
+import com.habittracker.domain.repository.HabitEntryRepository
+import com.habittracker.domain.repository.HabitRepository
+import com.habittracker.domain.repository.SocialRepository
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.runBlocking
 import kotlinx.datetime.DateTimeUnit
-import kotlinx.datetime.minus
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.TimeZone
+import kotlinx.datetime.minus
 import kotlinx.datetime.toLocalDateTime
-import org.junit.Assert.*
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNotNull
+import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.util.UUID
 
@@ -108,38 +127,39 @@ class ChallengeUseCasesTest {
         // User search and management
         override suspend fun searchUsers(query: String, currentUserId: String) = emptyList<User>()
         override suspend fun getUserById(userId: String): User? = User(id = userId, name = "User$userId")
+        override suspend fun getUserByIdFromFirestore(userId: String): User? = getUserById(userId)
         override suspend fun updateUserFcmToken(userId: String, token: String) {}
         override suspend fun updateFriendsCount(userId: String, count: Int) {}
 
         // Friend requests
-        override suspend fun sendFriendRequest(fromUserId: String, toUserId: String, message: String?) = Result.failure<com.habittracker.domain.model.FriendRequest>(Exception("not used"))
-        override suspend fun acceptFriendRequest(requestId: String) = Result.failure<com.habittracker.domain.model.Friendship>(Exception("not used"))
-        override suspend fun declineFriendRequest(requestId: String) = Result.failure<com.habittracker.domain.model.FriendRequest>(Exception("not used"))
+        override suspend fun sendFriendRequest(fromUserId: String, toUserId: String, message: String?) = Result.failure<FriendRequest>(Exception("not used"))
+        override suspend fun acceptFriendRequest(requestId: String) = Result.failure<Friendship>(Exception("not used"))
+        override suspend fun declineFriendRequest(requestId: String) = Result.failure<FriendRequest>(Exception("not used"))
         override suspend fun cancelFriendRequest(requestId: String) = Result.success(Unit)
         override suspend fun getFriendRequestById(requestId: String) = null
         override suspend fun getFriendRequestBetweenUsers(fromUserId: String, toUserId: String) = null
-        override fun getIncomingFriendRequests(userId: String) = MutableStateFlow<List<com.habittracker.domain.model.FriendRequestWithUsers>>(emptyList())
-        override fun getOutgoingFriendRequests(userId: String) = MutableStateFlow<List<com.habittracker.domain.model.FriendRequestWithUsers>>(emptyList())
+        override fun getIncomingFriendRequests(userId: String) = MutableStateFlow<List<FriendRequestWithUsers>>(emptyList())
+        override fun getOutgoingFriendRequests(userId: String) = MutableStateFlow<List<FriendRequestWithUsers>>(emptyList())
         override fun getIncomingRequestsCount(userId: String) = MutableStateFlow(0)
 
         // Friendships
         override suspend fun getFriendshipBetweenUsers(userId1: String, userId2: String) = null
         override suspend fun removeFriend(currentUserId: String, friendId: String) = Result.success(Unit)
-        override suspend fun blockUser(currentUserId: String, userIdToBlock: String) = Result.failure<com.habittracker.domain.model.Friendship>(Exception("not used"))
-        override suspend fun unblockUser(currentUserId: String, userIdToUnblock: String) = Result.failure<com.habittracker.domain.model.Friendship>(Exception("not used"))
-        override fun getFriends(userId: String) = MutableStateFlow<List<com.habittracker.domain.model.FriendshipWithUsers>>(emptyList())
+        override suspend fun blockUser(currentUserId: String, userIdToBlock: String) = Result.failure<Friendship>(Exception("not used"))
+        override suspend fun unblockUser(currentUserId: String, userIdToUnblock: String) = Result.failure<Friendship>(Exception("not used"))
+        override fun getFriends(userId: String) = MutableStateFlow<List<FriendshipWithUsers>>(emptyList())
         override fun getFriendsCount(userId: String) = MutableStateFlow(0)
 
         // Habit invitations
-        override suspend fun sendHabitInvitation(habitId: String, habitTitle: String, fromUserId: String, fromUserName: String, toUserId: String, message: String?) = Result.failure<com.habittracker.domain.model.HabitInvitation>(Exception("not used"))
-        override suspend fun acceptHabitInvitation(invitationId: String) = Result.failure<com.habittracker.domain.model.HabitInvitation>(Exception("not used"))
-        override suspend fun declineHabitInvitation(invitationId: String) = Result.failure<com.habittracker.domain.model.HabitInvitation>(Exception("not used"))
+        override suspend fun sendHabitInvitation(habitId: String, habitTitle: String, fromUserId: String, fromUserName: String, toUserId: String, message: String?) = Result.failure<HabitInvitation>(Exception("not used"))
+        override suspend fun acceptHabitInvitation(invitationId: String) = Result.failure<HabitInvitation>(Exception("not used"))
+        override suspend fun declineHabitInvitation(invitationId: String) = Result.failure<HabitInvitation>(Exception("not used"))
         override suspend fun cancelHabitInvitation(invitationId: String) = Result.success(Unit)
         override suspend fun getHabitInvitationById(invitationId: String) = null
         override suspend fun getPendingHabitInvitation(habitId: String, userId: String) = null
-        override fun getIncomingHabitInvitations(userId: String) = MutableStateFlow<List<com.habittracker.domain.model.HabitInvitation>>(emptyList())
-        override fun getOutgoingHabitInvitations(userId: String) = MutableStateFlow<List<com.habittracker.domain.model.HabitInvitation>>(emptyList())
-        override fun getHabitInvitations(habitId: String) = MutableStateFlow<List<com.habittracker.domain.model.HabitInvitation>>(emptyList())
+        override fun getIncomingHabitInvitations(userId: String) = MutableStateFlow<List<HabitInvitation>>(emptyList())
+        override fun getOutgoingHabitInvitations(userId: String) = MutableStateFlow<List<HabitInvitation>>(emptyList())
+        override fun getHabitInvitations(habitId: String) = MutableStateFlow<List<HabitInvitation>>(emptyList())
         override fun getPendingHabitInvitationsCount(userId: String) = MutableStateFlow(0)
         override suspend fun getActiveOutgoingInvitationsCount(userId: String) = 0
         override suspend fun expireOldHabitInvitations() {}
