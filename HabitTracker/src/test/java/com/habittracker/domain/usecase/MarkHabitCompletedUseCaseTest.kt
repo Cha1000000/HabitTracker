@@ -13,6 +13,7 @@ import com.habittracker.domain.model.HabitInvitation
 import com.habittracker.domain.model.HabitType
 import com.habittracker.domain.model.User
 import com.habittracker.domain.model.gamification.GamificationEvent
+import com.habittracker.domain.repository.FirestoreRepository
 import com.habittracker.domain.repository.HabitEntryRepository
 import com.habittracker.domain.repository.HabitRepository
 import com.habittracker.domain.repository.SocialRepository
@@ -46,6 +47,7 @@ class MarkHabitCompletedUseCaseTest {
     private lateinit var updateUserPointsUseCase: FakeUpdateUserPointsUseCase
     private lateinit var habitRepository: FakeHabitRepository
     private lateinit var socialRepository: FakeSocialRepository
+    private lateinit var firestoreRepository: FirestoreRepository
     private lateinit var sendGroupHabitPushNotificationUseCase: SendGroupHabitPushNotificationUseCase
     private lateinit var markHabitCompletedUseCase: MarkHabitCompletedUseCase
     private lateinit var syncManager: SyncManager
@@ -62,7 +64,8 @@ class MarkHabitCompletedUseCaseTest {
         updateUserPointsUseCase = FakeUpdateUserPointsUseCase(FakeUserRepository())
         habitRepository = FakeHabitRepository()
         socialRepository = FakeSocialRepository()
-        sendGroupHabitPushNotificationUseCase = SendGroupHabitPushNotificationUseCase(socialRepository, habitRepository)
+        firestoreRepository = mock()
+        sendGroupHabitPushNotificationUseCase = SendGroupHabitPushNotificationUseCase(socialRepository, habitRepository, firestoreRepository)
         syncManager = mock()
         syncWorkScheduler = mock()
     }
@@ -177,7 +180,6 @@ class FakeUpdateUserPointsUseCase(private val userRepository: UserRepository) : 
 }
 
 class FakeHabitRepository : HabitRepository {
-    private val habits = mutableListOf<Habit>()
 
     override suspend fun getHabitById(habitId: String): Habit? = Habit(
         id = habitId,
@@ -207,6 +209,7 @@ class FakeHabitRepository : HabitRepository {
 
 class FakeSocialRepository : SocialRepository {
     override suspend fun getUserById(userId: String): User? = User(id = userId, name = "Test User", email = "test@test.com", createdAt = System.currentTimeMillis(), lastActiveAt = System.currentTimeMillis())
+    override suspend fun getUserByIdFromFirestore(userId: String): User? = getUserById(userId)
     override suspend fun searchUsers(query: String, currentUserId: String): List<User> = emptyList()
     override suspend fun updateUserFcmToken(userId: String, token: String) {}
     override suspend fun updateFriendsCount(userId: String, count: Int) {}

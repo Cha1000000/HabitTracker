@@ -148,6 +148,7 @@ class GetUserStatsUseCaseTest {
             socialRepository = object : SocialRepository {
                 override suspend fun searchUsers(query: String, currentUserId: String): List<User> = emptyList()
                 override suspend fun getUserById(userId: String): User? = null
+                override suspend fun getUserByIdFromFirestore(userId: String): User? = getUserById(userId)
                 override suspend fun updateUserFcmToken(userId: String, token: String) {}
                 override suspend fun updateFriendsCount(userId: String, count: Int) {}
 
