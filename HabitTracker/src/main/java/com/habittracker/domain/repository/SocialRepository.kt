@@ -67,7 +67,7 @@ interface SocialRepository {
     suspend fun sendFriendRequestNotification(toUserId: String, fromUserName: String)
     suspend fun sendFriendAcceptedNotification(toUserId: String, acceptedByName: String)
     suspend fun sendHabitInvitationNotification(toUserId: String, fromUserName: String, habitTitle: String)
-    suspend fun sendHabitInvitationAcceptedNotification(toUserId: String, acceptedByName: String, habitTitle: String)
+    suspend fun sendHabitInvitationAcceptedNotification(toUserId: String, acceptedByName: String, habitTitle: String, habitId: String)
     
     // Challenge notifications
     suspend fun sendChallengeInvitationNotification(toUserId: String, fromUserName: String, challengeTitle: String, habitTitle: String)

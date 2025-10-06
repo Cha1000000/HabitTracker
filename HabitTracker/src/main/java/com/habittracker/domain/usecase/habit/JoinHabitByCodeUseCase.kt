@@ -102,7 +102,8 @@ class JoinHabitByCodeUseCase @Inject constructor(
                 socialRepository.sendHabitInvitationAcceptedNotification(
                     toUserId = habit.createdBy,
                     acceptedByName = user.name,
-                    habitTitle = habit.title
+                    habitTitle = habit.title,
+                    habitId = habit.id
                 )
             } catch (e: Exception) {
                 Log.e("JoinHabitByCodeUC", "Failed to send notification to creator: ${e.message}", e)

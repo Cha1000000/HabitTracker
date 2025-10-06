@@ -151,10 +151,15 @@ class HabitTrackerFirebaseMessagingService : FirebaseMessagingService() {
         )
         
         // Сохраняем уведомление в базу данных для отображения на экране уведомлений
-        if (notificationType == "group_habit_completed" && recipientUserId != null) {
+        // Сохраняем уведомления в базу данных для определенных типов
+        if (recipientUserId != null && notificationType in listOf(
+                "group_habit_completed",
+                "habit_invitation_accepted",
+                "new_participant"
+            )) {
             serviceScope.launch {
                 try {
-                    saveGroupHabitNotification(data, recipientUserId)
+                    saveGroupHabitNotification(data, recipientUserId, notificationType)
                 } catch (e: Exception) {
                     Log.e(TAG, "Ошибка сохранения уведомления в базу", e)
                 }
@@ -357,29 +362,44 @@ class HabitTrackerFirebaseMessagingService : FirebaseMessagingService() {
     }
     
     /**
-     * Сохраняет уведомление о выполнении групповой привычки в базу данных
+     * Сохраняет уведомление в базу данных
      */
-    private suspend fun saveGroupHabitNotification(data: Map<String, String>, userId: String) {
-        val habitId = data["habit_id"] ?: return
-        val participantName = data["participant_name"] ?: "Участник"
-        val habitTitle = data["habit_title"] ?: "Привычка"
-        val body = data["body"] ?: "$participantName выполнил привычку!"
+    private suspend fun saveGroupHabitNotification(data: Map<String, String>, userId: String, notificationType: String) {
+        val habitId = data["habit_id"] ?: data["habitId"] ?: return
+        val habitTitle = data["habit_title"] ?: data["habitTitle"] ?: "Привычка"
+        
+        // Определяем тип и данные уведомления
+        val (type, participantName, message) = when (notificationType) {
+            "group_habit_completed" -> {
+                val name = data["participant_name"] ?: "Участник"
+                Triple("PARTICIPANT_COMPLETED", name, data["body"] ?: "$name выполнил привычку!")
+            }
+            "habit_invitation_accepted" -> {
+                val name = data["acceptedByName"] ?: "Пользователь"
+                Triple("INVITATION_ACCEPTED", name, data["body"] ?: "$name принял ваше приглашение")
+            }
+            "new_participant" -> {
+                val name = data["participant_name"] ?: "Пользователь"
+                Triple("FRIEND_JOINED", name, data["body"] ?: "$name присоединился к привычке")
+            }
+            else -> return
+        }
         
         val notification = com.habittracker.data.local.entity.GroupHabitNotificationEntity(
             id = "${habitId}_${userId}_${System.currentTimeMillis()}",
             userId = userId,
             habitId = habitId,
-            type = "PARTICIPANT_COMPLETED",
-            participantId = data["participantId"] ?: "",
+            type = type,
+            participantId = data["participantId"] ?: data["acceptedBy"] ?: "",
             participantName = participantName,
             habitTitle = habitTitle,
-            message = body,
+            message = message,
             isRead = false,
             readAt = null,
             createdAt = System.currentTimeMillis()
         )
         
         groupHabitNotificationDao.insertNotification(notification)
-        Log.d(TAG, "Уведомление сохранено в базу: ${notification.id}")
+        Log.d(TAG, "Уведомление сохранено в базу: type=$type, id=${notification.id}")
     }
 }

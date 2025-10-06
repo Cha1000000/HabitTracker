@@ -331,6 +331,7 @@ enum class NotificationType {
     GROUP_ACHIEVEMENT,        // Групповое достижение
     NEW_INVITATION,          // Новое приглашение
     INVITATION_ACCEPTED,     // Приглашение принято
-    PARTICIPANT_JOINED,      // Новый участник присоединился
+    PARTICIPANT_JOINED,      // Новый участник присоединился (alias для FRIEND_JOINED)
+    FRIEND_JOINED,           // Друг присоединился к привычке
     HABIT_REMINDER          // Напоминание о привычке
 }

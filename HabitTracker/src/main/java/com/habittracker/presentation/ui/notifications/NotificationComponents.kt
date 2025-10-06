@@ -364,6 +364,7 @@ fun NotificationTypeIcon(
         NotificationType.NEW_INVITATION -> Icons.Default.Mail to Color(0xFF2196F3)
         NotificationType.INVITATION_ACCEPTED -> Icons.Default.PersonAdd to Color(0xFF4CAF50)
         NotificationType.PARTICIPANT_JOINED -> Icons.Default.Group to Color(0xFF9C27B0)
+        NotificationType.FRIEND_JOINED -> Icons.Default.PersonAdd to Color(0xFF9C27B0)
         NotificationType.HABIT_REMINDER -> Icons.Default.Notifications to Color(0xFF607D8B)
     }
     

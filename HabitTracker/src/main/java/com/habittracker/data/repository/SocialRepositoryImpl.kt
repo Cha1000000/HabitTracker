@@ -1261,7 +1261,8 @@ class SocialRepositoryImpl @Inject constructor(
             sendHabitInvitationAcceptedNotification(
                 toUserId = invitation.fromUserId,
                 acceptedByName = acceptedUserName,
-                habitTitle = invitation.habitTitle
+                habitTitle = invitation.habitTitle,
+                habitId = invitation.habitId
             )
             Log.d("SocialRepository", "[acceptHabitInvitation] sendHabitInvitationAcceptedNotification -> DONE")
 
@@ -1659,7 +1660,12 @@ class SocialRepositoryImpl @Inject constructor(
         }
     }
 
-    override suspend fun sendHabitInvitationAcceptedNotification(toUserId: String, acceptedByName: String, habitTitle: String) {
+    override suspend fun sendHabitInvitationAcceptedNotification(
+        toUserId: String, 
+        acceptedByName: String, 
+        habitTitle: String,
+        habitId: String
+    ) {
         try {
             repoScope.launch {
                 withContext(NonCancellable + Dispatchers.IO) {
@@ -1686,6 +1692,7 @@ class SocialRepositoryImpl @Inject constructor(
                             data = mapOf(
                                 "type" to "habit_invitation_accepted",
                                 "habitTitle" to habitTitle,
+                                "habit_id" to habitId,
                                 "acceptedByName" to acceptedByName,
                                 "action" to "open_habit_details",
                                 "recipientUserId" to toUserId
