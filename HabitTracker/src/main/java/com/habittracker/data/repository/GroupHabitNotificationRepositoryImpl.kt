@@ -17,6 +17,10 @@ class GroupHabitNotificationRepositoryImpl @Inject constructor(
     private val groupHabitNotificationDao: GroupHabitNotificationDao
 ) : GroupHabitNotificationRepository {
     
+    override suspend fun saveNotification(notification: GroupHabitNotificationEntity) {
+        groupHabitNotificationDao.insertNotification(notification)
+    }
+    
     override fun getNotificationsForUser(userId: String): Flow<List<GroupHabitNotificationModel>> {
         return groupHabitNotificationDao.getNotificationsForUser(userId)
             .map { entities -> entities.map { it.toDomain() } }
@@ -28,15 +32,6 @@ class GroupHabitNotificationRepositoryImpl @Inject constructor(
     
     override suspend fun markAsRead(notificationId: String) {
         groupHabitNotificationDao.markAsRead(notificationId, System.currentTimeMillis())
-    }
-    
-    override suspend fun markAllAsRead(userId: String) {
-        val notifications = groupHabitNotificationDao.getNotificationsForUser(userId)
-        // Получаем текущий список и обновляем все непрочитанные
-        // Для простоты используем прямой SQL запрос из DAO
-        val readAt = System.currentTimeMillis()
-        // Обновляем все непрочитанные уведомления
-        // TODO: добавить метод в DAO для массового обновления
     }
     
     override suspend fun deleteNotification(notificationId: String) {

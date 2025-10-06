@@ -1715,6 +1715,61 @@ class SocialRepositoryImpl @Inject constructor(
         }
     }
 
+    override suspend fun sendParticipantJoinedNotification(
+        toUserId: String,
+        joinedUserName: String,
+        habitTitle: String,
+        habitId: String
+    ) {
+        try {
+            repoScope.launch {
+                withContext(NonCancellable + Dispatchers.IO) {
+                    val userDoc = firestore.collection("users").document(toUserId).get().await()
+                    val tokensFromArray = (userDoc.get("fcmTokens") as? List<*>)?.mapNotNull { it as? String } ?: emptyList()
+                    val legacyToken = userDoc.getString("fcmToken")
+                    val allTokens = (tokensFromArray + listOfNotNull(legacyToken)).toSet()
+
+                    if (allTokens.isEmpty()) {
+                        Log.w("SocialRepository", "FCM skip: participant_joined -> to=$toUserId, tokens_absent")
+                        return@withContext
+                    }
+
+                    Log.d(
+                        "SocialRepository",
+                        "FCM send: participant_joined -> to=$toUserId, tokens_count=${allTokens.size}, joinedUser=$joinedUserName, habit='$habitTitle'"
+                    )
+
+                    allTokens.forEach { token ->
+                        val result = fcmApiClient.sendPushNotification(
+                            fcmToken = token,
+                            title = "Новый участник",
+                            body = "$joinedUserName присоединился к привычке '$habitTitle'",
+                            data = mapOf(
+                                "type" to "new_participant",
+                                "habitTitle" to habitTitle,
+                                "habit_id" to habitId,
+                                "participant_name" to joinedUserName,
+                                "action" to "open_habit_details",
+                                "recipientUserId" to toUserId
+                            )
+                        )
+                        result.onFailure { e ->
+                            val msg = e.message ?: ""
+                            if (msg.contains("UNREGISTERED", ignoreCase = true)) {
+                                Log.w("SocialRepository", "FCM UNREGISTERED -> remove token ${maskToken(token)} for user=$toUserId")
+                                safelyRemoveInvalidFcmToken(toUserId, token)
+                            } else {
+                                Log.w("SocialRepository", "FCM send failed for token ${maskToken(token)}: ${e.message}")
+                            }
+                        }
+                    }
+                }
+            }
+        } catch (e: Exception) {
+            Log.w("SocialRepository", "Ошибка подготовки уведомления о присоединении участника (outer)", e)
+        }
+    }
+
     // Удаляем невалидный FCM-токен из массива fcmTokens и, если совпадает, из legacy fcmToken
     private suspend fun safelyRemoveInvalidFcmToken(userId: String, badToken: String) {
         try {

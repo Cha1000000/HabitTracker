@@ -1,5 +1,6 @@
 package com.habittracker.domain.repository
 
+import com.habittracker.data.local.entity.GroupHabitNotificationEntity
 import com.habittracker.domain.model.GroupHabitNotificationModel
 import kotlinx.coroutines.flow.Flow
 
@@ -7,6 +8,11 @@ import kotlinx.coroutines.flow.Flow
  * Repository для работы с уведомлениями групповых привычек
  */
 interface GroupHabitNotificationRepository {
+    
+    /**
+     * Сохраняет уведомление
+     */
+    suspend fun saveNotification(notification: GroupHabitNotificationEntity)
     
     /**
      * Получает все уведомления пользователя
@@ -22,11 +28,6 @@ interface GroupHabitNotificationRepository {
      * Отмечает уведомление как прочитанное
      */
     suspend fun markAsRead(notificationId: String)
-    
-    /**
-     * Отмечает все уведомления как прочитанные
-     */
-    suspend fun markAllAsRead(userId: String)
     
     /**
      * Удаляет уведомление
