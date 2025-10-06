@@ -165,8 +165,10 @@ fun NotificationsScreen(
             topBar = {
                 NotificationsTopBar(
                     unreadCount = uiState.unreadCount,
+                    hasReadNotifications = uiState.storedNotifications.any { it.isRead },
                     onBackClick = onBackClick,
                     onMarkAllAsRead = { viewModel.markAllAsRead() },
+                    onClearAllRead = { viewModel.deleteAllReadNotifications() },
                     isDarkTheme = isDarkTheme
                 )
             },
@@ -254,10 +256,12 @@ fun NotificationsScreen(
 @Composable
 fun NotificationsTopBar(
     unreadCount: Int,
+    hasReadNotifications: Boolean,
     onBackClick: () -> Unit,
     onMarkAllAsRead: () -> Unit,
+    onClearAllRead: () -> Unit,
+    modifier: Modifier = Modifier,
     isDarkTheme: Boolean = isSystemInDarkTheme(),
-    modifier: Modifier = Modifier
 ) {
     TopAppBar(
         title = {
@@ -280,12 +284,24 @@ fun NotificationsTopBar(
             }
         },
         actions = {
-            if (unreadCount > 0) {
-                IconButton(onClick = onMarkAllAsRead) {
-                    Icon(
-                        imageVector = Icons.Default.DoneAll,
-                        contentDescription = stringResource(R.string.mark_all_as_read)
-                    )
+            when {
+                unreadCount > 0 -> {
+                    // Показываем кнопку "Отметить все как прочитанные"
+                    IconButton(onClick = onMarkAllAsRead) {
+                        Icon(
+                            imageVector = Icons.Default.DoneAll,
+                            contentDescription = stringResource(R.string.mark_all_as_read)
+                        )
+                    }
+                }
+                hasReadNotifications -> {
+                    // Показываем кнопку "Очистить все"
+                    IconButton(onClick = onClearAllRead) {
+                        Text(
+                            text = "🧹",
+                            style = MaterialTheme.typography.titleLarge
+                        )
+                    }
                 }
             }
         },
@@ -330,8 +346,10 @@ fun NotificationsScreenPreview() {
         Column {
             NotificationsTopBar(
                 unreadCount = 3,
+                hasReadNotifications = false,
                 onBackClick = {},
-                onMarkAllAsRead = {}
+                onMarkAllAsRead = {},
+                onClearAllRead = {}
             )
             NotificationsList(
                 notifications = mockNotifications,

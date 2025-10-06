@@ -240,6 +240,37 @@ class NotificationsViewModel @Inject constructor(
     }
     
     /**
+     * Удаляет все прочитанные уведомления
+     */
+    fun deleteAllReadNotifications() {
+        viewModelScope.launch {
+            try {
+                val currentUserId = authRepository.getCurrentUserId()
+                    ?: throw Exception("Пользователь не авторизован")
+                
+                // Удаляем все прочитанные уведомления из базы
+                val readNotifications = _uiState.value.storedNotifications.filter { it.isRead }
+                readNotifications.forEach { notification ->
+                    groupHabitNotificationRepository.deleteNotification(notification.id)
+                }
+                
+                // Обновляем состояние
+                _uiState.update { state ->
+                    state.copy(
+                        storedNotifications = state.storedNotifications.filter { !it.isRead },
+                        successResId = R.string.success_all_read_deleted
+                    )
+                }
+                
+                Log.d(TAG, "All read notifications deleted: ${readNotifications.size}")
+            } catch (e: Exception) {
+                Log.e(TAG, "Error deleting read notifications", e)
+                _uiState.update { it.copy(errorResId = R.string.error_delete_notifications) }
+            }
+        }
+    }
+    
+    /**
      * Отмечает все уведомления как прочитанные (включая сохраненные в базе)
      */
     fun markAllAsRead() {
