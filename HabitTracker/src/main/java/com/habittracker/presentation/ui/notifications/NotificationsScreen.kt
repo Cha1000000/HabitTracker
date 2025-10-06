@@ -41,6 +41,7 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
 import com.habittracker.R
+import com.habittracker.presentation.navigation.Screen
 import com.habittracker.domain.usecase.notification.GroupHabitNotification
 import com.habittracker.domain.usecase.notification.NotificationType
 import com.habittracker.presentation.ui.habits.components.TahoeGradientBackground
@@ -188,9 +189,12 @@ fun NotificationsScreen(
                                 StoredNotificationItem(
                                     notification = notification,
                                     onClick = {
+                                        // Отмечаем как прочитанное
                                         if (!notification.isRead) {
                                             viewModel.markNotificationAsRead(notification.id)
                                         }
+                                        // Навигация к деталям групповой привычки
+                                        navController.navigate(Screen.GroupHabitDetail.createRoute(notification.habitId))
                                     },
                                     onDelete = {
                                         viewModel.deleteNotification(notification.id)
