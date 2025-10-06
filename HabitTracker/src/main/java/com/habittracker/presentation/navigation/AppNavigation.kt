@@ -1,25 +1,25 @@
 package com.habittracker.presentation.navigation
 
 import androidx.compose.runtime.Composable
+import androidx.navigation.NavHostController
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
-import androidx.navigation.NavHostController
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
+import com.habittracker.presentation.ui.ProfileScreen
+import com.habittracker.presentation.ui.achievements.AchievementsScreen
 import com.habittracker.presentation.ui.auth.LoginScreen
 import com.habittracker.presentation.ui.auth.RegisterScreen
 import com.habittracker.presentation.ui.debug.FCMTestScreen
+import com.habittracker.presentation.ui.discover.PublicHabitsScreen
 import com.habittracker.presentation.ui.habits.AddEditHabitScreen
 import com.habittracker.presentation.ui.habits.GroupHabitDetailScreen
 import com.habittracker.presentation.ui.habits.HabitsScreen
 import com.habittracker.presentation.ui.notifications.NotificationsScreen
 import com.habittracker.presentation.ui.social.FriendsScreen
-import com.habittracker.presentation.ui.ProfileScreen
-import com.habittracker.presentation.ui.achievements.AchievementsScreen
 import com.habittracker.presentation.ui.splash.SplashScreen
 import com.habittracker.presentation.ui.stats.StatsScreen
-import com.habittracker.presentation.ui.discover.PublicHabitsScreen
 
 /**
  * Запечатанный класс для определения маршрутов навигации.
@@ -43,10 +43,6 @@ sealed class Screen(val route: String) {
         fun createRoute(habitId: String) = "group_habit_detail_screen/$habitId"
     }
     object PublicHabits : Screen("public_habits_screen")
-    object JoinByCode : Screen("join_by_code_screen/{code}?") {
-        fun createRoute(code: String? = null) = 
-            if (code != null) "join_by_code_screen/$code" else "join_by_code_screen/"
-    }
     // Debug screens (только для debug сборки)
     object FCMTest : Screen("fcm_test_screen")
     // TODO: Добавить другие экраны по мере их создания

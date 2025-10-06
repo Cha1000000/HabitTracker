@@ -39,6 +39,9 @@ class HabitTrackerFirebaseMessagingService : FirebaseMessagingService() {
     
     @Inject
     lateinit var authRepository: AuthRepository
+    
+    @Inject
+    lateinit var appStateManager: AppStateManager
 
     private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private val gson by lazy { Gson() }
@@ -141,14 +144,21 @@ class HabitTrackerFirebaseMessagingService : FirebaseMessagingService() {
             }
         }
         
-        // Показываем уведомление пользователю
-        val titleToShow = data["title"] ?: notification?.title ?: "HabitTracker"
-        val bodyToShow = data["body"] ?: notification?.body ?: "У вас новое уведомление"
-        showNotification(
-            title = titleToShow,
-            body = bodyToShow,
-            data = data
-        )
+        // Показываем уведомление пользователю (только если не на главном экране, или не на экране уведомлений)
+        val shouldShowNotification = !(appStateManager.isHabitsScreenActive() || appStateManager.isNotificationsScreenActive())
+        
+        if (shouldShowNotification) {
+            val titleToShow = data["title"] ?: notification?.title ?: "HabitTracker"
+            val bodyToShow = data["body"] ?: notification?.body ?: "У вас новое уведомление"
+            showNotification(
+                title = titleToShow,
+                body = bodyToShow,
+                data = data
+            )
+            Log.d(TAG, "Notification shown: app not on HabitsScreen")
+        } else {
+            Log.d(TAG, "Notification suppressed: HabitsScreen is active")
+        }
         
         // Сохраняем уведомление в базу данных для отображения на экране уведомлений
         // Сохраняем уведомления в базу данных для определенных типов
