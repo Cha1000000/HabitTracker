@@ -91,7 +91,6 @@ import com.habittracker.domain.model.HabitFrequency
 import com.habittracker.domain.model.HabitInvitation
 import com.habittracker.domain.model.User
 import com.habittracker.presentation.ui.components.SectionCard
-import com.habittracker.presentation.ui.habits.components.GlassmorphicButton
 import com.habittracker.presentation.ui.habits.components.GlassmorphicDialog
 import com.habittracker.presentation.ui.habits.components.GradientProgressBar
 import com.habittracker.presentation.ui.habits.components.TahoeGradientBackground
@@ -1058,7 +1057,7 @@ private fun LeaveGroupSection(
                     Text(text = stringResource(R.string.cancel))
                 }
                 Spacer(modifier = Modifier.width(8.dp))
-                GlassmorphicButton(
+                com.habittracker.presentation.ui.habits.components.GlassmorphicButton(
                     onClick = {
                         onLeaveGroup()
                         showConfirmDialog = false

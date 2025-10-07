@@ -30,7 +30,6 @@ class DeleteHabitUseCaseTest {
     private lateinit var syncManager: SyncManager
     private lateinit var scheduler: SyncWorkScheduler
     private lateinit var cancelHabitReminderUseCase: CancelHabitReminderUseCase
-    private lateinit var updateHabitUseCase: UpdateHabitUseCase
 
     @Before
     fun setUp() {
@@ -39,15 +38,7 @@ class DeleteHabitUseCaseTest {
         syncManager = mock()
         scheduler = mock()
         cancelHabitReminderUseCase = mock()
-        updateHabitUseCase = mock()
-        useCase = DeleteHabitUseCase(
-            repo,
-            firestoreRepo,
-            syncManager,
-            scheduler,
-            cancelHabitReminderUseCase,
-            updateHabitUseCase,
-        )
+        useCase = DeleteHabitUseCase(repo, firestoreRepo, syncManager, scheduler, cancelHabitReminderUseCase)
     }
 
     private fun baseGroupHabit(
@@ -160,16 +151,25 @@ class DeleteHabitUseCaseTest {
 
         useCase.invoke("g2", userId = "u1")
 
-        // Создатель покидает группу - привычка обновляется через updateHabitUseCase
-        // Проверяем, что updateHabitUseCase был вызван с обновленными участниками
-        val habitCaptor = argumentCaptor<Habit>()
-        verify(updateHabitUseCase).invoke(habitCaptor.capture())
-        
-        val updatedHabit = habitCaptor.firstValue
-        // Участники обновлены (создатель u1 удален)
-        assertEquals(listOf("u2", "u3"), updatedHabit.participants)
-        // createdBy остается прежним (updateHabitUseCase сам обновит его в Firestore)
-        assertEquals("u1", updatedHabit.createdBy)
+        // Создатель покидает группу - привычка удаляется локально
+        verify(repo).deleteHabit("g2")
+        // Не должно быть вызова updateHabit
+        verify(repo, never()).updateHabit(any())
+
+        // Capture payload and validate JSON content
+        val payloadCaptor = argumentCaptor<String>()
+        verify(syncManager).enqueueUpsert(eq("habit"), eq("g2"), payloadCaptor.capture(), any(), any())
+        val json = JsonParser.parseString(payloadCaptor.firstValue).asJsonObject
+        // updatedAt всегда присутствует
+        assertTrue(json.has("updatedAt"))
+        // participants обновлены
+        val participantsArr = json.getAsJsonArray("participants").map { it.asString }
+        assertEquals(listOf("u3"), participantsArr)
+        // type для UpdateGroup не должен отправляться (остается GROUP)
+        assertTrue(!json.has("type"))
+        // createdBy должен поменяться
+        assertEquals("u2", json.get("createdBy").asString)
+        verify(scheduler, org.mockito.kotlin.atLeastOnce()).scheduleOneTimeSync()
     }
 
     @Test
@@ -205,17 +205,18 @@ class DeleteHabitUseCaseTest {
 
         useCase.invoke("g4", userId = "u2")
 
-        // Участник покидает группу - привычка обновляется через updateHabitUseCase
-        // Проверяем, что updateHabitUseCase был вызван с обновленными участниками
-        val habitCaptor = argumentCaptor<Habit>()
-        verify(updateHabitUseCase).invoke(habitCaptor.capture())
-        
-        val updatedHabit = habitCaptor.firstValue
-        // Участники обновлены (u2 удален, остался только u3)
-        // Создатель u1 не входит в список participants
-        assertEquals(listOf("u3"), updatedHabit.participants)
-        // createdBy остается прежним
-        assertEquals("u1", updatedHabit.createdBy)
+        // Участник покидает группу - привычка удаляется локально
+        verify(repo).deleteHabit("g4")
+        // Не должно быть вызова updateHabit
+        verify(repo, never()).updateHabit(any())
+
+        // Проверяем, что в Firestore отправляется правильный payload с обновленными участниками
+        val payloadCaptor = argumentCaptor<String>()
+        verify(syncManager).enqueueUpsert(eq("habit"), eq("g4"), payloadCaptor.capture(), any(), any())
+        val json = JsonParser.parseString(payloadCaptor.firstValue).asJsonObject
+        val participantsArr = json.getAsJsonArray("participants").map { it.asString }
+        assertEquals(listOf("u3"), participantsArr)
+        verify(scheduler).scheduleOneTimeSync()
     }
 
     @Test
