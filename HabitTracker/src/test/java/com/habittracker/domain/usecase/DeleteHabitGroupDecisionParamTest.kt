@@ -35,7 +35,15 @@ class DeleteHabitGroupDecisionParamTest(
         val syncManager: SyncManager = mock()
         val scheduler: SyncWorkScheduler = mock()
         val cancelHabitReminderUseCase: CancelHabitReminderUseCase = mock()
-        useCase = DeleteHabitUseCase(repo, firestoreRepo, syncManager, scheduler, cancelHabitReminderUseCase)
+        val updateHabitUseCase: UpdateHabitUseCase = mock()
+        useCase = DeleteHabitUseCase(
+            repo,
+            firestoreRepo,
+            syncManager,
+            scheduler,
+            cancelHabitReminderUseCase,
+            updateHabitUseCase
+        )
     }
 
     @Test

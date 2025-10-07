@@ -32,7 +32,8 @@ class DeleteHabitUseCase @Inject constructor(
     private val firestoreRepository: FirestoreRepository,
     private val syncManager: SyncManager,
     private val syncWorkScheduler: SyncWorkScheduler,
-    private val cancelHabitReminderUseCase: CancelHabitReminderUseCase
+    private val cancelHabitReminderUseCase: CancelHabitReminderUseCase,
+    private val updateHabitUseCase: UpdateHabitUseCase
 ) {
     // Decision policy for GROUP habits — pure domain logic without side-effects
     internal sealed class Decision {
@@ -188,7 +189,11 @@ class DeleteHabitUseCase @Inject constructor(
                 if (isUserLeaving) {
                     // Пользователь покидает группу - удаляем привычку из его локальной БД
                     Log.d("DeleteHabitUseCase", "Deleting habit locally for user $userId")
-                    habitRepository.deleteHabit(habitId)
+                    //habitRepository.deleteHabit(habitId)
+                    // Удаляем текущего пользователя из списка участников
+                    val updatedParticipants = habit.participants.filter { it != userId }
+                    val updatedHabit = habit.copy(participants = updatedParticipants)
+                    updateHabitUseCase(updatedHabit)
                 } else {
                     // Это не должно происходить при удалении пользователем своей привычки
                     Log.w("DeleteHabitUseCase", "Unexpected: user $userId is not leaving but UpdateGroup was called")
