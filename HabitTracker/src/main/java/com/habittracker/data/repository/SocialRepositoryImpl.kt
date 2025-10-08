@@ -28,6 +28,7 @@ import com.habittracker.domain.model.User
 import com.habittracker.domain.model.accept
 import com.habittracker.domain.model.createFriendship
 import com.habittracker.domain.model.isExpired
+import com.habittracker.domain.repository.GroupHabitNotificationRepository
 import com.habittracker.domain.repository.HabitRepository
 import com.habittracker.domain.repository.SocialRepository
 import com.habittracker.domain.util.SyncPayloads
@@ -62,7 +63,8 @@ class SocialRepositoryImpl @Inject constructor(
     private val firestore: FirebaseFirestore,
     private val habitRepository: HabitRepository,
     private val syncManager: SyncManager,
-    private val syncWorkScheduler: SyncWorkScheduler
+    private val syncWorkScheduler: SyncWorkScheduler,
+    private val notificationRepository: GroupHabitNotificationRepository
 ) : SocialRepository {
 
     // Repository-level scope for fire-and-forget background tasks (safe: singleton)
@@ -1667,6 +1669,26 @@ class SocialRepositoryImpl @Inject constructor(
         habitId: String
     ) {
         try {
+            // Сохраняем уведомление в БД для отображения на NotificationsScreen
+            val message = "$acceptedByName принял ваше приглашение к участию в привычке '$habitTitle'"
+            val notificationEntity = com.habittracker.data.local.entity.GroupHabitNotificationEntity(
+                id = java.util.UUID.randomUUID().toString(),
+                userId = toUserId,
+                habitId = habitId,
+                type = "INVITATION_ACCEPTED",
+                participantId = "", // ID принявшего пользователя неизвестен здесь
+                participantName = acceptedByName,
+                habitTitle = habitTitle,
+                message = message,
+                isRead = false,
+                readAt = null,
+                createdAt = System.currentTimeMillis()
+            )
+            
+            notificationRepository.saveNotification(notificationEntity)
+            Log.d("SocialRepository", "Notification saved to DB: INVITATION_ACCEPTED for user $toUserId")
+            
+            // Отправляем FCM push
             repoScope.launch {
                 withContext(NonCancellable + Dispatchers.IO) {
                     val userDoc = firestore.collection("users").document(toUserId).get().await()
@@ -1688,7 +1710,7 @@ class SocialRepositoryImpl @Inject constructor(
                         val result = fcmApiClient.sendPushNotification(
                             fcmToken = token,
                             title = "Приглашение принято",
-                            body = "$acceptedByName принял ваше приглашение к участию в привычке '$habitTitle'",
+                            body = message,
                             data = mapOf(
                                 "type" to "habit_invitation_accepted",
                                 "habitTitle" to habitTitle,
@@ -1722,6 +1744,26 @@ class SocialRepositoryImpl @Inject constructor(
         habitId: String
     ) {
         try {
+            // Сохраняем уведомление в БД для отображения на NotificationsScreen
+            val message = "$joinedUserName присоединился к привычке '$habitTitle'"
+            val notificationEntity = com.habittracker.data.local.entity.GroupHabitNotificationEntity(
+                id = java.util.UUID.randomUUID().toString(),
+                userId = toUserId,
+                habitId = habitId,
+                type = "FRIEND_JOINED",
+                participantId = "", // ID присоединившегося пользователя неизвестен здесь
+                participantName = joinedUserName,
+                habitTitle = habitTitle,
+                message = message,
+                isRead = false,
+                readAt = null,
+                createdAt = System.currentTimeMillis()
+            )
+            
+            notificationRepository.saveNotification(notificationEntity)
+            Log.d("SocialRepository", "Notification saved to DB: FRIEND_JOINED for user $toUserId")
+            
+            // Отправляем FCM push
             repoScope.launch {
                 withContext(NonCancellable + Dispatchers.IO) {
                     val userDoc = firestore.collection("users").document(toUserId).get().await()
@@ -1743,7 +1785,7 @@ class SocialRepositoryImpl @Inject constructor(
                         val result = fcmApiClient.sendPushNotification(
                             fcmToken = token,
                             title = "Новый участник",
-                            body = "$joinedUserName присоединился к привычке '$habitTitle'",
+                            body = message,
                             data = mapOf(
                                 "type" to "new_participant",
                                 "habitTitle" to habitTitle,
