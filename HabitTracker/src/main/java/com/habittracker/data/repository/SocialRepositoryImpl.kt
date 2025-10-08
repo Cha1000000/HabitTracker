@@ -13,6 +13,7 @@ import com.habittracker.data.local.mappers.toEntity
 import com.habittracker.data.remote.mappers.toDomain
 import com.habittracker.data.remote.model.FriendRequestRemote
 import com.habittracker.data.service.FCMApiClient
+import com.habittracker.data.service.UnregisteredTokenException
 import com.habittracker.data.sync.SyncManager
 import com.habittracker.data.sync.SyncWorkScheduler
 import com.habittracker.domain.model.FriendRequest
@@ -27,6 +28,7 @@ import com.habittracker.domain.model.User
 import com.habittracker.domain.model.accept
 import com.habittracker.domain.model.createFriendship
 import com.habittracker.domain.model.isExpired
+import com.habittracker.domain.repository.GroupHabitNotificationRepository
 import com.habittracker.domain.repository.HabitRepository
 import com.habittracker.domain.repository.SocialRepository
 import com.habittracker.domain.util.SyncPayloads
@@ -61,7 +63,8 @@ class SocialRepositoryImpl @Inject constructor(
     private val firestore: FirebaseFirestore,
     private val habitRepository: HabitRepository,
     private val syncManager: SyncManager,
-    private val syncWorkScheduler: SyncWorkScheduler
+    private val syncWorkScheduler: SyncWorkScheduler,
+    private val notificationRepository: GroupHabitNotificationRepository
 ) : SocialRepository {
 
     // Repository-level scope for fire-and-forget background tasks (safe: singleton)
@@ -149,6 +152,36 @@ class SocialRepositoryImpl @Inject constructor(
             }
         } catch (e: Exception) {
             Log.w("SocialRepository", "getUserById Firestore failed for userId=$userId: ${e.message}", e)
+            null
+        }
+    }
+
+    override suspend fun getUserByIdFromFirestore(userId: String): User? {
+        return try {
+            Log.d("SocialRepository", "🔄 Fetching user from Firestore: $userId")
+            val doc = firestore.collection("users").document(userId).get().await()
+            if (doc.exists()) {
+                val data = doc.data ?: emptyMap()
+                Log.d("SocialRepository", "📋 Firestore data for $userId: fcmToken=${data["fcmToken"]?.toString()?.take(20)}...")
+                
+                val user = UserFirestoreConverter.fromFirestore(data, doc.id)
+                // Обновляем локальный кэш с актуальными данными
+                user?.let {
+                    try {
+                        userDao.insertUser(it.toEntity())
+                        Log.d("SocialRepository", "✅ Local cache updated for user $userId")
+                    } catch (e: Exception) {
+                        Log.w("SocialRepository", "Failed to update local cache for user $userId", e)
+                    }
+                }
+                Log.d("SocialRepository", "✅ User fetched: ${user?.name}, fcmToken: ${user?.fcmToken?.take(8)}...${user?.fcmToken?.takeLast(4)}")
+                user
+            } else {
+                Log.w("SocialRepository", "❌ User not found in Firestore: $userId")
+                null
+            }
+        } catch (e: Exception) {
+            Log.e("SocialRepository", "❌ getUserByIdFromFirestore failed for userId=$userId", e)
             null
         }
     }
@@ -1230,7 +1263,8 @@ class SocialRepositoryImpl @Inject constructor(
             sendHabitInvitationAcceptedNotification(
                 toUserId = invitation.fromUserId,
                 acceptedByName = acceptedUserName,
-                habitTitle = invitation.habitTitle
+                habitTitle = invitation.habitTitle,
+                habitId = invitation.habitId
             )
             Log.d("SocialRepository", "[acceptHabitInvitation] sendHabitInvitationAcceptedNotification -> DONE")
 
@@ -1628,8 +1662,33 @@ class SocialRepositoryImpl @Inject constructor(
         }
     }
 
-    override suspend fun sendHabitInvitationAcceptedNotification(toUserId: String, acceptedByName: String, habitTitle: String) {
+    override suspend fun sendHabitInvitationAcceptedNotification(
+        toUserId: String, 
+        acceptedByName: String, 
+        habitTitle: String,
+        habitId: String
+    ) {
         try {
+            // Сохраняем уведомление в БД для отображения на NotificationsScreen
+            val message = "$acceptedByName принял ваше приглашение к участию в привычке '$habitTitle'"
+            val notificationEntity = com.habittracker.data.local.entity.GroupHabitNotificationEntity(
+                id = java.util.UUID.randomUUID().toString(),
+                userId = toUserId,
+                habitId = habitId,
+                type = "INVITATION_ACCEPTED",
+                participantId = "", // ID принявшего пользователя неизвестен здесь
+                participantName = acceptedByName,
+                habitTitle = habitTitle,
+                message = message,
+                isRead = false,
+                readAt = null,
+                createdAt = System.currentTimeMillis()
+            )
+            
+            notificationRepository.saveNotification(notificationEntity)
+            Log.d("SocialRepository", "Notification saved to DB: INVITATION_ACCEPTED for user $toUserId")
+            
+            // Отправляем FCM push
             repoScope.launch {
                 withContext(NonCancellable + Dispatchers.IO) {
                     val userDoc = firestore.collection("users").document(toUserId).get().await()
@@ -1651,10 +1710,11 @@ class SocialRepositoryImpl @Inject constructor(
                         val result = fcmApiClient.sendPushNotification(
                             fcmToken = token,
                             title = "Приглашение принято",
-                            body = "$acceptedByName принял ваше приглашение к участию в привычке '$habitTitle'",
+                            body = message,
                             data = mapOf(
                                 "type" to "habit_invitation_accepted",
                                 "habitTitle" to habitTitle,
+                                "habit_id" to habitId,
                                 "acceptedByName" to acceptedByName,
                                 "action" to "open_habit_details",
                                 "recipientUserId" to toUserId
@@ -1674,6 +1734,81 @@ class SocialRepositoryImpl @Inject constructor(
             }
         } catch (e: Exception) {
             Log.w("SocialRepository", "Ошибка подготовки уведомления о принятии приглашения (outer)", e)
+        }
+    }
+
+    override suspend fun sendParticipantJoinedNotification(
+        toUserId: String,
+        joinedUserName: String,
+        habitTitle: String,
+        habitId: String
+    ) {
+        try {
+            // Сохраняем уведомление в БД для отображения на NotificationsScreen
+            val message = "$joinedUserName присоединился к привычке '$habitTitle'"
+            val notificationEntity = com.habittracker.data.local.entity.GroupHabitNotificationEntity(
+                id = java.util.UUID.randomUUID().toString(),
+                userId = toUserId,
+                habitId = habitId,
+                type = "FRIEND_JOINED",
+                participantId = "", // ID присоединившегося пользователя неизвестен здесь
+                participantName = joinedUserName,
+                habitTitle = habitTitle,
+                message = message,
+                isRead = false,
+                readAt = null,
+                createdAt = System.currentTimeMillis()
+            )
+            
+            notificationRepository.saveNotification(notificationEntity)
+            Log.d("SocialRepository", "Notification saved to DB: FRIEND_JOINED for user $toUserId")
+            
+            // Отправляем FCM push
+            repoScope.launch {
+                withContext(NonCancellable + Dispatchers.IO) {
+                    val userDoc = firestore.collection("users").document(toUserId).get().await()
+                    val tokensFromArray = (userDoc.get("fcmTokens") as? List<*>)?.mapNotNull { it as? String } ?: emptyList()
+                    val legacyToken = userDoc.getString("fcmToken")
+                    val allTokens = (tokensFromArray + listOfNotNull(legacyToken)).toSet()
+
+                    if (allTokens.isEmpty()) {
+                        Log.w("SocialRepository", "FCM skip: participant_joined -> to=$toUserId, tokens_absent")
+                        return@withContext
+                    }
+
+                    Log.d(
+                        "SocialRepository",
+                        "FCM send: participant_joined -> to=$toUserId, tokens_count=${allTokens.size}, joinedUser=$joinedUserName, habit='$habitTitle'"
+                    )
+
+                    allTokens.forEach { token ->
+                        val result = fcmApiClient.sendPushNotification(
+                            fcmToken = token,
+                            title = "Новый участник",
+                            body = message,
+                            data = mapOf(
+                                "type" to "new_participant",
+                                "habitTitle" to habitTitle,
+                                "habit_id" to habitId,
+                                "participant_name" to joinedUserName,
+                                "action" to "open_habit_details",
+                                "recipientUserId" to toUserId
+                            )
+                        )
+                        result.onFailure { e ->
+                            val msg = e.message ?: ""
+                            if (msg.contains("UNREGISTERED", ignoreCase = true)) {
+                                Log.w("SocialRepository", "FCM UNREGISTERED -> remove token ${maskToken(token)} for user=$toUserId")
+                                safelyRemoveInvalidFcmToken(toUserId, token)
+                            } else {
+                                Log.w("SocialRepository", "FCM send failed for token ${maskToken(token)}: ${e.message}")
+                            }
+                        }
+                    }
+                }
+            }
+        } catch (e: Exception) {
+            Log.w("SocialRepository", "Ошибка подготовки уведомления о присоединении участника (outer)", e)
         }
     }
 
@@ -1929,20 +2064,58 @@ class SocialRepositoryImpl @Inject constructor(
         data: Map<String, String>
     ) {
         try {
+            Log.d(TAG, "sendPushNotification: Sending to FCM, title=$title, body=$body")
             // Используем FCMApiClient для реальной отправки
             val result = fcmApiClient.sendPushNotification(fcmToken, title, body, data)
             
             result.onSuccess {
-                // Уведомление успешно отправлено
+                Log.d(TAG, "Push notification sent successfully: $title")
             }.onFailure { error ->
-                // Логируем ошибку, но не прерываем выполнение
-                // В production здесь можно добавить retry логику или отправку в аналитику
-                println("Ошибка отправки push-уведомления: ${error.message}")
+                when (error) {
+                    is UnregisteredTokenException -> {
+                        // Токен невалиден - удаляем его из базы
+                        Log.w(TAG, "FCM token is UNREGISTERED (${maskToken(fcmToken)}). Removing from database...")
+                        // Находим пользователя по токену и удаляем невалидный токен
+                        repoScope.launch {
+                            try {
+                                // Ищем пользователя с этим токеном
+                                val usersQuery = firestore.collection("users")
+                                    .whereEqualTo("fcmToken", fcmToken)
+                                    .get().await()
+                                
+                                usersQuery.documents.forEach { doc ->
+                                    Log.d(TAG, "Found user ${doc.id} with UNREGISTERED token, removing...")
+                                    safelyRemoveInvalidFcmToken(doc.id, fcmToken)
+                                }
+                                
+                                // Также проверяем массив fcmTokens
+                                val tokensQuery = firestore.collection("users")
+                                    .whereArrayContains("fcmTokens", fcmToken)
+                                    .get().await()
+                                
+                                tokensQuery.documents.forEach { doc ->
+                                    Log.d(TAG, "Found user ${doc.id} with UNREGISTERED token in array, removing...")
+                                    safelyRemoveInvalidFcmToken(doc.id, fcmToken)
+                                }
+                            } catch (e: Exception) {
+                                Log.w(TAG, "Failed to remove UNREGISTERED token: ${e.message}")
+                            }
+                        }
+                    }
+                    else -> {
+                        // Логируем другие ошибки
+                        Log.e(TAG, "Error sending push notification: ${error.message}", error)
+                    }
+                }
             }
             
         } catch (e: Exception) {
             // Логируем ошибку, но не прерываем выполнение
-            println("Исключение при отправке push-уведомления: ${e.message}")
+            Log.e(TAG, "Exception while sending push notification: ${e.message}", e)
         }
+    }
+    
+    companion object {
+        private const val TAG = "SocialRepository"
     }
 }

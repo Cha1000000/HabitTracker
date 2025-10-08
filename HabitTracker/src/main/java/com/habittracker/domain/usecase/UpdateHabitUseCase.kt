@@ -1,5 +1,6 @@
 package com.habittracker.domain.usecase
 
+import android.util.Log
 import com.habittracker.domain.model.Habit
 import com.habittracker.domain.repository.FirestoreRepository
 import com.habittracker.domain.repository.HabitRepository
@@ -15,13 +16,10 @@ class UpdateHabitUseCase @Inject constructor(
 ) {
     suspend operator fun invoke(habit: Habit) {
         try {
-            // Сначала обновляем в Firestore
             firestoreRepository.updateHabit(habit)
-            
-            // Затем обновляем локально
             habitRepository.updateHabit(habit)
         } catch (e: Exception) {
-            // Если Firestore недоступен, обновляем только локально
+            Log.w("UpdateHabitUseCase", "Firestore update failed: ${e.message}")
             habitRepository.updateHabit(habit)
             throw e
         }

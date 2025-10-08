@@ -6,8 +6,10 @@ import com.habittracker.BuildConfig
 import com.habittracker.domain.repository.AuthRepository
 import com.habittracker.domain.repository.SocialRepository
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.tasks.await
+import kotlinx.coroutines.withContext
 import java.util.concurrent.atomic.AtomicBoolean
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -30,8 +32,9 @@ class FCMTokenManager @Inject constructor(
 
     /**
      * Получает текущий FCM токен и сохраняет его в базе данных
+     * @param forceRefresh если true, удаляет старый токен и получает новый (используется при явных проблемах)
      */
-    suspend fun refreshToken(): Result<String> {
+    suspend fun refreshToken(forceRefresh: Boolean = false): Result<String> {
         if (!isRefreshing.compareAndSet(false, true)) {
             // Already refreshing; avoid duplicate work
             Log.d(TAG, "Refresh already in progress, skipping")
@@ -51,26 +54,33 @@ class FCMTokenManager @Inject constructor(
 
             for (attempt in 1..3) {
                 try {
+                    // Если forceRefresh=true, удаляем старый токен чтобы получить новый
+                    if (forceRefresh && attempt == 1) {
+                        try {
+                            FirebaseMessaging.getInstance().deleteToken().await()
+                            if (BuildConfig.DEBUG) {
+                                Log.d(TAG, "[fcm] Deleted old token to force refresh")
+                            }
+                        } catch (e: Exception) {
+                            Log.w(TAG, "[fcm] Failed to delete old token: ${e.message}")
+                        }
+                    }
+                    
                     val token = FirebaseMessaging.getInstance().token.await()
                     if (BuildConfig.DEBUG) {
                         val masked = if (token.length > 8) "${token.take(4)}****${token.takeLast(4)}" else "****"
                         Log.d(TAG, "[fcm] Got token (masked): $masked on attempt $attempt")
                     }
 
-                    // Compare with existing stored token to avoid redundant writes
-                    val existing = try { socialRepository.getUserById(currentUserId)?.fcmToken } catch (e: Exception) {
-                        if (BuildConfig.DEBUG) Log.d(TAG, "[fcm] getUserById failed while comparing tokens: ${e.message}")
-                        null
-                    }
-                    if (existing == token) {
-                        if (BuildConfig.DEBUG) {
-                            Log.d(TAG, "[fcm] Token unchanged, skip update for user=$currentUserId")
-                        }
-                        result = Result.success(token)
-                        break
+                    // Обновляем токен в базе данных (неотменяемо!)
+                    if (BuildConfig.DEBUG) {
+                        Log.d(TAG, "[fcm] Updating token for user=$currentUserId")
                     }
 
-                    socialRepository.updateUserFcmToken(currentUserId, token)
+                    // Используем NonCancellable, чтобы гарантировать сохранение токена
+                    withContext(NonCancellable) {
+                        socialRepository.updateUserFcmToken(currentUserId, token)
+                    }
                     if (BuildConfig.DEBUG) {
                         Log.d(TAG, "[fcm] Token saved for user=$currentUserId")
                     }
@@ -95,7 +105,7 @@ class FCMTokenManager @Inject constructor(
             }
 
             if (result != null) {
-                result as Result<String>
+                result
             } else {
                 Log.e(TAG, "Ошибка получения FCM токена", lastError)
                 Result.failure(lastError ?: Exception("FCM token refresh failed"))
@@ -111,7 +121,7 @@ class FCMTokenManager @Inject constructor(
      * устройство могло продолжать получать адресные уведомления. Фильтрация по recipientUserId
      * на клиенте предотвратит показ неактуальных уведомлений не тому пользователю.
      */
-    suspend fun clearToken(): Result<Unit> {
+    fun clearToken(): Result<Unit> {
         return try {
             val currentUserId = authRepository.getCurrentUserId()
             if (BuildConfig.DEBUG) {

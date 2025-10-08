@@ -7,6 +7,7 @@ import com.habittracker.domain.model.Habit
 import com.habittracker.domain.model.HabitFrequency
 import com.habittracker.domain.model.HabitType
 import com.habittracker.domain.repository.HabitRepository
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
@@ -22,6 +23,7 @@ import org.mockito.kotlin.verify
 import org.mockito.kotlin.verifyNoMoreInteractions
 import org.mockito.kotlin.whenever
 
+@OptIn(ExperimentalCoroutinesApi::class)
 class DeleteHabitUseCaseTest {
 
     private lateinit var useCase: DeleteHabitUseCase
@@ -30,6 +32,8 @@ class DeleteHabitUseCaseTest {
     private lateinit var syncManager: SyncManager
     private lateinit var scheduler: SyncWorkScheduler
     private lateinit var cancelHabitReminderUseCase: CancelHabitReminderUseCase
+    private lateinit var updateHabitUseCase: UpdateHabitUseCase
+    private lateinit var sendGroupHabitPushNotificationUseCase: com.habittracker.domain.usecase.notification.SendGroupHabitPushNotificationUseCase
 
     @Before
     fun setUp() {
@@ -38,9 +42,20 @@ class DeleteHabitUseCaseTest {
         syncManager = mock()
         scheduler = mock()
         cancelHabitReminderUseCase = mock()
-        useCase = DeleteHabitUseCase(repo, firestoreRepo, syncManager, scheduler, cancelHabitReminderUseCase)
+        updateHabitUseCase = mock()
+        sendGroupHabitPushNotificationUseCase = mock()
+        useCase = DeleteHabitUseCase(
+            repo,
+            firestoreRepo,
+            syncManager,
+            scheduler,
+            cancelHabitReminderUseCase,
+            updateHabitUseCase,
+            sendGroupHabitPushNotificationUseCase
+        )
     }
 
+    @Suppress("SameParameterValue")
     private fun baseGroupHabit(
         createdBy: String,
         participants: List<String>
@@ -61,6 +76,7 @@ class DeleteHabitUseCaseTest {
         updatedAt = 0L
     )
 
+    @Suppress("SameParameterValue")
     private fun personalHabit(id: String = "p1", createdBy: String = "u1"): Habit = Habit(
         id = id,
         title = "Personal",
@@ -145,31 +161,29 @@ class DeleteHabitUseCaseTest {
     }
 
     @Test
-    fun invoke_group_creatorLeaves_withParticipants_updatesGroup_andEnqueuesUpsert() = runTest {
+    fun invoke_group_creatorLeaves_withParticipants_updatesGroup_viaUpdateHabitUseCase() = runTest {
         val habit = baseGroupHabit(createdBy = "u1", participants = listOf("u2", "u3")).copy(id = "g2")
         whenever(repo.getHabitById("g2")).thenReturn(habit)
 
         useCase.invoke("g2", userId = "u1")
 
-        // Создатель покидает группу - привычка удаляется локально
-        verify(repo).deleteHabit("g2")
-        // Не должно быть вызова updateHabit
+        // Создатель покидает группу - используем UpdateHabitUseCase для атомарного обновления
+        val habitCaptor = argumentCaptor<Habit>()
+        verify(updateHabitUseCase).invoke(habitCaptor.capture())
+        val updatedHabit = habitCaptor.firstValue
+        
+        // Проверяем, что привычка обновлена корректно
+        assertEquals("g2", updatedHabit.id)
+        assertEquals("u2", updatedHabit.createdBy) // новый создатель
+        assertEquals(listOf("u3"), updatedHabit.participants) // u1 удалён, u2 стал создателем
+        
+        // НЕ должно быть прямых вызовов repo.deleteHabit или repo.updateHabit
+        verify(repo, never()).deleteHabit(any())
         verify(repo, never()).updateHabit(any())
-
-        // Capture payload and validate JSON content
-        val payloadCaptor = argumentCaptor<String>()
-        verify(syncManager).enqueueUpsert(eq("habit"), eq("g2"), payloadCaptor.capture(), any(), any())
-        val json = JsonParser.parseString(payloadCaptor.firstValue).asJsonObject
-        // updatedAt всегда присутствует
-        assertTrue(json.has("updatedAt"))
-        // participants обновлены
-        val participantsArr = json.getAsJsonArray("participants").map { it.asString }
-        assertEquals(listOf("u3"), participantsArr)
-        // type для UpdateGroup не должен отправляться (остается GROUP)
-        assertTrue(!json.has("type"))
-        // createdBy должен поменяться
-        assertEquals("u2", json.get("createdBy").asString)
-        verify(scheduler, org.mockito.kotlin.atLeastOnce()).scheduleOneTimeSync()
+        
+        // НЕ должно быть вызова syncManager, т.к. UpdateHabitUseCase сам обновляет Firestore
+        verify(syncManager, never()).enqueueUpsert(any(), any(), any(), any(), any())
+        verify(scheduler, never()).scheduleOneTimeSync()
     }
 
     @Test
@@ -199,24 +213,29 @@ class DeleteHabitUseCaseTest {
     }
 
     @Test
-    fun invoke_group_participantLeaves_twoRemain_updatesGroup_andEnqueuesUpsert() = runTest {
+    fun invoke_group_participantLeaves_twoRemain_updatesGroup_viaUpdateHabitUseCase() = runTest {
         val habit = baseGroupHabit(createdBy = "u1", participants = listOf("u2", "u3")).copy(id = "g4")
         whenever(repo.getHabitById("g4")).thenReturn(habit)
 
         useCase.invoke("g4", userId = "u2")
 
-        // Участник покидает группу - привычка удаляется локально
-        verify(repo).deleteHabit("g4")
-        // Не должно быть вызова updateHabit
+        // Участник покидает группу - используем UpdateHabitUseCase
+        val habitCaptor = argumentCaptor<Habit>()
+        verify(updateHabitUseCase).invoke(habitCaptor.capture())
+        val updatedHabit = habitCaptor.firstValue
+        
+        // Проверяем корректность обновления
+        assertEquals("g4", updatedHabit.id)
+        assertEquals("u1", updatedHabit.createdBy) // создатель не меняется
+        assertEquals(listOf("u3"), updatedHabit.participants) // u2 удалён
+        
+        // НЕ должно быть прямых вызовов repo
+        verify(repo, never()).deleteHabit(any())
         verify(repo, never()).updateHabit(any())
-
-        // Проверяем, что в Firestore отправляется правильный payload с обновленными участниками
-        val payloadCaptor = argumentCaptor<String>()
-        verify(syncManager).enqueueUpsert(eq("habit"), eq("g4"), payloadCaptor.capture(), any(), any())
-        val json = JsonParser.parseString(payloadCaptor.firstValue).asJsonObject
-        val participantsArr = json.getAsJsonArray("participants").map { it.asString }
-        assertEquals(listOf("u3"), participantsArr)
-        verify(scheduler).scheduleOneTimeSync()
+        
+        // НЕ должно быть вызова syncManager
+        verify(syncManager, never()).enqueueUpsert(any(), any(), any(), any(), any())
+        verify(scheduler, never()).scheduleOneTimeSync()
     }
 
     @Test

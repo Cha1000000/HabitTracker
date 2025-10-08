@@ -13,6 +13,7 @@ import com.habittracker.domain.model.isGroupHabit
 import com.habittracker.domain.repository.AuthRepository
 import com.habittracker.domain.repository.HabitEntryRepository
 import com.habittracker.domain.repository.UserRepository
+import com.habittracker.domain.usecase.DeleteHabitUseCase
 import com.habittracker.domain.usecase.GetHabitByIdUseCase
 import com.habittracker.domain.usecase.MarkHabitCompletedUseCase
 import com.habittracker.domain.usecase.MarkHabitIncompleteUseCase
@@ -49,7 +50,8 @@ class GroupHabitDetailViewModel @Inject constructor(
     private val markHabitIncompleteUseCase: MarkHabitIncompleteUseCase,
     private val getHabitInvitationsUseCase: GetHabitInvitationsUseCase,
     private val generateHabitInviteCodeUseCase: GenerateHabitInviteCodeUseCase,
-    private val updateHabitUseCase: UpdateHabitUseCase
+    private val updateHabitUseCase: UpdateHabitUseCase,
+    private val deleteHabitUseCase: DeleteHabitUseCase
 ) : AndroidViewModel(application) {
 
     private val _uiState = MutableStateFlow(GroupHabitDetailUiState())
@@ -383,6 +385,7 @@ class GroupHabitDetailViewModel @Inject constructor(
 
     /**
      * Выход из групповой привычки
+     * Использует DeleteHabitUseCase для корректной обработки выхода и отправки уведомлений
      */
     fun leaveGroup(onSuccess: () -> Unit) {
         val habit = _uiState.value.habit ?: return
@@ -390,24 +393,17 @@ class GroupHabitDetailViewModel @Inject constructor(
         viewModelScope.launch {
             try {
                 _uiState.update { it.copy(isLoading = true) }
-                
-                // Удаляем текущего пользователя из списка участников
-                val updatedParticipants = habit.participants.filter { it != currentUserId }
-                val updatedHabit = habit.copy(participants = updatedParticipants)
-                
-                updateHabitUseCase(updatedHabit)
-                
+                deleteHabitUseCase(habit.id, currentUserId)
                 _uiState.update { 
                     it.copy(
                         isLoading = false,
                         successMessage = application.getString(R.string.left_group_successfully)
                     )
                 }
-                
                 // Вызываем callback для навигации назад
                 onSuccess()
-                
-            } catch (_: Exception) {
+            } catch (e: Exception) {
+                Log.e("GroupHabitDetailVM", "Error leaving group", e)
                 _uiState.update { 
                     it.copy(
                         isLoading = false,

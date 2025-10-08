@@ -53,6 +53,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
@@ -64,6 +65,7 @@ import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.navigation.NavController
 import androidx.navigation.compose.rememberNavController
+import com.habittracker.HabitTrackerApplication
 import com.habittracker.R
 import com.habittracker.domain.model.Habit
 import com.habittracker.domain.model.HabitFrequency
@@ -71,6 +73,7 @@ import com.habittracker.domain.model.HabitType
 import com.habittracker.domain.model.isGroupHabit
 import com.habittracker.presentation.navigation.Screen
 import com.habittracker.presentation.ui.components.GradientPullRefreshIndicator
+import com.habittracker.presentation.ui.habits.components.ConfirmDialog
 import com.habittracker.presentation.ui.habits.components.EnhancedHabitItem
 import com.habittracker.presentation.ui.habits.components.ExpandableFAB
 import com.habittracker.presentation.ui.habits.components.JoinByCodeDialog
@@ -95,6 +98,7 @@ fun HabitsScreen(
     notificationsViewModel: NotificationsViewModel = hiltViewModel(),
     friendsViewModel: FriendsViewModel = hiltViewModel()
 ) {
+    val context = LocalContext.current
     val uiState by viewModel.uiState.collectAsState()
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
@@ -105,17 +109,30 @@ fun HabitsScreen(
     var isRefreshing by remember { mutableStateOf(false) }
     var recomposeKey by remember { mutableIntStateOf(0) }
     val lifecycleOwner = LocalLifecycleOwner.current
+    val appStateManager = remember {
+        (context.applicationContext as? HabitTrackerApplication)?.appStateManager
+    }
 
-    // Увеличиваем ключ при возврате на экран, чтобы форсировать полную рекомпозицию
+    // Отслеживаем lifecycle и обновляем состояние экрана
     DisposableEffect(lifecycleOwner) {
         val observer = LifecycleEventObserver { _, event ->
-            if (event == Lifecycle.Event.ON_RESUME) {
-                recomposeKey++
-                viewModel.refresh()
+            when (event) {
+                Lifecycle.Event.ON_RESUME -> {
+                    appStateManager?.setCurrentScreen("habits_screen")
+                    recomposeKey++
+                    viewModel.refresh()
+                }
+                Lifecycle.Event.ON_PAUSE -> {
+                    appStateManager?.setCurrentScreen(null)
+                }
+                else -> {}
             }
         }
         lifecycleOwner.lifecycle.addObserver(observer)
-        onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
+        onDispose { 
+            lifecycleOwner.lifecycle.removeObserver(observer)
+            appStateManager?.setCurrentScreen(null)
+        }
     }
     
     // Показываем ошибки через Snackbar
@@ -336,7 +353,7 @@ fun HabitsScreen(
                                     }
 
                                     if (showDeleteDialog) {
-                                        com.habittracker.presentation.ui.habits.components.ConfirmDialog(
+                                        ConfirmDialog(
                                             title = stringResource(id = R.string.confirm_delete_habit_title),
                                             message = stringResource(id = R.string.confirm_delete_habit_message, habitWithCompletion.habit.title),
                                             confirmLabel = stringResource(id = R.string.delete),

@@ -30,9 +30,10 @@ class ManageFCMTokenUseCase @Inject constructor(
     /**
      * Обновляет FCM токен
      * Вызывается при получении нового токена
+     * @param forceRefresh если true, удаляет старый токен и получает новый (используется при явных проблемах)
      */
-    suspend fun refreshFCMToken(): Result<String> {
-        return fcmTokenManager.refreshToken()
+    suspend fun refreshFCMToken(forceRefresh: Boolean = false): Result<String> {
+        return fcmTokenManager.refreshToken(forceRefresh)
     }
 
     /**

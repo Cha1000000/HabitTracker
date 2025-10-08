@@ -372,6 +372,7 @@
     <string name="notifications_title">Уведомления</string>
     <string name="mark_as_read">Отметить как прочитанное</string>
     <string name="mark_all_as_read">Отметить все как прочитанные</string>
+    <string name="clear_all_read">Очистить все</string>
     <string name="no_notifications_title">Нет уведомлений</string>
     <string name="no_notifications_description">Здесь будут отображаться уведомления о прогрессе ваших групповых привычек</string>
     <string name="time_just_now">Только что</string>
@@ -399,8 +400,11 @@
     <string name="error_loading_invitations">Не удалось загрузить приглашения</string>
     <string name="error_processing_notification">Ошибка обработки уведомления</string>
     <string name="error_mark_notification">Не удалось отметить уведомление</string>
+    <string name="error_delete_notification">Не удалось удалить уведомление</string>
     <string name="success_all_marked_read">Все уведомления отмечены как прочитанные</string>
     <string name="error_mark_all_notifications">Не удалось отметить все уведомления</string>
+    <string name="success_all_read_deleted">Все прочитанные уведомления удалены</string>
+    <string name="error_delete_notifications">Не удалось удалить уведомления</string>
     <string name="success_invitation_accepted">Приглашение принято</string>
     <string name="error_accept_invitation">Ошибка принятия приглашения</string>
     <string name="success_invitation_declined">Приглашение отклонено</string>

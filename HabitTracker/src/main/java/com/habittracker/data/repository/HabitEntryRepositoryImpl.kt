@@ -62,7 +62,9 @@ class HabitEntryRepositoryImpl @Inject constructor(
                         return@addSnapshotListener
                     }
                     val list = snapshot?.documents?.mapNotNull { doc ->
-                        try { doc.toObject(FirebaseHabitEntry::class.java)?.toDomain() } catch (e: Exception) {
+                        try { 
+                            doc.toObject(FirebaseHabitEntry::class.java)?.toDomain()
+                        } catch (e: Exception) {
                             Log.d("HabitEntryRepo", "Map doc to HabitEntry failed: ${e.message}")
                             null
                         }

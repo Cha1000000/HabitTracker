@@ -1,24 +1,54 @@
 package com.habittracker.presentation.ui.notifications
 
 import androidx.compose.foundation.isSystemInDarkTheme
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.DoneAll
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarDuration
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.Text
+import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.navigation.NavController
+import com.habittracker.HabitTrackerApplication
 import com.habittracker.R
 import com.habittracker.domain.usecase.notification.GroupHabitNotification
 import com.habittracker.domain.usecase.notification.NotificationType
+import com.habittracker.presentation.navigation.Screen
 import com.habittracker.presentation.ui.habits.components.TahoeGradientBackground
 import com.habittracker.presentation.viewmodel.NotificationsViewModel
 import kotlinx.datetime.Clock
@@ -37,6 +67,31 @@ fun NotificationsScreen(
     val snackbarHostState = remember { SnackbarHostState() }
     val context = LocalContext.current
     val isDarkTheme = isSystemInDarkTheme()
+    val lifecycleOwner = LocalLifecycleOwner.current
+    val appStateManager = remember {
+        (context.applicationContext as? HabitTrackerApplication)?.appStateManager
+    }
+
+    // Отслеживаем lifecycle и обновляем состояние экрана
+    DisposableEffect(lifecycleOwner) {
+        val observer = LifecycleEventObserver { _, event ->
+            when (event) {
+                Lifecycle.Event.ON_RESUME -> {
+                    appStateManager?.setCurrentScreen("notifications_screen")
+                    viewModel.refreshNotifications()
+                }
+                Lifecycle.Event.ON_PAUSE -> {
+                    appStateManager?.setCurrentScreen(null)
+                }
+                else -> {}
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose { 
+            lifecycleOwner.lifecycle.removeObserver(observer)
+            appStateManager?.setCurrentScreen(null)
+        }
+    }
     
     // Обработка сообщений об ошибках
     LaunchedEffect(uiState.error) {
@@ -110,8 +165,10 @@ fun NotificationsScreen(
             topBar = {
                 NotificationsTopBar(
                     unreadCount = uiState.unreadCount,
+                    hasReadNotifications = uiState.storedNotifications.any { it.isRead },
                     onBackClick = onBackClick,
                     onMarkAllAsRead = { viewModel.markAllAsRead() },
+                    onClearAllRead = { viewModel.deleteAllReadNotifications() },
                     isDarkTheme = isDarkTheme
                 )
             },
@@ -142,16 +199,48 @@ fun NotificationsScreen(
                             modifier = Modifier.align(Alignment.Center)
                         )
                     }
+                    uiState.notifications.isEmpty() && uiState.storedNotifications.isEmpty() -> {
+                        EmptyNotificationsState()
+                    }
                     else -> {
-                        NotificationsList(
-                            notifications = uiState.notifications,
-                            onNotificationClick = { notification ->
-                                viewModel.onNotificationClick(notification)
-                            },
-                            onMarkAsRead = { notificationId ->
-                                viewModel.markAsRead(notificationId)
+                        // Отображаем сохраненные уведомления из базы данных
+                        LazyColumn(
+                            modifier = Modifier.fillMaxSize(),
+                            contentPadding = PaddingValues(16.dp),
+                            verticalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            items(
+                                items = uiState.storedNotifications,
+                                key = { "${it.id}_${it.isRead}" }
+                            ) { notification ->
+                                StoredNotificationItem(
+                                    notification = notification,
+                                    onClick = {
+                                        // Отмечаем как прочитанное
+                                        if (!notification.isRead) {
+                                            viewModel.markNotificationAsRead(notification.id)
+                                        }
+                                        // Навигация к деталям групповой привычки
+                                        navController.navigate(Screen.GroupHabitDetail.createRoute(notification.habitId))
+                                    },
+                                    onDelete = {
+                                        viewModel.deleteNotification(notification.id)
+                                    }
+                                )
                             }
-                        )
+                            
+                            // Старые уведомления (из GroupHabitNotificationUseCase)
+                            items(
+                                items = uiState.notifications,
+                                key = { it.id }
+                            ) { notification ->
+                                NotificationItem(
+                                    notification = notification,
+                                    onClick = { viewModel.onNotificationClick(notification) },
+                                    onMarkAsRead = { viewModel.markAsRead(notification.id) }
+                                )
+                            }
+                        }
                     }
                 }
             }
@@ -167,10 +256,12 @@ fun NotificationsScreen(
 @Composable
 fun NotificationsTopBar(
     unreadCount: Int,
+    hasReadNotifications: Boolean,
     onBackClick: () -> Unit,
     onMarkAllAsRead: () -> Unit,
+    onClearAllRead: () -> Unit,
+    modifier: Modifier = Modifier,
     isDarkTheme: Boolean = isSystemInDarkTheme(),
-    modifier: Modifier = Modifier
 ) {
     TopAppBar(
         title = {
@@ -193,12 +284,24 @@ fun NotificationsTopBar(
             }
         },
         actions = {
-            if (unreadCount > 0) {
-                IconButton(onClick = onMarkAllAsRead) {
-                    Icon(
-                        imageVector = Icons.Default.DoneAll,
-                        contentDescription = stringResource(R.string.mark_all_as_read)
-                    )
+            when {
+                unreadCount > 0 -> {
+                    // Показываем кнопку "Отметить все как прочитанные"
+                    IconButton(onClick = onMarkAllAsRead) {
+                        Icon(
+                            imageVector = Icons.Default.DoneAll,
+                            contentDescription = stringResource(R.string.mark_all_as_read)
+                        )
+                    }
+                }
+                hasReadNotifications -> {
+                    // Показываем кнопку "Очистить все"
+                    IconButton(onClick = onClearAllRead) {
+                        Text(
+                            text = "🧹",
+                            style = MaterialTheme.typography.titleLarge
+                        )
+                    }
                 }
             }
         },
@@ -243,8 +346,10 @@ fun NotificationsScreenPreview() {
         Column {
             NotificationsTopBar(
                 unreadCount = 3,
+                hasReadNotifications = false,
                 onBackClick = {},
-                onMarkAllAsRead = {}
+                onMarkAllAsRead = {},
+                onClearAllRead = {}
             )
             NotificationsList(
                 notifications = mockNotifications,

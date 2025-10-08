@@ -13,6 +13,7 @@ interface SocialRepository {
     // User search and management
     suspend fun searchUsers(query: String, currentUserId: String): List<User>
     suspend fun getUserById(userId: String): User?
+    suspend fun getUserByIdFromFirestore(userId: String): User?
     suspend fun updateUserFcmToken(userId: String, token: String)
     suspend fun updateFriendsCount(userId: String, count: Int)
     
@@ -66,7 +67,8 @@ interface SocialRepository {
     suspend fun sendFriendRequestNotification(toUserId: String, fromUserName: String)
     suspend fun sendFriendAcceptedNotification(toUserId: String, acceptedByName: String)
     suspend fun sendHabitInvitationNotification(toUserId: String, fromUserName: String, habitTitle: String)
-    suspend fun sendHabitInvitationAcceptedNotification(toUserId: String, acceptedByName: String, habitTitle: String)
+    suspend fun sendHabitInvitationAcceptedNotification(toUserId: String, acceptedByName: String, habitTitle: String, habitId: String)
+    suspend fun sendParticipantJoinedNotification(toUserId: String, joinedUserName: String, habitTitle: String, habitId: String)
     
     // Challenge notifications
     suspend fun sendChallengeInvitationNotification(toUserId: String, fromUserName: String, challengeTitle: String, habitTitle: String)

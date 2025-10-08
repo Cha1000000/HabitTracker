@@ -7,7 +7,6 @@ import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.hasClickAction
 import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.hasText
-import androidx.compose.ui.test.junit4.ComposeContentTestRule
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
@@ -40,54 +39,6 @@ import kotlinx.coroutines.flow.flowOf
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
-
-// Extension functions for test assertions
-fun SemanticsNodeInteraction.assertDoesNotExist() {
-    try {
-        assertIsDisplayed()
-        throw AssertionError("Node was expected not to exist but it exists")
-    } catch (e: AssertionError) {
-        // If assertIsDisplayed throws, the node doesn't exist, which is what we want
-        if (e.message?.contains("Failed to perform") == true ||
-            e.message?.contains("Failed: assertIsDisplayed") == true ||
-            e.message?.contains("Couldn't find a node") == true) {
-            // Node doesn't exist - this is the expected state
-            return
-        }
-        // Re-throw if it's our custom message
-        if (e.message == "Node was expected not to exist but it exists") {
-            throw e
-        }
-    }
-}
-
-fun ComposeContentTestRule.waitUntil(
-    timeoutMillis: Long = 1000L,
-    condition: () -> Boolean
-) {
-    val startTime = System.currentTimeMillis()
-    while (!condition()) {
-        if (System.currentTimeMillis() - startTime > timeoutMillis) {
-            throw AssertionError("Condition was not met within $timeoutMillis ms")
-        }
-        Thread.sleep(100)
-        waitForIdle()
-    }
-}
-
-// Helper function to get all nodes with a specific test tag
-fun ComposeContentTestRule.getAllNodes(testTag: String): List<SemanticsNodeInteraction> {
-    val nodes = mutableListOf<SemanticsNodeInteraction>()
-    try {
-        // Try to get node with tag, if it exists add to list
-        val node = onNodeWithTag(testTag)
-        node.assertIsDisplayed() // This will throw if node doesn't exist
-        nodes.add(node)
-    } catch (e: AssertionError) {
-        // Node doesn't exist, return empty list
-    }
-    return nodes
-}
 
 class HabitsScreenTest {
 
@@ -150,6 +101,7 @@ class HabitsScreenTest {
         deleteHabitUseCase = mockk(relaxed = true)
         ensureMySettingsForHabitUseCase = mockk(relaxed = true)
         scheduleHabitReminderUseCase = mockk(relaxed = true)
+        val joinHabitByCodeUseCase = mockk<com.habittracker.domain.usecase.habit.JoinHabitByCodeUseCase>(relaxed = true)
 
         // --- Real VMs constructed with mocks ---
         habitsViewModel = HabitsViewModel(
@@ -161,6 +113,7 @@ class HabitsScreenTest {
             deleteHabitUseCase,
             ensureMySettingsForHabitUseCase,
             scheduleHabitReminderUseCase,
+            joinHabitByCodeUseCase,
             composeRule.activity.application
         )
 

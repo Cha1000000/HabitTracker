@@ -32,7 +32,9 @@ class DeleteHabitUseCase @Inject constructor(
     private val firestoreRepository: FirestoreRepository,
     private val syncManager: SyncManager,
     private val syncWorkScheduler: SyncWorkScheduler,
-    private val cancelHabitReminderUseCase: CancelHabitReminderUseCase
+    private val cancelHabitReminderUseCase: CancelHabitReminderUseCase,
+    private val updateHabitUseCase: UpdateHabitUseCase,
+    private val sendGroupHabitPushNotificationUseCase: com.habittracker.domain.usecase.notification.SendGroupHabitPushNotificationUseCase
 ) {
     // Decision policy for GROUP habits — pure domain logic without side-effects
     internal sealed class Decision {
@@ -93,8 +95,7 @@ class DeleteHabitUseCase @Inject constructor(
     suspend operator fun invoke(habitId: String, userId: String) {
         val nowMillis = Clock.System.now().toEpochMilliseconds()
 
-        val habit: Habit = habitRepository.getHabitById(habitId)
-            ?: run { return } // Уже удалена локально — ничего не делаем
+        val habit: Habit = habitRepository.getHabitById(habitId) ?: return
 
         // На текущем устройстве больше не должно быть локальных уведомлений по этой привычке
         try { cancelHabitReminderUseCase(habitId) } catch (e: Exception) {
@@ -102,19 +103,12 @@ class DeleteHabitUseCase @Inject constructor(
         }
 
         if (habit.type == HabitType.PERSONAL) {
-            // Локально удаляем и немедленно удаляем из Firestore (hard delete)
-            Log.d("DeleteHabitUseCase", "🗑️ [PERSONAL] Deleting habit locally: $habitId")
             habitRepository.deleteHabit(habitId)
             
-            // Для персональных привычек делаем ПРЯМОЕ немедленное удаление из Firestore
-            // минуя очередь SyncManager, чтобы гарантировать немедленное удаление
-            Log.d("DeleteHabitUseCase", "🔥 [PERSONAL] Deleting DIRECTLY from Firestore: $habitId")
             try {
                 firestoreRepository.deleteHabit(habitId)
-                Log.d("DeleteHabitUseCase", "✅ [PERSONAL] Successfully deleted from Firestore: $habitId")
             } catch (e: Exception) {
-                Log.e("DeleteHabitUseCase", "❌ [PERSONAL] Firestore delete failed: ${e.message}", e)
-                // Fallback: добавляем в очередь на случай, если прямое удаление не сработало
+                Log.w("DeleteHabitUseCase", "Firestore delete failed, using fallback: ${e.message}")
                 try {
                     syncManager.enqueueDelete(
                         entityType = "habit",
@@ -123,29 +117,21 @@ class DeleteHabitUseCase @Inject constructor(
                     )
                     kickSync()
                 } catch (e2: Exception) {
-                    Log.e("DeleteHabitUseCase", "❌ [PERSONAL] Fallback enqueue also failed: ${e2.message}", e2)
+                    Log.e("DeleteHabitUseCase", "Fallback enqueue failed: ${e2.message}")
                 }
             }
-            Log.d("DeleteHabitUseCase", "🏁 [PERSONAL] Delete completed: $habitId")
             return
         }
 
         // GROUP: пользователь покидает привычку согласно политике решений
-        Log.d("DeleteHabitUseCase", "Processing group habit deletion: habitId=$habitId, userId=$userId")
-        Log.d("DeleteHabitUseCase", "Habit participants: ${habit.participants}, createdBy=${habit.createdBy}")
         when (val decision = decideGroupDeletion(habit, userId)) {
             is Decision.DeleteAll -> {
-                // Никого не осталось — локально удаляем и немедленно удаляем из Firestore
-                Log.d("DeleteHabitUseCase", "🗑️ [GROUP-EMPTY] Deleting habit locally: $habitId")
                 habitRepository.deleteHabit(habitId)
                 
-                // ПРЯМОЕ удаление из Firestore для гарантии немедленного удаления
-                Log.d("DeleteHabitUseCase", "🔥 [GROUP-EMPTY] Deleting DIRECTLY from Firestore: $habitId")
                 try {
                     firestoreRepository.deleteHabit(habitId)
-                    Log.d("DeleteHabitUseCase", "✅ [GROUP-EMPTY] Successfully deleted from Firestore: $habitId")
                 } catch (e: Exception) {
-                    Log.e("DeleteHabitUseCase", "❌ [GROUP-EMPTY] Firestore delete failed: ${e.message}", e)
+                    Log.w("DeleteHabitUseCase", "Firestore delete failed: ${e.message}")
                     // Fallback: добавляем в очередь
                     try {
                         syncManager.enqueueDelete(
@@ -155,7 +141,7 @@ class DeleteHabitUseCase @Inject constructor(
                         )
                         kickSync()
                     } catch (e2: Exception) {
-                        Log.e("DeleteHabitUseCase", "❌ [GROUP-EMPTY] Fallback enqueue also failed: ${e2.message}", e2)
+                        Log.e("DeleteHabitUseCase", "Fallback enqueue failed: ${e2.message}")
                     }
                 }
             }
@@ -177,21 +163,39 @@ class DeleteHabitUseCase @Inject constructor(
                 enqueueUpsertAndKickSync(habitId, payload, nowMillis)
             }
             is Decision.UpdateGroup -> {
-                Log.d("DeleteHabitUseCase", "UpdateGroup decision: newCreatedBy=${decision.newCreatedBy}, participants=${decision.participants}")
-                
                 // Проверяем, покидает ли текущий пользователь группу
                 val isUserLeaving = (userId == habit.createdBy && decision.newCreatedBy != userId) || 
                                     (userId != habit.createdBy && habit.participants.contains(userId))
                 
-                Log.d("DeleteHabitUseCase", "User $userId is leaving: $isUserLeaving")
-                
                 if (isUserLeaving) {
-                    // Пользователь покидает группу - удаляем привычку из его локальной БД
-                    Log.d("DeleteHabitUseCase", "Deleting habit locally for user $userId")
-                    habitRepository.deleteHabit(habitId)
+                    // Пользователь покидает группу - обновляем привычку, убирая его из participants
+                    // Это предотвращает race condition с Firestore sync, которая может вернуть привычку обратно
+                    val updatedHabit = habit.copy(
+                        participants = decision.participants,
+                        createdBy = decision.newCreatedBy,
+                        updatedAt = nowMillis
+                    )
+                    // Используем UpdateHabitUseCase для атомарного обновления Firestore + Room
+                    updateHabitUseCase(updatedHabit)
+                    
+                    // Отправляем уведомление оставшимся участникам о выходе пользователя
+                    Log.d("DeleteHabitUseCase", "User $userId is leaving habit ${habit.title}, sending notifications to remaining participants")
+                    try {
+                        val allRemainingParticipants = (listOf(decision.newCreatedBy) + decision.participants).distinct()
+                        Log.d("DeleteHabitUseCase", "Remaining participants: $allRemainingParticipants")
+                        sendGroupHabitPushNotificationUseCase.sendParticipantLeftNotification(
+                            habitId = habitId,
+                            leftUserId = userId,
+                            remainingParticipants = allRemainingParticipants
+                        )
+                        Log.d("DeleteHabitUseCase", "Participant left notification sent successfully")
+                    } catch (e: Exception) {
+                        Log.w("DeleteHabitUseCase", "Failed to send participant left notification: ${e.message}")
+                    }
+                    
+                    return
                 } else {
-                    // Это не должно происходить при удалении пользователем своей привычки
-                    Log.w("DeleteHabitUseCase", "Unexpected: user $userId is not leaving but UpdateGroup was called")
+                    // Обновляем привычку для других участников
                     val updatedHabit = habit.copy(
                         type = HabitType.GROUP,
                         participants = decision.participants,
@@ -202,7 +206,6 @@ class DeleteHabitUseCase @Inject constructor(
                 }
 
                 // В Firestore всегда обновляем список участников (убираем покидающего пользователя)
-                Log.d("DeleteHabitUseCase", "Updating Firestore with new participants: ${decision.participants}")
                 val payload = SyncPayloads.habitPartialUpdateToJson(
                     participants = decision.participants,
                     type = null, // тип остаётся GROUP — не шлём лишнее

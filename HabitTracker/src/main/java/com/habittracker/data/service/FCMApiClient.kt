@@ -18,6 +18,11 @@ import javax.inject.Inject
 import javax.inject.Singleton
 
 /**
+ * Исключение для обозначения невалидного FCM токена
+ */
+class UnregisteredTokenException(message: String) : Exception(message)
+
+/**
  * Клиент для отправки push-уведомлений через FCM HTTP v1 API
  * Использует OAuth 2.0 авторизацию через Service Account
  */
@@ -133,7 +138,15 @@ class FCMApiClient @Inject constructor() {
                 Result.success(Unit)
             } else {
                 Log.w(TAG, "❌ Ошибка FCM HTTP v1: ${response.code} - $responseBody")
-                Result.failure(Exception("FCM HTTP v1 ошибка: ${response.code} - $responseBody"))
+                
+                // Проверяем, является ли ошибка UNREGISTERED
+                if (responseBody.contains("UNREGISTERED")) {
+                    Log.w(TAG, "🔄 Токен UNREGISTERED, требуется обновление токена на устройстве получателя")
+                    // Возвращаем специальную ошибку для обработки
+                    Result.failure(UnregisteredTokenException("FCM token is unregistered: ${response.code} - $responseBody"))
+                } else {
+                    Result.failure(Exception("FCM HTTP v1 ошибка: ${response.code} - $responseBody"))
+                }
             }
         } catch (e: Exception) {
             Log.e(TAG, "❌ Критическая ошибка FCM HTTP v1", e)

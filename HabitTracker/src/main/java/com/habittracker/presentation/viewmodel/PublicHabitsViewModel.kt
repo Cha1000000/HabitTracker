@@ -7,8 +7,10 @@ import com.habittracker.R
 import com.habittracker.domain.model.Habit
 import com.habittracker.domain.repository.AuthRepository
 import com.habittracker.domain.repository.HabitRepository
+import com.habittracker.domain.repository.SocialRepository
 import com.habittracker.domain.usecase.UpdateHabitUseCase
 import com.habittracker.domain.usecase.habit.JoinHabitByCodeUseCase
+import com.habittracker.domain.usecase.notification.SaveParticipantJoinedNotificationUseCase
 import com.habittracker.presentation.state.PublicHabitsUiState
 import com.habittracker.presentation.ui.discover.HabitCategory
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -28,8 +30,10 @@ class PublicHabitsViewModel @Inject constructor(
     application: Application,
     private val habitRepository: HabitRepository,
     private val authRepository: AuthRepository,
+    private val socialRepository: SocialRepository,
     private val updateHabitUseCase: UpdateHabitUseCase,
-    private val joinHabitByCodeUseCase: JoinHabitByCodeUseCase
+    private val joinHabitByCodeUseCase: JoinHabitByCodeUseCase,
+    private val saveParticipantJoinedNotificationUseCase: SaveParticipantJoinedNotificationUseCase
 ) : AndroidViewModel(application) {
     
     private val _uiState = MutableStateFlow(PublicHabitsUiState())
@@ -177,6 +181,23 @@ class PublicHabitsViewModel @Inject constructor(
                     )
                     // Используем UpdateHabitUseCase для синхронизации с Firestore
                     updateHabitUseCase(updatedHabit)
+                    
+                    // Отправляем уведомления всем участникам
+                    try {
+                        val user = socialRepository.getUserById(userId)
+                        if (user != null) {
+                            saveParticipantJoinedNotificationUseCase(
+                                habitId = habit.id,
+                                habitTitle = habit.title,
+                                joinedUserId = userId,
+                                joinedUserName = user.name,
+                                participantIds = updatedHabit.participants
+                            )
+                        }
+                    } catch (e: Exception) {
+                        // Логируем ошибку, но не прерываем процесс присоединения
+                        android.util.Log.e("PublicHabitsViewModel", "Failed to send join notifications", e)
+                    }
                     
                     _uiState.update {
                         it.copy(

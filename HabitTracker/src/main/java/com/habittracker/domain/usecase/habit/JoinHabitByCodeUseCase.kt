@@ -10,6 +10,7 @@ import com.habittracker.domain.repository.HabitRepository
 import com.habittracker.domain.repository.ParticipantSettingsRepository
 import com.habittracker.domain.repository.SocialRepository
 import com.habittracker.domain.usecase.ScheduleHabitReminderUseCase
+import com.habittracker.domain.usecase.notification.SaveParticipantJoinedNotificationUseCase
 import javax.inject.Inject
 
 /**
@@ -21,7 +22,8 @@ class JoinHabitByCodeUseCase @Inject constructor(
     private val socialRepository: SocialRepository,
     private val generateInviteCodeUseCase: GenerateHabitInviteCodeUseCase,
     private val scheduleHabitReminderUseCase: ScheduleHabitReminderUseCase,
-    private val participantSettingsRepository: ParticipantSettingsRepository
+    private val participantSettingsRepository: ParticipantSettingsRepository,
+    private val saveParticipantJoinedNotificationUseCase: SaveParticipantJoinedNotificationUseCase
 ) {
     
     /**
@@ -97,15 +99,17 @@ class JoinHabitByCodeUseCase @Inject constructor(
                 Log.w("JoinHabitByCodeUC", "[reminder] failed to schedule: ${e.message}", e)
             }
 
-            // Отправляем уведомление создателю привычки
+            // Сохраняем уведомления для всех участников
             try {
-                socialRepository.sendHabitInvitationAcceptedNotification(
-                    toUserId = habit.createdBy,
-                    acceptedByName = user.name,
-                    habitTitle = habit.title
+                saveParticipantJoinedNotificationUseCase(
+                    habitId = habit.id,
+                    habitTitle = habit.title,
+                    joinedUserId = userId,
+                    joinedUserName = user.name,
+                    participantIds = habit.participants
                 )
             } catch (e: Exception) {
-                Log.e("JoinHabitByCodeUC", "Failed to send notification to creator: ${e.message}", e)
+                Log.e("JoinHabitByCodeUC", "Failed to save join notifications: ${e.message}", e)
             }
 
             // Возвращаем обновленную привычку из базы данных

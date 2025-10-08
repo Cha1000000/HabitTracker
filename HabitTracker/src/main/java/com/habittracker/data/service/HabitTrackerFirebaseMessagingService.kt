@@ -39,6 +39,9 @@ class HabitTrackerFirebaseMessagingService : FirebaseMessagingService() {
     
     @Inject
     lateinit var authRepository: AuthRepository
+    
+    @Inject
+    lateinit var appStateManager: AppStateManager
 
     private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private val gson by lazy { Gson() }
@@ -137,14 +140,37 @@ class HabitTrackerFirebaseMessagingService : FirebaseMessagingService() {
             }
         }
         
-        // Показываем уведомление пользователю
-        val titleToShow = data["title"] ?: notification?.title ?: "HabitTracker"
-        val bodyToShow = data["body"] ?: notification?.body ?: "У вас новое уведомление"
-        showNotification(
-            title = titleToShow,
-            body = bodyToShow,
-            data = data
-        )
+        // Показываем уведомление пользователю (только если не на главном экране, или не на экране уведомлений)
+        val shouldShowNotification = !(appStateManager.isHabitsScreenActive() || appStateManager.isNotificationsScreenActive())
+        
+        if (shouldShowNotification) {
+            val titleToShow = data["title"] ?: notification?.title ?: "HabitTracker"
+            val bodyToShow = data["body"] ?: notification?.body ?: "У вас новое уведомление"
+            showNotification(
+                title = titleToShow,
+                body = bodyToShow,
+                data = data
+            )
+            Log.d(TAG, "Notification shown: app not on HabitsScreen")
+        } else {
+            Log.d(TAG, "Notification suppressed: HabitsScreen is active")
+        }
+        
+        // Сохраняем уведомление в базу данных для отображения на экране уведомлений
+        // Сохраняем уведомления в базу данных для определенных типов
+        if (recipientUserId != null && notificationType in listOf(
+                "group_habit_completed",
+                "habit_invitation_accepted",
+                "new_participant"
+            )) {
+            serviceScope.launch {
+                try {
+                    saveGroupHabitNotification(data, notificationType)
+                } catch (e: Exception) {
+                    Log.e(TAG, "Ошибка сохранения уведомления в базу", e)
+                }
+            }
+        }
 
         // После успешного показа попробуем доставить очередь для текущего пользователя
         serviceScope.launch {
@@ -339,5 +365,31 @@ class HabitTrackerFirebaseMessagingService : FirebaseMessagingService() {
         val dbgHabitId = intent.getStringExtra("habit_id")
         Log.d(TAG, "[push-nav] Built intent navigate_to=${dbgNavigateTo} habit_id=${dbgHabitId}")
         return intent
+    }
+    
+    /**
+     * Сохраняет уведомление в базу данных
+     */
+    private fun saveGroupHabitNotification(data: Map<String, String>, notificationType: String) {
+        val habitId = data["habit_id"] ?: data["habitId"] ?: return
+        
+        // Определяем тип и данные уведомления
+        val (type) = when (notificationType) {
+            "group_habit_completed" -> {
+                val name = data["participant_name"] ?: "Участник"
+                Triple("PARTICIPANT_COMPLETED", name, data["body"] ?: "$name выполнил привычку!")
+            }
+            "habit_invitation_accepted" -> {
+                val name = data["acceptedByName"] ?: "Пользователь"
+                Triple("INVITATION_ACCEPTED", name, data["body"] ?: "$name принял ваше приглашение")
+            }
+            "new_participant" -> {
+                val name = data["participant_name"] ?: "Пользователь"
+                Triple("FRIEND_JOINED", name, data["body"] ?: "$name присоединился к привычке")
+            }
+            else -> return
+        }
+
+        Log.d(TAG, "Push-уведомление получено: type=$type, habitId=$habitId (синхронизация через Firestore)")
     }
 }

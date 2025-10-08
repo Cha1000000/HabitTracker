@@ -6,13 +6,19 @@ import com.google.gson.reflect.TypeToken
 import com.habittracker.domain.model.ChallengeRules
 import com.habittracker.domain.model.HabitFrequency
 import com.habittracker.domain.model.HabitType
+import kotlinx.datetime.Instant
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.LocalTime
 
 class Converters {
     private val gson = Gson()
 
-    // Удалены TypeConverter методы для Instant, так как HabitEntity теперь использует Long напрямую
+    // Instant converters для NotificationReadStatusEntity
+    @TypeConverter
+    fun fromInstant(instant: Instant?): Long? = instant?.toEpochMilliseconds()
+
+    @TypeConverter
+    fun toInstant(milliseconds: Long?): Instant? = milliseconds?.let { Instant.fromEpochMilliseconds(it) }
 
     @TypeConverter
     fun fromLocalDateString(value: String?): LocalDate? = value?.let { LocalDate.parse(it) }

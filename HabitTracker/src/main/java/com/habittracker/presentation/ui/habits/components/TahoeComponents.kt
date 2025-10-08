@@ -319,34 +319,40 @@ fun GlassmorphicCard(
     glassAlpha: Float = if (isDarkTheme) 0.15f else 0.85f,
     borderAlpha: Float = if (isDarkTheme) 0.3f else 0.15f,
     elevation: Dp = 0.dp,
+    dimmed: Boolean = false,
     content: @Composable BoxScope.() -> Unit
 ) {
+    // Уменьшаем прозрачность и elevation для "приглушенного" состояния
+    val effectiveGlassAlpha = if (dimmed) glassAlpha * 0.5f else glassAlpha
+    val effectiveBorderAlpha = if (dimmed) borderAlpha * 0.5f else borderAlpha
+    val effectiveElevation = if (dimmed) elevation * 0.5f else elevation
+    
     val backgroundColor = if (isDarkTheme) {
-        GlassWhite10.copy(alpha = glassAlpha)
+        GlassWhite10.copy(alpha = effectiveGlassAlpha)
     } else {
-        Color.White.copy(alpha = glassAlpha)
+        Color.White.copy(alpha = effectiveGlassAlpha)
     }
     
     val borderColor = if (isDarkTheme) {
-        GlassWhite30.copy(alpha = borderAlpha)
+        GlassWhite30.copy(alpha = effectiveBorderAlpha)
     } else {
-        GlassBlack10.copy(alpha = borderAlpha)
+        GlassBlack10.copy(alpha = effectiveBorderAlpha)
     }
 
     Box(
         modifier = modifier
             .clip(RoundedCornerShape(cornerRadius))
             .then(
-                if (isDarkTheme && elevation > 0.dp) {
+                if (isDarkTheme && effectiveElevation > 0.dp) {
                     Modifier.shadow(
-                        elevation = elevation * 0.3f,
+                        elevation = effectiveElevation * 0.3f,
                         shape = RoundedCornerShape(cornerRadius),
                         ambientColor = Color.White.copy(alpha = 0.05f),
                         spotColor = Color.White.copy(alpha = 0.05f)
                     )
-                } else if (!isDarkTheme && elevation > 0.dp) {
+                } else if (!isDarkTheme && effectiveElevation > 0.dp) {
                     Modifier.shadow(
-                        elevation = elevation,
+                        elevation = effectiveElevation,
                         shape = RoundedCornerShape(cornerRadius),
                         ambientColor = TahoeLightAccent.copy(alpha = 0.1f),
                         spotColor = TahoeLightPurpleAccent.copy(alpha = 0.1f)

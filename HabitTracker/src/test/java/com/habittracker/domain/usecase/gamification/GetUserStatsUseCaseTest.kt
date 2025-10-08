@@ -148,6 +148,7 @@ class GetUserStatsUseCaseTest {
             socialRepository = object : SocialRepository {
                 override suspend fun searchUsers(query: String, currentUserId: String): List<User> = emptyList()
                 override suspend fun getUserById(userId: String): User? = null
+                override suspend fun getUserByIdFromFirestore(userId: String): User? = getUserById(userId)
                 override suspend fun updateUserFcmToken(userId: String, token: String) {}
                 override suspend fun updateFriendsCount(userId: String, count: Int) {}
 
@@ -273,7 +274,8 @@ class GetUserStatsUseCaseTest {
                 override suspend fun sendFriendRequestNotification(toUserId: String, fromUserName: String) {}
                 override suspend fun sendFriendAcceptedNotification(toUserId: String, acceptedByName: String) {}
                 override suspend fun sendHabitInvitationNotification(toUserId: String, fromUserName: String, habitTitle: String) {}
-                override suspend fun sendHabitInvitationAcceptedNotification(toUserId: String, acceptedByName: String, habitTitle: String) {}
+                override suspend fun sendHabitInvitationAcceptedNotification(toUserId: String, acceptedByName: String, habitTitle: String, habitId: String) {}
+                override suspend fun sendParticipantJoinedNotification(toUserId: String, joinedUserName: String, habitTitle: String, habitId: String) {}
                 override suspend fun sendChallengeInvitationNotification(toUserId: String, fromUserName: String, challengeTitle: String, habitTitle: String) {}
                 override suspend fun sendChallengeJoinedNotification(toUserId: String, joinedUserName: String, challengeTitle: String) {}
                 override suspend fun sendChallengeLeftNotification(toUserId: String, leftUserName: String, challengeTitle: String) {}
