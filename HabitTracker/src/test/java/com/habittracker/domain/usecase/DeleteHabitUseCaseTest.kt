@@ -7,6 +7,7 @@ import com.habittracker.domain.model.Habit
 import com.habittracker.domain.model.HabitFrequency
 import com.habittracker.domain.model.HabitType
 import com.habittracker.domain.repository.HabitRepository
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
@@ -22,6 +23,7 @@ import org.mockito.kotlin.verify
 import org.mockito.kotlin.verifyNoMoreInteractions
 import org.mockito.kotlin.whenever
 
+@OptIn(ExperimentalCoroutinesApi::class)
 class DeleteHabitUseCaseTest {
 
     private lateinit var useCase: DeleteHabitUseCase
@@ -41,6 +43,7 @@ class DeleteHabitUseCaseTest {
         useCase = DeleteHabitUseCase(repo, firestoreRepo, syncManager, scheduler, cancelHabitReminderUseCase)
     }
 
+    @Suppress("SameParameterValue")
     private fun baseGroupHabit(
         createdBy: String,
         participants: List<String>
@@ -61,6 +64,7 @@ class DeleteHabitUseCaseTest {
         updatedAt = 0L
     )
 
+    @Suppress("SameParameterValue")
     private fun personalHabit(id: String = "p1", createdBy: String = "u1"): Habit = Habit(
         id = id,
         title = "Personal",

@@ -247,7 +247,8 @@ class FakeSocialRepository : SocialRepository {
     override suspend fun sendFriendRequestNotification(toUserId: String, fromUserName: String) {}
     override suspend fun sendFriendAcceptedNotification(toUserId: String, acceptedByName: String) {}
     override suspend fun sendHabitInvitationNotification(toUserId: String, fromUserName: String, habitTitle: String) {}
-    override suspend fun sendHabitInvitationAcceptedNotification(toUserId: String, acceptedByName: String, habitTitle: String) {}
+    override suspend fun sendHabitInvitationAcceptedNotification(toUserId: String, acceptedByName: String, habitTitle: String, habitId: String) {}
+    override suspend fun sendParticipantJoinedNotification(toUserId: String, joinedUserName: String, habitTitle: String, habitId: String) {}
     override suspend fun sendPushNotification(fcmToken: String, title: String, body: String, data: Map<String, String>) {}
     override suspend fun sendChallengeInvitationNotification(toUserId: String, fromUserName: String, challengeTitle: String, habitTitle: String) {}
     override suspend fun sendChallengeJoinedNotification(toUserId: String, joinedUserName: String, challengeTitle: String) {}
