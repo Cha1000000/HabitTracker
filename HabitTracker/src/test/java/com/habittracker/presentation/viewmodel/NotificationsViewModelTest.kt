@@ -3,25 +3,20 @@ package com.habittracker.presentation.viewmodel
 import com.habittracker.MainDispatcherRule
 import com.habittracker.domain.model.HabitInvitation
 import com.habittracker.domain.model.HabitInvitationStatus
+import com.habittracker.domain.repository.AuthRepository
 import com.habittracker.domain.usecase.habit.AcceptHabitInvitationUseCase
 import com.habittracker.domain.usecase.habit.DeclineHabitInvitationUseCase
 import com.habittracker.domain.usecase.habit.GetHabitInvitationsUseCase
-import com.habittracker.domain.usecase.notification.GroupHabitNotification
 import com.habittracker.domain.usecase.notification.GroupHabitNotificationUseCase
-import com.habittracker.domain.usecase.notification.NotificationType
-import com.habittracker.domain.repository.AuthRepository
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
-import kotlinx.datetime.Clock
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
 import org.junit.Rule
 import org.junit.Test
-import org.mockito.Mockito
-import org.mockito.kotlin.any
 import org.mockito.kotlin.mock
 import org.mockito.kotlin.whenever
 
@@ -37,56 +32,61 @@ class NotificationsViewModelTest {
     private val acceptHabitInvitationUseCase: AcceptHabitInvitationUseCase = mock()
     private val declineHabitInvitationUseCase: DeclineHabitInvitationUseCase = mock()
 
-    private fun createViewModel(): NotificationsViewModel {
-        val mockGroupHabitNotificationRepository = mock<com.habittracker.domain.repository.GroupHabitNotificationRepository>()
-        return NotificationsViewModel(
-            groupHabitNotificationUseCase,
-            authRepository,
-            getHabitInvitationsUseCase,
-            acceptHabitInvitationUseCase,
-            declineHabitInvitationUseCase,
-            mockGroupHabitNotificationRepository
-        )
-    }
-
     @Test
     fun `loads notifications and computes unread count`() = runTest {
         // Arrange
         whenever(authRepository.getCurrentUserId()).thenReturn("user1")
-        val notifications = listOf(
-            GroupHabitNotification(
+        val storedNotifications = listOf(
+            com.habittracker.domain.model.GroupHabitNotificationModel(
                 id = "n1",
-                type = NotificationType.PARTICIPANT_COMPLETED,
+                userId = "user1",
                 habitId = "h1",
-                habitTitle = "Run",
+                type = "PARTICIPANT_COMPLETED",
+                participantId = "p1",
                 participantName = "Alex",
+                habitTitle = "Run",
                 message = "Alex completed",
-                timestamp = Clock.System.now(),
-                isRead = false
+                isRead = false,
+                readAt = null,
+                createdAt = System.currentTimeMillis()
             ),
-            GroupHabitNotification(
+            com.habittracker.domain.model.GroupHabitNotificationModel(
                 id = "n2",
-                type = NotificationType.GROUP_ACHIEVEMENT,
+                userId = "user1",
                 habitId = "h2",
+                type = "GROUP_ACHIEVEMENT",
+                participantId = "",
+                participantName = "",
                 habitTitle = "Pushups",
-                participantName = null,
                 message = "All done",
-                timestamp = Clock.System.now(),
-                isRead = true
+                isRead = true,
+                readAt = System.currentTimeMillis(),
+                createdAt = System.currentTimeMillis()
             )
         )
-        whenever(groupHabitNotificationUseCase.getGroupHabitNotifications("user1")).thenReturn(flowOf(notifications))
+        
+        // Mock groupHabitNotificationRepository instead of old usecase
+        val mockRepo = mock<com.habittracker.domain.repository.GroupHabitNotificationRepository>()
+        whenever(mockRepo.getNotificationsForUser("user1")).thenReturn(flowOf(storedNotifications))
+        
         // Invitations streams
         whenever(getHabitInvitationsUseCase.getPendingInvitationsCount("user1")).thenReturn(flowOf(0))
         whenever(getHabitInvitationsUseCase.getIncomingInvitations("user1")).thenReturn(flowOf(emptyList()))
 
         // Act
-        val vm = createViewModel()
+        val vm = NotificationsViewModel(
+            groupHabitNotificationUseCase,
+            authRepository,
+            getHabitInvitationsUseCase,
+            acceptHabitInvitationUseCase,
+            declineHabitInvitationUseCase,
+            mockRepo
+        )
         advanceUntilIdle()
 
         // Assert
         val state = vm.uiState.value
-        assertEquals(2, state.notifications.size)
+        assertEquals(2, state.storedNotifications.size)
         assertEquals(1, state.unreadCount)
     }
 
@@ -94,7 +94,8 @@ class NotificationsViewModelTest {
     fun `loads invitations list`() = runTest {
         // Arrange
         whenever(authRepository.getCurrentUserId()).thenReturn("user1")
-        whenever(groupHabitNotificationUseCase.getGroupHabitNotifications("user1")).thenReturn(flowOf(emptyList()))
+        val mockRepo = mock<com.habittracker.domain.repository.GroupHabitNotificationRepository>()
+        whenever(mockRepo.getNotificationsForUser("user1")).thenReturn(flowOf(emptyList()))
         whenever(getHabitInvitationsUseCase.getPendingInvitationsCount("user1")).thenReturn(flowOf(2))
         val inv1 = HabitInvitation(
             id = "i1", habitId = "h1", habitTitle = "Run", fromUserId = "u2", fromUserName = "Bob",
@@ -104,7 +105,14 @@ class NotificationsViewModelTest {
         whenever(getHabitInvitationsUseCase.getIncomingInvitations("user1")).thenReturn(flowOf(listOf(inv1)))
 
         // Act
-        val vm = createViewModel()
+        val vm = NotificationsViewModel(
+            groupHabitNotificationUseCase,
+            authRepository,
+            getHabitInvitationsUseCase,
+            acceptHabitInvitationUseCase,
+            declineHabitInvitationUseCase,
+            mockRepo
+        )
         advanceUntilIdle()
 
         // Assert
@@ -116,13 +124,21 @@ class NotificationsViewModelTest {
     fun `accept invitation success updates successResId and clears processing`() = runTest {
         // Arrange
         whenever(authRepository.getCurrentUserId()).thenReturn("user1")
-        whenever(groupHabitNotificationUseCase.getGroupHabitNotifications("user1")).thenReturn(flowOf(emptyList()))
+        val mockRepo = mock<com.habittracker.domain.repository.GroupHabitNotificationRepository>()
+        whenever(mockRepo.getNotificationsForUser("user1")).thenReturn(flowOf(emptyList()))
         whenever(getHabitInvitationsUseCase.getPendingInvitationsCount("user1")).thenReturn(flowOf(0))
         whenever(getHabitInvitationsUseCase.getIncomingInvitations("user1")).thenReturn(flowOf(emptyList()))
         whenever(acceptHabitInvitationUseCase.invoke("i1", "user1")).thenReturn(Result.success(mock()))
 
         // Act
-        val vm = createViewModel()
+        val vm = NotificationsViewModel(
+            groupHabitNotificationUseCase,
+            authRepository,
+            getHabitInvitationsUseCase,
+            acceptHabitInvitationUseCase,
+            declineHabitInvitationUseCase,
+            mockRepo
+        )
         advanceUntilIdle()
         vm.acceptInvitation("i1")
         advanceUntilIdle()
@@ -137,13 +153,21 @@ class NotificationsViewModelTest {
     fun `decline invitation success updates successResId and clears processing`() = runTest {
         // Arrange
         whenever(authRepository.getCurrentUserId()).thenReturn("user1")
-        whenever(groupHabitNotificationUseCase.getGroupHabitNotifications("user1")).thenReturn(flowOf(emptyList()))
+        val mockRepo = mock<com.habittracker.domain.repository.GroupHabitNotificationRepository>()
+        whenever(mockRepo.getNotificationsForUser("user1")).thenReturn(flowOf(emptyList()))
         whenever(getHabitInvitationsUseCase.getPendingInvitationsCount("user1")).thenReturn(flowOf(0))
         whenever(getHabitInvitationsUseCase.getIncomingInvitations("user1")).thenReturn(flowOf(emptyList()))
         whenever(declineHabitInvitationUseCase.invoke("i1", "user1")).thenReturn(Result.success(mock()))
 
         // Act
-        val vm = createViewModel()
+        val vm = NotificationsViewModel(
+            groupHabitNotificationUseCase,
+            authRepository,
+            getHabitInvitationsUseCase,
+            acceptHabitInvitationUseCase,
+            declineHabitInvitationUseCase,
+            mockRepo
+        )
         advanceUntilIdle()
         vm.declineInvitation("i1")
         advanceUntilIdle()
@@ -159,26 +183,38 @@ class NotificationsViewModelTest {
         // Arrange
         whenever(authRepository.getCurrentUserId()).thenReturn("user1")
         // Start with one unread notification emitted
-        val flow = MutableSharedFlow<List<GroupHabitNotification>>(replay = 1)
+        val flow = MutableSharedFlow<List<com.habittracker.domain.model.GroupHabitNotificationModel>>(replay = 1)
         flow.tryEmit(listOf(
-            GroupHabitNotification(
+            com.habittracker.domain.model.GroupHabitNotificationModel(
                 id = "n1",
-                type = NotificationType.PARTICIPANT_COMPLETED,
+                userId = "user1",
                 habitId = "h1",
-                habitTitle = "Run",
+                type = "PARTICIPANT_COMPLETED",
+                participantId = "p1",
                 participantName = "Alex",
+                habitTitle = "Run",
                 message = "Alex completed",
-                timestamp = Clock.System.now(),
-                isRead = false
+                isRead = false,
+                readAt = null,
+                createdAt = System.currentTimeMillis()
             )
         ))
-        whenever(groupHabitNotificationUseCase.getGroupHabitNotifications("user1")).thenReturn(flow)
+        
+        val mockRepo = mock<com.habittracker.domain.repository.GroupHabitNotificationRepository>()
+        whenever(mockRepo.getNotificationsForUser("user1")).thenReturn(flow)
         whenever(groupHabitNotificationUseCase.markAllNotificationsAsRead("user1")).thenReturn(Result.success(Unit))
         whenever(getHabitInvitationsUseCase.getPendingInvitationsCount("user1")).thenReturn(flowOf(0))
         whenever(getHabitInvitationsUseCase.getIncomingInvitations("user1")).thenReturn(flowOf(emptyList()))
 
         // Act
-        val vm = createViewModel()
+        val vm = NotificationsViewModel(
+            groupHabitNotificationUseCase,
+            authRepository,
+            getHabitInvitationsUseCase,
+            acceptHabitInvitationUseCase,
+            declineHabitInvitationUseCase,
+            mockRepo
+        )
         advanceUntilIdle()
         vm.markAllAsRead()
         advanceUntilIdle()

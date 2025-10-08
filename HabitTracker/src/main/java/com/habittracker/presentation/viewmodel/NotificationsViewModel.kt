@@ -46,9 +46,6 @@ class NotificationsViewModel @Inject constructor(
     
     // Количество ожидающих приглашений (Room+Firestore синхронизация обеспечена на уровне репозитория)
     private val pendingInvitationsCount = MutableStateFlow(0)
-    
-    // Количество непрочитанных сохраненных уведомлений (для внутреннего использования)
-    private val storedUnreadCount = MutableStateFlow(0)
 
     // Итоговый бейдж: unreadCount уже включает все уведомления (старые + сохраненные)
     val badgeCount: StateFlow<Int> = combine(
@@ -67,44 +64,6 @@ class NotificationsViewModel @Inject constructor(
         observeInvitationsCount()
         loadInvitations()
         cleanupOldNotifications() // Автоматически очищаем старые прочитанные уведомления
-    }
-    
-    /**
-     * Загружает уведомления пользователя
-     */
-    private fun loadNotifications() {
-        Log.d(TAG, "loadNotifications called")
-        viewModelScope.launch {
-            try {
-                _uiState.update { it.copy(isLoading = true, error = null) }
-                
-                val currentUserId = authRepository.getCurrentUserId()
-                    ?: throw Exception("Пользователь не авторизован")
-                
-                Log.d(TAG, "Loading notifications for user: $currentUserId")
-                
-                groupHabitNotificationUseCase.getGroupHabitNotifications(currentUserId)
-                    .collect { notifications ->
-                        Log.d(TAG, "Received ${notifications.size} notifications")
-                        _uiState.update { state ->
-                            // Считаем общее количество непрочитанных (старые + сохраненные)
-                            val oldNotificationsUnread = notifications.count { !it.isRead }
-                            val storedNotificationsUnread = state.storedNotifications.count { !it.isRead }
-                            val totalUnread = oldNotificationsUnread + storedNotificationsUnread
-                            
-                            state.copy(
-                                notifications = notifications,
-                                unreadCount = totalUnread,
-                                isLoading = false,
-                                error = null
-                            )
-                        }
-                    }
-            } catch (e: Exception) {
-                Log.e(TAG, "Error loading notifications", e)
-                _uiState.update { it.copy(isLoading = false, errorResId = R.string.error_loading_notifications) }
-            }
-        }
     }
 
     /**
@@ -193,10 +152,6 @@ class NotificationsViewModel @Inject constructor(
                 if (!notification.isRead) {
                     markAsRead(notification.id)
                 }
-                
-                // TODO: Добавить навигацию к соответствующей привычке
-                // Например, открыть экран детали привычки или экран прогресса группы
-                
             } catch (_: Exception) {
                 _uiState.update { it.copy(errorResId = R.string.error_processing_notification) }
             }
@@ -228,7 +183,7 @@ class NotificationsViewModel @Inject constructor(
                 }.onFailure { error ->
                     _uiState.update { it.copy(errorResId = R.string.error_mark_notification) }
                 }
-            } catch (e: Exception) {
+            } catch (_: Exception) {
                 _uiState.update { it.copy(errorResId = R.string.error_mark_notification) }
             }
         }
@@ -240,9 +195,6 @@ class NotificationsViewModel @Inject constructor(
     fun deleteAllReadNotifications() {
         viewModelScope.launch {
             try {
-                val currentUserId = authRepository.getCurrentUserId()
-                    ?: throw Exception("Пользователь не авторизован")
-                
                 // Удаляем все прочитанные уведомления из базы
                 val readNotifications = _uiState.value.storedNotifications.filter { it.isRead }
                 readNotifications.forEach { notification ->
@@ -330,7 +282,7 @@ class NotificationsViewModel @Inject constructor(
                 }.onFailure { e ->
                     _uiState.update { it.copy(invitesErrorResId = R.string.error_accept_invitation) }
                 }
-            } catch (e: Exception) {
+            } catch (_: Exception) {
                 _uiState.update { it.copy(invitesErrorResId = R.string.error_accept_invitation) }
             } finally {
                 _uiState.update { it.copy(processingInvitationIds = it.processingInvitationIds - invitationId) }
@@ -350,7 +302,7 @@ class NotificationsViewModel @Inject constructor(
                 }.onFailure { e ->
                     _uiState.update { it.copy(invitesErrorResId = R.string.error_decline_invitation) }
                 }
-            } catch (e: Exception) {
+            } catch (_: Exception) {
                 _uiState.update { it.copy(invitesErrorResId = R.string.error_decline_invitation) }
             } finally {
                 _uiState.update { it.copy(processingInvitationIds = it.processingInvitationIds - invitationId) }
