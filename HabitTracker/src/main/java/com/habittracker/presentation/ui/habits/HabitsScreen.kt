@@ -73,6 +73,7 @@ import com.habittracker.domain.model.HabitType
 import com.habittracker.domain.model.isGroupHabit
 import com.habittracker.presentation.navigation.Screen
 import com.habittracker.presentation.ui.components.GradientPullRefreshIndicator
+import com.habittracker.presentation.ui.habits.components.ConfirmDialog
 import com.habittracker.presentation.ui.habits.components.EnhancedHabitItem
 import com.habittracker.presentation.ui.habits.components.ExpandableFAB
 import com.habittracker.presentation.ui.habits.components.JoinByCodeDialog
@@ -352,7 +353,7 @@ fun HabitsScreen(
                                     }
 
                                     if (showDeleteDialog) {
-                                        com.habittracker.presentation.ui.habits.components.ConfirmDialog(
+                                        ConfirmDialog(
                                             title = stringResource(id = R.string.confirm_delete_habit_title),
                                             message = stringResource(id = R.string.confirm_delete_habit_message, habitWithCompletion.habit.title),
                                             confirmLabel = stringResource(id = R.string.delete),
