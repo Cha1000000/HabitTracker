@@ -48,10 +48,6 @@ class HabitTrackerFirebaseMessagingService : FirebaseMessagingService() {
     private val pendingDao: PendingNotificationDao by lazy {
         HabitTrackerDatabase.getDatabase(applicationContext).pendingNotificationDao()
     }
-    
-    private val groupHabitNotificationDao by lazy {
-        HabitTrackerDatabase.getDatabase(applicationContext).groupHabitNotificationDao()
-    }
 
     companion object {
         private const val TAG = "FCMService"
@@ -169,7 +165,7 @@ class HabitTrackerFirebaseMessagingService : FirebaseMessagingService() {
             )) {
             serviceScope.launch {
                 try {
-                    saveGroupHabitNotification(data, recipientUserId, notificationType)
+                    saveGroupHabitNotification(data, notificationType)
                 } catch (e: Exception) {
                     Log.e(TAG, "Ошибка сохранения уведомления в базу", e)
                 }
@@ -374,12 +370,11 @@ class HabitTrackerFirebaseMessagingService : FirebaseMessagingService() {
     /**
      * Сохраняет уведомление в базу данных
      */
-    private suspend fun saveGroupHabitNotification(data: Map<String, String>, userId: String, notificationType: String) {
+    private fun saveGroupHabitNotification(data: Map<String, String>, notificationType: String) {
         val habitId = data["habit_id"] ?: data["habitId"] ?: return
-        val habitTitle = data["habit_title"] ?: data["habitTitle"] ?: "Привычка"
         
         // Определяем тип и данные уведомления
-        val (type, participantName, message) = when (notificationType) {
+        val (type) = when (notificationType) {
             "group_habit_completed" -> {
                 val name = data["participant_name"] ?: "Участник"
                 Triple("PARTICIPANT_COMPLETED", name, data["body"] ?: "$name выполнил привычку!")
@@ -394,22 +389,7 @@ class HabitTrackerFirebaseMessagingService : FirebaseMessagingService() {
             }
             else -> return
         }
-        
-        val notification = com.habittracker.data.local.entity.GroupHabitNotificationEntity(
-            id = "${habitId}_${userId}_${System.currentTimeMillis()}",
-            userId = userId,
-            habitId = habitId,
-            type = type,
-            participantId = data["participantId"] ?: data["acceptedBy"] ?: "",
-            participantName = participantName,
-            habitTitle = habitTitle,
-            message = message,
-            isRead = false,
-            readAt = null,
-            createdAt = System.currentTimeMillis()
-        )
-        
-        groupHabitNotificationDao.insertNotification(notification)
-        Log.d(TAG, "Уведомление сохранено в базу: type=$type, id=${notification.id}")
+
+        Log.d(TAG, "Push-уведомление получено: type=$type, habitId=$habitId (синхронизация через Firestore)")
     }
 }

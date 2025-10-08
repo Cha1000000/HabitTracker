@@ -33,6 +33,7 @@ class DeleteHabitUseCaseTest {
     private lateinit var scheduler: SyncWorkScheduler
     private lateinit var cancelHabitReminderUseCase: CancelHabitReminderUseCase
     private lateinit var updateHabitUseCase: UpdateHabitUseCase
+    private lateinit var sendGroupHabitPushNotificationUseCase: com.habittracker.domain.usecase.notification.SendGroupHabitPushNotificationUseCase
 
     @Before
     fun setUp() {
@@ -42,6 +43,7 @@ class DeleteHabitUseCaseTest {
         scheduler = mock()
         cancelHabitReminderUseCase = mock()
         updateHabitUseCase = mock()
+        sendGroupHabitPushNotificationUseCase = mock()
         useCase = DeleteHabitUseCase(
             repo,
             firestoreRepo,
@@ -49,6 +51,7 @@ class DeleteHabitUseCaseTest {
             scheduler,
             cancelHabitReminderUseCase,
             updateHabitUseCase,
+            sendGroupHabitPushNotificationUseCase
         )
     }
 

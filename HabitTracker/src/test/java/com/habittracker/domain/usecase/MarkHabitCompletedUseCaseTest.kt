@@ -14,6 +14,7 @@ import com.habittracker.domain.model.HabitType
 import com.habittracker.domain.model.User
 import com.habittracker.domain.model.gamification.GamificationEvent
 import com.habittracker.domain.repository.FirestoreRepository
+import com.habittracker.domain.repository.GroupHabitNotificationRepository
 import com.habittracker.domain.repository.HabitEntryRepository
 import com.habittracker.domain.repository.HabitRepository
 import com.habittracker.domain.repository.SocialRepository
@@ -48,6 +49,7 @@ class MarkHabitCompletedUseCaseTest {
     private lateinit var habitRepository: FakeHabitRepository
     private lateinit var socialRepository: FakeSocialRepository
     private lateinit var firestoreRepository: FirestoreRepository
+    private lateinit var notificationRepository: GroupHabitNotificationRepository
     private lateinit var sendGroupHabitPushNotificationUseCase: SendGroupHabitPushNotificationUseCase
     private lateinit var markHabitCompletedUseCase: MarkHabitCompletedUseCase
     private lateinit var syncManager: SyncManager
@@ -65,7 +67,13 @@ class MarkHabitCompletedUseCaseTest {
         habitRepository = FakeHabitRepository()
         socialRepository = FakeSocialRepository()
         firestoreRepository = mock()
-        sendGroupHabitPushNotificationUseCase = SendGroupHabitPushNotificationUseCase(socialRepository, habitRepository, firestoreRepository)
+        notificationRepository = mock()
+        sendGroupHabitPushNotificationUseCase = SendGroupHabitPushNotificationUseCase(
+            socialRepository, 
+            habitRepository, 
+            firestoreRepository,
+            notificationRepository
+        )
         syncManager = mock()
         syncWorkScheduler = mock()
     }

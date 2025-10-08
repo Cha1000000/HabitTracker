@@ -33,7 +33,8 @@ class DeleteHabitUseCase @Inject constructor(
     private val syncManager: SyncManager,
     private val syncWorkScheduler: SyncWorkScheduler,
     private val cancelHabitReminderUseCase: CancelHabitReminderUseCase,
-    private val updateHabitUseCase: UpdateHabitUseCase
+    private val updateHabitUseCase: UpdateHabitUseCase,
+    private val sendGroupHabitPushNotificationUseCase: com.habittracker.domain.usecase.notification.SendGroupHabitPushNotificationUseCase
 ) {
     // Decision policy for GROUP habits — pure domain logic without side-effects
     internal sealed class Decision {
@@ -176,7 +177,22 @@ class DeleteHabitUseCase @Inject constructor(
                     )
                     // Используем UpdateHabitUseCase для атомарного обновления Firestore + Room
                     updateHabitUseCase(updatedHabit)
-                    // Не вызываем enqueueUpsertAndKickSync, т.к. UpdateHabitUseCase уже обновил Firestore
+                    
+                    // Отправляем уведомление оставшимся участникам о выходе пользователя
+                    Log.d("DeleteHabitUseCase", "User $userId is leaving habit ${habit.title}, sending notifications to remaining participants")
+                    try {
+                        val allRemainingParticipants = (listOf(decision.newCreatedBy) + decision.participants).distinct()
+                        Log.d("DeleteHabitUseCase", "Remaining participants: $allRemainingParticipants")
+                        sendGroupHabitPushNotificationUseCase.sendParticipantLeftNotification(
+                            habitId = habitId,
+                            leftUserId = userId,
+                            remainingParticipants = allRemainingParticipants
+                        )
+                        Log.d("DeleteHabitUseCase", "Participant left notification sent successfully")
+                    } catch (e: Exception) {
+                        Log.w("DeleteHabitUseCase", "Failed to send participant left notification: ${e.message}")
+                    }
+                    
                     return
                 } else {
                     // Обновляем привычку для других участников

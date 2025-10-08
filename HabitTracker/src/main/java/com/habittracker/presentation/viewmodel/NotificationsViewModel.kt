@@ -62,8 +62,8 @@ class NotificationsViewModel @Inject constructor(
         )
     
     init {
-        loadNotifications()
-        loadStoredNotifications() // Загружаем уведомления из базы данных
+        // Загружаем уведомления ТОЛЬКО из базы данных (через Firestore синхронизацию)
+        loadStoredNotifications()
         observeInvitationsCount()
         loadInvitations()
         cleanupOldNotifications() // Автоматически очищаем старые прочитанные уведомления
@@ -108,7 +108,7 @@ class NotificationsViewModel @Inject constructor(
     }
 
     /**
-     * Загружает сохраненные уведомления из базы данных
+     * Загружает уведомления из базы данных (синхронизированные через Firestore)
      */
     private fun loadStoredNotifications() {
         Log.d(TAG, "loadStoredNotifications called")
@@ -117,31 +117,26 @@ class NotificationsViewModel @Inject constructor(
                 val currentUserId = authRepository.getCurrentUserId()
                     ?: throw Exception("Пользователь не авторизован")
                 
-                Log.d(TAG, "Loading stored notifications for user: $currentUserId")
+                Log.d(TAG, "Loading notifications for user: $currentUserId")
                 
                 // Наблюдаем за уведомлениями из базы данных
                 groupHabitNotificationRepository.getNotificationsForUser(currentUserId)
-                    .collect { storedNotifications ->
-                        Log.d(TAG, "Received ${storedNotifications.size} stored notifications from DB")
-                        val unreadStoredCount = storedNotifications.count { !it.isRead }
+                    .collect { notifications ->
+                        Log.d(TAG, "Received ${notifications.size} notifications from DB")
+                        val unreadCount = notifications.count { !it.isRead }
                         
-                        // Обновляем счетчик непрочитанных сохраненных уведомлений
-                        storedUnreadCount.value = unreadStoredCount
-                        
-                        // Обновляем состояние с сохраненными уведомлениями
+                        // Обновляем состояние
                         _uiState.update { state ->
-                            // Считаем общее количество непрочитанных
-                            val oldNotificationsUnread = state.notifications.count { !it.isRead }
-                            val totalUnread = oldNotificationsUnread + unreadStoredCount
-                            
                             state.copy(
-                                storedNotifications = storedNotifications,
-                                unreadCount = totalUnread
+                                storedNotifications = notifications,
+                                unreadCount = unreadCount,
+                                isLoading = false
                             )
                         }
                     }
             } catch (e: Exception) {
-                Log.e(TAG, "Error loading stored notifications", e)
+                Log.e(TAG, "Error loading notifications", e)
+                _uiState.update { it.copy(isLoading = false, errorResId = R.string.error_loading_notifications) }
             }
         }
     }
@@ -182,7 +177,7 @@ class NotificationsViewModel @Inject constructor(
                             )
                         }
                     }
-            } catch (e: Exception) {
+            } catch (_: Exception) {
                 _uiState.update { it.copy(isInvitesLoading = false, invitesErrorResId = R.string.error_loading_invitations) }
             }
         }
@@ -202,7 +197,7 @@ class NotificationsViewModel @Inject constructor(
                 // TODO: Добавить навигацию к соответствующей привычке
                 // Например, открыть экран детали привычки или экран прогресса группы
                 
-            } catch (e: Exception) {
+            } catch (_: Exception) {
                 _uiState.update { it.copy(errorResId = R.string.error_processing_notification) }
             }
         }
@@ -368,7 +363,7 @@ class NotificationsViewModel @Inject constructor(
      */
     fun refreshNotifications() {
         Log.d(TAG, "refreshNotifications called")
-        loadNotifications()
+        // Уведомления автоматически обновляются через Firestore listener
         loadInvitations()
     }
     

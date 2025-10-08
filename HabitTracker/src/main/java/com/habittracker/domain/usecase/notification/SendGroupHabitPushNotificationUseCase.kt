@@ -1,14 +1,17 @@
 package com.habittracker.domain.usecase.notification
 
 import android.util.Log
+import com.habittracker.data.local.entity.GroupHabitNotificationEntity
 import com.habittracker.domain.model.Habit
 import com.habittracker.domain.model.User
 import com.habittracker.domain.model.isGroupHabit
+import com.habittracker.domain.repository.GroupHabitNotificationRepository
 import com.habittracker.domain.repository.HabitRepository
 import com.habittracker.domain.repository.SocialRepository
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
+import java.util.UUID
 import javax.inject.Inject
 
 /**
@@ -17,7 +20,8 @@ import javax.inject.Inject
 class SendGroupHabitPushNotificationUseCase @Inject constructor(
     private val socialRepository: SocialRepository,
     private val habitRepository: HabitRepository,
-    private val firestoreRepository: com.habittracker.domain.repository.FirestoreRepository
+    private val firestoreRepository: com.habittracker.domain.repository.FirestoreRepository,
+    private val notificationRepository: GroupHabitNotificationRepository
 ) {
     
     companion object {
@@ -56,6 +60,9 @@ class SendGroupHabitPushNotificationUseCase @Inject constructor(
                 val participants = getHabitParticipants(habit, completedByUserId)
                 Log.d(TAG, "Sending push to ${participants.size} participants: ${participants.map { "${it.name}(${it.id})" }}")
 
+                val message = "${completedByUser.name} выполнил привычку!"
+                val currentTime = System.currentTimeMillis()
+
                 coroutineScope {
                     participants.map { participant ->
                         async {
@@ -64,7 +71,7 @@ class SendGroupHabitPushNotificationUseCase @Inject constructor(
                                 toUserId = participant.id,
                                 type = "group_habit_completed",
                                 title = "🎯 ${habit.title}",
-                                body = "${completedByUser.name} выполнил привычку!",
+                                body = message,
                                 data = mapOf(
                                     "habit_id" to habit.id,
                                     "habit_title" to habit.title,
@@ -72,6 +79,27 @@ class SendGroupHabitPushNotificationUseCase @Inject constructor(
                                     "screen" to "group_habit_detail"
                                 )
                             )
+                            
+                            // Сохраняем уведомление в локальную БД для отображения в UI
+                            try {
+                                val notificationEntity = GroupHabitNotificationEntity(
+                                    id = UUID.randomUUID().toString(),
+                                    userId = participant.id,
+                                    habitId = habit.id,
+                                    type = "PARTICIPANT_COMPLETED",
+                                    participantId = completedByUserId,
+                                    participantName = completedByUser.name,
+                                    habitTitle = habit.title,
+                                    message = message,
+                                    isRead = false,
+                                    readAt = null,
+                                    createdAt = currentTime
+                                )
+                                notificationRepository.saveNotification(notificationEntity)
+                                Log.d(TAG, "Notification saved to DB for user: ${participant.id}")
+                            } catch (e: Exception) {
+                                Log.w(TAG, "Failed to save notification to DB: ${e.message}")
+                            }
                         }
                     }.awaitAll()
                 }
@@ -223,6 +251,71 @@ class SendGroupHabitPushNotificationUseCase @Inject constructor(
             )
             Result.success(Unit)
         } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    /**
+     * Отправляет уведомление о выходе участника из привычки
+     */
+    suspend fun sendParticipantLeftNotification(
+        habitId: String,
+        leftUserId: String,
+        remainingParticipants: List<String>
+    ): Result<Unit> {
+        return try {
+            val habit = firestoreRepository.getHabitById(habitId) 
+                ?: habitRepository.getHabitById(habitId)
+            val leftUser = socialRepository.getUserById(leftUserId)
+
+            if (habit != null && leftUser != null && remainingParticipants.isNotEmpty()) {
+                val message = "${leftUser.name} покинул \"${habit.title}\""
+                val currentTime = System.currentTimeMillis()
+                
+                coroutineScope {
+                    remainingParticipants.map { participantId ->
+                        async {
+                            // Отправляем push-уведомление
+                            sendPushNotification(
+                                toUserId = participantId,
+                                type = "participant_left",
+                                title = "👋 Участник покинул группу",
+                                body = message,
+                                data = mapOf(
+                                    "habit_id" to habitId,
+                                    "habit_title" to habit.title,
+                                    "participant_name" to leftUser.name,
+                                    "screen" to "group_habit_detail"
+                                )
+                            )
+                            
+                            // Сохраняем уведомление в локальную БД для отображения в UI
+                            try {
+                                val notificationEntity = GroupHabitNotificationEntity(
+                                    id = UUID.randomUUID().toString(),
+                                    userId = participantId,
+                                    habitId = habitId,
+                                    type = "PARTICIPANT_LEFT",
+                                    participantId = leftUserId,
+                                    participantName = leftUser.name,
+                                    habitTitle = habit.title,
+                                    message = message,
+                                    isRead = false,
+                                    readAt = null,
+                                    createdAt = currentTime
+                                )
+                                notificationRepository.saveNotification(notificationEntity)
+                                Log.d(TAG, "Notification saved to DB for user: $participantId")
+                            } catch (e: Exception) {
+                                Log.w(TAG, "Failed to save notification to DB: ${e.message}")
+                            }
+                        }
+                    }.awaitAll()
+                }
+            }
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to send participant left notification", e)
             Result.failure(e)
         }
     }
