@@ -1,5 +1,6 @@
 package com.habittracker.presentation.ui.habits
 
+import android.util.Log
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.isSystemInDarkTheme
@@ -7,8 +8,11 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
@@ -77,6 +81,9 @@ import com.habittracker.presentation.ui.habits.components.ConfirmDialog
 import com.habittracker.presentation.ui.habits.components.EnhancedHabitItem
 import com.habittracker.presentation.ui.habits.components.ExpandableFAB
 import com.habittracker.presentation.ui.habits.components.JoinByCodeDialog
+import com.habittracker.presentation.ui.habits.components.TahoeBackToTodayButton
+import com.habittracker.presentation.ui.habits.components.TahoeDateHeader
+import com.habittracker.presentation.ui.habits.components.TahoeDateSelector
 import com.habittracker.presentation.ui.habits.components.TahoeDockBar
 import com.habittracker.presentation.ui.habits.components.TahoeDockDivider
 import com.habittracker.presentation.ui.habits.components.TahoeDockItem
@@ -88,6 +95,8 @@ import com.habittracker.presentation.viewmodel.HabitsViewModel
 import com.habittracker.presentation.viewmodel.NotificationsViewModel
 import kotlinx.coroutines.launch
 import kotlinx.datetime.Clock
+import kotlinx.datetime.TimeZone.Companion.currentSystemDefault
+import kotlinx.datetime.toLocalDateTime
 import kotlin.math.abs
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterialApi::class)
@@ -108,6 +117,21 @@ fun HabitsScreen(
     val friendRequestsBadgeCount = friendsUiState.incomingRequests.size
     var isRefreshing by remember { mutableStateOf(false) }
     var recomposeKey by remember { mutableIntStateOf(0) }
+    
+    // Данные для селектора дат
+    val selectedDate = uiState.selectedDate ?: Clock.System.now()
+        .toLocalDateTime(currentSystemDefault()).date
+    val today = Clock.System.now()
+        .toLocalDateTime(currentSystemDefault()).date
+    val weekDates = viewModel.getCurrentWeekDates()
+    val weekCompletionData = uiState.weekCompletionData
+    val isToday = selectedDate == today
+    
+    // Логирование для отладки
+    LaunchedEffect(uiState.selectedDate) {
+        Log.d("HabitsScreen", "🎯 selectedDate changed: ${uiState.selectedDate}, computed: $selectedDate, isToday: $isToday")
+    }
+    
     val lifecycleOwner = LocalLifecycleOwner.current
     val appStateManager = remember {
         (context.applicationContext as? HabitTrackerApplication)?.appStateManager
@@ -259,29 +283,80 @@ fun HabitsScreen(
             }
         )
 
-        Box(
+        // Подсчёт процента выполнения
+        val completionPercentage = if (uiState.habitsWithCompletion.isEmpty()) {
+            0
+        } else {
+            val completed = uiState.habitsWithCompletion.count { it.isCompletedToday }
+            (completed * 100) / uiState.habitsWithCompletion.size
+        }
+        
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(paddingValues)
+        ) {
+            // Заголовок с датой и прогрессом
+            TahoeDateHeader(
+                selectedDate = selectedDate,
+                completionPercentage = completionPercentage,
+                isToday = isToday,
+                isDarkTheme = isSystemInDarkTheme()
+            )
+            
+            // Селектор дат
+            key(selectedDate) {
+                TahoeDateSelector(
+                    selectedDate = selectedDate,
+                    onDateSelected = { date ->
+                        viewModel.selectDate(date)
+                    },
+                    weekDates = weekDates,
+                    completionData = weekCompletionData,
+                    isDarkTheme = isSystemInDarkTheme()
+                )
+            }
+            
+            // Кнопка "Сегодня" (показывается только когда выбран не сегодняшний день)
+            if (!isToday) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 8.dp),
+                    horizontalArrangement = Arrangement.Center
+                ) {
+                    TahoeBackToTodayButton(
+                        onClick = { viewModel.goToToday() },
+                        isDarkTheme = isSystemInDarkTheme()
+                    )
+                }
+            }
+            
+            Spacer(modifier = Modifier.height(8.dp))
+            
+            // Основной контент с привычками
+            Box(
                 modifier = Modifier
-                    .fillMaxSize()
-                    .padding(paddingValues),
+                    .fillMaxSize(),
                 contentAlignment = Alignment.Center
             ) {
-            if (uiState.isLoading) {
-                CircularProgressIndicator()
-            } else {
-                // Сбрасываем индикатор после прихода новых данных
-                LaunchedEffect(uiState.habitsWithCompletion) {
-                    isRefreshing = false
-                }
-                Box(Modifier.pullRefresh(pullRefreshState)) {
-                    if (uiState.habitsWithCompletion.isEmpty()) {
-                        Text(stringResource(R.string.habits_empty_state))
-                    } else {
-                        key(recomposeKey) {
-                            LazyColumn(
-                                modifier = Modifier.fillMaxSize(),
-                                contentPadding = PaddingValues(16.dp),
-                                verticalArrangement = Arrangement.spacedBy(12.dp)
-                            ) {
+                if (uiState.isLoading) {
+                    CircularProgressIndicator()
+                } else {
+                    // Сбрасываем индикатор после прихода новых данных
+                    LaunchedEffect(uiState.habitsWithCompletion) {
+                        isRefreshing = false
+                    }
+                    Box(Modifier.pullRefresh(pullRefreshState)) {
+                        if (uiState.habitsWithCompletion.isEmpty()) {
+                            Text(stringResource(R.string.habits_empty_state))
+                        } else {
+                            key(recomposeKey) {
+                                LazyColumn(
+                                    modifier = Modifier.fillMaxSize(),
+                                    contentPadding = PaddingValues(16.dp),
+                                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                                ) {
                                 items(
                                     uiState.habitsWithCompletion,
                                     key = { hwc -> "${hwc.habit.id}:${hwc.isCompletedToday}" }
@@ -375,20 +450,20 @@ fun HabitsScreen(
                                         )
                                     }
                                 }
+                                }
                             }
                         }
+                        GradientPullRefreshIndicator(
+                            refreshing = isRefreshing,
+                            state = pullRefreshState,
+                            modifier = Modifier
+                                .align(Alignment.TopCenter)
+                                .zIndex(1f)
+                        )
                     }
-                    GradientPullRefreshIndicator(
-                        refreshing = isRefreshing,
-                        state = pullRefreshState,
-                        modifier = Modifier
-                            .align(Alignment.TopCenter)
-                            .zIndex(1f)
-                            //.padding(top = 8.dp)
-                    )
                 }
             }
-            }
+        }
         }
     }
 }

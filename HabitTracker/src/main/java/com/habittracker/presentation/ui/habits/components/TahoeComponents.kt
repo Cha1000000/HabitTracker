@@ -9,6 +9,7 @@ import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.scaleIn
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -29,16 +30,19 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExposedDropdownMenuBox
 import androidx.compose.material3.ExposedDropdownMenuBoxScope
@@ -70,6 +74,7 @@ import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.font.FontWeight.Companion.SemiBold
@@ -81,6 +86,7 @@ import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.Popup
+import com.habittracker.R
 import com.habittracker.presentation.ui.theme.GlassBlack10
 import com.habittracker.presentation.ui.theme.GlassBlack20
 import com.habittracker.presentation.ui.theme.GlassBlack30
@@ -99,6 +105,9 @@ import com.habittracker.presentation.ui.theme.TahoeLightPurpleAccent
 import com.habittracker.presentation.ui.theme.TahoeMidnightBlue
 import com.habittracker.presentation.ui.theme.TahoeRoyalBlue
 import com.habittracker.presentation.ui.theme.TahoeSkyBlue
+import kotlinx.datetime.toLocalDateTime
+import java.time.format.DateTimeFormatter
+import java.util.Locale
 import kotlin.math.cos
 import kotlin.math.sin
 
@@ -1074,5 +1083,312 @@ fun TahoeTopBar(
         ) {
             actions?.invoke(this)
         }
+    }
+}
+
+/**
+ * Круговой прогрессбар для обертки круглых кнопок дат
+ */
+@Composable
+fun TahoeCircularProgressBorder(
+    progress: Float,
+    modifier: Modifier = Modifier,
+    isDarkTheme: Boolean = isSystemInDarkTheme(),
+    strokeWidth: Dp = 2.dp,
+    size: Dp = 48.dp
+) {
+    val progressColor = if (isDarkTheme) TahoeSkyBlue else TahoeLightAccent
+    val trackColor = if (isDarkTheme) GlassWhite10 else GlassBlack10.copy(alpha = 0.1f)
+    
+    Box(
+        modifier = modifier.size(size),
+        contentAlignment = Alignment.Center
+    ) {
+        // Фоновый круг (трек)
+        Canvas(
+            modifier = Modifier.size(size)
+        ) {
+            drawCircle(
+                color = trackColor,
+                radius = (size.toPx() - strokeWidth.toPx()) / 2,
+                style = androidx.compose.ui.graphics.drawscope.Stroke(
+                    width = strokeWidth.toPx()
+                )
+            )
+        }
+        
+        // Прогрессбар
+        if (progress > 0f) {
+            CircularProgressIndicator(
+                progress = { progress },
+                modifier = Modifier.size(size),
+                color = progressColor,
+                strokeWidth = strokeWidth,
+                trackColor = Color.Transparent
+            )
+        }
+    }
+}
+
+/**
+ * Заголовок с датой и прогрессом
+ */
+@Composable
+fun TahoeDateHeader(
+    selectedDate: kotlinx.datetime.LocalDate,
+    completionPercentage: Int,
+    isToday: Boolean,
+    modifier: Modifier = Modifier,
+    isDarkTheme: Boolean = isSystemInDarkTheme()
+) {
+    val dateFormatter = remember { 
+        DateTimeFormatter.ofPattern("d MMM").withLocale(Locale.getDefault())
+    }
+    val dateText = if (isToday) {
+        stringResource(R.string.label_today)
+    } else {
+        val javaDate = java.time.LocalDate.of(
+            selectedDate.year,
+            selectedDate.monthNumber,
+            selectedDate.dayOfMonth
+        )
+        javaDate.format(dateFormatter)
+    }
+    
+    GlassmorphicCard(
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 8.dp),
+        isDarkTheme = isDarkTheme,
+        cornerRadius = 12.dp
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 12.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Column {
+                Text(
+                    text = dateText,
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+                if (isToday) {
+                    Text(
+                        text = "${selectedDate.dayOfMonth} ${getMonthName(selectedDate.monthNumber)}.",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+            
+            Text(
+                text = stringResource(R.string.label_completed_percentage, completionPercentage),
+                style = MaterialTheme.typography.bodyLarge,
+                fontWeight = if (completionPercentage == 100) FontWeight.Bold else FontWeight.Normal,
+                color = if (completionPercentage == 100) {
+                    if (isDarkTheme) TahoeSkyBlue else TahoeLightAccent
+                } else {
+                    MaterialTheme.colorScheme.onSurfaceVariant
+                }
+            )
+        }
+    }
+}
+
+/**
+ * Вспомогательная функция для получения названия месяца
+ */
+@Composable
+private fun getMonthName(month: Int): String {
+    return when (month) {
+        1 -> stringResource(R.string.month_jan_short)
+        2 -> stringResource(R.string.month_feb_short)
+        3 -> stringResource(R.string.month_mar_short)
+        4 -> stringResource(R.string.month_apr_short)
+        5 -> stringResource(R.string.month_may_short)
+        6 -> stringResource(R.string.month_jun_short)
+        7 -> stringResource(R.string.month_jul_short)
+        8 -> stringResource(R.string.month_aug_short)
+        9 -> stringResource(R.string.month_sep_short)
+        10 -> stringResource(R.string.month_oct_short)
+        11 -> stringResource(R.string.month_nov_short)
+        12 -> stringResource(R.string.month_dec_short)
+        else -> ""
+    }
+}
+
+/**
+ * Компонент дня недели для селектора дат
+ */
+@Composable
+fun DayOfWeekItem(
+    dayNumber: Int,
+    isSelected: Boolean,
+    isToday: Boolean,
+    isCompleted: Boolean,
+    completionProgress: Float,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    isDarkTheme: Boolean = isSystemInDarkTheme()
+) {
+    val backgroundColor = when {
+        isCompleted -> if (isDarkTheme) TahoeSkyBlue else TahoeLightAccent
+        isToday -> if (isDarkTheme) GlassWhite30 else GlassBlack20
+        else -> Color.Transparent
+    }
+    
+    val textColor = when {
+        isCompleted -> Color.White
+        isToday -> MaterialTheme.colorScheme.onSurface
+        else -> MaterialTheme.colorScheme.onSurfaceVariant
+    }
+    
+    Box(
+        modifier = modifier
+            .size(48.dp)
+            .padding(2.dp),
+        contentAlignment = Alignment.Center
+    ) {
+        // Прогрессбар для частично выполненных дней
+        if (!isCompleted && completionProgress > 0f) {
+            TahoeCircularProgressBorder(
+                progress = completionProgress,
+                size = 44.dp,
+                isDarkTheme = isDarkTheme
+            )
+        }
+        
+        // Кнопка дня
+        Box(
+            modifier = Modifier
+                .size(40.dp)
+                .clip(CircleShape)
+                .background(backgroundColor)
+                .clickable { onClick() },
+            contentAlignment = Alignment.Center
+        ) {
+            Text(
+                text = dayNumber.toString(),
+                style = MaterialTheme.typography.bodyLarge,
+                fontWeight = if (isToday || isCompleted) FontWeight.Bold else FontWeight.Normal,
+                color = textColor
+            )
+        }
+        
+        // Индикатор выбранного дня
+        if (isSelected) {
+            Box(
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .offset(y = 6.dp)
+                    .size(width = 20.dp, height = 2.dp)
+                    .background(
+                        color = if (isDarkTheme) TahoeSkyBlue else TahoeLightAccent,
+                        shape = RoundedCornerShape(1.dp)
+                    )
+            )
+        }
+    }
+}
+
+/**
+ * Горизонтальный селектор дат с днями недели
+ */
+@Composable
+fun TahoeDateSelector(
+    selectedDate: kotlinx.datetime.LocalDate,
+    onDateSelected: (kotlinx.datetime.LocalDate) -> Unit,
+    weekDates: List<kotlinx.datetime.LocalDate>,
+    completionData: Map<kotlinx.datetime.LocalDate, Float>, // Прогресс выполнения для каждого дня (0f-1f)
+    modifier: Modifier = Modifier,
+    isDarkTheme: Boolean = isSystemInDarkTheme()
+) {
+    val today = kotlinx.datetime.Clock.System.now()
+        .toLocalDateTime(kotlinx.datetime.TimeZone.currentSystemDefault()).date
+    
+    val weekDayNames = listOf(
+        stringResource(R.string.day_mon_short),
+        stringResource(R.string.day_tue_short),
+        stringResource(R.string.day_wed_short),
+        stringResource(R.string.day_thu_short),
+        stringResource(R.string.day_fri_short),
+        stringResource(R.string.day_sat_short),
+        stringResource(R.string.day_sun_short)
+    )
+    
+    Column(
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp)
+    ) {
+        // Строка с днями недели
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceEvenly
+        ) {
+            weekDayNames.forEach { dayName ->
+                Text(
+                    text = dayName,
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.width(48.dp),
+                    textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                )
+            }
+        }
+        
+        Spacer(modifier = Modifier.height(8.dp))
+        
+        // Строка с числами дней
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceEvenly
+        ) {
+            weekDates.forEach { date ->
+                val progress = completionData[date] ?: 0f
+                val isCompleted = progress >= 1f
+                
+                DayOfWeekItem(
+                    dayNumber = date.dayOfMonth,
+                    isSelected = date == selectedDate,
+                    isToday = date == today,
+                    isCompleted = isCompleted,
+                    completionProgress = if (!isCompleted) progress else 0f,
+                    onClick = { onDateSelected(date) },
+                    isDarkTheme = isDarkTheme
+                )
+            }
+        }
+    }
+}
+
+/**
+ * Кнопка возврата к текущему дню
+ */
+@Composable
+fun TahoeBackToTodayButton(
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    isDarkTheme: Boolean = isSystemInDarkTheme()
+) {
+    GlassmorphicButton(
+        onClick = onClick,
+        modifier = modifier,
+        isDarkTheme = isDarkTheme
+    ) {
+        Icon(
+            imageVector = Icons.Default.ChevronRight,
+            contentDescription = null,
+            modifier = Modifier.size(16.dp)
+        )
+        Spacer(modifier = Modifier.width(4.dp))
+        Text(
+            text = stringResource(R.string.button_today),
+            style = MaterialTheme.typography.bodyMedium
+        )
     }
 }

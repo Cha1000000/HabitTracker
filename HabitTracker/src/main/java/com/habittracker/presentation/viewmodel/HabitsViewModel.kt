@@ -11,6 +11,7 @@ import com.habittracker.domain.usecase.DeleteHabitUseCase
 import com.habittracker.domain.usecase.EnsureMySettingsForHabitUseCase
 import com.habittracker.domain.usecase.GetHabitCompletionStatusUseCase
 import com.habittracker.domain.usecase.GetHabitsUseCase
+import com.habittracker.domain.usecase.GetWeekCompletionDataUseCase
 import com.habittracker.domain.usecase.MarkHabitCompletedUseCase
 import com.habittracker.domain.usecase.MarkHabitIncompleteUseCase
 import com.habittracker.domain.usecase.ScheduleHabitReminderUseCase
@@ -35,7 +36,12 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.launch
 import kotlinx.datetime.Clock
+import kotlinx.datetime.DateTimeUnit
+import kotlinx.datetime.DayOfWeek
+import kotlinx.datetime.LocalDate
 import kotlinx.datetime.TimeZone
+import kotlinx.datetime.minus
+import kotlinx.datetime.plus
 import kotlinx.datetime.toLocalDateTime
 import javax.inject.Inject
 
@@ -60,6 +66,7 @@ class HabitsViewModel @Inject constructor(
     private val ensureMySettingsForHabitUseCase: EnsureMySettingsForHabitUseCase,
     private val scheduleHabitReminderUseCase: ScheduleHabitReminderUseCase,
     private val joinHabitByCodeUseCase: JoinHabitByCodeUseCase,
+    private val getWeekCompletionDataUseCase: GetWeekCompletionDataUseCase,
     application: Application
 ) : AndroidViewModel(application) {
 
@@ -83,13 +90,17 @@ class HabitsViewModel @Inject constructor(
     private val currentUserId: String
         get() = authRepository.getCurrentUserId() 
             ?: throw IllegalStateException("User must be authenticated to access habits")
-    private val today = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault()).date
+    private val today: LocalDate
+        get() = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault()).date
 
     init {
         val userId = authRepository.getCurrentUserId()
         Log.d(TAG, "🚀 [init] Initializing HabitsViewModel for user: $userId")
         if (userId != null) {
-            loadHabits(userId)
+            // Инициализация с сегодняшней датой
+            _uiState.value = _uiState.value.copy(selectedDate = today)
+            loadHabitsForDate(userId, today)
+            loadWeekCompletionData(userId)
         } else {
             Log.w(TAG, "⚠️ [init] No user ID found, cannot load habits")
         }
@@ -105,19 +116,64 @@ class HabitsViewModel @Inject constructor(
             Log.w(TAG, "⚠️ [refresh] No user ID, ignoring refresh")
             return
         }
-        Log.d(TAG, "🔁 [refresh] Reloading habits for user=$userId")
-        loadHabits(userId)
+        val selectedDate = _uiState.value.selectedDate ?: today
+        Log.d(TAG, "🔁 [refresh] Reloading habits for user=$userId, date=$selectedDate")
+        loadHabitsForDate(userId, selectedDate)
+        loadWeekCompletionData(userId)
+    }
+    
+    /**
+     * Выбирает дату для просмотра
+     */
+    fun selectDate(date: LocalDate) {
+        val userId = authRepository.getCurrentUserId() ?: return
+        Log.d(TAG, "📅 [selectDate] Selecting date: $date")
+        _uiState.value = _uiState.value.copy(selectedDate = date)
+        Log.d(TAG, "📅 [selectDate] Updated selectedDate in state: ${_uiState.value.selectedDate}")
+        loadHabitsForDate(userId, date)
+    }
+    
+    /**
+     * Переходит на текущую дату
+     */
+    fun goToToday() {
+        selectDate(today)
+    }
+    
+    /**
+     * Получает список дат для текущей недели
+     */
+    fun getCurrentWeekDates(): List<LocalDate> {
+        val selectedDate = _uiState.value.selectedDate ?: today
+        val startOfWeek = getStartOfWeek(selectedDate)
+        return (0..6).map { startOfWeek.plus(it, DateTimeUnit.DAY) }
+    }
+    
+    /**
+     * Получает начало недели для указанной даты (понедельник)
+     */
+    private fun getStartOfWeek(date: LocalDate): LocalDate {
+        val daysFromMonday = when(date.dayOfWeek) {
+            DayOfWeek.MONDAY -> 0
+            DayOfWeek.TUESDAY -> 1
+            DayOfWeek.WEDNESDAY -> 2
+            DayOfWeek.THURSDAY -> 3
+            DayOfWeek.FRIDAY -> 4
+            DayOfWeek.SATURDAY -> 5
+            DayOfWeek.SUNDAY -> 6
+        }
+        return date.minus(daysFromMonday, DateTimeUnit.DAY)
     }
 
     /**
-     * Загружает список привычек для пользователя.
+     * Загружает список привычек для пользователя на определённую дату.
      */
     @OptIn(ExperimentalCoroutinesApi::class)
-    fun loadHabits(userId: String) {
-        Log.d(TAG, "🔄 [loadHabits] Start for user=$userId")
+    fun loadHabitsForDate(userId: String, date: LocalDate) {
+        Log.d(TAG, "🔄 [loadHabitsForDate] Start for user=$userId, date=$date")
         // Cancel previous collection if any
         if (habitsJob != null) {
-            Log.d(TAG, "⛔ [loadHabits] Cancelling previous habits subscription")
+            Log.d(TAG, "⛔ [loadHabitsForDate] Cancelling previous habits subscription")
             habitsJob?.cancel()
         }
 
@@ -140,7 +196,7 @@ class HabitsViewModel @Inject constructor(
                     val skeleton = habits.map { habit ->
                         HabitWithCompletion(habit = habit, isLoading = true)
                     }
-                    emit(HabitsUiState(habitsWithCompletion = skeleton, isLoading = false))
+                    emit(_uiState.value.copy(habitsWithCompletion = skeleton, isLoading = false))
 
                     // 2) Parallel resolve completion statuses
                     val updatedHabits = coroutineScope {
@@ -172,7 +228,7 @@ class HabitsViewModel @Inject constructor(
                                 }
 
                                 val isCompleted = try {
-                                    getHabitCompletionStatusUseCase(habit.id, userId, today)
+                                    getHabitCompletionStatusUseCase(habit.id, userId, date)
                                 } catch (e: Exception) {
                                     Log.d(TAG, "getHabitCompletionStatusUseCase failed for habit=${habit.id}: ${e.message}")
                                     false
@@ -185,11 +241,15 @@ class HabitsViewModel @Inject constructor(
                             }
                         }.awaitAll()
                     }
-                    emit(HabitsUiState(habitsWithCompletion = updatedHabits, isLoading = false))
+                    emit(_uiState.value.copy(habitsWithCompletion = updatedHabits, isLoading = false))
                 }
             }
             .onEach { state ->
-                _uiState.value = state
+                // Merge with existing state to preserve selectedDate and other fields
+                _uiState.value = _uiState.value.copy(
+                    habitsWithCompletion = state.habitsWithCompletion,
+                    isLoading = state.isLoading
+                )
                 Log.d(TAG, "✅ [habits][ui] list updated (${state.habitsWithCompletion.size})")
             }
             .catch { e ->
@@ -203,14 +263,27 @@ class HabitsViewModel @Inject constructor(
 
         habitsJob?.invokeOnCompletion { cause ->
             if (cause == null) {
-                Log.d(TAG, "🛑 [loadHabits] Subscription completed normally")
+                Log.d(TAG, "🛑 [loadHabitsForDate] Subscription completed normally")
             } else {
-                Log.d(TAG, "🛑 [loadHabits] Subscription cancelled/failed: ${cause.message}")
+                Log.d(TAG, "🛑 [loadHabitsForDate] Subscription cancelled/failed: ${cause.message}")
             }
         }
     }
     
-    // loadCompletionStatuses(): merged into loadHabits() via flatMapLatest with parallel status resolution
+    /**
+     * Загружает данные о выполнении привычек за неделю
+     */
+    private fun loadWeekCompletionData(userId: String) {
+        viewModelScope.launch {
+            try {
+                val selectedDate = _uiState.value.selectedDate ?: today
+                val completionData = getWeekCompletionDataUseCase(userId, selectedDate)
+                _uiState.value = _uiState.value.copy(weekCompletionData = completionData)
+            } catch (e: Exception) {
+                Log.e(TAG, "❌ [loadWeekCompletionData] Error loading week data: ${e.message}", e)
+            }
+        }
+    }
 
     /**
      * Отмечает привычку как выполненную
@@ -218,11 +291,12 @@ class HabitsViewModel @Inject constructor(
     fun markHabitCompleted(habitId: String, note: String? = null) {
         viewModelScope.launch {
             try {
+                val selectedDate = _uiState.value.selectedDate ?: today
                 // Обновляем UI состояние сразу для отзывчивости
                 updateHabitCompletionStatus(habitId, true, isLoading = true)
                 
                 // Выполняем операцию
-                markHabitCompletedUseCase(habitId, currentUserId, today, note)
+                markHabitCompletedUseCase(habitId, currentUserId, selectedDate, note)
                 
                 // Обновляем финальное состояние
                 updateHabitCompletionStatus(habitId, true, isLoading = false)
@@ -240,11 +314,12 @@ class HabitsViewModel @Inject constructor(
     fun markHabitIncomplete(habitId: String) {
         viewModelScope.launch {
             try {
+                val selectedDate = _uiState.value.selectedDate ?: today
                 // Обновляем UI состояние сразу для отзывчивости
                 updateHabitCompletionStatus(habitId, false, isLoading = true)
                 
                 // Выполняем операцию
-                markHabitIncompleteUseCase(habitId, currentUserId, today)
+                markHabitIncompleteUseCase(habitId, currentUserId, selectedDate)
                 
                 // Обновляем финальное состояние
                 updateHabitCompletionStatus(habitId, false, isLoading = false)
@@ -266,6 +341,10 @@ class HabitsViewModel @Inject constructor(
                 markHabitIncomplete(habitId)
             } else {
                 markHabitCompleted(habitId)
+            }
+            // Обновляем данные за неделю после изменения статуса
+            viewModelScope.launch {
+                loadWeekCompletionData(currentUserId)
             }
         }
     }

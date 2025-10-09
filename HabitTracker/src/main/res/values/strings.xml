@@ -643,6 +643,32 @@
     <string name="most_productive_hour">Лучший час</string>
     <string name="hour_format">%1$d:00</string>
     <string name="percentage_format">%1$d%%</string>
+    <string name="label_today">СЕГОДНЯ</string>
+    <string name="label_completed_percentage">Завершено %1$d%%</string>
+    
+    <!-- Month abbreviations -->
+    <string name="month_jan_short">янв</string>
+    <string name="month_feb_short">фев</string>
+    <string name="month_mar_short">мар</string>
+    <string name="month_apr_short">апр</string>
+    <string name="month_may_short">мая</string>
+    <string name="month_jun_short">июня</string>
+    <string name="month_jul_short">июля</string>
+    <string name="month_aug_short">авг</string>
+    <string name="month_sep_short">сен</string>
+    <string name="month_oct_short">окт</string>
+    <string name="month_nov_short">нояб</string>
+    <string name="month_dec_short">дек</string>
+    
+    <!-- Week day abbreviations -->
+    <string name="day_mon_short">ПН</string>
+    <string name="day_tue_short">ВТ</string>
+    <string name="day_wed_short">СР</string>
+    <string name="day_thu_short">ЧТ</string>
+    <string name="day_fri_short">ПТ</string>
+    <string name="day_sat_short">СБ</string>
+    <string name="day_sun_short">ВС</string>
+    <string name="button_today">Сегодня</string>
 
     <!-- Achievements Screen -->
     <string name="achievements_unknown_error">Неизвестная ошибка</string>

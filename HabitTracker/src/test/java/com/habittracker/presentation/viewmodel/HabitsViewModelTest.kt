@@ -12,6 +12,7 @@ import com.habittracker.domain.usecase.DeleteHabitUseCase
 import com.habittracker.domain.usecase.EnsureMySettingsForHabitUseCase
 import com.habittracker.domain.usecase.GetHabitCompletionStatusUseCase
 import com.habittracker.domain.usecase.GetHabitsUseCase
+import com.habittracker.domain.usecase.GetWeekCompletionDataUseCase
 import com.habittracker.domain.usecase.MarkHabitCompletedUseCase
 import com.habittracker.domain.usecase.MarkHabitIncompleteUseCase
 import com.habittracker.domain.usecase.ScheduleHabitReminderUseCase
@@ -53,6 +54,7 @@ class HabitsViewModelTest {
     private val ensureMySettingsForHabitUseCase: EnsureMySettingsForHabitUseCase = mock()
     private val scheduleHabitReminderUseCase: ScheduleHabitReminderUseCase = mock()
     private val joinHabitByCodeUseCase: JoinHabitByCodeUseCase = mock()
+    private val getWeekCompletionDataUseCase: GetWeekCompletionDataUseCase = mock()
     private val application: Application = mock()
     private lateinit var logMock: MockedStatic<Log>
 
@@ -110,6 +112,7 @@ class HabitsViewModelTest {
             ensureMySettingsForHabitUseCase,
             scheduleHabitReminderUseCase,
             joinHabitByCodeUseCase,
+            getWeekCompletionDataUseCase,
             application
         )
     }
