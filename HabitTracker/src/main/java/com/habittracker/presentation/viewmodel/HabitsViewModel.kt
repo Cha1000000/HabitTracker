@@ -87,6 +87,9 @@ class HabitsViewModel @Inject constructor(
     // Reactive rescheduling disabled to avoid loops; we schedule on demand where settings change
     private val lastScheduleKeyByHabit: MutableMap<String, String> = mutableMapOf()
     
+    // Кеш данных о прогрессе выполнения для разных недель (ключ - начало недели)
+    private val weekCompletionCache: MutableMap<LocalDate, Map<LocalDate, Float>> = mutableMapOf()
+    
     private val currentUserId: String
         get() = authRepository.getCurrentUserId() 
             ?: throw IllegalStateException("User must be authenticated to access habits")
@@ -98,9 +101,13 @@ class HabitsViewModel @Inject constructor(
         Log.d(TAG, "🚀 [init] Initializing HabitsViewModel for user: $userId")
         if (userId != null) {
             // Инициализация с сегодняшней датой
-            _uiState.value = _uiState.value.copy(selectedDate = today)
+            val weekStart = getStartOfWeek(today)
+            _uiState.value = _uiState.value.copy(
+                selectedDate = today,
+                currentWeekStartDate = weekStart
+            )
             loadHabitsForDate(userId, today)
-            loadWeekCompletionData(userId)
+            loadWeekCompletionData(userId, weekStart)
         } else {
             Log.w(TAG, "⚠️ [init] No user ID found, cannot load habits")
         }
@@ -117,9 +124,10 @@ class HabitsViewModel @Inject constructor(
             return
         }
         val selectedDate = _uiState.value.selectedDate ?: today
+        val weekStart = _uiState.value.currentWeekStartDate ?: getStartOfWeek(today)
         Log.d(TAG, "🔁 [refresh] Reloading habits for user=$userId, date=$selectedDate")
         loadHabitsForDate(userId, selectedDate)
-        loadWeekCompletionData(userId)
+        loadWeekCompletionData(userId, weekStart, forceReload = true)
     }
     
     /**
@@ -151,6 +159,12 @@ class HabitsViewModel @Inject constructor(
      * Переходит на предыдущую неделю
      */
     fun goToPreviousWeek() {
+        val userId = authRepository.getCurrentUserId()
+        if (userId == null) {
+            Log.w(TAG, "⚠️ [goToPreviousWeek] No user ID")
+            return
+        }
+        
         val currentWeekStart = _uiState.value.currentWeekStartDate ?: getStartOfWeek(today)
         val previousWeekStart = currentWeekStart.minus(7, DateTimeUnit.DAY)
         
@@ -169,12 +183,21 @@ class HabitsViewModel @Inject constructor(
         // Обновляем только currentWeekStartDate без изменения selectedDate
         _uiState.value = _uiState.value.copy(currentWeekStartDate = previousWeekStart)
         Log.d(TAG, "📅 [goToPreviousWeek] Week changed to: $previousWeekStart (selectedDate unchanged)")
+        
+        // Загружаем данные о прогрессе для новой недели
+        loadWeekCompletionData(userId, previousWeekStart)
     }
     
     /**
      * Переходит на следующую неделю
      */
     fun goToNextWeek() {
+        val userId = authRepository.getCurrentUserId()
+        if (userId == null) {
+            Log.w(TAG, "⚠️ [goToNextWeek] No user ID")
+            return
+        }
+        
         val currentWeekStart = _uiState.value.currentWeekStartDate ?: getStartOfWeek(today)
         val nextWeekStart = currentWeekStart.plus(7, DateTimeUnit.DAY)
         
@@ -188,6 +211,9 @@ class HabitsViewModel @Inject constructor(
         // Обновляем только currentWeekStartDate без изменения selectedDate
         _uiState.value = _uiState.value.copy(currentWeekStartDate = nextWeekStart)
         Log.d(TAG, "📅 [goToNextWeek] Week changed to: $nextWeekStart (selectedDate unchanged)")
+        
+        // Загружаем данные о прогрессе для новой недели
+        loadWeekCompletionData(userId, nextWeekStart)
     }
     
     /**
@@ -369,14 +395,30 @@ class HabitsViewModel @Inject constructor(
     }
     
     /**
-     * Загружает данные о выполнении привычек за неделю
+     * Загружает данные о выполнении привычек за неделю с кешированием
      */
-    private fun loadWeekCompletionData(userId: String) {
+    private fun loadWeekCompletionData(userId: String, weekStartDate: LocalDate, forceReload: Boolean = false) {
         viewModelScope.launch {
             try {
-                val selectedDate = _uiState.value.selectedDate ?: today
-                val completionData = getWeekCompletionDataUseCase(userId, selectedDate)
-                _uiState.value = _uiState.value.copy(weekCompletionData = completionData)
+                // Проверяем кеш, если не требуется принудительная перезагрузка
+                if (!forceReload && weekCompletionCache.containsKey(weekStartDate)) {
+                    Log.d(TAG, "📦 [loadWeekCompletionData] Using cached data for week: $weekStartDate")
+                    _uiState.value = _uiState.value.copy(weekCompletionData = weekCompletionCache[weekStartDate]!!)
+                    return@launch
+                }
+                
+                Log.d(TAG, "🔄 [loadWeekCompletionData] Loading data for week: $weekStartDate")
+                // Загружаем данные для любой даты из этой недели (используем начало недели)
+                val completionData = getWeekCompletionDataUseCase(userId, weekStartDate)
+                
+                // Сохраняем в кеш
+                weekCompletionCache[weekStartDate] = completionData
+                
+                // Обновляем UI только если это текущая видимая неделя
+                val currentWeekStart = _uiState.value.currentWeekStartDate ?: getStartOfWeek(today)
+                if (weekStartDate == currentWeekStart) {
+                    _uiState.value = _uiState.value.copy(weekCompletionData = completionData)
+                }
             } catch (e: Exception) {
                 Log.e(TAG, "❌ [loadWeekCompletionData] Error loading week data: ${e.message}", e)
             }
@@ -398,6 +440,10 @@ class HabitsViewModel @Inject constructor(
                 
                 // Обновляем финальное состояние
                 updateHabitCompletionStatus(habitId, true, isLoading = false)
+                
+                // Инвалидируем кеш для недели с изменённой датой и перезагружаем данные
+                val weekStart = getStartOfWeek(selectedDate)
+                loadWeekCompletionData(currentUserId, weekStart, forceReload = true)
             } catch (e: Exception) {
                 // В случае ошибки возвращаем предыдущее состояние
                 updateHabitCompletionStatus(habitId, false, isLoading = false)
@@ -421,6 +467,10 @@ class HabitsViewModel @Inject constructor(
                 
                 // Обновляем финальное состояние
                 updateHabitCompletionStatus(habitId, false, isLoading = false)
+                
+                // Инвалидируем кеш для недели с изменённой датой и перезагружаем данные
+                val weekStart = getStartOfWeek(selectedDate)
+                loadWeekCompletionData(currentUserId, weekStart, forceReload = true)
             } catch (e: Exception) {
                 // В случае ошибки возвращаем предыдущее состояние
                 updateHabitCompletionStatus(habitId, true, isLoading = false)
@@ -451,10 +501,7 @@ class HabitsViewModel @Inject constructor(
             } else {
                 markHabitCompleted(habitId)
             }
-            // Обновляем данные за неделю после изменения статуса
-            viewModelScope.launch {
-                loadWeekCompletionData(currentUserId)
-            }
+            // Обновление данных за неделю происходит внутри markHabitCompleted/markHabitIncomplete
         }
     }
     
