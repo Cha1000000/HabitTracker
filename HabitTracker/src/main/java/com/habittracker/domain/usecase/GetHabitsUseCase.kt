@@ -40,11 +40,11 @@ class GetHabitsUseCase @Inject constructor(
                             } else {
                                 habitRepository.insertHabit(habit)
                             }
-                        } catch (e: Exception) {
+                        } catch (e: Throwable) {
                             Log.e("GetHabitsUseCase", "Failed to sync habit ${habit.id}: ${e.message}")
                         }
                     }
-                } catch (e: Exception) {
+                } catch (e: Throwable) {
                     Log.e("GetHabitsUseCase", "Failed to sync habits to Room: ${e.message}")
                 }
             }

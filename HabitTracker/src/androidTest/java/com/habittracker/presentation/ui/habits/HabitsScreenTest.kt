@@ -25,8 +25,11 @@ import com.habittracker.domain.usecase.EnsureMySettingsForHabitUseCase
 import com.habittracker.domain.usecase.GetHabitCompletionStatusUseCase
 import com.habittracker.domain.usecase.GetHabitsUseCase
 import com.habittracker.domain.usecase.MarkHabitCompletedUseCase
+import com.habittracker.domain.usecase.GetWeekCompletionDataUseCase
 import com.habittracker.domain.usecase.MarkHabitIncompleteUseCase
 import com.habittracker.domain.usecase.ScheduleHabitReminderUseCase
+import com.habittracker.domain.usecase.habit.JoinHabitByCodeUseCase
+import com.habittracker.domain.repository.GroupHabitNotificationRepository
 import com.habittracker.presentation.viewmodel.FriendsViewModel
 import com.habittracker.presentation.viewmodel.HabitsViewModel
 import com.habittracker.presentation.viewmodel.NotificationsViewModel
@@ -53,6 +56,7 @@ class HabitsScreenTest {
     private lateinit var deleteHabitUseCase: DeleteHabitUseCase
     private lateinit var ensureMySettingsForHabitUseCase: EnsureMySettingsForHabitUseCase
     private lateinit var scheduleHabitReminderUseCase: ScheduleHabitReminderUseCase
+    private lateinit var getWeekCompletionDataUseCase: GetWeekCompletionDataUseCase
 
     private lateinit var notificationsViewModel: NotificationsViewModel
     private lateinit var friendsViewModel: FriendsViewModel
@@ -101,7 +105,9 @@ class HabitsScreenTest {
         deleteHabitUseCase = mockk(relaxed = true)
         ensureMySettingsForHabitUseCase = mockk(relaxed = true)
         scheduleHabitReminderUseCase = mockk(relaxed = true)
-        val joinHabitByCodeUseCase = mockk<com.habittracker.domain.usecase.habit.JoinHabitByCodeUseCase>(relaxed = true)
+        getWeekCompletionDataUseCase = mockk(relaxed = true)
+        coEvery { getWeekCompletionDataUseCase.invoke(any(), any()) } returns emptyMap()
+        val joinHabitByCodeUseCase = mockk<JoinHabitByCodeUseCase>(relaxed = true)
 
         // --- Real VMs constructed with mocks ---
         habitsViewModel = HabitsViewModel(
@@ -114,6 +120,7 @@ class HabitsScreenTest {
             ensureMySettingsForHabitUseCase,
             scheduleHabitReminderUseCase,
             joinHabitByCodeUseCase,
+            getWeekCompletionDataUseCase,
             composeRule.activity.application
         )
 
@@ -122,16 +129,19 @@ class HabitsScreenTest {
         val getHabitInvitationsUseCase = mockk<com.habittracker.domain.usecase.habit.GetHabitInvitationsUseCase>()
         val acceptHabitInvitationUseCase = mockk<com.habittracker.domain.usecase.habit.AcceptHabitInvitationUseCase>()
         val declineHabitInvitationUseCase = mockk<com.habittracker.domain.usecase.habit.DeclineHabitInvitationUseCase>()
+        val groupHabitNotificationRepository = mockk<GroupHabitNotificationRepository>(relaxed = true)
         every { groupHabitNotificationUseCase.getGroupHabitNotifications(any()) } returns flowOf(emptyList())
         every { getHabitInvitationsUseCase.getPendingInvitationsCount(any()) } returns flowOf(0)
         every { getHabitInvitationsUseCase.getIncomingInvitations(any()) } returns flowOf(emptyList())
+        every { groupHabitNotificationRepository.getNotificationsForUser(any()) } returns flowOf(emptyList())
 
         notificationsViewModel = NotificationsViewModel(
             groupHabitNotificationUseCase,
             authRepository,
             getHabitInvitationsUseCase,
             acceptHabitInvitationUseCase,
-            declineHabitInvitationUseCase
+            declineHabitInvitationUseCase,
+            groupHabitNotificationRepository
         )
 
         // FriendsViewModel mocks and instance

@@ -1,14 +1,18 @@
 package com.habittracker.presentation.ui.notifications
 
 import androidx.activity.ComponentActivity
-import androidx.compose.ui.test.*
+import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
+import androidx.compose.ui.test.onNodeWithContentDescription
+import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.performClick
 import androidx.navigation.compose.rememberNavController
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.habittracker.R
 import com.habittracker.domain.model.HabitInvitation
 import com.habittracker.domain.model.HabitInvitationStatus
 import com.habittracker.domain.repository.AuthRepository
+import com.habittracker.domain.repository.GroupHabitNotificationRepository
 import com.habittracker.domain.usecase.habit.AcceptHabitInvitationUseCase
 import com.habittracker.domain.usecase.habit.DeclineHabitInvitationUseCase
 import com.habittracker.domain.usecase.habit.GetHabitInvitationsUseCase
@@ -16,36 +20,16 @@ import com.habittracker.domain.usecase.notification.GroupHabitNotification
 import com.habittracker.domain.usecase.notification.GroupHabitNotificationUseCase
 import com.habittracker.domain.usecase.notification.NotificationType
 import com.habittracker.presentation.viewmodel.NotificationsViewModel
-import kotlinx.coroutines.flow.flowOf
-import kotlinx.datetime.Clock
 import io.mockk.MockKAnnotations
 import io.mockk.coEvery
 import io.mockk.every
 import io.mockk.impl.annotations.MockK
 import io.mockk.mockk
+import kotlinx.coroutines.flow.flowOf
+import kotlinx.datetime.Clock
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
-
-// Extension function for assertDoesNotExist
-fun SemanticsNodeInteraction.assertDoesNotExist() {
-    try {
-        assertIsDisplayed()
-        throw AssertionError("Node was expected not to exist but it exists")
-    } catch (e: AssertionError) {
-        // If assertIsDisplayed throws, the node doesn't exist, which is what we want
-        if (e.message?.contains("Failed to perform") == true ||
-            e.message?.contains("Failed: assertIsDisplayed") == true ||
-            e.message?.contains("Couldn't find a node") == true) {
-            // Node doesn't exist - this is the expected state
-            return
-        }
-        // Re-throw if it's our custom message
-        if (e.message == "Node was expected not to exist but it exists") {
-            throw e
-        }
-    }
-}
 
 @RunWith(AndroidJUnit4::class)
 class NotificationsScreenTest {
@@ -92,7 +76,9 @@ class NotificationsScreenTest {
         every { invitationsUC.getIncomingInvitations("u1") } returns flowOf(emptyList())
         every { invitationsUC.getPendingInvitationsCount("u1") } returns flowOf(0)
 
-        val vm = NotificationsViewModel(groupUC, authRepository, invitationsUC, acceptUC, declineUC)
+        val groupRepo = mockk<GroupHabitNotificationRepository>(relaxed = true)
+        every { groupRepo.getNotificationsForUser("u1") } returns flowOf(emptyList())
+        val vm = NotificationsViewModel(groupUC, authRepository, invitationsUC, acceptUC, declineUC, groupRepo)
 
         composeRule.setContent {
             val navController = rememberNavController()
@@ -131,7 +117,9 @@ class NotificationsScreenTest {
         every { invitationsUC.getIncomingInvitations("u1") } returns flowOf(emptyList())
         every { invitationsUC.getPendingInvitationsCount("u1") } returns flowOf(0)
 
-        val vm = NotificationsViewModel(groupUC, authRepository, invitationsUC, acceptUC, declineUC)
+        val groupRepo = mockk<GroupHabitNotificationRepository>(relaxed = true)
+        every { groupRepo.getNotificationsForUser("u1") } returns flowOf(emptyList())
+        val vm = NotificationsViewModel(groupUC, authRepository, invitationsUC, acceptUC, declineUC, groupRepo)
 
         composeRule.setContent {
             val navController = rememberNavController()
@@ -165,7 +153,9 @@ class NotificationsScreenTest {
         coEvery { acceptUC.invoke(any(), any()) } returns Result.success(invitation)
         coEvery { declineUC.invoke(any(), any()) } returns Result.success(invitation)
 
-        val vm = NotificationsViewModel(groupUC, authRepository, invitationsUC, acceptUC, declineUC)
+        val groupRepo = mockk<GroupHabitNotificationRepository>(relaxed = true)
+        every { groupRepo.getNotificationsForUser("u1") } returns flowOf(emptyList())
+        val vm = NotificationsViewModel(groupUC, authRepository, invitationsUC, acceptUC, declineUC, groupRepo)
 
         composeRule.setContent {
             val navController = rememberNavController()
@@ -201,7 +191,9 @@ class NotificationsScreenTest {
         coEvery { acceptUC.invoke("i1", "u1") } returns Result.failure(IllegalStateException("accept failed"))
         coEvery { declineUC.invoke(any(), any()) } returns Result.success(invitation)
 
-        val vm = NotificationsViewModel(groupUC, authRepository, invitationsUC, acceptUC, declineUC)
+        val groupRepo = mockk<GroupHabitNotificationRepository>(relaxed = true)
+        every { groupRepo.getNotificationsForUser("u1") } returns flowOf(emptyList())
+        val vm = NotificationsViewModel(groupUC, authRepository, invitationsUC, acceptUC, declineUC, groupRepo)
 
         composeRule.setContent {
             val navController = rememberNavController()
@@ -235,7 +227,9 @@ class NotificationsScreenTest {
         coEvery { acceptUC.invoke(any(), any()) } returns Result.success(invitation)
         coEvery { declineUC.invoke("i2", "u1") } returns Result.failure(IllegalStateException("decline failed"))
 
-        val vm = NotificationsViewModel(groupUC, authRepository, invitationsUC, acceptUC, declineUC)
+        val groupRepo = mockk<GroupHabitNotificationRepository>(relaxed = true)
+        every { groupRepo.getNotificationsForUser("u1") } returns flowOf(emptyList())
+        val vm = NotificationsViewModel(groupUC, authRepository, invitationsUC, acceptUC, declineUC, groupRepo)
 
         composeRule.setContent {
             val navController = rememberNavController()
@@ -297,7 +291,9 @@ class NotificationsScreenTest {
         coEvery { acceptUC.invoke(any(), any()) } returns Result.success(invitations.first())
         coEvery { declineUC.invoke(any(), any()) } returns Result.success(invitations.first())
 
-        val vm = NotificationsViewModel(groupUC, authRepository, invitationsUC, acceptUC, declineUC)
+        val groupRepo = mockk<GroupHabitNotificationRepository>(relaxed = true)
+        every { groupRepo.getNotificationsForUser("u1") } returns flowOf(emptyList())
+        val vm = NotificationsViewModel(groupUC, authRepository, invitationsUC, acceptUC, declineUC, groupRepo)
 
         composeRule.setContent {
             val navController = rememberNavController()
