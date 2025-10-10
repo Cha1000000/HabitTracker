@@ -317,7 +317,15 @@ fun HabitsScreen(
                     onSwipeLeft = { viewModel.goToNextWeek() },
                     onSwipeRight = { viewModel.goToPreviousWeek() },
                     canSwipeLeft = viewModel.canGoToNextWeek(),
-                    canSwipeRight = viewModel.canGoToPreviousWeek()
+                    canSwipeRight = viewModel.canGoToPreviousWeek(),
+                    onBoundaryReached = { message ->
+                        scope.launch {
+                            snackbarHostState.showSnackbar(
+                                message = message,
+                                duration = SnackbarDuration.Short
+                            )
+                        }
+                    }
                 )
             }
             
@@ -335,7 +343,7 @@ fun HabitsScreen(
                     )
                 }
             }
-            
+
             Spacer(modifier = Modifier.height(8.dp))
             
             // Основной контент с привычками

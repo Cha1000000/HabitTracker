@@ -160,7 +160,9 @@ class HabitsViewModel @Inject constructor(
             }
         }
         
-        selectDate(previousWeekDate)
+        // Обновляем только selectedDate без загрузки привычек
+        _uiState.value = _uiState.value.copy(selectedDate = previousWeekDate)
+        Log.d(TAG, "📅 [goToPreviousWeek] Week changed to: $previousWeekDate (no habits reload)")
     }
     
     /**
@@ -177,7 +179,9 @@ class HabitsViewModel @Inject constructor(
             return
         }
         
-        selectDate(nextWeekDate)
+        // Обновляем только selectedDate без загрузки привычек
+        _uiState.value = _uiState.value.copy(selectedDate = nextWeekDate)
+        Log.d(TAG, "📅 [goToNextWeek] Week changed to: $nextWeekDate (no habits reload)")
     }
     
     /**

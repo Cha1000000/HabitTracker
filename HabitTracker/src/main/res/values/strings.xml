@@ -181,6 +181,8 @@
     <string name="error_unmarking_habit">Не удалось снять отметку: %1$s</string>
     <string name="error_loading_friends">Ошибка загрузки друзей</string>
     <string name="error_cannot_mark_future_habit">Нельзя отмечать привычки в будущем</string>
+    <string name="boundary_reached_oldest">Достигнута самая ранняя неделя с привычками</string>
+    <string name="boundary_reached_future">Достигнута максимальная дата (год вперёд)</string>
     
     <!-- Animation Labels -->
     <string name="animation_fab_scale">fab_scale</string>

@@ -3,8 +3,10 @@ package com.habittracker.presentation.ui.habits.components
 import android.annotation.SuppressLint
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.scaleIn
@@ -13,6 +15,7 @@ import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
@@ -64,7 +67,6 @@ import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -76,20 +78,25 @@ import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType.Companion.LongPress
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.font.FontWeight.Companion.SemiBold
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.VisualTransformation
+import androidx.compose.ui.text.style.TextAlign.Companion.Center
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.Popup
-import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import com.habittracker.R
 import com.habittracker.presentation.ui.theme.GlassBlack10
 import com.habittracker.presentation.ui.theme.GlassBlack20
@@ -109,9 +116,12 @@ import com.habittracker.presentation.ui.theme.TahoeLightPurpleAccent
 import com.habittracker.presentation.ui.theme.TahoeMidnightBlue
 import com.habittracker.presentation.ui.theme.TahoeRoyalBlue
 import com.habittracker.presentation.ui.theme.TahoeSkyBlue
+import kotlinx.datetime.Clock.System
+import kotlinx.datetime.TimeZone.Companion.currentSystemDefault
 import kotlinx.datetime.toLocalDateTime
 import java.time.format.DateTimeFormatter
 import java.util.Locale
+import kotlin.math.ceil
 import kotlin.math.cos
 import kotlin.math.sin
 
@@ -1237,7 +1247,8 @@ fun DayOfWeekItem(
     completionProgress: Float,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
-    isDarkTheme: Boolean = isSystemInDarkTheme()
+    isDarkTheme: Boolean = isSystemInDarkTheme(),
+    isFutureDate: Boolean = false
 ) {
     val backgroundColor = when {
         isCompleted -> if (isDarkTheme) TahoeSkyBlue else TahoeLightAccent
@@ -1247,6 +1258,7 @@ fun DayOfWeekItem(
     
     val textColor = when {
         isCompleted -> Color.White
+        isFutureDate -> MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f) // Приглушенный цвет для будущих дат
         isToday -> MaterialTheme.colorScheme.onSurface
         else -> MaterialTheme.colorScheme.onSurfaceVariant
     }
@@ -1313,10 +1325,10 @@ fun TahoeDateSelector(
     onSwipeLeft: (() -> Unit)? = null, // Свайп влево = следующая неделя
     onSwipeRight: (() -> Unit)? = null, // Свайп вправо = предыдущая неделя
     canSwipeLeft: Boolean = true,
-    canSwipeRight: Boolean = true
+    canSwipeRight: Boolean = true,
+    onBoundaryReached: ((String) -> Unit)? = null // Колбэк при достижении границы
 ) {
-    val today = kotlinx.datetime.Clock.System.now()
-        .toLocalDateTime(kotlinx.datetime.TimeZone.currentSystemDefault()).date
+    val today = System.now().toLocalDateTime(currentSystemDefault()).date
     
     val weekDayNames = listOf(
         stringResource(R.string.day_mon_short),
@@ -1329,6 +1341,53 @@ fun TahoeDateSelector(
     )
     
     var totalDrag by remember { androidx.compose.runtime.mutableFloatStateOf(0f) }
+    var currentOffset by remember { androidx.compose.runtime.mutableFloatStateOf(0f) }
+    val animatedOffset by animateFloatAsState(
+        targetValue = currentOffset,
+        animationSpec = spring(
+            dampingRatio = Spring.DampingRatioMediumBouncy,
+            stiffness = Spring.StiffnessLow
+        ),
+        label = "weekSwipeAnimation"
+    )
+
+    val hapticFeedback = LocalHapticFeedback.current
+    val boundaryReachedLeft = stringResource(R.string.boundary_reached_oldest)
+    val boundaryReachedRight = stringResource(R.string.boundary_reached_future)
+    
+    // Вычисляем расширенный список дат для отображения при свайпе
+    val itemWidth = 48f // ширина одного элемента в dp
+    val density = LocalDensity.current
+    val itemWidthPx = with(density) { itemWidth.dp.toPx() }
+    
+    // Определяем, сколько дополнительных дат нужно показать слева и справа
+    val offsetInDays = animatedOffset / itemWidthPx
+    val extraDaysLeft = if (offsetInDays > 0) ceil(offsetInDays).toInt().coerceAtMost(7) else 0
+    val extraDaysRight = if (offsetInDays < 0) ceil(kotlin.math.abs(offsetInDays)).toInt().coerceAtMost(7) else 0
+    
+    // Создаём расширенный список дат
+    val extendedDates = remember(weekDates, extraDaysLeft, extraDaysRight) {
+        val firstDate = weekDates.firstOrNull() ?: today
+        val lastDate = weekDates.lastOrNull() ?: today
+        
+        val leftDates: List<kotlinx.datetime.LocalDate> = if (extraDaysLeft > 0) {
+            (extraDaysLeft downTo 1).map { days -> 
+                kotlinx.datetime.LocalDate.Companion.fromEpochDays(
+                    firstDate.toEpochDays() - days
+                )
+            }
+        } else emptyList()
+        
+        val rightDates: List<kotlinx.datetime.LocalDate> = if (extraDaysRight > 0) {
+            (1..extraDaysRight).map { days -> 
+                kotlinx.datetime.LocalDate.Companion.fromEpochDays(
+                    lastDate.toEpochDays() + days
+                )
+            }
+        } else emptyList()
+        
+        leftDates + weekDates + rightDates
+    }
     
     Column(
         modifier = modifier
@@ -1349,12 +1408,34 @@ fun TahoeDateSelector(
                         } else if (totalDrag < -threshold && canSwipeLeft) {
                             // Свайп влево - следующая неделя
                             onSwipeLeft?.invoke()
+                        } else if (totalDrag > threshold) {
+                            // Достигли границы слева
+                            hapticFeedback.performHapticFeedback(LongPress)
+                            onBoundaryReached?.invoke(boundaryReachedLeft)
+                        } else if (totalDrag < -threshold && !canSwipeLeft) {
+                            // Достигли границы справа
+                            hapticFeedback.performHapticFeedback(LongPress)
+                            onBoundaryReached?.invoke(boundaryReachedRight)
                         }
+                        
                         totalDrag = 0f
+                        currentOffset = 0f
                     },
                     onHorizontalDrag = { change, dragAmount ->
                         change.consume()
                         totalDrag += dragAmount
+                        
+                        // Ограничиваем визуальное смещение в зависимости от границ
+                        // Максимум 7 дней * ширина элемента = ~336px
+                        val maxOffset = itemWidthPx * 7
+                        val newOffset = (currentOffset + dragAmount).coerceIn(-maxOffset, maxOffset)
+                        
+                        // Применяем резистентность при достижении границ
+                        currentOffset = when {
+                            newOffset > 0 && !canSwipeRight -> newOffset * 0.3f // Резистентность слева
+                            newOffset < 0 && !canSwipeLeft -> newOffset * 0.3f // Резистентность справа
+                            else -> newOffset
+                        }
                     }
                 )
             }
@@ -1370,31 +1451,61 @@ fun TahoeDateSelector(
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.width(48.dp),
-                    textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                    textAlign = Center
                 )
             }
         }
-        
-        Spacer(modifier = Modifier.height(8.dp))
-        
+        //Spacer(modifier = Modifier.height(8.dp))
         // Строка с числами дней
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceEvenly
+        Box(
+            modifier = Modifier
+                .fillMaxWidth().padding(start = 2.dp)
+                .height(48.dp)
+                .graphicsLayer { 
+                    clip = false // Отключаем обрезку для показа дополнительных дат
+                }
         ) {
-            weekDates.forEach { date ->
-                val progress = completionData[date] ?: 0f
-                val isCompleted = progress >= 1f
-                
-                DayOfWeekItem(
-                    dayNumber = date.dayOfMonth,
-                    isSelected = date == selectedDate,
-                    isToday = date == today,
-                    isCompleted = isCompleted,
-                    completionProgress = if (!isCompleted) progress else 0f,
-                    onClick = { onDateSelected(date) },
-                    isDarkTheme = isDarkTheme
-                )
+            // Вычисляем параметры для выравнивания
+            val screenWidth = with(density) { 
+                LocalConfiguration.current.screenWidthDp.dp.toPx()
+            }
+            val containerWidth = screenWidth - with(density) { 32.dp.toPx() } // минус padding
+            val spacing = (containerWidth - (7 * itemWidthPx)) / 6.96f // расстояние между элементами
+            val totalItemWidth = itemWidthPx + spacing // полная ширина одного элемента с отступом
+            
+            // Создаём Row с фиксированными позициями элементов
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .graphicsLayer { 
+                        clip = false
+                        // Смещаем весь контент с учётом дополнительных дат слева
+                        translationX = animatedOffset - (extraDaysLeft * totalItemWidth)
+                    }
+            ) {
+                extendedDates.forEachIndexed { index, date ->
+                    val progress = completionData[date] ?: 0f
+                    val isCompleted = progress >= 1f
+                    val isFutureDate = date > today
+                    
+                    Box(
+                        modifier = Modifier
+                            .offset(x = with(density) { (index * totalItemWidth).toDp() })
+                            .width(48.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        DayOfWeekItem(
+                            dayNumber = date.dayOfMonth,
+                            isSelected = date == selectedDate,
+                            isToday = date == today,
+                            isCompleted = isCompleted,
+                            completionProgress = if (!isCompleted) progress else 0f,
+                            onClick = { onDateSelected(date) },
+                            isDarkTheme = isDarkTheme,
+                            isFutureDate = isFutureDate
+                        )
+                    }
+                }
             }
         }
     }
