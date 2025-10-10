@@ -126,6 +126,7 @@ fun HabitsScreen(
     val weekDates = viewModel.getCurrentWeekDates()
     val weekCompletionData = uiState.weekCompletionData
     val isToday = selectedDate == today
+    val isCurrentWeekDisplayed = viewModel.isCurrentWeekDisplayed()
     
     // Логирование для отладки
     LaunchedEffect(uiState.selectedDate) {
@@ -329,13 +330,13 @@ fun HabitsScreen(
                 )
             }
             
-            // Кнопка "Сегодня" (показывается только когда выбран не сегодняшний день)
-            if (!isToday) {
+            // Кнопка "Сегодня" (показывается когда отображается не текущая неделя)
+            if (!isCurrentWeekDisplayed) {
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(horizontal = 16.dp, vertical = 8.dp),
-                    horizontalArrangement = Arrangement.Center
+                        .padding(horizontal = 16.dp, vertical = 0.dp),
+                    horizontalArrangement = Arrangement.End
                 ) {
                     TahoeBackToTodayButton(
                         onClick = { viewModel.goToToday() },

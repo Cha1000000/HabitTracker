@@ -126,10 +126,17 @@ class HabitsViewModel @Inject constructor(
      * Выбирает дату для просмотра
      */
     fun selectDate(date: LocalDate) {
-        val userId = authRepository.getCurrentUserId() ?: return
-        Log.d(TAG, "📅 [selectDate] Selecting date: $date")
-        _uiState.value = _uiState.value.copy(selectedDate = date)
-        Log.d(TAG, "📅 [selectDate] Updated selectedDate in state: ${_uiState.value.selectedDate}")
+        Log.d(TAG, "📅 [selectDate] Selected date: $date")
+        val userId = authRepository.getCurrentUserId()
+        if (userId == null) {
+            Log.w(TAG, "⚠️ [selectDate] No user ID")
+            return
+        }
+        val weekStart = getStartOfWeek(date)
+        _uiState.value = _uiState.value.copy(
+            selectedDate = date,
+            currentWeekStartDate = weekStart
+        )
         loadHabitsForDate(userId, date)
     }
     
@@ -144,78 +151,84 @@ class HabitsViewModel @Inject constructor(
      * Переходит на предыдущую неделю
      */
     fun goToPreviousWeek() {
-        val currentDate = _uiState.value.selectedDate ?: today
-        val previousWeekDate = currentDate.minus(7, DateTimeUnit.DAY)
+        val currentWeekStart = _uiState.value.currentWeekStartDate ?: getStartOfWeek(today)
+        val previousWeekStart = currentWeekStart.minus(7, DateTimeUnit.DAY)
         
         // Проверяем минимальную границу
         val oldestDate = _uiState.value.oldestHabitDate
         if (oldestDate != null) {
-            val startOfPreviousWeek = getStartOfWeek(previousWeekDate)
             val startOfOldestWeek = getStartOfWeek(oldestDate)
             
             // Не позволяем уйти раньше недели с самой старой привычкой
-            if (startOfPreviousWeek < startOfOldestWeek) {
+            if (previousWeekStart < startOfOldestWeek) {
                 Log.d(TAG, "⛔ [goToPreviousWeek] Reached minimum date boundary: $oldestDate")
                 return
             }
         }
         
-        // Обновляем только selectedDate без загрузки привычек
-        _uiState.value = _uiState.value.copy(selectedDate = previousWeekDate)
-        Log.d(TAG, "📅 [goToPreviousWeek] Week changed to: $previousWeekDate (no habits reload)")
+        // Обновляем только currentWeekStartDate без изменения selectedDate
+        _uiState.value = _uiState.value.copy(currentWeekStartDate = previousWeekStart)
+        Log.d(TAG, "📅 [goToPreviousWeek] Week changed to: $previousWeekStart (selectedDate unchanged)")
     }
     
     /**
      * Переходит на следующую неделю
      */
     fun goToNextWeek() {
-        val currentDate = _uiState.value.selectedDate ?: today
-        val nextWeekDate = currentDate.plus(7, DateTimeUnit.DAY)
+        val currentWeekStart = _uiState.value.currentWeekStartDate ?: getStartOfWeek(today)
+        val nextWeekStart = currentWeekStart.plus(7, DateTimeUnit.DAY)
         
         // Проверяем максимальную границу (сегодня + 1 год)
         val maxDate = _uiState.value.maxFutureDate ?: today.plus(1, DateTimeUnit.YEAR)
-        if (nextWeekDate > maxDate) {
+        if (nextWeekStart > maxDate) {
             Log.d(TAG, "⛔ [goToNextWeek] Reached maximum date boundary: $maxDate")
             return
         }
         
-        // Обновляем только selectedDate без загрузки привычек
-        _uiState.value = _uiState.value.copy(selectedDate = nextWeekDate)
-        Log.d(TAG, "📅 [goToNextWeek] Week changed to: $nextWeekDate (no habits reload)")
+        // Обновляем только currentWeekStartDate без изменения selectedDate
+        _uiState.value = _uiState.value.copy(currentWeekStartDate = nextWeekStart)
+        Log.d(TAG, "📅 [goToNextWeek] Week changed to: $nextWeekStart (selectedDate unchanged)")
     }
     
     /**
      * Проверяет, можно ли перейти на предыдущую неделю
      */
     fun canGoToPreviousWeek(): Boolean {
-        val currentDate = _uiState.value.selectedDate ?: today
-        val previousWeekDate = currentDate.minus(7, DateTimeUnit.DAY)
+        val currentWeekStart = _uiState.value.currentWeekStartDate ?: getStartOfWeek(today)
+        val previousWeekStart = currentWeekStart.minus(7, DateTimeUnit.DAY)
         val oldestDate = _uiState.value.oldestHabitDate ?: return true
         
-        val startOfPreviousWeek = getStartOfWeek(previousWeekDate)
         val startOfOldestWeek = getStartOfWeek(oldestDate)
         
-        return startOfPreviousWeek >= startOfOldestWeek
+        return previousWeekStart >= startOfOldestWeek
     }
     
     /**
      * Проверяет, можно ли перейти на следующую неделю
      */
     fun canGoToNextWeek(): Boolean {
-        val currentDate = _uiState.value.selectedDate ?: today
-        val nextWeekDate = currentDate.plus(7, DateTimeUnit.DAY)
+        val currentWeekStart = _uiState.value.currentWeekStartDate ?: getStartOfWeek(today)
+        val nextWeekStart = currentWeekStart.plus(7, DateTimeUnit.DAY)
         val maxDate = _uiState.value.maxFutureDate ?: today.plus(1, DateTimeUnit.YEAR)
         
-        return nextWeekDate <= maxDate
+        return nextWeekStart <= maxDate
     }
     
     /**
      * Получает список дат для текущей недели
      */
     fun getCurrentWeekDates(): List<LocalDate> {
-        val selectedDate = _uiState.value.selectedDate ?: today
-        val startOfWeek = getStartOfWeek(selectedDate)
-        return (0..6).map { startOfWeek.plus(it, DateTimeUnit.DAY) }
+        val weekStart = _uiState.value.currentWeekStartDate ?: getStartOfWeek(today)
+        return (0..6).map { weekStart.plus(it, DateTimeUnit.DAY) }
+    }
+    
+    /**
+     * Проверяет, находится ли текущая видимая неделя на неделе с сегодняшним днём
+     */
+    fun isCurrentWeekDisplayed(): Boolean {
+        val currentWeekStart = _uiState.value.currentWeekStartDate ?: getStartOfWeek(today)
+        val todayWeekStart = getStartOfWeek(today)
+        return currentWeekStart == todayWeekStart
     }
     
     /**

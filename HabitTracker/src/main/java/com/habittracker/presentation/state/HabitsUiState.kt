@@ -11,7 +11,8 @@ data class HabitsUiState(
     val isLoading: Boolean = true,
     val error: String? = null,
     val message: String? = null,
-    val selectedDate: LocalDate? = null,
+    val selectedDate: LocalDate? = null, // Выбранная дата (для которой загружены привычки)
+    val currentWeekStartDate: LocalDate? = null, // Начало текущей видимой недели (для отображения диапазона дат)
     val weekCompletionData: Map<LocalDate, Float> = emptyMap(), // Прогресс выполнения для дней текущей недели (0f-1f)
     val oldestHabitDate: LocalDate? = null, // Дата создания самой старой привычки (минимальная граница)
     val maxFutureDate: LocalDate? = null // Максимальная дата в будущем (сегодня + 1 год)
