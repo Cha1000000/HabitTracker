@@ -141,6 +141,71 @@ class HabitsViewModel @Inject constructor(
     }
     
     /**
+     * Переходит на предыдущую неделю
+     */
+    fun goToPreviousWeek() {
+        val currentDate = _uiState.value.selectedDate ?: today
+        val previousWeekDate = currentDate.minus(7, DateTimeUnit.DAY)
+        
+        // Проверяем минимальную границу
+        val oldestDate = _uiState.value.oldestHabitDate
+        if (oldestDate != null) {
+            val startOfPreviousWeek = getStartOfWeek(previousWeekDate)
+            val startOfOldestWeek = getStartOfWeek(oldestDate)
+            
+            // Не позволяем уйти раньше недели с самой старой привычкой
+            if (startOfPreviousWeek < startOfOldestWeek) {
+                Log.d(TAG, "⛔ [goToPreviousWeek] Reached minimum date boundary: $oldestDate")
+                return
+            }
+        }
+        
+        selectDate(previousWeekDate)
+    }
+    
+    /**
+     * Переходит на следующую неделю
+     */
+    fun goToNextWeek() {
+        val currentDate = _uiState.value.selectedDate ?: today
+        val nextWeekDate = currentDate.plus(7, DateTimeUnit.DAY)
+        
+        // Проверяем максимальную границу (сегодня + 1 год)
+        val maxDate = _uiState.value.maxFutureDate ?: today.plus(1, DateTimeUnit.YEAR)
+        if (nextWeekDate > maxDate) {
+            Log.d(TAG, "⛔ [goToNextWeek] Reached maximum date boundary: $maxDate")
+            return
+        }
+        
+        selectDate(nextWeekDate)
+    }
+    
+    /**
+     * Проверяет, можно ли перейти на предыдущую неделю
+     */
+    fun canGoToPreviousWeek(): Boolean {
+        val currentDate = _uiState.value.selectedDate ?: today
+        val previousWeekDate = currentDate.minus(7, DateTimeUnit.DAY)
+        val oldestDate = _uiState.value.oldestHabitDate ?: return true
+        
+        val startOfPreviousWeek = getStartOfWeek(previousWeekDate)
+        val startOfOldestWeek = getStartOfWeek(oldestDate)
+        
+        return startOfPreviousWeek >= startOfOldestWeek
+    }
+    
+    /**
+     * Проверяет, можно ли перейти на следующую неделю
+     */
+    fun canGoToNextWeek(): Boolean {
+        val currentDate = _uiState.value.selectedDate ?: today
+        val nextWeekDate = currentDate.plus(7, DateTimeUnit.DAY)
+        val maxDate = _uiState.value.maxFutureDate ?: today.plus(1, DateTimeUnit.YEAR)
+        
+        return nextWeekDate <= maxDate
+    }
+    
+    /**
      * Получает список дат для текущей недели
      */
     fun getCurrentWeekDates(): List<LocalDate> {
@@ -241,14 +306,30 @@ class HabitsViewModel @Inject constructor(
                             }
                         }.awaitAll()
                     }
-                    emit(_uiState.value.copy(habitsWithCompletion = updatedHabits, isLoading = false))
+                    
+                    // 3) Вычисляем границы дат
+                    val oldestTimestamp = habits.minOfOrNull { it.createdAt }
+                    val oldestDate = oldestTimestamp?.let { timestamp ->
+                        kotlinx.datetime.Instant.fromEpochMilliseconds(timestamp)
+                            .toLocalDateTime(TimeZone.currentSystemDefault()).date
+                    }
+                    val maxFutureDate = today.plus(1, DateTimeUnit.YEAR)
+                    
+                    emit(_uiState.value.copy(
+                        habitsWithCompletion = updatedHabits,
+                        isLoading = false,
+                        oldestHabitDate = oldestDate,
+                        maxFutureDate = maxFutureDate
+                    ))
                 }
             }
             .onEach { state ->
                 // Merge with existing state to preserve selectedDate and other fields
                 _uiState.value = _uiState.value.copy(
                     habitsWithCompletion = state.habitsWithCompletion,
-                    isLoading = state.isLoading
+                    isLoading = state.isLoading,
+                    oldestHabitDate = state.oldestHabitDate,
+                    maxFutureDate = state.maxFutureDate
                 )
                 Log.d(TAG, "✅ [habits][ui] list updated (${state.habitsWithCompletion.size})")
             }
@@ -335,6 +416,17 @@ class HabitsViewModel @Inject constructor(
      * Переключает статус выполнения привычки
      */
     fun toggleHabitCompletion(habitId: String) {
+        val selectedDate = _uiState.value.selectedDate ?: today
+        
+        // Блокируем отметку привычек в будущем
+        if (selectedDate > today) {
+            Log.d(TAG, "⛔ [toggleHabitCompletion] Cannot mark habits in future date: $selectedDate")
+            _uiState.value = _uiState.value.copy(
+                error = getApplication<Application>().getString(R.string.error_cannot_mark_future_habit)
+            )
+            return
+        }
+        
         val currentHabit = _uiState.value.habitsWithCompletion.find { it.habit.id == habitId }
         if (currentHabit != null) {
             if (currentHabit.isCompletedToday) {

@@ -64,7 +64,9 @@ import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -74,6 +76,7 @@ import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
@@ -86,6 +89,7 @@ import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.Popup
+import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import com.habittracker.R
 import com.habittracker.presentation.ui.theme.GlassBlack10
 import com.habittracker.presentation.ui.theme.GlassBlack20
@@ -1296,7 +1300,7 @@ fun DayOfWeekItem(
 }
 
 /**
- * Горизонтальный селектор дат с днями недели
+ * Горизонтальный селектор дат с днями недели и поддержкой свайпов
  */
 @Composable
 fun TahoeDateSelector(
@@ -1305,7 +1309,11 @@ fun TahoeDateSelector(
     weekDates: List<kotlinx.datetime.LocalDate>,
     completionData: Map<kotlinx.datetime.LocalDate, Float>, // Прогресс выполнения для каждого дня (0f-1f)
     modifier: Modifier = Modifier,
-    isDarkTheme: Boolean = isSystemInDarkTheme()
+    isDarkTheme: Boolean = isSystemInDarkTheme(),
+    onSwipeLeft: (() -> Unit)? = null, // Свайп влево = следующая неделя
+    onSwipeRight: (() -> Unit)? = null, // Свайп вправо = предыдущая неделя
+    canSwipeLeft: Boolean = true,
+    canSwipeRight: Boolean = true
 ) {
     val today = kotlinx.datetime.Clock.System.now()
         .toLocalDateTime(kotlinx.datetime.TimeZone.currentSystemDefault()).date
@@ -1320,10 +1328,36 @@ fun TahoeDateSelector(
         stringResource(R.string.day_sun_short)
     )
     
+    var totalDrag by remember { androidx.compose.runtime.mutableFloatStateOf(0f) }
+    
     Column(
         modifier = modifier
             .fillMaxWidth()
             .padding(horizontal = 16.dp)
+            .pointerInput(canSwipeLeft, canSwipeRight) {
+                detectHorizontalDragGestures(
+                    onDragStart = {
+                        totalDrag = 0f
+                    },
+                    onDragEnd = {
+                        // Порог для срабатывания свайпа
+                        val threshold = 100f
+                        
+                        if (totalDrag > threshold && canSwipeRight) {
+                            // Свайп вправо - предыдущая неделя
+                            onSwipeRight?.invoke()
+                        } else if (totalDrag < -threshold && canSwipeLeft) {
+                            // Свайп влево - следующая неделя
+                            onSwipeLeft?.invoke()
+                        }
+                        totalDrag = 0f
+                    },
+                    onHorizontalDrag = { change, dragAmount ->
+                        change.consume()
+                        totalDrag += dragAmount
+                    }
+                )
+            }
     ) {
         // Строка с днями недели
         Row(

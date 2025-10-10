@@ -180,6 +180,7 @@
     <string name="error_marking_habit">Не удалось отметить привычку: %1$s</string>
     <string name="error_unmarking_habit">Не удалось снять отметку: %1$s</string>
     <string name="error_loading_friends">Ошибка загрузки друзей</string>
+    <string name="error_cannot_mark_future_habit">Нельзя отмечать привычки в будущем</string>
     
     <!-- Animation Labels -->
     <string name="animation_fab_scale">fab_scale</string>

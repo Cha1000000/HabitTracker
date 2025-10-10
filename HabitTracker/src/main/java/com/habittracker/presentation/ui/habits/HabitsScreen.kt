@@ -313,7 +313,11 @@ fun HabitsScreen(
                     },
                     weekDates = weekDates,
                     completionData = weekCompletionData,
-                    isDarkTheme = isSystemInDarkTheme()
+                    isDarkTheme = isSystemInDarkTheme(),
+                    onSwipeLeft = { viewModel.goToNextWeek() },
+                    onSwipeRight = { viewModel.goToPreviousWeek() },
+                    canSwipeLeft = viewModel.canGoToNextWeek(),
+                    canSwipeRight = viewModel.canGoToPreviousWeek()
                 )
             }
             
