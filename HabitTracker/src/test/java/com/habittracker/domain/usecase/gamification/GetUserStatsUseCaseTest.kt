@@ -2,13 +2,25 @@ package com.habittracker.domain.usecase.gamification
 
 import com.habittracker.domain.model.Habit
 import com.habittracker.domain.model.HabitEntry
+import com.habittracker.domain.model.HabitParticipantSettings
 import com.habittracker.domain.model.User
 import com.habittracker.domain.model.gamification.UserStats
-import com.habittracker.domain.repository.*
+import com.habittracker.domain.repository.ChallengeRepository
+import com.habittracker.domain.repository.HabitEntryRepository
+import com.habittracker.domain.repository.HabitRepository
+import com.habittracker.domain.repository.SocialRepository
+import com.habittracker.domain.repository.UserRepository
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.test.runTest
-import kotlinx.datetime.*
+import kotlinx.datetime.Clock
+import kotlinx.datetime.DateTimeUnit
+import kotlinx.datetime.DayOfWeek
+import kotlinx.datetime.LocalDate
+import kotlinx.datetime.TimeZone
+import kotlinx.datetime.atStartOfDayIn
+import kotlinx.datetime.plus
+import kotlinx.datetime.todayIn
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
 import org.junit.Test
@@ -114,7 +126,7 @@ class GetUserStatsUseCaseTest {
                 override suspend fun searchHabits(userId: String, query: String): List<Habit> = habits
                 override fun getPublicHabits(): Flow<List<Habit>> = flowOf(emptyList())
                 override suspend fun getHabitParticipantSettings(habitId: String, userId: String) = null
-                override suspend fun updateHabitParticipantSettings(settings: com.habittracker.domain.model.HabitParticipantSettings) {}
+                override suspend fun updateHabitParticipantSettings(settings: HabitParticipantSettings) {}
                 override fun observeHabitParticipantSettings(habitId: String, userId: String) = flowOf(null)
             },
             habitEntryRepository = object : HabitEntryRepository {

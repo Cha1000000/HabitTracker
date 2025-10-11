@@ -15,7 +15,9 @@ import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.test.runTest
 import kotlinx.datetime.Clock
 import kotlinx.datetime.LocalDate
-import org.junit.Assert.*
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNotNull
+import org.junit.Assert.assertTrue
 import org.junit.Assert.fail
 import org.junit.Before
 import org.junit.Test
@@ -188,7 +190,7 @@ class GetHabitsUseCaseTest {
         override suspend fun searchHabits(userId: String, query: String) = throw NotImplementedError()
         override fun getPublicHabits(): Flow<List<Habit>> = flowOf(emptyList())
         override suspend fun getHabitParticipantSettings(habitId: String, userId: String) = null
-        override suspend fun updateHabitParticipantSettings(settings: com.habittracker.domain.model.HabitParticipantSettings) = throw NotImplementedError()
+        override suspend fun updateHabitParticipantSettings(settings: HabitParticipantSettings) = throw NotImplementedError()
         override fun observeHabitParticipantSettings(habitId: String, userId: String) = flowOf(null)
     }
 }

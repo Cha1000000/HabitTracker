@@ -10,6 +10,7 @@ import com.habittracker.domain.model.Habit
 import com.habittracker.domain.model.HabitEntry
 import com.habittracker.domain.model.HabitEntryWithUser
 import com.habittracker.domain.model.HabitInvitation
+import com.habittracker.domain.model.HabitParticipantSettings
 import com.habittracker.domain.model.HabitType
 import com.habittracker.domain.model.User
 import com.habittracker.domain.model.gamification.GamificationEvent
@@ -214,7 +215,7 @@ class FakeHabitRepository : HabitRepository {
     override suspend fun searchHabits(userId: String, query: String): List<Habit> = emptyList()
     override fun getPublicHabits(): Flow<List<Habit>> = flowOf(emptyList())
     override suspend fun getHabitParticipantSettings(habitId: String, userId: String) = null
-    override suspend fun updateHabitParticipantSettings(settings: com.habittracker.domain.model.HabitParticipantSettings) = throw NotImplementedError()
+    override suspend fun updateHabitParticipantSettings(settings: HabitParticipantSettings) = throw NotImplementedError()
     override fun observeHabitParticipantSettings(habitId: String, userId: String) = flowOf(null)
 }
 

@@ -13,6 +13,7 @@ import com.habittracker.domain.model.HabitEntry
 import com.habittracker.domain.model.HabitEntryWithUser
 import com.habittracker.domain.model.HabitFrequency
 import com.habittracker.domain.model.HabitInvitation
+import com.habittracker.domain.model.HabitParticipantSettings
 import com.habittracker.domain.model.HabitType
 import com.habittracker.domain.model.User
 import com.habittracker.domain.repository.ChallengeRepository
@@ -105,7 +106,7 @@ class ChallengeUseCasesTest {
         override suspend fun searchHabits(userId: String, query: String): List<Habit> = emptyList()
         override fun getPublicHabits(): Flow<List<Habit>> = MutableStateFlow(emptyList())
         override suspend fun getHabitParticipantSettings(habitId: String, userId: String) = null
-        override suspend fun updateHabitParticipantSettings(settings: com.habittracker.domain.model.HabitParticipantSettings) = throw NotImplementedError()
+        override suspend fun updateHabitParticipantSettings(settings: HabitParticipantSettings) = throw NotImplementedError()
         override fun observeHabitParticipantSettings(habitId: String, userId: String) = MutableStateFlow(null)
     }
 

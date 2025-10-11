@@ -1,9 +1,11 @@
 package com.habittracker.domain.usecase
 
+import android.util.Log
 import com.habittracker.domain.model.Habit
 import com.habittracker.domain.model.isActiveOnDate
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
+import kotlinx.datetime.Instant.Companion.fromEpochMilliseconds
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toLocalDateTime
@@ -27,7 +29,7 @@ class GetHabitsForDateUseCase @Inject constructor(
             habits.filter { habit ->
                 // Получаем дату создания привычки
                 val createdDate = if (habit.createdAt > 0) {
-                    kotlinx.datetime.Instant.fromEpochMilliseconds(habit.createdAt)
+                    fromEpochMilliseconds(habit.createdAt)
                         .toLocalDateTime(TimeZone.currentSystemDefault())
                         .date
                 } else null
@@ -37,7 +39,7 @@ class GetHabitsForDateUseCase @Inject constructor(
                 
                 // Логируем для отладки
                 if (habit.startDate != null && habit.startDate > date) {
-                    android.util.Log.d("GetHabitsForDateUseCase", 
+                    Log.d("GetHabitsForDateUseCase",
                         "📅 Habit '${habit.title}' has future startDate=${habit.startDate}, currentDate=$date, isActive=$isActive")
                 }
                 
