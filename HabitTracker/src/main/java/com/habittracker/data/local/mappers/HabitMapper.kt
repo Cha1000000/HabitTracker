@@ -31,7 +31,9 @@ fun HabitEntity.toDomain(): Habit {
         isPublic = isPublic,
         isActive = isActive,
         createdAt = createdAt,
-        updatedAt = updatedAt
+        updatedAt = updatedAt,
+        startDate = startDate,
+        endDate = endDate
     )
 }
 
@@ -56,7 +58,9 @@ fun Habit.toEntity(): HabitEntity {
         isPublic = isPublic,
         isActive = isActive,
         createdAt = createdAt,
-        updatedAt = updatedAt
+        updatedAt = updatedAt,
+        startDate = startDate,
+        endDate = endDate
     )
 }
 

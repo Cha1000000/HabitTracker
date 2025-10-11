@@ -29,6 +29,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material.icons.filled.Description
 import androidx.compose.material.icons.filled.Group
 import androidx.compose.material.icons.filled.Notifications
@@ -101,6 +102,7 @@ import com.habittracker.presentation.ui.habits.components.GlassmorphicSectionHea
 import com.habittracker.presentation.ui.habits.components.GlassmorphicSwitch
 import com.habittracker.presentation.ui.habits.components.GlassmorphicTextField
 import com.habittracker.presentation.ui.habits.components.InviteCodeCard
+import com.habittracker.presentation.ui.habits.components.TahoeDatePicker
 import com.habittracker.presentation.ui.habits.components.TahoeGradientBackground
 import com.habittracker.presentation.ui.habits.components.TimePickerDialog
 import com.habittracker.presentation.ui.permission.NotificationPermissionHandler
@@ -112,6 +114,7 @@ import com.habittracker.presentation.viewmodel.AddEditHabitViewModel
 import com.habittracker.presentation.viewmodel.IAddEditHabitViewModel
 import kotlinx.datetime.DayOfWeek
 import kotlinx.datetime.LocalTime
+import kotlinx.datetime.toLocalDateTime
 
 
 @Composable
@@ -933,6 +936,83 @@ fun AddEditHabitScreen(
                     )
                 }
                 FieldValidationFeedback(uiState.targetValueError)
+            }
+
+            // Секция выбора дат привычки
+            item {
+                Spacer(modifier = Modifier.height(4.dp))
+                val isDarkTheme = isSystemInDarkTheme()
+                GlassmorphicCard(
+                    modifier = Modifier.fillMaxWidth(),
+                    isDarkTheme = isDarkTheme,
+                    cornerRadius = 16.dp,
+                    glassAlpha = if (isDarkTheme) 0.15f else 0.85f,
+                    borderAlpha = if (isDarkTheme) 0.3f else 0.15f,
+                    elevation = 2.dp
+                ) {
+                    Column(
+                        modifier = Modifier.padding(16.dp)
+                    ) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Icon(
+                                Icons.Default.DateRange,
+                                contentDescription = null,
+                                tint = if (isDarkTheme) TahoeLightBlue else MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.padding(end = 16.dp)
+                            )
+                            GlassmorphicSectionHeader(
+                                text = stringResource(R.string.habit_dates_section),
+                                isDarkTheme = isDarkTheme
+                            )
+                        }
+                        
+                        Spacer(modifier = Modifier.height(16.dp))
+                        
+                        // Дата начала
+                        TahoeDatePicker(
+                            date = uiState.startDate,
+                            onDateSelected = viewModel::onStartDateChange,
+                            label = stringResource(R.string.habit_start_date_label),
+                            placeholder = stringResource(R.string.habit_start_date_placeholder),
+                            isEnabled = uiState.canEditStartDate,
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                        
+                        if (!uiState.canEditStartDate) {
+                            Text(
+                                text = stringResource(R.string.habit_start_date_locked_hint),
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.padding(top = 4.dp, start = 16.dp)
+                            )
+                        }
+                        
+                        Spacer(modifier = Modifier.height(12.dp))
+                        
+                        // Дата окончания
+                        TahoeDatePicker(
+                            date = uiState.endDate,
+                            onDateSelected = viewModel::onEndDateChange,
+                            label = stringResource(R.string.habit_end_date_label),
+                            placeholder = stringResource(R.string.habit_end_date_placeholder),
+                            isEnabled = true,
+                            minDate = uiState.startDate ?: kotlinx.datetime.Clock.System.now()
+                                .toLocalDateTime(kotlinx.datetime.TimeZone.currentSystemDefault())
+                                .date,
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                        
+                        Text(
+                            text = stringResource(R.string.habit_end_date_hint),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.padding(top = 4.dp, start = 16.dp)
+                        )
+                    }
+                }
             }
 
             item {

@@ -19,6 +19,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.datetime.DayOfWeek
+import kotlinx.datetime.LocalDate
 import kotlinx.datetime.LocalTime
 import javax.inject.Inject
 
@@ -399,35 +400,19 @@ class PreviewAddEditHabitViewModel @Inject constructor(
             )
         }
     }
-}
-
-/**
- * Создает тестовый экземпляр ViewModel с заполненными данными для превью.
- */
-@Suppress("FunctionName")
-fun PreviewAddEditHabitViewModel(
-    title: String = "Бег по утрам",
-    description: String = "Пробежка в парке",
-    icon: String = "🏃",
-    type: HabitType = HabitType.PERSONAL,
-    frequency: HabitFrequency = HabitFrequency.DAILY,
-    reminderTime: LocalTime? = LocalTime(8, 30),
-    targetValue: Int = 5,
-    unit: String = "км",
-    isLoading: Boolean = false,
-    isHabitSaved: Boolean = false
-): PreviewAddEditHabitViewModel {
-    val testState = AddEditHabitUiState(
-        title = title,
-        description = description,
-        icon = icon,
-        type = type,
-        frequency = frequency,
-        reminderTime = reminderTime,
-        targetValue = targetValue,
-        unit = unit,
-        isLoading = isLoading,
-        isHabitSaved = isHabitSaved
-    )
-    return PreviewAddEditHabitViewModel(testState)
+    
+    // Методы для работы с датами привычек
+    override fun onStartDateChange(date: LocalDate?) {
+        _uiState.update { it.copy(
+            startDate = date,
+            hasUnsavedChanges = true
+        )}
+    }
+    
+    override fun onEndDateChange(date: LocalDate?) {
+        _uiState.update { it.copy(
+            endDate = date,
+            hasUnsavedChanges = true
+        )}
+    }
 }

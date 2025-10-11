@@ -16,10 +16,11 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.tasks.await
-import kotlin.coroutines.resume
 import kotlinx.datetime.LocalDate
+import kotlinx.datetime.LocalDate.Companion.parse
 import javax.inject.Inject
 import javax.inject.Singleton
+import kotlin.coroutines.resume
 
 /**
  * Реализация FirestoreRepository для работы с Firebase Firestore.
@@ -100,6 +101,25 @@ class FirestoreRepositoryImpl @Inject constructor(
             // timestamps
             val createdAt = (data["createdAt"] as? Number)?.toLong() ?: 0L
             val updatedAt = (data["updatedAt"] as? Number)?.toLong() ?: createdAt
+            
+            // Даты начала и окончания
+            val startDate = (data["startDate"] as? String)?.let {
+                try {
+                    parse(it)
+                } catch (_: Exception) {
+                    Log.w(TAG, "Failed to parse startDate: $it")
+                    null
+                }
+            }
+            
+            val endDate = (data["endDate"] as? String)?.let {
+                try {
+                    parse(it)
+                } catch (_: Exception) {
+                    Log.w(TAG, "Failed to parse endDate: $it")
+                    null
+                }
+            }
 
             Habit(
                 id = id,
@@ -123,7 +143,9 @@ class FirestoreRepositoryImpl @Inject constructor(
                 isPublic = data["public"] as? Boolean ?: false,
                 isActive = isActive,
                 createdAt = createdAt,
-                updatedAt = updatedAt
+                updatedAt = updatedAt,
+                startDate = startDate,
+                endDate = endDate
             )
         } catch (e: Exception) {
             Log.e(TAG, "❌ [parseHabitSafely] Error parsing habit: ${doc.id}", e)
@@ -175,7 +197,8 @@ class FirestoreRepositoryImpl @Inject constructor(
             Log.d(TAG, "💾 [saveHabit] Saving habit: ${habit.id}")
             Log.d(TAG, "💾 [saveHabit] Habit details: title='${habit.title}', participants=${habit.participants}, isActive=${habit.isActive}")
             Log.d(TAG, "⏰ [saveHabit] reminderTime=${habit.reminderTime}, reminderEnabled(computed)=${habit.reminderTime != null}")
-            val payload = buildMap<String, Any?> {
+            Log.d(TAG, "📅 [saveHabit] Dates: startDate=${habit.startDate}, endDate=${habit.endDate}")
+            val payload = buildMap {
                 // Простые поля
                 put("id", habit.id)
                 put("title", habit.title)
@@ -188,7 +211,7 @@ class FirestoreRepositoryImpl @Inject constructor(
                 val hasReminder = habit.reminderTime != null
                 put("reminderEnabled", hasReminder)
                 if (hasReminder) {
-                    val rt = habit.reminderTime!!
+                    val rt = habit.reminderTime
                     put("reminderTime", mapOf("hour" to rt.hour, "minute" to rt.minute))
                 }
                 // Target
@@ -208,6 +231,9 @@ class FirestoreRepositoryImpl @Inject constructor(
                 // Метки времени
                 put("createdAt", habit.createdAt)
                 put("updatedAt", habit.updatedAt)
+                // Даты начала и окончания
+                habit.startDate?.let { put("startDate", it.toString()) }
+                habit.endDate?.let { put("endDate", it.toString()) }
             }
             firestore.collection(HABITS_COLLECTION)
                 .document(habit.id)
@@ -259,6 +285,17 @@ class FirestoreRepositoryImpl @Inject constructor(
                 put("public", habit.isPublic)
                 put("isActive", habit.isActive)
                 put("updatedAt", habit.updatedAt)
+                // Даты начала и окончания
+                if (habit.startDate != null) {
+                    put("startDate", habit.startDate.toString())
+                } else {
+                    put("startDate", FieldValue.delete())
+                }
+                if (habit.endDate != null) {
+                    put("endDate", habit.endDate.toString())
+                } else {
+                    put("endDate", FieldValue.delete())
+                }
             }
             firestore.collection(HABITS_COLLECTION)
                 .document(habit.id)

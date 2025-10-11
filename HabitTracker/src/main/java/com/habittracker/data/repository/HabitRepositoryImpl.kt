@@ -1,9 +1,11 @@
 package com.habittracker.data.repository
 
 import com.habittracker.data.local.dao.HabitDao
+import com.habittracker.data.local.dao.HabitParticipantSettingsDao
 import com.habittracker.data.local.mappers.toDomain
 import com.habittracker.data.local.mappers.toEntity
 import com.habittracker.domain.model.Habit
+import com.habittracker.domain.model.HabitParticipantSettings
 import com.habittracker.domain.repository.AuthRepository
 import com.habittracker.domain.repository.FirestoreRepository
 import com.habittracker.domain.repository.HabitRepository
@@ -17,6 +19,7 @@ import javax.inject.Singleton
 @Singleton
 class HabitRepositoryImpl @Inject constructor(
     private val habitDao: HabitDao,
+    private val habitParticipantSettingsDao: HabitParticipantSettingsDao,
     private val firestoreRepository: FirestoreRepository,
     private val authRepository: AuthRepository
 ) : HabitRepository {
@@ -109,5 +112,18 @@ class HabitRepositoryImpl @Inject constructor(
             ?: return firestoreRepository.getAllPublicHabits() // На всякий случай, если userId null
         
         return firestoreRepository.getAllPublicHabits(excludeUserId = currentUserId)
+    }
+    
+    // HabitParticipantSettings methods
+    override suspend fun getHabitParticipantSettings(habitId: String, userId: String): HabitParticipantSettings? {
+        return habitParticipantSettingsDao.get(habitId, userId)?.toDomain()
+    }
+    
+    override suspend fun updateHabitParticipantSettings(settings: HabitParticipantSettings) {
+        habitParticipantSettingsDao.upsert(settings.toEntity())
+    }
+    
+    override fun observeHabitParticipantSettings(habitId: String, userId: String): Flow<HabitParticipantSettings?> {
+        return habitParticipantSettingsDao.observe(habitId, userId).map { it?.toDomain() }
     }
 }

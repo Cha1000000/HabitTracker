@@ -13,6 +13,7 @@ fun HabitParticipantSettingsEntity.toDomain(): HabitParticipantSettings = HabitP
         DayOfWeek.entries.firstOrNull { it.value == d }
     }.toSet(),
     notificationsMuted = notificationsMuted,
+    personalEndDate = personalEndDate,
     timeZone = timeZone,
     updatedAt = updatedAt
 )
@@ -25,6 +26,7 @@ fun HabitParticipantSettings.toEntity(): HabitParticipantSettingsEntity = HabitP
     reminderEnabled = reminderEnabled,
     reminderDays = reminderDays.map { it.value },
     notificationsMuted = notificationsMuted,
+    personalEndDate = personalEndDate,
     timeZone = timeZone,
     updatedAt = updatedAt
 )

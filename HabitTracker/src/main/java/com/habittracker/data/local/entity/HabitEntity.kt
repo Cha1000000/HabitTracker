@@ -4,6 +4,7 @@ import androidx.room.Entity
 import androidx.room.PrimaryKey
 import com.habittracker.domain.model.HabitFrequency
 import com.habittracker.domain.model.HabitType
+import kotlinx.datetime.LocalDate
 import kotlinx.datetime.LocalTime
 
 @Entity(tableName = "habits")
@@ -28,5 +29,7 @@ data class HabitEntity(
     val isPublic: Boolean,
     val isActive: Boolean,
     val createdAt: Long,
-    val updatedAt: Long
+    val updatedAt: Long,
+    val startDate: LocalDate? = null,
+    val endDate: LocalDate? = null
 )

@@ -11,7 +11,7 @@ import com.habittracker.domain.repository.AuthRepository
 import com.habittracker.domain.usecase.DeleteHabitUseCase
 import com.habittracker.domain.usecase.EnsureMySettingsForHabitUseCase
 import com.habittracker.domain.usecase.GetHabitCompletionStatusUseCase
-import com.habittracker.domain.usecase.GetHabitsUseCase
+import com.habittracker.domain.usecase.GetHabitsForDateUseCase
 import com.habittracker.domain.usecase.GetWeekCompletionDataUseCase
 import com.habittracker.domain.usecase.MarkHabitCompletedUseCase
 import com.habittracker.domain.usecase.MarkHabitIncompleteUseCase
@@ -45,7 +45,7 @@ class HabitsViewModelTest {
     @get:Rule
     val mainDispatcherRule = MainDispatcherRule()
 
-    private val getHabitsUseCase: GetHabitsUseCase = mock()
+    private val getHabitsForDateUseCase: GetHabitsForDateUseCase = mock()
     private val markHabitCompletedUseCase: MarkHabitCompletedUseCase = mock()
     private val markHabitIncompleteUseCase: MarkHabitIncompleteUseCase = mock()
     private val getHabitCompletionStatusUseCase: GetHabitCompletionStatusUseCase = mock()
@@ -95,7 +95,8 @@ class HabitsViewModelTest {
         // Поток привычек
         val flow = MutableSharedFlow<List<Habit>>(replay = 1)
         flow.tryEmit(initial)
-        whenever(getHabitsUseCase.invoke("user1")).thenReturn(flow)
+        // Мокируем getHabitsForDateUseCase для работы с датами
+        whenever(getHabitsForDateUseCase.invoke(any(), any())).thenReturn(flow)
         // Статус выполнения по умолчанию false
         whenever(getHabitCompletionStatusUseCase.invoke(any(), any(), any())).thenReturn(false)
         // Сообщение об ошибке удаления (подставляем текст из аргумента)
@@ -103,7 +104,7 @@ class HabitsViewModelTest {
             "Не удалось удалить привычку: ${inv.getArgument<Any>(1)}"
         }
         return HabitsViewModel(
-            getHabitsUseCase,
+            getHabitsForDateUseCase,
             markHabitCompletedUseCase,
             markHabitIncompleteUseCase,
             getHabitCompletionStatusUseCase,

@@ -10,7 +10,7 @@ import com.habittracker.domain.repository.AuthRepository
 import com.habittracker.domain.usecase.DeleteHabitUseCase
 import com.habittracker.domain.usecase.EnsureMySettingsForHabitUseCase
 import com.habittracker.domain.usecase.GetHabitCompletionStatusUseCase
-import com.habittracker.domain.usecase.GetHabitsUseCase
+import com.habittracker.domain.usecase.GetHabitsForDateUseCase
 import com.habittracker.domain.usecase.GetWeekCompletionDataUseCase
 import com.habittracker.domain.usecase.MarkHabitCompletedUseCase
 import com.habittracker.domain.usecase.MarkHabitIncompleteUseCase
@@ -57,7 +57,7 @@ data class HabitWithCompletion(
 
 @HiltViewModel
 class HabitsViewModel @Inject constructor(
-    private val getHabitsUseCase: GetHabitsUseCase,
+    private val getHabitsForDateUseCase: GetHabitsForDateUseCase,
     private val markHabitCompletedUseCase: MarkHabitCompletedUseCase,
     private val markHabitIncompleteUseCase: MarkHabitIncompleteUseCase,
     private val getHabitCompletionStatusUseCase: GetHabitCompletionStatusUseCase,
@@ -286,7 +286,7 @@ class HabitsViewModel @Inject constructor(
         }
 
         var emissionCount = 0
-        habitsJob = getHabitsUseCase(userId)
+        habitsJob = getHabitsForDateUseCase(userId, date)
             // Normalize ordering to make equality stable
             .map { habits -> habits.sortedBy { it.id } }
             // Skip identical lists to avoid redundant UI updates and status reloads

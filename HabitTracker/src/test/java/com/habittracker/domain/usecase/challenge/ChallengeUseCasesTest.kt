@@ -104,6 +104,9 @@ class ChallengeUseCasesTest {
         override suspend fun getHabitParticipants(habitId: String): List<String> = emptyList()
         override suspend fun searchHabits(userId: String, query: String): List<Habit> = emptyList()
         override fun getPublicHabits(): Flow<List<Habit>> = MutableStateFlow(emptyList())
+        override suspend fun getHabitParticipantSettings(habitId: String, userId: String) = null
+        override suspend fun updateHabitParticipantSettings(settings: com.habittracker.domain.model.HabitParticipantSettings) = throw NotImplementedError()
+        override fun observeHabitParticipantSettings(habitId: String, userId: String) = MutableStateFlow(null)
     }
 
     private class FakeHabitEntryRepository : HabitEntryRepository {

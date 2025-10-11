@@ -19,15 +19,18 @@ class AddHabitUseCase @Inject constructor(
      * @param habit Привычка для добавления.
      */
     suspend operator fun invoke(habit: Habit) {
+        android.util.Log.d("AddHabitUseCase", "📅 Saving habit '${habit.title}' with startDate=${habit.startDate}, endDate=${habit.endDate}")
         try {
             // Сначала сохраняем в Firestore для синхронизации
             firestoreRepository.saveHabit(habit)
             
             // Затем сохраняем локально для офлайн-доступа
             habitRepository.insertHabit(habit)
+            android.util.Log.d("AddHabitUseCase", "✅ Habit saved successfully")
         } catch (e: Exception) {
             // Если Firestore недоступен, сохраняем только локально
             // В будущем можно добавить логику отложенной синхронизации
+            android.util.Log.w("AddHabitUseCase", "⚠️ Firestore save failed, saving locally only: ${e.message}")
             habitRepository.insertHabit(habit)
             throw e
         }

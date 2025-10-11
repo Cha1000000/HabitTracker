@@ -21,6 +21,7 @@ import com.habittracker.domain.usecase.ApplyReminderToAllParticipantsUseCase
 import com.habittracker.domain.usecase.CancelHabitReminderUseCase
 import com.habittracker.domain.usecase.EnsureMySettingsForHabitUseCase
 import com.habittracker.domain.usecase.GetHabitByIdUseCase
+import com.habittracker.domain.usecase.GetHabitCompletionStatusUseCase
 import com.habittracker.domain.usecase.GetMyHabitReminderSettingsUseCase
 import com.habittracker.domain.usecase.ScheduleHabitReminderUseCase
 import com.habittracker.domain.usecase.UpdateHabitUseCase
@@ -39,8 +40,12 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.datetime.Clock
 import kotlinx.datetime.DayOfWeek
+import kotlinx.datetime.LocalDate
 import kotlinx.datetime.LocalTime
+import kotlinx.datetime.TimeZone
+import kotlinx.datetime.toLocalDateTime
 import java.util.UUID
 import javax.inject.Inject
 
@@ -60,6 +65,7 @@ class AddEditHabitViewModel @Inject constructor(
     private val applyReminderToAllParticipantsUseCase: ApplyReminderToAllParticipantsUseCase,
     private val ensureMySettingsForHabitUseCase: EnsureMySettingsForHabitUseCase,
     private val authRepository: AuthRepository,
+    private val getHabitCompletionStatusUseCase: GetHabitCompletionStatusUseCase,
     savedStateHandle: SavedStateHandle,
 ) : AndroidViewModel(application), IAddEditHabitViewModel {
 
@@ -71,15 +77,32 @@ class AddEditHabitViewModel @Inject constructor(
 
     init {
         val habitId: String? = savedStateHandle["habitId"]
+        val startDateParam: String? = savedStateHandle["startDate"]
+        
         if (habitId != null) {
             _uiState.update { it.copy(isLoading = true) }
             loadHabit(habitId)
         } else {
+            // Парсим дату начала из параметров навигации
+            val initialStartDate = startDateParam?.let { dateStr ->
+                try {
+                    LocalDate.parse(dateStr)
+                } catch (_: Exception) {
+                    Log.w("AddEditHabitViewModel", "Failed to parse startDate from navigation: $dateStr")
+                    null
+                }
+            }
+            
             _uiState.update { it.copy(
                 isLoading = false,
                 isInitialized = true,
-                maxParticipantsInput = it.maxParticipants.toString()
+                maxParticipantsInput = it.maxParticipants.toString(),
+                startDate = initialStartDate // Устанавливаем дату начала из параметра
             ) }
+            
+            if (initialStartDate != null) {
+                Log.d("AddEditHabitViewModel", "📅 Initialized with startDate from navigation: $initialStartDate")
+            }
         }
     }
 
@@ -163,7 +186,15 @@ class AddEditHabitViewModel @Inject constructor(
             try {
                 currentHabit = getHabitByIdUseCase(habitId)
                 currentHabit?.let { habit ->
-                    val currentUserId = authRepository.getCurrentUserId()
+                    val currentUserId = authRepository.getCurrentUserId() ?: ""
+                    
+                    // Проверяем, была ли привычка выполнена хотя бы раз
+                    val hasBeenCompleted = try {
+                        getHabitCompletionStatusUseCase(habitId, currentUserId)
+                    } catch (_: Exception) {
+                        false // При ошибке считаем, что не выполнена
+                    }
+                    
                     _uiState.update { state ->
                         state.copy(
                             habitId = habit.id,
@@ -186,7 +217,11 @@ class AddEditHabitViewModel @Inject constructor(
                             participants = emptyList(), // Пока оставляем пустым, позже загрузим User объекты
                             isLoading = false,
                             isHabitSaved = false,
-                            canApplyReminderToAll = (habit.type == HabitType.GROUP && habit.createdBy == currentUserId)
+                            canApplyReminderToAll = (habit.type == HabitType.GROUP && habit.createdBy == currentUserId),
+                            startDate = habit.startDate,
+                            endDate = habit.endDate,
+                            // Дату начала можно редактировать только если привычка ещё не была выполнена
+                            canEditStartDate = !hasBeenCompleted
                         )
                     }
                     // Переопределяем/гарантируем персональные настройки через use case
@@ -260,6 +295,15 @@ class AddEditHabitViewModel @Inject constructor(
                         participantsIds.add(0, creatorId) // Добавляем создателя первым в списке
                     }
                     
+                    // Сохраняем дату начала как есть (может быть в будущем)
+                    // Если не указана - по умолчанию сегодня
+                    val effectiveStartDate = currentState.startDate 
+                        ?: Clock.System.now()
+                            .toLocalDateTime(TimeZone.currentSystemDefault())
+                            .date
+                    
+                    Log.d("AddEditHabitViewModel", "📅 [saveHabit] Creating habit with startDate=$effectiveStartDate (UI state startDate=${currentState.startDate})")
+                    
                     val newHabit = Habit(
                         id = UUID.randomUUID().toString(),
                         title = currentState.title,
@@ -280,10 +324,13 @@ class AddEditHabitViewModel @Inject constructor(
                         isPublic = currentState.isPublic,
                         isActive = true,
                         createdAt = now,
-                        updatedAt = now
+                        updatedAt = now,
+                        startDate = effectiveStartDate, // Всегда сохраняем дату начала
+                        endDate = currentState.endDate
                     )
                     Log.d("AddEditHabitViewModel", "💾 [saveHabit] Calling addHabitUseCase for habit: ${newHabit.id}")
                     Log.d("AddEditHabitViewModel", "💾 [saveHabit] Habit details: title='${newHabit.title}', participants=${newHabit.participants}")
+                    Log.d("AddEditHabitViewModel", "📅 [saveHabit] Habit dates: startDate=${newHabit.startDate}, endDate=${newHabit.endDate}")
                     addHabitUseCase(newHabit)
                     Log.d("AddEditHabitViewModel", "✅ [saveHabit] Habit saved successfully: ${newHabit.id}")
                     // Важно: установить текущую привычку для дальнейших операций (например, отправки приглашений)
@@ -324,6 +371,20 @@ class AddEditHabitViewModel @Inject constructor(
                     val effectiveFrequency = if (currentHabit!!.type == HabitType.GROUP && !isAuthor) {
                         currentHabit!!.frequency
                     } else currentState.frequency
+                    // Обрабатываем дату начала
+                    val effectiveStartDate = when {
+                        // Если можно редактировать и задана дата - используем её
+                        currentState.canEditStartDate && currentState.startDate != null -> currentState.startDate
+                        // Если нельзя редактировать, берём существующую дату или текущую, если её не было
+                        !currentState.canEditStartDate -> currentHabit!!.startDate ?: Clock.System.now()
+                            .toLocalDateTime(TimeZone.currentSystemDefault())
+                            .date
+                        // Если можно редактировать, но дата не задана - используем текущую
+                        else -> Clock.System.now()
+                            .toLocalDateTime(TimeZone.currentSystemDefault())
+                            .date
+                    }
+                    
                     val updatedHabit = currentHabit!!.copy(
                         title = currentState.title,
                         description = currentState.description,
@@ -337,7 +398,9 @@ class AddEditHabitViewModel @Inject constructor(
                         inviteCode = currentState.inviteCode,
                         isPublic = currentState.isPublic,
                         participants = safeParticipants,
-                        updatedAt = now
+                        updatedAt = now,
+                        startDate = effectiveStartDate, // Всегда сохраняем валидную дату начала
+                        endDate = currentState.endDate
                     )
                     updateHabitUseCase(updatedHabit)
                     
@@ -1032,7 +1095,9 @@ class AddEditHabitViewModel @Inject constructor(
             createdBy = "temp_user",
             createdAt = System.currentTimeMillis(),
             updatedAt = System.currentTimeMillis(),
-            inviteCode = currentState.inviteCode
+            inviteCode = currentState.inviteCode,
+            startDate = currentState.startDate,
+            endDate = currentState.endDate
         )
     }
 
@@ -1071,6 +1136,46 @@ class AddEditHabitViewModel @Inject constructor(
                 isFormValid = validationResult.isValid,
                 canSaveHabit = validationResult.isValid,
                 showValidationErrors = !validationResult.isValid
+            )
+        }
+    }
+    
+    // Методы для работы с датами привычек
+    override fun onStartDateChange(date: LocalDate?) {
+        Log.d("AddEditHabitViewModel", "📅 [onStartDateChange] New start date selected: $date")
+        _uiState.update { currentState ->
+            // Если дата окончания установлена и она раньше новой даты начала, сбрасываем её
+            val newEndDate = if (date != null && currentState.endDate != null && currentState.endDate < date) {
+                null
+            } else {
+                currentState.endDate
+            }
+            
+            currentState.copy(
+                startDate = date,
+                endDate = newEndDate,
+                hasUnsavedChanges = true
+            )
+        }
+        Log.d("AddEditHabitViewModel", "📅 [onStartDateChange] UI State updated: startDate=${_uiState.value.startDate}")
+    }
+    
+    override fun onEndDateChange(date: LocalDate?) {
+        _uiState.update { currentState ->
+            // Валидация: дата окончания не может быть раньше даты начала
+            val validEndDate = if (date != null) {
+                val effectiveStartDate = currentState.startDate 
+                    ?: Clock.System.now()
+                        .toLocalDateTime(TimeZone.currentSystemDefault())
+                        .date
+                if (date >= effectiveStartDate) date else null
+            } else {
+                null
+            }
+            
+            currentState.copy(
+                endDate = validEndDate,
+                hasUnsavedChanges = true
             )
         }
     }

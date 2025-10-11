@@ -5,6 +5,7 @@ import com.habittracker.domain.model.HabitType
 import com.habittracker.domain.model.User
 import com.habittracker.presentation.state.AddEditHabitUiState
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.datetime.LocalDate
 import kotlinx.datetime.LocalTime
 import kotlinx.datetime.DayOfWeek
 
@@ -47,6 +48,10 @@ interface IAddEditHabitViewModel {
     fun cancelReminder()
     fun updateReminder()
     fun applyReminderToAllParticipants()
+    
+    // Методы для работы с датами привычек
+    fun onStartDateChange(date: LocalDate?)
+    fun onEndDateChange(date: LocalDate?)
     
     fun onErrorShown()
     fun onSuccessMessageShown()

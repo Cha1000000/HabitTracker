@@ -93,6 +93,16 @@
     <string name="habit_color_label">Цвет:</string>
     <string name="habit_name_required_hint">Введите название, чтобы продолжить</string>
     
+    <!-- Habit Dates -->
+    <string name="habit_dates_section">Даты активности</string>
+    <string name="habit_start_date_label">Дата начала</string>
+    <string name="habit_start_date_placeholder">Выберите дату начала</string>
+    <string name="habit_start_date_locked_hint">Дату начала нельзя изменить после первого выполнения</string>
+    <string name="habit_end_date_label">Дата окончания</string>
+    <string name="habit_end_date_placeholder">Не ограничена</string>
+    <string name="habit_end_date_hint">Оставьте пустым для бессрочной привычки</string>
+    <string name="select_date">Выбрать дату</string>
+    
     <!-- Color Names -->
     <string name="color_blue">Синий</string>
     <string name="color_green">Зеленый</string>

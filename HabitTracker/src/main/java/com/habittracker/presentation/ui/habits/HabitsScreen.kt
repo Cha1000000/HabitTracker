@@ -205,29 +205,34 @@ fun HabitsScreen(
             )
         },
         floatingActionButton = {
-            var showCodeDialog by remember { mutableStateOf(false) }
-            
-            ExpandableFAB(
-                onCreateHabit = { 
-                    navController.navigate(Screen.AddEditHabit.route) 
-                },
-                onBrowsePublic = { 
-                    navController.navigate(Screen.PublicHabits.route) 
-                },
-                onJoinByCode = { 
-                    showCodeDialog = true 
-                }
-            )
-            
-            // Диалог ввода кода
-            if (showCodeDialog) {
-                JoinByCodeDialog(
-                    onDismiss = { showCodeDialog = false },
-                    onJoin = { code ->
-                        showCodeDialog = false
-                        viewModel.joinByInviteCode(code)
+            // Показываем FAB только для сегодняшнего дня и будущих дат
+            if (selectedDate >= today) {
+                var showCodeDialog by remember { mutableStateOf(false) }
+                
+                ExpandableFAB(
+                    onCreateHabit = { 
+                        // Передаём выбранную дату как параметр при создании привычки
+                        val dateParam = "?startDate=$selectedDate"
+                        navController.navigate(Screen.AddEditHabit.route + dateParam) 
+                    },
+                    onBrowsePublic = { 
+                        navController.navigate(Screen.PublicHabits.route) 
+                    },
+                    onJoinByCode = { 
+                        showCodeDialog = true 
                     }
                 )
+                
+                // Диалог ввода кода
+                if (showCodeDialog) {
+                    JoinByCodeDialog(
+                        onDismiss = { showCodeDialog = false },
+                        onJoin = { code ->
+                            showCodeDialog = false
+                            viewModel.joinByInviteCode(code)
+                        }
+                    )
+                }
             }
         },
         bottomBar = {
@@ -335,7 +340,7 @@ fun HabitsScreen(
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(horizontal = 16.dp, vertical = 0.dp),
+                        .padding(horizontal = 16.dp, vertical = 4.dp),
                     horizontalArrangement = Arrangement.End
                 ) {
                     TahoeBackToTodayButton(

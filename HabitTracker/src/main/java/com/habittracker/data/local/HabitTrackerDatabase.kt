@@ -54,7 +54,7 @@ import com.habittracker.data.local.entity.UserEntity
         NotificationReadStatusEntity::class,
         GroupHabitNotificationEntity::class
     ],
-    version = 12,
+    version = 14,
     exportSchema = false // Для простоты отключаем экспорт схемы
 )
 @TypeConverters(Converters::class)
@@ -99,7 +99,9 @@ abstract class HabitTrackerDatabase : RoomDatabase() {
                     MIGRATION_8_9,
                     MIGRATION_9_10,
                     MIGRATION_10_11,
-                    MIGRATION_11_12
+                    MIGRATION_11_12,
+                    MIGRATION_12_13,
+                    MIGRATION_13_14
                 )
 
                 if (BuildConfig.DEBUG) {
@@ -356,6 +358,23 @@ abstract class HabitTrackerDatabase : RoomDatabase() {
                 db.execSQL("CREATE INDEX IF NOT EXISTS index_group_habit_notifications_habitId ON group_habit_notifications(habitId)")
                 db.execSQL("CREATE INDEX IF NOT EXISTS index_group_habit_notifications_isRead ON group_habit_notifications(isRead)")
                 db.execSQL("CREATE INDEX IF NOT EXISTS index_group_habit_notifications_createdAt ON group_habit_notifications(createdAt)")
+            }
+        }
+        
+        // Миграция с версии 12 на 13 (даты начала и окончания привычек)
+        val MIGRATION_12_13 = object : Migration(12, 13) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                // Добавляем новые поля для дат начала и окончания привычек
+                db.execSQL("ALTER TABLE habits ADD COLUMN startDate TEXT")
+                db.execSQL("ALTER TABLE habits ADD COLUMN endDate TEXT")
+            }
+        }
+        
+        // Миграция с версии 13 на 14 (персональная дата окончания для участников)
+        val MIGRATION_13_14 = object : Migration(13, 14) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                // Добавляем поле персональной даты окончания для участников групповых привычек
+                db.execSQL("ALTER TABLE habit_participant_settings ADD COLUMN personalEndDate TEXT")
             }
         }
     }

@@ -1,6 +1,7 @@
 package com.habittracker.domain.model
 import com.google.firebase.firestore.PropertyName
 import kotlinx.datetime.DayOfWeek
+import kotlinx.datetime.LocalDate
 import kotlinx.datetime.LocalTime
 
 data class Habit(
@@ -24,7 +25,9 @@ data class Habit(
     @get:PropertyName("isActive")
     val isActive: Boolean = true,
     val createdAt: Long = 0L,
-    val updatedAt: Long = 0L
+    val updatedAt: Long = 0L,
+    val startDate: LocalDate? = null, // дата начала привычки (null = с момента создания)
+    val endDate: LocalDate? = null // дата окончания привычки (null = бессрочно)
 )
 
 enum class HabitType {
@@ -99,4 +102,46 @@ fun Habit.getParticipantsText(): String = when {
     !isGroupHabit() -> "Только вы"
     participants.isEmpty() -> "Только создатель"
     else -> "${participants.size + 1} из $maxParticipants участников"
+}
+
+// Extension функции для работы с датами привычек
+fun Habit.isActiveOnDate(date: LocalDate, habitCreatedDate: LocalDate? = null): Boolean {
+    // Если есть дата начала, используем её
+    if (startDate != null) {
+        // Проверяем, что текущая дата не раньше даты начала
+        if (date < startDate) {
+            android.util.Log.d("Habit", "❌ Habit '$title' not active: date=$date < startDate=$startDate")
+            return false
+        }
+    } else if (habitCreatedDate != null) {
+        // Если даты начала нет, используем дату создания
+        if (date < habitCreatedDate) {
+            android.util.Log.d("Habit", "❌ Habit '$title' not active: date=$date < createdDate=$habitCreatedDate")
+            return false
+        }
+    }
+    // Если нет ни даты начала, ни даты создания - привычка активна всегда (legacy behavior)
+    
+    // Проверяем дату окончания
+    if (endDate != null && date > endDate) {
+        android.util.Log.d("Habit", "❌ Habit '$title' not active: date=$date > endDate=$endDate")
+        return false
+    }
+    
+    return isActive
+}
+
+fun Habit.hasStarted(today: LocalDate): Boolean {
+    val effectiveStartDate = startDate ?: return true
+    return today >= effectiveStartDate
+}
+
+fun Habit.hasEnded(today: LocalDate): Boolean {
+    val effectiveEndDate = endDate ?: return false
+    return today > effectiveEndDate
+}
+
+fun Habit.isEditableDateRange(hasBeenCompleted: Boolean): Boolean {
+    // Дату начала можно редактировать только если привычка ещё не была выполнена
+    return !hasBeenCompleted
 }

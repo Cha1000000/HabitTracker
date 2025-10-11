@@ -2,13 +2,15 @@ package com.habittracker.presentation.fakes
 
 import com.habittracker.domain.model.Habit
 import com.habittracker.domain.model.HabitFrequency
+import com.habittracker.domain.model.HabitParticipantSettings
 import com.habittracker.domain.model.HabitType
 import com.habittracker.domain.repository.HabitRepository
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
-import kotlinx.datetime.Clock
+import kotlinx.datetime.Clock.System.now
 import kotlinx.datetime.LocalTime
 import java.util.UUID
 
@@ -37,8 +39,8 @@ class FakeHabitRepository : HabitRepository {
                 createdBy = "current_user_id", // TODO: Replace with actual user ID
                 participants = listOf("current_user_id"),
                 isActive = true,
-                createdAt = Clock.System.now().toEpochMilliseconds(),
-                updatedAt = Clock.System.now().toEpochMilliseconds()
+                createdAt = now().toEpochMilliseconds(),
+                updatedAt = now().toEpochMilliseconds()
             )
         )
     }
@@ -120,5 +122,20 @@ class FakeHabitRepository : HabitRepository {
         return flow {
             emit(_habits.filter { it.isPublic && it.isActive })
         }
+    }
+    
+    // HabitParticipantSettings methods for fake repository
+    override suspend fun getHabitParticipantSettings(habitId: String, userId: String): HabitParticipantSettings? {
+        // Return null for fake implementation
+        return null
+    }
+    
+    override suspend fun updateHabitParticipantSettings(settings: HabitParticipantSettings) {
+        // No-op for fake implementation
+    }
+    
+    override fun observeHabitParticipantSettings(habitId: String, userId: String): Flow<HabitParticipantSettings?> {
+        // Return empty flow for fake implementation
+        return flowOf(null)
     }
 }
