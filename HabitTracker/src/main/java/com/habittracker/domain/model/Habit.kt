@@ -1,8 +1,12 @@
 package com.habittracker.domain.model
+
 import com.google.firebase.firestore.PropertyName
+import kotlinx.datetime.Clock
 import kotlinx.datetime.DayOfWeek
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.LocalTime
+import kotlinx.datetime.TimeZone
+import kotlinx.datetime.toLocalDateTime
 
 data class Habit(
     val id: String = "",
@@ -24,8 +28,8 @@ data class Habit(
     val isPublic: Boolean = false, // можно ли найти привычку по коду
     @get:PropertyName("isActive")
     val isActive: Boolean = true,
-    val createdAt: Long = 0L,
-    val updatedAt: Long = 0L,
+    val createdAt: LocalDate = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault()).date,
+    val updatedAt: LocalDate = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault()).date,
     val startDate: LocalDate? = null, // дата начала привычки (null = с момента создания)
     val endDate: LocalDate? = null // дата окончания привычки (null = бессрочно)
 )

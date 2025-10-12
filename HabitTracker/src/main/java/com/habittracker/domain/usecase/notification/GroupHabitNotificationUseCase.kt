@@ -17,6 +17,7 @@ import kotlinx.datetime.Instant
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.minus
+import kotlinx.datetime.toInstant
 import kotlinx.datetime.todayIn
 import javax.inject.Inject
 
@@ -128,7 +129,7 @@ class GroupHabitNotificationUseCase @Inject constructor(
                         habitTitle = habit.title,
                         participantName = participant?.name ?: "Участник",
                         message = "${participant?.name ?: "Участник"} выполнил(а) привычку \"${habit.title}\"",
-                        timestamp = todayEntry.completedAt?.let { Instant.fromEpochMilliseconds(it) } ?: Clock.System.now(),
+                        timestamp = todayEntry.completedAt?.toInstant(TimeZone.currentSystemDefault()) ?: Clock.System.now(),
                         isRead = false
                     )
                     notifications.add(notification)
@@ -202,7 +203,7 @@ class GroupHabitNotificationUseCase @Inject constructor(
     private suspend fun getParticipantInfo(userId: String): User? {
         return try {
             socialRepository.getUserById(userId)
-        } catch (e: Exception) {
+        } catch (_: Exception) {
             null
         }
     }
@@ -280,6 +281,7 @@ class GroupHabitNotificationUseCase @Inject constructor(
             )
         } catch (e: Exception) {
             // Логируем ошибку, но не прерываем генерацию уведомлений
+            Log.e(TAG, "Error saving notification for user $userId", e)
         }
     }
     

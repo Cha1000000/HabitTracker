@@ -97,8 +97,8 @@ import com.habittracker.presentation.ui.habits.components.TahoeGradientBackgroun
 import com.habittracker.presentation.utils.DateTimeFormatter
 import com.habittracker.presentation.viewmodel.GroupHabitDetailViewModel
 import kotlinx.datetime.Clock
-import kotlinx.datetime.Instant.Companion.fromEpochMilliseconds
 import kotlinx.datetime.TimeZone
+import kotlinx.datetime.toInstant
 import kotlinx.datetime.todayIn
 
 /**
@@ -1004,9 +1004,11 @@ private fun ActivityItem(
                 style = MaterialTheme.typography.bodyMedium
             )
             
-            entry.completedAt?.let { completedAt ->
+            entry.completedAt?.let { completedDateTime ->
                 Text(
-                    text = DateTimeFormatter.formatRelativeTime(fromEpochMilliseconds(completedAt)),
+                    text = DateTimeFormatter.formatRelativeTime(
+                        completedDateTime.toInstant(TimeZone.currentSystemDefault())
+                    ),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )

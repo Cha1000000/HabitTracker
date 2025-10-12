@@ -7,6 +7,9 @@ import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.test.runTest
+import kotlinx.datetime.Clock
+import kotlinx.datetime.TimeZone
+import kotlinx.datetime.toLocalDateTime
 import org.junit.Assert.*
 import org.junit.Before
 import org.junit.Test
@@ -30,8 +33,8 @@ class SignInWithGoogleUseCaseTest {
         avatarUrl = "https://example.com/avatar.jpg",
         level = 1,
         points = 0,
-        createdAt = System.currentTimeMillis(),
-        lastActiveAt = System.currentTimeMillis()
+        createdAt = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault()).date,
+        lastActiveAt = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault()).date
     )
 
     @Before

@@ -76,10 +76,8 @@ class CalculatePointsUseCase @Inject constructor() {
         }
         
         // Бонус за раннее выполнение (до 8:00)
-        entry.completedAt?.let { completedTime ->
-            val completedLocalTime = Instant.fromEpochMilliseconds(completedTime)
-                .toLocalDateTime(TimeZone.currentSystemDefault()).time
-            if (completedLocalTime.hour < 8) {
+        entry.completedAt?.let { completedDateTime ->
+            if (completedDateTime.time.hour < 8) {
                 points += EARLY_BIRD_BONUS
             }
         }
@@ -178,10 +176,7 @@ class CalculatePointsUseCase @Inject constructor() {
         
         // Проверяем, выполняются ли привычки примерно в одно время
         val times = completedEntries.mapNotNull { entry ->
-            entry.completedAt?.let { ts ->
-                Instant.fromEpochMilliseconds(ts)
-                    .toLocalDateTime(TimeZone.currentSystemDefault()).time
-            }
+            entry.completedAt?.time
         }
         
         if (times.size < 3) return 0

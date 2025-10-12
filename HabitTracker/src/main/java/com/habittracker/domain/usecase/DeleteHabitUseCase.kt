@@ -9,6 +9,8 @@ import com.habittracker.domain.repository.FirestoreRepository
 import com.habittracker.domain.repository.HabitRepository
 import com.habittracker.domain.util.SyncPayloads
 import kotlinx.datetime.Clock
+import kotlinx.datetime.TimeZone
+import kotlinx.datetime.toLocalDateTime
 import javax.inject.Inject
 
 /**
@@ -94,6 +96,7 @@ class DeleteHabitUseCase @Inject constructor(
 
     suspend operator fun invoke(habitId: String, userId: String) {
         val nowMillis = Clock.System.now().toEpochMilliseconds()
+        val today = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault()).date
 
         val habit: Habit = habitRepository.getHabitById(habitId) ?: return
 
@@ -150,7 +153,7 @@ class DeleteHabitUseCase @Inject constructor(
                     type = HabitType.PERSONAL,
                     participants = emptyList(),
                     createdBy = decision.newCreatedBy,
-                    updatedAt = nowMillis
+                    updatedAt = today
                 )
                 habitRepository.updateHabit(updatedHabit)
 
@@ -158,7 +161,7 @@ class DeleteHabitUseCase @Inject constructor(
                     participants = emptyList(),
                     type = HabitType.PERSONAL,
                     createdBy = decision.newCreatedBy,
-                    updatedAt = nowMillis
+                    updatedAt = today
                 )
                 enqueueUpsertAndKickSync(habitId, payload, nowMillis)
             }
@@ -173,7 +176,7 @@ class DeleteHabitUseCase @Inject constructor(
                     val updatedHabit = habit.copy(
                         participants = decision.participants,
                         createdBy = decision.newCreatedBy,
-                        updatedAt = nowMillis
+                        updatedAt = today
                     )
                     // Используем UpdateHabitUseCase для атомарного обновления Firestore + Room
                     updateHabitUseCase(updatedHabit)
@@ -200,7 +203,7 @@ class DeleteHabitUseCase @Inject constructor(
                         type = HabitType.GROUP,
                         participants = decision.participants,
                         createdBy = decision.newCreatedBy,
-                        updatedAt = nowMillis
+                        updatedAt = today
                     )
                     habitRepository.updateHabit(updatedHabit)
                 }
@@ -210,7 +213,7 @@ class DeleteHabitUseCase @Inject constructor(
                     participants = decision.participants,
                     type = null, // тип остаётся GROUP — не шлём лишнее
                     createdBy = if (decision.newCreatedBy != habit.createdBy) decision.newCreatedBy else null,
-                    updatedAt = nowMillis
+                    updatedAt = today
                 )
                 enqueueUpsertAndKickSync(habitId, payload, nowMillis)
             }

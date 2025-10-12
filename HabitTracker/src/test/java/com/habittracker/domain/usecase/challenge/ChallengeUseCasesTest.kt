@@ -24,6 +24,7 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.runBlocking
+import kotlinx.datetime.Clock
 import kotlinx.datetime.DateTimeUnit
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.TimeZone
@@ -210,8 +211,8 @@ class ChallengeUseCasesTest {
             createdBy = "creator",
             participants = emptyList(),
             isActive = true,
-            createdAt = System.currentTimeMillis(),
-            updatedAt = System.currentTimeMillis()
+            createdAt = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault()).date,
+            updatedAt = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault()).date
         )
         habitRepo.insertHabit(habit)
 
@@ -233,7 +234,8 @@ class ChallengeUseCasesTest {
         assertTrue(result.isSuccess)
         val ch = result.getOrNull()!!
         assertEquals("h1", ch.habitId)
-        assertTrue(ch.createdAt > 0 && ch.updatedAt > 0)
+        assertNotNull(ch.createdAt)
+        assertNotNull(ch.updatedAt)
     }
 
     @Test
@@ -254,8 +256,8 @@ class ChallengeUseCasesTest {
             reward = "",
             status = ChallengeStatus.ACTIVE,
             winnerId = null,
-            createdAt = System.currentTimeMillis(),
-            updatedAt = System.currentTimeMillis()
+            createdAt = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault()).date,
+            updatedAt = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault()).date
         )
         challengeRepo.insertChallenge(ch)
 
@@ -285,8 +287,8 @@ class ChallengeUseCasesTest {
             reward = "",
             status = ChallengeStatus.ACTIVE,
             winnerId = null,
-            createdAt = System.currentTimeMillis(),
-            updatedAt = System.currentTimeMillis()
+            createdAt = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault()).date,
+            updatedAt = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault()).date
         )
         challengeRepo.insertChallenge(ch)
 
@@ -320,8 +322,8 @@ class ChallengeUseCasesTest {
             reward = "",
             status = ChallengeStatus.ACTIVE,
             winnerId = null,
-            createdAt = System.currentTimeMillis(),
-            updatedAt = System.currentTimeMillis()
+            createdAt = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault()).date,
+            updatedAt = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault()).date
         )
         challengeRepo.insertChallenge(ch)
 

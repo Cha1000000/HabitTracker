@@ -95,6 +95,7 @@ import com.habittracker.presentation.viewmodel.HabitsViewModel
 import com.habittracker.presentation.viewmodel.NotificationsViewModel
 import kotlinx.coroutines.launch
 import kotlinx.datetime.Clock
+import kotlinx.datetime.TimeZone
 import kotlinx.datetime.TimeZone.Companion.currentSystemDefault
 import kotlinx.datetime.toLocalDateTime
 import kotlin.math.abs
@@ -510,8 +511,8 @@ fun EnhancedHabitItemPreview() {
         createdBy = "user1",
         participants = listOf("user1"),
         isActive = true,
-        createdAt = Clock.System.now().toEpochMilliseconds(),
-        updatedAt = Clock.System.now().toEpochMilliseconds()
+        createdAt = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault()).date,
+        updatedAt = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault()).date
     )
     
     Column {

@@ -3,6 +3,7 @@ package com.habittracker.data.local.entity
 import androidx.room.Entity
 import androidx.room.PrimaryKey
 import androidx.room.Index
+import kotlinx.datetime.LocalDateTime
 
 @Entity(
     tableName = "habit_invitations",
@@ -24,7 +25,7 @@ data class HabitInvitationEntity(
     val toUserId: String,
     val message: String?,
     val status: String, // HabitInvitationStatus as String
-    val createdAt: Long, // Instant as epochSeconds
-    val respondedAt: Long?, // Instant as epochSeconds
-    val expiresAt: Long? // Instant as epochSeconds
+    val createdAt: LocalDateTime,
+    val respondedAt: LocalDateTime?,
+    val expiresAt: LocalDateTime?
 )

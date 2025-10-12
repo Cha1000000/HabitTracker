@@ -181,20 +181,17 @@ class GetUserStatsUseCase @Inject constructor(
         val completedEntries = entries.filter { it.completed && it.completedAt != null }
 
         val morningEntries = completedEntries.filter { entry ->
-            val hour = Instant.fromEpochMilliseconds(entry.completedAt!!)
-                .toLocalDateTime(TimeZone.currentSystemDefault()).hour
+            val hour = entry.completedAt!!.hour
             hour in 5..11
         }
 
         val afternoonEntries = completedEntries.filter { entry ->
-            val hour = Instant.fromEpochMilliseconds(entry.completedAt!!)
-                .toLocalDateTime(TimeZone.currentSystemDefault()).hour
+            val hour = entry.completedAt!!.hour
             hour in 12..17
         }
 
         val eveningEntries = completedEntries.filter { entry ->
-            val hour = Instant.fromEpochMilliseconds(entry.completedAt!!)
-                .toLocalDateTime(TimeZone.currentSystemDefault()).hour
+            val hour = entry.completedAt!!.hour
             hour in 18..22
         }
 
@@ -345,10 +342,8 @@ class GetUserStatsUseCase @Inject constructor(
         val times = entries.mapNotNull { it.completedAt }
         if (times.isEmpty()) return null
 
-        val timeZone = TimeZone.currentSystemDefault()
-        val minutesSinceMidnight = times.map { ts ->
-            val ldt = Instant.fromEpochMilliseconds(ts).toLocalDateTime(timeZone)
-            ldt.hour * 60 + ldt.minute
+        val minutesSinceMidnight = times.map { dateTime ->
+            dateTime.hour * 60 + dateTime.minute
         }
 
         val avgMinutes = minutesSinceMidnight.average().toInt()
@@ -364,12 +359,10 @@ class GetUserStatsUseCase @Inject constructor(
      */
     private fun findMostProductiveHour(entries: List<HabitEntry>): Int? {
         if (entries.isEmpty()) return null
-        val timeZone = TimeZone.currentSystemDefault()
         val counts = IntArray(24)
         entries.forEach { e ->
-            val ts = e.completedAt ?: return@forEach
-            val hour = Instant.fromEpochMilliseconds(ts).toLocalDateTime(timeZone).hour
-            counts[hour] += 1
+            val dateTime = e.completedAt ?: return@forEach
+            counts[dateTime.hour] += 1
         }
         val max = counts.maxOrNull() ?: return null
         if (max == 0) return null

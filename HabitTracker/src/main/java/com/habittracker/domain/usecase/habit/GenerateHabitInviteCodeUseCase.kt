@@ -5,6 +5,8 @@ import com.habittracker.domain.model.isGroupHabit
 import com.habittracker.domain.repository.HabitRepository
 import com.habittracker.domain.usecase.UpdateHabitUseCase
 import kotlinx.datetime.Clock
+import kotlinx.datetime.TimeZone
+import kotlinx.datetime.toLocalDateTime
 import javax.inject.Inject
 import kotlin.random.Random
 
@@ -64,7 +66,7 @@ class GenerateHabitInviteCodeUseCase @Inject constructor(
             val updatedHabit = habit.copy(
                 inviteCode = inviteCode,
                 isPublic = true, // Делаем привычку доступной по коду
-                updatedAt = Clock.System.now().toEpochMilliseconds()
+                updatedAt = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault()).date
             )
 
             // Используем UpdateHabitUseCase для синхронизации с Firestore
@@ -97,7 +99,7 @@ class GenerateHabitInviteCodeUseCase @Inject constructor(
             val updatedHabit = habit.copy(
                 inviteCode = null,
                 isPublic = false,
-                updatedAt = Clock.System.now().toEpochMilliseconds()
+                updatedAt = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault()).date
             )
 
             // Используем UpdateHabitUseCase для синхронизации с Firestore

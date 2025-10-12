@@ -6,6 +6,9 @@ import com.habittracker.domain.model.Habit
 import com.habittracker.domain.model.HabitFrequency
 import com.habittracker.domain.model.HabitType
 import com.habittracker.domain.repository.HabitRepository
+import kotlinx.datetime.Clock
+import kotlinx.datetime.TimeZone
+import kotlinx.datetime.toLocalDateTime
 import org.junit.Assert.assertEquals
 import org.junit.Before
 import org.junit.Test
@@ -88,8 +91,8 @@ class DeleteHabitGroupDecisionParamTest(
                 maxParticipants = 10,
                 isPublic = false,
                 isActive = true,
-                createdAt = 0L,
-                updatedAt = 0L
+                createdAt = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault()).date,
+                updatedAt = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault()).date
             )
 
             return Arrays.asList(

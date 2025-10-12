@@ -20,6 +20,8 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import kotlinx.datetime.Clock
 import kotlinx.datetime.LocalDate
+import kotlinx.datetime.TimeZone
+import kotlinx.datetime.toLocalDateTime
 import javax.inject.Inject
 import javax.inject.Singleton
 import com.habittracker.data.local.mappers.toDomain as habitEntryToDomain
@@ -195,14 +197,15 @@ class HabitEntryRepositoryImpl @Inject constructor(
 
     override suspend fun markHabitCompleted(habitId: String, userId: String, date: LocalDate, note: String?) {
         val existingEntry = getEntry(habitId, userId, date)
-        val nowMillis = Clock.System.now().toEpochMilliseconds()
+        val now = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault())
+        val today = now.date
 
         if (existingEntry != null) {
             val updatedEntry = existingEntry.copy(
                 completed = true,
-                completedAt = nowMillis,
+                completedAt = now,
                 note = note,
-                updatedAt = nowMillis
+                updatedAt = today
             )
             updateEntry(updatedEntry)
         } else {
@@ -211,10 +214,10 @@ class HabitEntryRepositoryImpl @Inject constructor(
                 userId = userId,
                 date = date,
                 completed = true,
-                completedAt = nowMillis,
+                completedAt = now,
                 note = note,
-                createdAt = nowMillis,
-                updatedAt = nowMillis
+                createdAt = today,
+                updatedAt = today
             )
             insertEntry(newEntry)
         }
@@ -222,13 +225,13 @@ class HabitEntryRepositoryImpl @Inject constructor(
 
     override suspend fun markHabitIncomplete(habitId: String, userId: String, date: LocalDate) {
         val existingEntry = getEntry(habitId, userId, date)
-        val nowMillis = Clock.System.now().toEpochMilliseconds()
+        val today = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault()).date
 
         if (existingEntry != null) {
             val updatedEntry = existingEntry.copy(
                 completed = false,
                 completedAt = null,
-                updatedAt = nowMillis
+                updatedAt = today
             )
             updateEntry(updatedEntry)
         } else {
@@ -239,8 +242,8 @@ class HabitEntryRepositoryImpl @Inject constructor(
                 completed = false,
                 completedAt = null,
                 note = null,
-                createdAt = nowMillis,
-                updatedAt = nowMillis
+                createdAt = today,
+                updatedAt = today
             )
             insertEntry(newEntry)
         }

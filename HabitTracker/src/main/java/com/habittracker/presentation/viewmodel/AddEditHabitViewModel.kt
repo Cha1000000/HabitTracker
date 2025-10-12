@@ -280,7 +280,7 @@ class AddEditHabitViewModel @Inject constructor(
                 val isNew = currentHabit == null
                 _uiState.update { it.copy(isLoading = true) }
                 
-                val now = System.currentTimeMillis()
+                val today = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault()).date
                 val currentState = uiState.value
                 
                 if (isNew) {
@@ -323,8 +323,8 @@ class AddEditHabitViewModel @Inject constructor(
                         inviteCode = currentState.inviteCode,
                         isPublic = currentState.isPublic,
                         isActive = true,
-                        createdAt = now,
-                        updatedAt = now,
+                        createdAt = today,
+                        updatedAt = today,
                         startDate = effectiveStartDate, // Всегда сохраняем дату начала
                         endDate = currentState.endDate
                     )
@@ -398,7 +398,7 @@ class AddEditHabitViewModel @Inject constructor(
                         inviteCode = currentState.inviteCode,
                         isPublic = currentState.isPublic,
                         participants = safeParticipants,
-                        updatedAt = now,
+                        updatedAt = today,
                         startDate = effectiveStartDate, // Всегда сохраняем валидную дату начала
                         endDate = currentState.endDate
                     )
@@ -1093,8 +1093,8 @@ class AddEditHabitViewModel @Inject constructor(
             unit = currentState.unit,
             participants = currentState.participants.map { it.id },
             createdBy = "temp_user",
-            createdAt = System.currentTimeMillis(),
-            updatedAt = System.currentTimeMillis(),
+            createdAt = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault()).date,
+            updatedAt = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault()).date,
             inviteCode = currentState.inviteCode,
             startDate = currentState.startDate,
             endDate = currentState.endDate

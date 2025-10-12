@@ -5,10 +5,7 @@ import com.habittracker.domain.model.Habit
 import com.habittracker.domain.model.isActiveOnDate
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
-import kotlinx.datetime.Instant.Companion.fromEpochMilliseconds
 import kotlinx.datetime.LocalDate
-import kotlinx.datetime.TimeZone
-import kotlinx.datetime.toLocalDateTime
 import javax.inject.Inject
 
 /**
@@ -27,12 +24,8 @@ class GetHabitsForDateUseCase @Inject constructor(
     operator fun invoke(userId: String, date: LocalDate): Flow<List<Habit>> {
         return getHabitsUseCase(userId).map { habits ->
             habits.filter { habit ->
-                // Получаем дату создания привычки
-                val createdDate = if (habit.createdAt > 0) {
-                    fromEpochMilliseconds(habit.createdAt)
-                        .toLocalDateTime(TimeZone.currentSystemDefault())
-                        .date
-                } else null
+                // Дата создания привычки теперь уже LocalDate
+                val createdDate = habit.createdAt
                 
                 // Базовая проверка активности привычки на дату
                 val isActive = habit.isActiveOnDate(date, createdDate)

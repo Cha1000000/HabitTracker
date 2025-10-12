@@ -1,7 +1,11 @@
 package com.habittracker.data.model
 
 import com.habittracker.domain.model.HabitEntry
+import kotlinx.datetime.Clock
 import kotlinx.datetime.LocalDate
+import kotlinx.datetime.LocalDateTime
+import kotlinx.datetime.TimeZone
+import kotlinx.datetime.toLocalDateTime
 
 /**
  * Модель HabitEntry для Firebase Firestore
@@ -12,14 +16,14 @@ data class FirebaseHabitEntry(
     val userId: String = "",
     val date: String = "", // Дата в формате "yyyy-MM-dd"
     val completed: Boolean = false,
-    val completedAt: Long? = null,
+    val completedAt: String? = null, // LocalDateTime в ISO формате
     val value: Int = 1,
     val note: String? = "",
-    val createdAt: Long = System.currentTimeMillis(),
-    val updatedAt: Long = System.currentTimeMillis()
+    val createdAt: String = "", // LocalDate в ISO формате
+    val updatedAt: String = "" // LocalDate в ISO формате
 ) {
     // Конструктор без аргументов требуется для Firebase
-    constructor() : this("", "", "", false, null, 1, "", System.currentTimeMillis(), System.currentTimeMillis())
+    constructor() : this("", "", "", false, null, 1, "", "", "")
     
     companion object {
         /**
@@ -31,11 +35,11 @@ data class FirebaseHabitEntry(
                 userId = entry.userId,
                 date = entry.date.toString(), // LocalDate -> String
                 completed = entry.completed,
-                completedAt = entry.completedAt,
+                completedAt = entry.completedAt?.toString(), // LocalDateTime -> String
                 value = entry.value,
                 note = entry.note,
-                createdAt = entry.createdAt,
-                updatedAt = entry.updatedAt
+                createdAt = entry.createdAt.toString(), // LocalDate -> String
+                updatedAt = entry.updatedAt.toString() // LocalDate -> String
             )
         }
         
@@ -49,18 +53,25 @@ data class FirebaseHabitEntry(
                 date = if (date.isNotEmpty()) {
                     try {
                         LocalDate.parse(date)
-                    } catch (e: Exception) {
+                    } catch (_: Exception) {
                         LocalDate(2024, 1, 1) // fallback значение
                     }
                 } else {
                     LocalDate(2024, 1, 1)
                 },
                 completed = completed,
-                completedAt = completedAt,
+                completedAt = completedAt?.let { 
+                    try { LocalDateTime.parse(it) } 
+                    catch (_: Exception) { null }
+                },
                 value = value,
                 note = note,
-                createdAt = createdAt,
-                updatedAt = updatedAt
+                createdAt = try { LocalDate.parse(createdAt) } catch (_: Exception) {
+                    Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault()).date 
+                },
+                updatedAt = try { LocalDate.parse(updatedAt) } catch (_: Exception) {
+                    Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault()).date 
+                }
             )
         }
     }

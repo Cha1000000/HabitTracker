@@ -7,6 +7,9 @@ import com.habittracker.domain.repository.FriendshipRepository
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
+import kotlinx.datetime.Clock
+import kotlinx.datetime.TimeZone
+import kotlinx.datetime.toLocalDateTime
 import javax.inject.Inject
 import javax.inject.Singleton
 import com.habittracker.data.local.mappers.toDomain as friendshipToDomain
@@ -56,14 +59,14 @@ class FriendshipRepositoryImpl @Inject constructor(
     }
     
     override suspend fun sendFriendRequest(fromUserId: String, toUserId: String) {
-        val now = System.currentTimeMillis()
+        val now = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault())
         val friendship = Friendship(
             userId1 = fromUserId,
             userId2 = toUserId,
             status = FriendshipStatus.PENDING,
             requestedBy = fromUserId,
             requestedAt = now,
-            updatedAt = now
+            updatedAt = now.date
         )
         insertFriendship(friendship)
     }
@@ -71,10 +74,11 @@ class FriendshipRepositoryImpl @Inject constructor(
     override suspend fun acceptFriendRequest(userId1: String, userId2: String) {
         val friendship = getFriendship(userId1, userId2)
         if (friendship != null) {
+            val now = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault())
             val updatedFriendship = friendship.copy(
                 status = FriendshipStatus.ACCEPTED,
-                acceptedAt = System.currentTimeMillis(),
-                updatedAt = System.currentTimeMillis()
+                acceptedAt = now,
+                updatedAt = now.date
             )
             updateFriendship(updatedFriendship)
         }

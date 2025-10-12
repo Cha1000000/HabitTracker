@@ -1,11 +1,13 @@
 package com.habittracker.domain.util
 
+import com.google.gson.Gson
 import com.google.gson.GsonBuilder
-import com.habittracker.domain.model.HabitEntry
 import com.habittracker.domain.model.FriendRequest
 import com.habittracker.domain.model.Friendship
+import com.habittracker.domain.model.HabitEntry
 import com.habittracker.domain.model.HabitInvitation
 import com.habittracker.domain.model.HabitType
+import kotlinx.datetime.LocalDate
 
 /**
  * Общие сериализаторы для payload'ов синхронизации (Outbox)
@@ -20,11 +22,11 @@ object SyncPayloads {
             "userId" to entry.userId,
             "date" to entry.date.toString(),
             "completed" to entry.completed,
-            "completedAt" to entry.completedAt,
+            "completedAt" to entry.completedAt?.toString(),
             "value" to entry.value,
             "note" to entry.note,
-            "createdAt" to entry.createdAt,
-            "updatedAt" to entry.updatedAt
+            "createdAt" to entry.createdAt.toString(),
+            "updatedAt" to entry.updatedAt.toString()
         )
     )
 
@@ -34,10 +36,10 @@ object SyncPayloads {
         type: HabitType? = null,
         createdBy: String? = null,
         isActive: Boolean? = null,
-        updatedAt: Long
+        updatedAt: LocalDate
     ): String = gson.toJson(
         buildMap<String, Any?> {
-            put("updatedAt", updatedAt)
+            put("updatedAt", updatedAt.toString())
             if (participants != null) put("participants", participants)
             if (type != null) put("type", type.name)
             if (createdBy != null) put("createdBy", createdBy)

@@ -19,6 +19,9 @@ import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.tasks.await
+import kotlinx.datetime.Clock
+import kotlinx.datetime.TimeZone
+import kotlinx.datetime.toLocalDateTime
 import javax.inject.Inject
 
 class AuthRepositoryImpl @Inject constructor(
@@ -47,8 +50,8 @@ class AuthRepositoryImpl @Inject constructor(
                     email = firebaseUser.email ?: "",
                     avatarUrl = firebaseUser.photoUrl?.toString(),
                     avatarThumbnailUrl = firebaseUser.photoUrl?.toString(),
-                    createdAt = System.currentTimeMillis(), // Placeholder
-                    lastActiveAt = System.currentTimeMillis() // Placeholder
+                    createdAt = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault()).date,
+                    lastActiveAt = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault()).date
                 )
             )
         }
@@ -80,11 +83,11 @@ class AuthRepositoryImpl @Inject constructor(
                     email = email,
                     avatarUrl = firebaseUser.photoUrl?.toString(),
                     avatarThumbnailUrl = firebaseUser.photoUrl?.toString(),
-                    createdAt = System.currentTimeMillis(),
-                    lastActiveAt = System.currentTimeMillis()
+                    createdAt = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault()).date,
+                    lastActiveAt = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault()).date
                 )
 
-                val token = try { firebaseMessaging.token.await() } catch (e: Exception) { null }
+                val token = try { firebaseMessaging.token.await() } catch (_: Exception) { null }
                 upsertSignedInUser(user, token)
             }
             
@@ -122,10 +125,10 @@ class AuthRepositoryImpl @Inject constructor(
                                     email = firebaseUser.email ?: "",
                                     avatarUrl = firebaseUser.photoUrl?.toString(),
                                     avatarThumbnailUrl = firebaseUser.photoUrl?.toString(),
-                                    createdAt = System.currentTimeMillis(),
-                                    lastActiveAt = System.currentTimeMillis()
+                                    createdAt = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault()).date,
+                                    lastActiveAt = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault()).date
                                 )
-                                val token = try { firebaseMessaging.token.await() } catch (e: Exception) { null }
+                                val token = try { firebaseMessaging.token.await() } catch (_: Exception) { null }
                                 upsertSignedInUser(user, token)
                             }
                             emit(Result.success(null)) // No Intent needed with new API

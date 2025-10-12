@@ -28,8 +28,8 @@ data class HabitEntity(
     val inviteCode: String?,
     val isPublic: Boolean,
     val isActive: Boolean,
-    val createdAt: Long,
-    val updatedAt: Long,
+    val createdAt: LocalDate,
+    val updatedAt: LocalDate,
     val startDate: LocalDate? = null,
     val endDate: LocalDate? = null
 )

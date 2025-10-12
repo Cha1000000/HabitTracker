@@ -17,19 +17,21 @@ import kotlinx.datetime.Clock
 import kotlinx.datetime.DateTimeUnit
 import kotlinx.datetime.DayOfWeek
 import kotlinx.datetime.LocalDate
+import kotlinx.datetime.LocalDateTime
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.atStartOfDayIn
 import kotlinx.datetime.plus
 import kotlinx.datetime.todayIn
+import kotlinx.datetime.toLocalDateTime
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
 import org.junit.Test
 
 class GetUserStatsUseCaseTest {
 
-    private fun ts(date: LocalDate, hour: Int, minute: Int): Long {
+    private fun ts(date: LocalDate, hour: Int, minute: Int): LocalDateTime {
         val start = date.atStartOfDayIn(TimeZone.currentSystemDefault())
-        return start.plus((hour * 60L + minute), DateTimeUnit.MINUTE).toEpochMilliseconds()
+        return start.plus((hour * 60L + minute), DateTimeUnit.MINUTE).toLocalDateTime(TimeZone.currentSystemDefault())
     }
 
     private fun next(date: LocalDate, target: DayOfWeek): LocalDate {
@@ -55,8 +57,8 @@ class GetUserStatsUseCaseTest {
                 title = "Workout",
                 createdBy = userId,
                 isActive = true,
-                createdAt = 0L,
-                updatedAt = 0L
+                createdAt = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault()).date,
+                updatedAt = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault()).date
             )
         )
 
@@ -68,8 +70,8 @@ class GetUserStatsUseCaseTest {
                 date = monday,
                 completed = true,
                 completedAt = ts(monday, 6, 30),
-                createdAt = ts(monday, 6, 0),
-                updatedAt = ts(monday, 6, 30)
+                createdAt = monday,
+                updatedAt = monday
             ),
             // Вечернее выполнение в субботу 21:00
             HabitEntry(
@@ -78,8 +80,8 @@ class GetUserStatsUseCaseTest {
                 date = saturday,
                 completed = true,
                 completedAt = ts(saturday, 21, 0),
-                createdAt = ts(saturday, 20, 0),
-                updatedAt = ts(saturday, 21, 0)
+                createdAt = saturday,
+                updatedAt = saturday
             ),
             // Доп. утро в субботу 06:15 (чтобы hour 6 был наиболее продуктивным)
             HabitEntry(
@@ -88,8 +90,8 @@ class GetUserStatsUseCaseTest {
                 date = saturday,
                 completed = true,
                 completedAt = ts(saturday, 6, 15),
-                createdAt = ts(saturday, 6, 0),
-                updatedAt = ts(saturday, 6, 15)
+                createdAt = saturday,
+                updatedAt = saturday
             )
         )
 
@@ -172,8 +174,7 @@ class GetUserStatsUseCaseTest {
                         com.habittracker.domain.model.createFriendRequest(
                             fromUserId = fromUserId,
                             toUserId = toUserId,
-                            message = message,
-                            createdAt = System.currentTimeMillis()
+                            message = message
                         )
                     )
 
@@ -181,8 +182,7 @@ class GetUserStatsUseCaseTest {
                     com.habittracker.domain.model.createFriendship(
                         userId1 = "u1",
                         userId2 = "u2",
-                        requestedBy = "u1",
-                        requestedAt = System.currentTimeMillis()
+                        requestedBy = "u1"
                     )
                 )
 
@@ -190,8 +190,7 @@ class GetUserStatsUseCaseTest {
                     com.habittracker.domain.model.createFriendRequest(
                         fromUserId = "u1",
                         toUserId = "u2",
-                        message = null,
-                        createdAt = System.currentTimeMillis()
+                        message = null
                     )
                 )
 
@@ -207,16 +206,14 @@ class GetUserStatsUseCaseTest {
                     com.habittracker.domain.model.createFriendship(
                         userId1 = currentUserId,
                         userId2 = userIdToBlock,
-                        requestedBy = currentUserId,
-                        requestedAt = System.currentTimeMillis()
+                        requestedBy = currentUserId
                     )
                 )
                 override suspend fun unblockUser(currentUserId: String, userIdToUnblock: String) = Result.success(
                     com.habittracker.domain.model.createFriendship(
                         userId1 = currentUserId,
                         userId2 = userIdToUnblock,
-                        requestedBy = currentUserId,
-                        requestedAt = System.currentTimeMillis()
+                        requestedBy = currentUserId
                     )
                 )
                 override fun getFriends(userId: String) = flowOf(emptyList<com.habittracker.domain.model.FriendshipWithUsers>())
@@ -238,7 +235,7 @@ class GetUserStatsUseCaseTest {
                         toUserId = toUserId,
                         message = message,
                         status = com.habittracker.domain.model.HabitInvitationStatus.PENDING,
-                        createdAt = System.currentTimeMillis(),
+                        createdAt = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault()),
                         respondedAt = null,
                         expiresAt = null
                     )
@@ -253,8 +250,8 @@ class GetUserStatsUseCaseTest {
                         toUserId = "u2",
                         message = null,
                         status = com.habittracker.domain.model.HabitInvitationStatus.ACCEPTED,
-                        createdAt = System.currentTimeMillis(),
-                        respondedAt = System.currentTimeMillis(),
+                        createdAt = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault()),
+                        respondedAt = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault()),
                         expiresAt = null
                     )
                 )
@@ -268,8 +265,8 @@ class GetUserStatsUseCaseTest {
                         toUserId = "u2",
                         message = null,
                         status = com.habittracker.domain.model.HabitInvitationStatus.DECLINED,
-                        createdAt = System.currentTimeMillis(),
-                        respondedAt = System.currentTimeMillis(),
+                        createdAt = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault()),
+                        respondedAt = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault()),
                         expiresAt = null
                     )
                 )

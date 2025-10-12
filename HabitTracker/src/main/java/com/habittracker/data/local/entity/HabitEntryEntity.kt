@@ -2,6 +2,7 @@ package com.habittracker.data.local.entity
 
 import androidx.room.Entity
 import kotlinx.datetime.LocalDate
+import kotlinx.datetime.LocalDateTime
 
 @Entity(
     tableName = "habit_entries",
@@ -12,9 +13,9 @@ data class HabitEntryEntity(
     val userId: String,
     val date: LocalDate,
     val completed: Boolean,
-    val completedAt: Long?,
+    val completedAt: LocalDateTime?, // точное время выполнения
     val value: Int,
     val note: String?,
-    val createdAt: Long,
-    val updatedAt: Long
+    val createdAt: LocalDate,
+    val updatedAt: LocalDate
 )

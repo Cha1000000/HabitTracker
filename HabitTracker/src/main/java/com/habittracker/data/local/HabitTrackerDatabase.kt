@@ -54,7 +54,7 @@ import com.habittracker.data.local.entity.UserEntity
         NotificationReadStatusEntity::class,
         GroupHabitNotificationEntity::class
     ],
-    version = 14,
+    version = 19,
     exportSchema = false // Для простоты отключаем экспорт схемы
 )
 @TypeConverters(Converters::class)
@@ -101,7 +101,12 @@ abstract class HabitTrackerDatabase : RoomDatabase() {
                     MIGRATION_10_11,
                     MIGRATION_11_12,
                     MIGRATION_12_13,
-                    MIGRATION_13_14
+                    MIGRATION_13_14,
+                    MIGRATION_14_15,
+                    MIGRATION_15_16,
+                    MIGRATION_16_17,
+                    MIGRATION_17_18,
+                    MIGRATION_18_19
                 )
 
                 if (BuildConfig.DEBUG) {
@@ -375,6 +380,302 @@ abstract class HabitTrackerDatabase : RoomDatabase() {
             override fun migrate(db: SupportSQLiteDatabase) {
                 // Добавляем поле персональной даты окончания для участников групповых привычек
                 db.execSQL("ALTER TABLE habit_participant_settings ADD COLUMN personalEndDate TEXT")
+            }
+        }
+        
+        // Миграция с версии 14 на 15 (рефакторинг дат Habit: Long -> LocalDate)
+        val MIGRATION_14_15 = object : Migration(14, 15) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                // SQLite не поддерживает изменение типа колонки напрямую
+                // Используем стратегию: создать новую таблицу, скопировать данные, удалить старую
+                
+                // 1. Создаем временную таблицу с новой схемой
+                db.execSQL("""
+                    CREATE TABLE habits_new (
+                        id TEXT PRIMARY KEY NOT NULL,
+                        title TEXT NOT NULL,
+                        description TEXT NOT NULL,
+                        icon TEXT NOT NULL,
+                        color TEXT NOT NULL,
+                        type TEXT NOT NULL,
+                        frequency TEXT NOT NULL,
+                        reminderTime TEXT,
+                        reminderEnabled INTEGER NOT NULL,
+                        reminderDays TEXT NOT NULL,
+                        targetValue INTEGER NOT NULL,
+                        unit TEXT NOT NULL,
+                        createdBy TEXT NOT NULL,
+                        participants TEXT NOT NULL,
+                        maxParticipants INTEGER NOT NULL,
+                        inviteCode TEXT,
+                        isPublic INTEGER NOT NULL,
+                        isActive INTEGER NOT NULL,
+                        createdAt TEXT NOT NULL,
+                        updatedAt TEXT NOT NULL,
+                        startDate TEXT,
+                        endDate TEXT
+                    )
+                """)
+                
+                // 2. Копируем данные, конвертируя timestamp (Long) в LocalDate (String)
+                // Используем datetime() для конвертации Unix timestamp в ISO 8601 дату
+                db.execSQL("""
+                    INSERT INTO habits_new 
+                    SELECT 
+                        id, title, description, icon, color, type, frequency,
+                        reminderTime, reminderEnabled, reminderDays, targetValue, unit,
+                        createdBy, participants, maxParticipants, inviteCode, isPublic, isActive,
+                        date(createdAt / 1000, 'unixepoch') as createdAt,
+                        date(updatedAt / 1000, 'unixepoch') as updatedAt,
+                        startDate, endDate
+                    FROM habits
+                """)
+                
+                // 3. Удаляем старую таблицу
+                db.execSQL("DROP TABLE habits")
+                
+                // 4. Переименовываем новую таблицу
+                db.execSQL("ALTER TABLE habits_new RENAME TO habits")
+            }
+        }
+        
+        // Миграция с версии 15 на 16 (рефакторинг дат User: Long -> LocalDate)
+        val MIGRATION_15_16 = object : Migration(15, 16) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                // Аналогично Habit: создаем новую таблицу, копируем данные с конвертацией
+                
+                // 1. Создаем временную таблицу с новой схемой
+                db.execSQL("""
+                    CREATE TABLE users_new (
+                        id TEXT PRIMARY KEY NOT NULL,
+                        name TEXT NOT NULL,
+                        email TEXT NOT NULL,
+                        avatarUrl TEXT,
+                        avatarThumbnailUrl TEXT,
+                        level INTEGER NOT NULL DEFAULT 1,
+                        points INTEGER NOT NULL DEFAULT 0,
+                        streak INTEGER NOT NULL DEFAULT 0,
+                        longestStreak INTEGER NOT NULL DEFAULT 0,
+                        friendsCount INTEGER NOT NULL DEFAULT 0,
+                        fcmToken TEXT,
+                        createdAt TEXT NOT NULL,
+                        lastActiveAt TEXT NOT NULL,
+                        timezone TEXT NOT NULL
+                    )
+                """)
+                
+                // 2. Копируем данные, конвертируя timestamp (Long) в LocalDate (String)
+                db.execSQL("""
+                    INSERT INTO users_new 
+                    SELECT 
+                        id, name, email, avatarUrl, avatarThumbnailUrl,
+                        level, points, streak, longestStreak, friendsCount, fcmToken,
+                        date(createdAt / 1000, 'unixepoch') as createdAt,
+                        date(lastActiveAt / 1000, 'unixepoch') as lastActiveAt,
+                        timezone
+                    FROM users
+                """)
+                
+                // 3. Удаляем старую таблицу
+                db.execSQL("DROP TABLE users")
+                
+                // 4. Переименовываем новую таблицу
+                db.execSQL("ALTER TABLE users_new RENAME TO users")
+            }
+        }
+        
+        // Миграция с версии 16 на 17 (рефакторинг дат HabitEntry: Long -> LocalDate/LocalDateTime)
+        val MIGRATION_16_17 = object : Migration(16, 17) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                // Создаем новую таблицу с обновленными типами полей
+                
+                // 1. Создаем временную таблицу
+                db.execSQL("""
+                    CREATE TABLE habit_entries_new (
+                        habitId TEXT NOT NULL,
+                        userId TEXT NOT NULL,
+                        date TEXT NOT NULL,
+                        completed INTEGER NOT NULL,
+                        completedAt TEXT,
+                        value INTEGER NOT NULL,
+                        note TEXT,
+                        createdAt TEXT NOT NULL,
+                        updatedAt TEXT NOT NULL,
+                        PRIMARY KEY (habitId, userId, date)
+                    )
+                """)
+                
+                // 2. Копируем данные с конвертацией
+                // completedAt: Long -> LocalDateTime (ISO string)
+                // createdAt, updatedAt: Long -> LocalDate (ISO string)
+                db.execSQL("""
+                    INSERT INTO habit_entries_new 
+                    SELECT 
+                        habitId, userId, date, completed,
+                        CASE 
+                            WHEN completedAt IS NOT NULL 
+                            THEN datetime(completedAt / 1000, 'unixepoch')
+                            ELSE NULL 
+                        END as completedAt,
+                        value, note,
+                        date(createdAt / 1000, 'unixepoch') as createdAt,
+                        date(updatedAt / 1000, 'unixepoch') as updatedAt
+                    FROM habit_entries
+                """)
+                
+                // 3. Удаляем старую таблицу
+                db.execSQL("DROP TABLE habit_entries")
+                
+                // 4. Переименовываем новую таблицу
+                db.execSQL("ALTER TABLE habit_entries_new RENAME TO habit_entries")
+            }
+        }
+        
+        // Миграция с версии 17 на 18 (рефакторинг дат Challenge: Long -> LocalDate)
+        val MIGRATION_17_18 = object : Migration(17, 18) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                // Создаем новую таблицу с обновленными типами полей
+                
+                // 1. Создаем временную таблицу
+                db.execSQL("""
+                    CREATE TABLE challenges_new (
+                        id TEXT PRIMARY KEY NOT NULL,
+                        habitId TEXT NOT NULL,
+                        title TEXT NOT NULL,
+                        description TEXT NOT NULL,
+                        createdBy TEXT NOT NULL,
+                        participants TEXT NOT NULL,
+                        startDate TEXT NOT NULL,
+                        endDate TEXT NOT NULL,
+                        rules TEXT NOT NULL,
+                        reward TEXT NOT NULL,
+                        status TEXT NOT NULL,
+                        winnerId TEXT,
+                        createdAt TEXT NOT NULL,
+                        updatedAt TEXT NOT NULL
+                    )
+                """)
+                
+                // 2. Копируем данные с конвертацией
+                // createdAt, updatedAt: Long -> LocalDate (ISO string)
+                db.execSQL("""
+                    INSERT INTO challenges_new 
+                    SELECT 
+                        id, habitId, title, description, createdBy, participants,
+                        startDate, endDate, rules, reward, status, winnerId,
+                        date(createdAt / 1000, 'unixepoch') as createdAt,
+                        date(updatedAt / 1000, 'unixepoch') as updatedAt
+                    FROM challenges
+                """)
+                
+                // 3. Удаляем старую таблицу
+                db.execSQL("DROP TABLE challenges")
+                
+                // 4. Переименовываем новую таблицу
+                db.execSQL("ALTER TABLE challenges_new RENAME TO challenges")
+            }
+        }
+        
+        // Миграция с версии 18 на 19 (рефакторинг дат Friendship, FriendRequest, HabitInvitation)
+        val MIGRATION_18_19 = object : Migration(18, 19) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                // 1. Friendships
+                db.execSQL("""
+                    CREATE TABLE friendships_new (
+                        userId1 TEXT NOT NULL,
+                        userId2 TEXT NOT NULL,
+                        status TEXT NOT NULL,
+                        requestedBy TEXT NOT NULL,
+                        requestedAt TEXT NOT NULL,
+                        acceptedAt TEXT,
+                        blockedBy TEXT,
+                        blockedAt TEXT,
+                        updatedAt TEXT NOT NULL,
+                        PRIMARY KEY (userId1, userId2)
+                    )
+                """)
+                
+                db.execSQL("""
+                    INSERT INTO friendships_new 
+                    SELECT 
+                        userId1, userId2, status, requestedBy,
+                        datetime(requestedAt / 1000, 'unixepoch') as requestedAt,
+                        CASE WHEN acceptedAt IS NOT NULL 
+                            THEN datetime(acceptedAt / 1000, 'unixepoch') 
+                            ELSE NULL END as acceptedAt,
+                        blockedBy,
+                        CASE WHEN blockedAt IS NOT NULL 
+                            THEN datetime(blockedAt / 1000, 'unixepoch') 
+                            ELSE NULL END as blockedAt,
+                        date(updatedAt / 1000, 'unixepoch') as updatedAt
+                    FROM friendships
+                """)
+                
+                db.execSQL("DROP TABLE friendships")
+                db.execSQL("ALTER TABLE friendships_new RENAME TO friendships")
+                
+                // 2. Friend Requests
+                db.execSQL("""
+                    CREATE TABLE friend_requests_new (
+                        id TEXT PRIMARY KEY NOT NULL,
+                        fromUserId TEXT NOT NULL,
+                        toUserId TEXT NOT NULL,
+                        status TEXT NOT NULL,
+                        message TEXT,
+                        createdAt TEXT NOT NULL,
+                        respondedAt TEXT,
+                        updatedAt TEXT NOT NULL
+                    )
+                """)
+                
+                db.execSQL("""
+                    INSERT INTO friend_requests_new 
+                    SELECT 
+                        id, fromUserId, toUserId, status, message,
+                        datetime(createdAt / 1000, 'unixepoch') as createdAt,
+                        CASE WHEN respondedAt IS NOT NULL 
+                            THEN datetime(respondedAt / 1000, 'unixepoch') 
+                            ELSE NULL END as respondedAt,
+                        date(updatedAt / 1000, 'unixepoch') as updatedAt
+                    FROM friend_requests
+                """)
+                
+                db.execSQL("DROP TABLE friend_requests")
+                db.execSQL("ALTER TABLE friend_requests_new RENAME TO friend_requests")
+                
+                // 3. Habit Invitations
+                db.execSQL("""
+                    CREATE TABLE habit_invitations_new (
+                        id TEXT PRIMARY KEY NOT NULL,
+                        habitId TEXT NOT NULL,
+                        habitTitle TEXT NOT NULL,
+                        fromUserId TEXT NOT NULL,
+                        fromUserName TEXT NOT NULL,
+                        toUserId TEXT NOT NULL,
+                        message TEXT,
+                        status TEXT NOT NULL,
+                        createdAt TEXT NOT NULL,
+                        respondedAt TEXT,
+                        expiresAt TEXT
+                    )
+                """)
+                
+                db.execSQL("""
+                    INSERT INTO habit_invitations_new 
+                    SELECT 
+                        id, habitId, habitTitle, fromUserId, fromUserName, toUserId, message, status,
+                        datetime(createdAt / 1000, 'unixepoch') as createdAt,
+                        CASE WHEN respondedAt IS NOT NULL 
+                            THEN datetime(respondedAt / 1000, 'unixepoch') 
+                            ELSE NULL END as respondedAt,
+                        CASE WHEN expiresAt IS NOT NULL 
+                            THEN datetime(expiresAt / 1000, 'unixepoch') 
+                            ELSE NULL END as expiresAt
+                    FROM habit_invitations
+                """)
+                
+                db.execSQL("DROP TABLE habit_invitations")
+                db.execSQL("ALTER TABLE habit_invitations_new RENAME TO habit_invitations")
             }
         }
     }

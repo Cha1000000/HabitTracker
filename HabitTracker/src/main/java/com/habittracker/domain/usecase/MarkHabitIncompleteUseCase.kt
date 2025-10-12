@@ -12,6 +12,7 @@ import kotlinx.coroutines.launch
 import kotlinx.datetime.Clock
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.TimeZone
+import kotlinx.datetime.atStartOfDayIn
 import kotlinx.datetime.toLocalDateTime
 import javax.inject.Inject
 
@@ -37,7 +38,7 @@ class MarkHabitIncompleteUseCase @Inject constructor(
         userId: String,
         date: LocalDate = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault()).date
     ) {
-        val nowMillis = Clock.System.now().toEpochMilliseconds()
+        val today = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault()).date
         val habitEntry = HabitEntry(
             habitId = habitId,
             userId = userId,
@@ -45,8 +46,8 @@ class MarkHabitIncompleteUseCase @Inject constructor(
             completed = false,
             completedAt = null,
             note = null,
-            createdAt = nowMillis,
-            updatedAt = nowMillis
+            createdAt = today,
+            updatedAt = today
         )
 
         // 1) Локально в Room — всегда сначала
@@ -61,7 +62,7 @@ class MarkHabitIncompleteUseCase @Inject constructor(
                 entityType = "habit_entry",
                 entityId = entityId,
                 payloadJson = payloadJson,
-                updatedAt = nowMillis
+                updatedAt = today.atStartOfDayIn(TimeZone.currentSystemDefault()).toEpochMilliseconds()
             )
         } catch (e: Exception) {
             // Не критично для UI, но логируем, чтобы не терять причину

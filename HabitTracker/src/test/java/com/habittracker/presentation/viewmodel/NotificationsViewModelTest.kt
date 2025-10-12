@@ -1,4 +1,7 @@
 package com.habittracker.presentation.viewmodel
+import kotlinx.datetime.Clock
+import kotlinx.datetime.TimeZone
+import kotlinx.datetime.toLocalDateTime
 
 import com.habittracker.MainDispatcherRule
 import com.habittracker.domain.model.HabitInvitation
@@ -48,7 +51,7 @@ class NotificationsViewModelTest {
                 message = "Alex completed",
                 isRead = false,
                 readAt = null,
-                createdAt = System.currentTimeMillis()
+                createdAt = Clock.System.now().toEpochMilliseconds()
             ),
             com.habittracker.domain.model.GroupHabitNotificationModel(
                 id = "n2",
@@ -60,8 +63,8 @@ class NotificationsViewModelTest {
                 habitTitle = "Pushups",
                 message = "All done",
                 isRead = true,
-                readAt = System.currentTimeMillis(),
-                createdAt = System.currentTimeMillis()
+                readAt = Clock.System.now().toEpochMilliseconds(),
+                createdAt = Clock.System.now().toEpochMilliseconds()
             )
         )
         
@@ -100,7 +103,7 @@ class NotificationsViewModelTest {
         val inv1 = HabitInvitation(
             id = "i1", habitId = "h1", habitTitle = "Run", fromUserId = "u2", fromUserName = "Bob",
             toUserId = "user1", message = null, status = HabitInvitationStatus.PENDING,
-            createdAt = System.currentTimeMillis(), respondedAt = null, expiresAt = null
+            createdAt = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault()), respondedAt = null, expiresAt = null
         )
         whenever(getHabitInvitationsUseCase.getIncomingInvitations("user1")).thenReturn(flowOf(listOf(inv1)))
 
@@ -196,7 +199,7 @@ class NotificationsViewModelTest {
                 message = "Alex completed",
                 isRead = false,
                 readAt = null,
-                createdAt = System.currentTimeMillis()
+                createdAt = Clock.System.now().toEpochMilliseconds()
             )
         ))
         

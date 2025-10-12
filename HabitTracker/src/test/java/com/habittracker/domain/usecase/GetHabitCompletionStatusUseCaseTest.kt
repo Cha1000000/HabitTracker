@@ -26,18 +26,17 @@ class GetHabitCompletionStatusUseCaseTest {
 
     private val testHabitId = "test-habit-id"
     private val testUserId = "test-user-id"
-    private val testDate = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault()).date
-    private val nowMillis = Clock.System.now().toEpochMilliseconds()
-
+    private val now = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault())
+    private val testDate = now.date
     private val completedEntry = HabitEntry(
         habitId = testHabitId,
         userId = testUserId,
         date = testDate,
         completed = true,
-        completedAt = nowMillis,
-        note = "Test note",
-        createdAt = nowMillis,
-        updatedAt = nowMillis
+        completedAt = now,
+        note = null,
+        createdAt = testDate,
+        updatedAt = testDate
     )
 
     private val incompleteEntry = HabitEntry(
@@ -47,8 +46,8 @@ class GetHabitCompletionStatusUseCaseTest {
         completed = false,
         completedAt = null,
         note = null,
-        createdAt = nowMillis,
-        updatedAt = nowMillis
+        createdAt = testDate,
+        updatedAt = testDate
     )
 
     @Before
@@ -57,8 +56,6 @@ class GetHabitCompletionStatusUseCaseTest {
         habitEntryRepository = FakeHabitEntryRepository()
         getHabitCompletionStatusUseCase = GetHabitCompletionStatusUseCase(firestoreRepository, habitEntryRepository)
     }
-
-    @Test
     fun `invoke should return true when habit is completed in Firestore`() = runTest {
         // Arrange
         firestoreRepository.entryToReturn = completedEntry

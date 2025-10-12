@@ -16,8 +16,11 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.tasks.await
+import kotlinx.datetime.Clock
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.LocalDate.Companion.parse
+import kotlinx.datetime.TimeZone
+import kotlinx.datetime.toLocalDateTime
 import javax.inject.Inject
 import javax.inject.Singleton
 import kotlin.coroutines.resume
@@ -98,9 +101,24 @@ class FirestoreRepositoryImpl @Inject constructor(
             val inviteCode = data["inviteCode"] as? String
             val isActive: Boolean = (data["isActive"] as? Boolean) ?: true
 
-            // timestamps
-            val createdAt = (data["createdAt"] as? Number)?.toLong() ?: 0L
-            val updatedAt = (data["updatedAt"] as? Number)?.toLong() ?: createdAt
+            // timestamps - теперь LocalDate
+            val createdAt = (data["createdAt"] as? String)?.let {
+                try {
+                    parse(it)
+                } catch (_: Exception) {
+                    Log.w(TAG, "Failed to parse createdAt: $it")
+                    Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault()).date
+                }
+            } ?: Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault()).date
+            
+            val updatedAt = (data["updatedAt"] as? String)?.let {
+                try {
+                    parse(it)
+                } catch (_: Exception) {
+                    Log.w(TAG, "Failed to parse updatedAt: $it")
+                    createdAt
+                }
+            } ?: createdAt
             
             // Даты начала и окончания
             val startDate = (data["startDate"] as? String)?.let {
@@ -229,8 +247,8 @@ class FirestoreRepositoryImpl @Inject constructor(
                 put("public", habit.isPublic)
                 put("isActive", habit.isActive)
                 // Метки времени
-                put("createdAt", habit.createdAt)
-                put("updatedAt", habit.updatedAt)
+                put("createdAt", habit.createdAt.toString())
+                put("updatedAt", habit.updatedAt.toString())
                 // Даты начала и окончания
                 habit.startDate?.let { put("startDate", it.toString()) }
                 habit.endDate?.let { put("endDate", it.toString()) }
@@ -260,7 +278,7 @@ class FirestoreRepositoryImpl @Inject constructor(
                 val hasReminder = habit.reminderTime != null
                 put("reminderEnabled", hasReminder)
                 if (hasReminder) {
-                    val rt = habit.reminderTime!!
+                    val rt = habit.reminderTime
                     put("reminderTime", mapOf("hour" to rt.hour, "minute" to rt.minute))
                 } else {
                     put("reminderTime", FieldValue.delete())

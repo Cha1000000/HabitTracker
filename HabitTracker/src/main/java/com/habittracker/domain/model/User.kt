@@ -1,6 +1,9 @@
 package com.habittracker.domain.model
 
+import kotlinx.datetime.Clock
+import kotlinx.datetime.LocalDate
 import kotlinx.datetime.TimeZone
+import kotlinx.datetime.toLocalDateTime
 
 data class User(
     val id: String = "",
@@ -14,8 +17,8 @@ data class User(
     val longestStreak: Int = 0,
     val friendsCount: Int = 0, // количество друзей
     val fcmToken: String? = null, // токен для push-уведомлений
-    val createdAt: Long = System.currentTimeMillis(), // timestamp в миллисекундах
-    val lastActiveAt: Long = System.currentTimeMillis(), // timestamp в миллисекундах
+    val createdAt: LocalDate = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault()).date,
+    val lastActiveAt: LocalDate = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault()).date,
     val timezone: String? = TimeZone.currentSystemDefault().id
 )
 
@@ -40,20 +43,19 @@ fun User.getLevelTitle(): String = when (level) {
 }
 
 fun User.isOnline(): Boolean {
-    val now = System.currentTimeMillis()
-    val timeDiff = now - lastActiveAt
-    return timeDiff / 1000 / 60 < 15 // онлайн если активность была меньше 15 минут назад
+    val today = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault()).date
+    // Считаем онлайн, если последняя активность была сегодня
+    return lastActiveAt == today
 }
 
 fun User.getLastActiveText(): String {
-    val now = System.currentTimeMillis()
-    val timeDiff = now - lastActiveAt
+    val today = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault()).date
+    val daysDiff = today.toEpochDays() - lastActiveAt.toEpochDays()
 
     return when {
-        timeDiff / 1000 / 60 < 1 -> "только что"
-        timeDiff / 1000 / 60 < 60 -> "${timeDiff / 1000 / 60} мин назад"
-        timeDiff / 1000 / 60 / 60 < 24 -> "${timeDiff / 1000 / 60 / 60} ч назад"
-        timeDiff / 1000 / 60 / 60 / 24 < 7 -> "${timeDiff / 1000 / 60 / 60 / 24} дн назад"
+        daysDiff == 0 -> "сегодня"
+        daysDiff == 1 -> "вчера"
+        daysDiff < 7 -> "$daysDiff дн назад"
         else -> "давно"
     }
 }

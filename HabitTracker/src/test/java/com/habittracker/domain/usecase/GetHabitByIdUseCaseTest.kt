@@ -14,6 +14,8 @@ import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.test.runTest
 import kotlinx.datetime.Clock
 import kotlinx.datetime.LocalDate
+import kotlinx.datetime.TimeZone
+import kotlinx.datetime.toLocalDateTime
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
@@ -29,7 +31,7 @@ class GetHabitByIdUseCaseTest {
     private lateinit var getHabitByIdUseCase: GetHabitByIdUseCase
 
     private val testHabitId = "test-habit-id"
-    private val nowMillis = Clock.System.now().toEpochMilliseconds()
+    private val today = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault()).date
     private val testHabit = Habit(
         id = testHabitId,
         title = "Test Habit",
@@ -43,8 +45,8 @@ class GetHabitByIdUseCaseTest {
         unit = "раз",
         participants = emptyList(),
         isActive = true,
-        createdAt = nowMillis,
-        updatedAt = nowMillis,
+        createdAt = today,
+        updatedAt = today,
         createdBy = "test-user-id"
     )
 

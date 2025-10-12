@@ -351,11 +351,7 @@ class HabitsViewModel @Inject constructor(
                     }
                     
                     // 3) Вычисляем границы дат
-                    val oldestTimestamp = habits.minOfOrNull { it.createdAt }
-                    val oldestDate = oldestTimestamp?.let { timestamp ->
-                        kotlinx.datetime.Instant.fromEpochMilliseconds(timestamp)
-                            .toLocalDateTime(TimeZone.currentSystemDefault()).date
-                    }
+                    val oldestDate = habits.minOfOrNull { it.createdAt }
                     val maxFutureDate = today.plus(1, DateTimeUnit.YEAR)
                     
                     emit(_uiState.value.copy(

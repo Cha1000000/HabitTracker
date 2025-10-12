@@ -27,8 +27,8 @@ class FirestoreRepositoryImplTest {
 
     private val testUserId = "test-user-id"
     private val testHabitId = "test-habit-id"
-    private val testDate = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault()).date
-    private val nowMillis = Clock.System.now().toEpochMilliseconds()
+    private val now = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault())
+    private val testDate = now.date
 
     private val testHabit = Habit(
         id = testHabitId,
@@ -43,8 +43,8 @@ class FirestoreRepositoryImplTest {
         unit = "раз",
         participants = emptyList(),
         isActive = true,
-        createdAt = nowMillis,
-        updatedAt = nowMillis,
+        createdAt = testDate,
+        updatedAt = testDate,
         createdBy = testUserId
     )
 
@@ -53,10 +53,10 @@ class FirestoreRepositoryImplTest {
         userId = testUserId,
         date = testDate,
         completed = true,
-        completedAt = nowMillis,
+        completedAt = now,
         note = "Test note",
-        createdAt = nowMillis,
-        updatedAt = nowMillis
+        createdAt = testDate,
+        updatedAt = testDate
     )
 
     @Before

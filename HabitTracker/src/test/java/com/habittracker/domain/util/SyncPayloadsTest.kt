@@ -2,7 +2,10 @@ package com.habittracker.domain.util
 
 import com.google.gson.JsonParser
 import com.habittracker.domain.model.HabitEntry
+import kotlinx.datetime.Clock
 import kotlinx.datetime.LocalDate
+import kotlinx.datetime.TimeZone
+import kotlinx.datetime.toLocalDateTime
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -20,8 +23,8 @@ class SyncPayloadsTest {
             completedAt = null,
             value = 1,
             note = null,
-            createdAt = 1000L,
-            updatedAt = 2000L
+            createdAt = LocalDate.parse("2025-09-01"),
+            updatedAt = LocalDate.parse("2025-09-02")
         )
 
         val json = SyncPayloads.habitEntryToJson(entry)
@@ -36,9 +39,9 @@ class SyncPayloadsTest {
         assertEquals(1, obj.get("value").asInt)
         // note -> null
         assertTrue(obj.get("note").isJsonNull)
-        // timestamps -> numbers
-        assertEquals(1000L, obj.get("createdAt").asLong)
-        assertEquals(2000L, obj.get("updatedAt").asLong)
+        // timestamps -> ISO strings
+        assertEquals("2025-09-01", obj.get("createdAt").asString)
+        assertEquals("2025-09-02", obj.get("updatedAt").asString)
     }
 
     @Test
@@ -49,11 +52,11 @@ class SyncPayloadsTest {
             userId = "u2",
             date = date,
             completed = true,
-            completedAt = 123456789L,
+            completedAt = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault()),
             value = 3,
             note = "Nice",
-            createdAt = 111L,
-            updatedAt = 222L
+            createdAt = LocalDate.parse("2025-09-01"),
+            updatedAt = LocalDate.parse("2025-09-02")
         )
 
         val json = SyncPayloads.habitEntryToJson(entry)
@@ -63,10 +66,12 @@ class SyncPayloadsTest {
         assertEquals("u2", obj.get("userId").asString)
         assertEquals("2025-09-04", obj.get("date").asString)
         assertTrue(obj.get("completed").asBoolean)
-        assertEquals(123456789L, obj.get("completedAt").asLong)
+        // completedAt is LocalDateTime - check it's not null and is a string
+        assertTrue(!obj.get("completedAt").isJsonNull)
+        assertTrue(obj.get("completedAt").asString.isNotEmpty())
         assertEquals(3, obj.get("value").asInt)
         assertEquals("Nice", obj.get("note").asString)
-        assertEquals(111L, obj.get("createdAt").asLong)
-        assertEquals(222L, obj.get("updatedAt").asLong)
+        assertEquals("2025-09-01", obj.get("createdAt").asString)
+        assertEquals("2025-09-02", obj.get("updatedAt").asString)
     }
 }

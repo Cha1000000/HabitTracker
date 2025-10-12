@@ -1,6 +1,12 @@
 package com.habittracker.data.firestore
 
+import android.util.Log
 import com.habittracker.domain.model.User
+import kotlinx.datetime.Clock
+import kotlinx.datetime.Instant.Companion.fromEpochMilliseconds
+import kotlinx.datetime.LocalDate
+import kotlinx.datetime.TimeZone
+import kotlinx.datetime.toLocalDateTime
 
 /**
  * Профессиональный Firestore-конвертер для User модели.
@@ -29,8 +35,8 @@ object UserFirestoreConverter {
             "streak" to user.streak,
             "longestStreak" to user.longestStreak,
             "friendsCount" to user.friendsCount,
-            "createdAt" to user.createdAt, // Long timestamp
-            "lastActiveAt" to user.lastActiveAt, // Long timestamp
+            "createdAt" to user.createdAt.toString(), // LocalDate as ISO string
+            "lastActiveAt" to user.lastActiveAt.toString(), // LocalDate as ISO string
             "timezone" to (user.timezone ?: "")
         )
         user.avatarThumbnailUrl?.takeIf { it.isNotBlank() }?.let { thumb ->
@@ -70,12 +76,12 @@ object UserFirestoreConverter {
                 longestStreak = extractInt(data, "longestStreak") ?: 0,
                 friendsCount = extractInt(data, "friendsCount") ?: 0,
                 fcmToken = resolvedToken,
-                createdAt = extractTimestamp(data, "createdAt") ?: System.currentTimeMillis(),
-                lastActiveAt = extractTimestamp(data, "lastActiveAt") ?: System.currentTimeMillis(),
+                createdAt = extractDate(data, "createdAt") ?: Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault()).date,
+                lastActiveAt = extractDate(data, "lastActiveAt") ?: Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault()).date,
                 timezone = extractString(data, "timezone")
             )
         } catch (e: Exception) {
-            android.util.Log.e("UserFirestoreConverter", "❌ Failed to convert document $documentId: ${e.message}")
+            Log.e("UserFirestoreConverter", "❌ Failed to convert document $documentId: ${e.message}")
             null
         }
     }
@@ -85,7 +91,7 @@ object UserFirestoreConverter {
      */
     private fun extractString(data: Map<String, Any>, key: String): String? {
         return when (val value = data[key]) {
-            is String -> if (value.isBlank()) null else value
+            is String -> value.ifBlank { null }
             null -> null
             else -> value.toString().takeIf { it.isNotBlank() }
         }
@@ -114,57 +120,65 @@ object UserFirestoreConverter {
                     is Number -> it.toString()
                     else -> null
                 }
-            }.filter { it.isNotBlank() }.takeIf { it.isNotEmpty() }
+            }
+            null -> null
             else -> null
         }
     }
     
     /**
-     * Извлекает timestamp из Map с поддержкой legacy форматов
-     * 
-     * Поддерживает:
-     * - Long (текущий формат)
-     * - Number (различные числовые типы)
+     * Извлекает LocalDate с поддержкой различных форматов:
+     * - String (ISO формат: "2025-10-11")
+     * - Long (legacy timestamp - конвертируем в LocalDate)
      * - Map (legacy Instant формат)
-     * - String (ISO строки)
      */
-    private fun extractTimestamp(data: Map<String, Any>, key: String): Long? {
+    private fun extractDate(data: Map<String, Any>, key: String): LocalDate? {
         return when (val value = data[key]) {
-            // Текущий формат: Long timestamp
-            is Long -> value
-            is Number -> value.toLong()
+            // Текущий формат: ISO строка
+            is String -> {
+                try {
+                    LocalDate.parse(value)
+                } catch (_: Exception) {
+                    // Fallback: может быть timestamp как строка
+                    value.toLongOrNull()?.let { timestamp ->
+                        fromEpochMilliseconds(timestamp)
+                            .toLocalDateTime(TimeZone.currentSystemDefault()).date
+                    }
+                }
+            }
+            
+            // Legacy формат: Long timestamp
+            is Long -> {
+                fromEpochMilliseconds(value)
+                    .toLocalDateTime(TimeZone.currentSystemDefault()).date
+            }
+            is Number -> {
+                fromEpochMilliseconds(value.toLong())
+                    .toLocalDateTime(TimeZone.currentSystemDefault()).date
+            }
             
             // Legacy формат: сериализованный Instant как Map
             is Map<*, *> -> {
                 try {
-                    // kotlinx.datetime.Instant сериализуется как Map с "seconds" и "nanos"
                     val seconds = (value["seconds"] as? Number)?.toLong()
                     val nanos = (value["nanos"] as? Number)?.toLong() ?: 0L
                     
                     if (seconds != null) {
-                        seconds * 1000 + nanos / 1_000_000 // конвертируем в миллисекунды
+                        val millis = seconds * 1000 + nanos / 1_000_000
+                        fromEpochMilliseconds(millis)
+                            .toLocalDateTime(TimeZone.currentSystemDefault()).date
                     } else {
-                        // Альтернативный legacy формат
-                        (value["epochSeconds"] as? Number)?.toLong()?.times(1000)
+                        null
                     }
                 } catch (e: Exception) {
-                    android.util.Log.w("UserFirestoreConverter", "⚠️ Failed to extract timestamp from Map for $key: ${e.message}")
-                    null
-                }
-            }
-            
-            // Fallback: ISO строки или другие форматы
-            is String -> {
-                try {
-                    value.toLongOrNull() // пытаемся парсить как число
-                } catch (e: Exception) {
+                    Log.w("UserFirestoreConverter", "⚠️ Failed to extract date from Map for $key: ${e.message}")
                     null
                 }
             }
             
             null -> null
             else -> {
-                android.util.Log.w("UserFirestoreConverter", "⚠️ Unknown timestamp format for $key: ${value::class.java}")
+                Log.w("UserFirestoreConverter", "⚠️ Unknown date format for $key: ${value::class.java}")
                 null
             }
         }

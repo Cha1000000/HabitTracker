@@ -1,4 +1,7 @@
 package com.habittracker.presentation.viewmodel
+import kotlinx.datetime.Clock
+import kotlinx.datetime.TimeZone
+import kotlinx.datetime.toLocalDateTime
 
 import android.app.Application
 import android.util.Log
@@ -86,8 +89,8 @@ class HabitsViewModelTest {
         maxParticipants = 1,
         isPublic = false,
         isActive = true,
-        createdAt = 0L,
-        updatedAt = 0L
+        createdAt = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault()).date,
+        updatedAt = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault()).date
     )
 
     private suspend fun createViewModelWithHabits(initial: List<Habit>): HabitsViewModel {

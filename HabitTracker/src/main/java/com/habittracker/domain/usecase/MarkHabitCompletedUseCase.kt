@@ -15,6 +15,7 @@ import kotlinx.coroutines.launch
 import kotlinx.datetime.Clock
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.TimeZone
+import kotlinx.datetime.atStartOfDayIn
 import kotlinx.datetime.toLocalDateTime
 import javax.inject.Inject
 
@@ -49,16 +50,17 @@ class MarkHabitCompletedUseCase @Inject constructor(
         date: LocalDate = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault()).date,
         note: String? = null
     ) {
-        val nowMillis = Clock.System.now().toEpochMilliseconds()
+        val now = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault())
+        val today = now.date
         val entry = HabitEntry(
             habitId = habitId,
             userId = userId,
             date = date,
             completed = true,
-            completedAt = nowMillis,
+            completedAt = now,
             note = note,
-            createdAt = nowMillis,
-            updatedAt = nowMillis
+            createdAt = today,
+            updatedAt = today
         )
 
         // 1) Локально в Room — всегда сначала
@@ -72,7 +74,7 @@ class MarkHabitCompletedUseCase @Inject constructor(
                 entityType = "habit_entry",
                 entityId = entityId,
                 payloadJson = payloadJson,
-                updatedAt = nowMillis
+                updatedAt = today.atStartOfDayIn(TimeZone.currentSystemDefault()).toEpochMilliseconds()
             )
         } catch (e: Exception) {
             // Игнорируем критично для UI, но логируем для диагностики: запись останется локально, воркер позже повторит

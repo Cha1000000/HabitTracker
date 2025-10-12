@@ -25,6 +25,8 @@ import com.habittracker.domain.usecase.notification.SendGroupHabitPushNotificati
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.test.advanceUntilIdle
@@ -194,8 +196,8 @@ class FakeHabitRepository : HabitRepository {
         id = habitId,
         title = "Test Habit",
         createdBy = "testUserId",
-        createdAt = Clock.System.now().toEpochMilliseconds(),
-        updatedAt = Clock.System.now().toEpochMilliseconds(),
+        createdAt = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault()).date,
+        updatedAt = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault()).date,
         color = "#FFFFFF",
         type = HabitType.PERSONAL
     )
@@ -220,7 +222,7 @@ class FakeHabitRepository : HabitRepository {
 }
 
 class FakeSocialRepository : SocialRepository {
-    override suspend fun getUserById(userId: String): User? = User(id = userId, name = "Test User", email = "test@test.com", createdAt = System.currentTimeMillis(), lastActiveAt = System.currentTimeMillis())
+    override suspend fun getUserById(userId: String): User? = User(id = userId, name = "Test User", email = "test@test.com", createdAt = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault()).date, lastActiveAt = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault()).date)
     override suspend fun getUserByIdFromFirestore(userId: String): User? = getUserById(userId)
     override suspend fun searchUsers(query: String, currentUserId: String): List<User> = emptyList()
     override suspend fun updateUserFcmToken(userId: String, token: String) {}
@@ -277,8 +279,8 @@ class FakeUserRepository : UserRepository {
             id = "test-user-id",
             name = "Test User",
             email = "test@test.com",
-            createdAt = System.currentTimeMillis(),
-            lastActiveAt = System.currentTimeMillis()
+            createdAt = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault()).date,
+            lastActiveAt = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault()).date
         )
         users[testUser.id] = testUser
     }

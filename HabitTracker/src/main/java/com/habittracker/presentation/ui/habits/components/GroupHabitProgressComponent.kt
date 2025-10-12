@@ -39,6 +39,8 @@ import com.habittracker.domain.model.HabitType
 import com.habittracker.domain.model.isGroupHabit
 import kotlinx.datetime.Clock
 import kotlinx.datetime.LocalTime
+import kotlinx.datetime.TimeZone
+import kotlinx.datetime.toLocalDateTime
 
 /**
  * Данные о прогрессе участника групповой привычки
@@ -264,8 +266,8 @@ private fun GroupHabitProgressComponentPreview() {
         participants = listOf("user1", "user2", "user3"),
         maxParticipants = 10,
         isActive = true,
-        createdAt = Clock.System.now().toEpochMilliseconds(),
-        updatedAt = Clock.System.now().toEpochMilliseconds()
+        createdAt = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault()).date,
+        updatedAt = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault()).date
     )
     
     val sampleProgress = listOf(

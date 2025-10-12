@@ -12,6 +12,8 @@ import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
 import kotlinx.datetime.Clock.System.now
 import kotlinx.datetime.LocalTime
+import kotlinx.datetime.TimeZone
+import kotlinx.datetime.toLocalDateTime
 import java.util.UUID
 
 // Fake repository for previews
@@ -39,8 +41,8 @@ class FakeHabitRepository : HabitRepository {
                 createdBy = "current_user_id", // TODO: Replace with actual user ID
                 participants = listOf("current_user_id"),
                 isActive = true,
-                createdAt = now().toEpochMilliseconds(),
-                updatedAt = now().toEpochMilliseconds()
+                createdAt = now().toLocalDateTime(TimeZone.currentSystemDefault()).date,
+                updatedAt = now().toLocalDateTime(TimeZone.currentSystemDefault()).date
             )
         )
     }

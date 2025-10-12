@@ -12,6 +12,8 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.test.runTest
 import kotlinx.datetime.Clock
+import kotlinx.datetime.TimeZone
+import kotlinx.datetime.toLocalDateTime
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertTrue
@@ -38,8 +40,8 @@ class SimpleAddHabitUseCaseTest {
         unit = "раз",
         participants = emptyList(),
         isActive = true,
-        createdAt = Clock.System.now().toEpochMilliseconds(),
-        updatedAt = Clock.System.now().toEpochMilliseconds(),
+        createdAt = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault()).date,
+        updatedAt = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault()).date,
         createdBy = "test-user-id"
     )
 

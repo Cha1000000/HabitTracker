@@ -1,6 +1,8 @@
 package com.habittracker.domain.model
 
 import kotlinx.datetime.Instant
+import kotlinx.datetime.TimeZone
+import kotlinx.datetime.toLocalDateTime
 
 /**
  * Уровень сложности привычки для геймификации
@@ -156,8 +158,8 @@ data class EnhancedHabit(
         inviteCode = inviteCode,
         isPublic = privacyLevel == PrivacyLevel.PUBLIC,
         isActive = isActive,
-        createdAt = createdAt.toEpochMilliseconds(),
-        updatedAt = updatedAt.toEpochMilliseconds()
+        createdAt = createdAt.toLocalDateTime(TimeZone.currentSystemDefault()).date,
+        updatedAt = updatedAt.toLocalDateTime(TimeZone.currentSystemDefault()).date
     )
 }
 

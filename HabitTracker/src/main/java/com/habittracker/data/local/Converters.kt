@@ -8,6 +8,7 @@ import com.habittracker.domain.model.HabitFrequency
 import com.habittracker.domain.model.HabitType
 import kotlinx.datetime.Instant
 import kotlinx.datetime.LocalDate
+import kotlinx.datetime.LocalDateTime
 import kotlinx.datetime.LocalTime
 
 class Converters {
@@ -31,6 +32,12 @@ class Converters {
 
     @TypeConverter
     fun localTimeToString(time: LocalTime?): String? = time?.toString()
+
+    @TypeConverter
+    fun fromLocalDateTimeString(value: String?): LocalDateTime? = value?.let { LocalDateTime.parse(it) }
+
+    @TypeConverter
+    fun localDateTimeToString(dateTime: LocalDateTime?): String? = dateTime?.toString()
 
     // List<String> converters (для participants)
     @TypeConverter

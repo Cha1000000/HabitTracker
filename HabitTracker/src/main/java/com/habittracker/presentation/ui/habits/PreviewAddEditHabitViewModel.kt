@@ -18,9 +18,12 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.datetime.Clock
 import kotlinx.datetime.DayOfWeek
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.LocalTime
+import kotlinx.datetime.TimeZone
+import kotlinx.datetime.toLocalDateTime
 import javax.inject.Inject
 
 /**
@@ -284,11 +287,11 @@ class PreviewAddEditHabitViewModel @Inject constructor(
     }
 
     override fun loadAvailableFriends() {
-        val now = System.currentTimeMillis()
+        val today = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault()).date
         val friends = listOf(
-            User(id = "friend1", name = "Alice", email = "alice@example.com", avatarUrl = "", level = 1, points = 100, createdAt = now, lastActiveAt = now),
-            User(id = "friend2", name = "Bob", email = "bob@example.com", avatarUrl = "", level = 2, points = 250, createdAt = now, lastActiveAt = now),
-            User(id = "friend3", name = "Charlie", email = "charlie@example.com", avatarUrl = "", level = 3, points = 500, createdAt = now, lastActiveAt = now)
+            User(id = "friend1", name = "Alice", email = "alice@example.com", avatarUrl = "", level = 1, points = 100, createdAt = today, lastActiveAt = today),
+            User(id = "friend2", name = "Bob", email = "bob@example.com", avatarUrl = "", level = 2, points = 250, createdAt = today, lastActiveAt = today),
+            User(id = "friend3", name = "Charlie", email = "charlie@example.com", avatarUrl = "", level = 3, points = 500, createdAt = today, lastActiveAt = today)
         )
         _uiState.update { it.copy(availableFriends = friends) }
     }
@@ -337,7 +340,6 @@ class PreviewAddEditHabitViewModel @Inject constructor(
      */
     private fun createTempHabit(): Habit {
         val currentState = _uiState.value
-        val now = System.currentTimeMillis()
         return Habit(
             id = currentState.habitId ?: "preview_habit",
             title = currentState.title,
@@ -357,8 +359,8 @@ class PreviewAddEditHabitViewModel @Inject constructor(
             inviteCode = null, // простое значение по умолчанию
             isPublic = false, // простое значение по умолчанию
             isActive = true,
-            createdAt = now,
-            updatedAt = now
+            createdAt = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault()).date,
+            updatedAt = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault()).date
         )
     }
 
