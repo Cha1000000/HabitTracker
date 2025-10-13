@@ -322,7 +322,7 @@ private fun TimeStatsCard(timeStats: TimeStats) {
             stringResource(R.string.stats_time_morning) to timeStats.morningCompletions.toString(),
             stringResource(R.string.stats_time_afternoon) to timeStats.afternoonCompletions.toString(),
             stringResource(R.string.stats_time_evening) to timeStats.eveningCompletions.toString(),
-            stringResource(R.string.stats_time_consistency) to "${(timeStats.consistencyScore * 100).toInt()}%"
+            stringResource(R.string.stats_time_consistency) to "${timeStats.consistencyScore.toInt()}%"
         ).plus(
             timeStats.averageCompletionTime?.let {
                 listOf(stringResource(R.string.stats_time_average) to it)

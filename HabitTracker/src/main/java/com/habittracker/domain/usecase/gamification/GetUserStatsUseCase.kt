@@ -253,6 +253,7 @@ class GetUserStatsUseCase @Inject constructor(
 
     /**
      * Рассчитать количество идеальных дней
+     * День считается идеальным, если выполнены все активные привычки, которые были активны в этот день
      */
     private fun calculatePerfectDays(
         habits: List<Habit>,
@@ -266,10 +267,23 @@ class GetUserStatsUseCase @Inject constructor(
 
         for (i in 0..29) {
             val date = last30Days.plus(i, DateTimeUnit.DAY)
-            val dayEntries = entries.filter { it.date == date }
-            val completedHabits = dayEntries.count { it.completed }
-
-            if (completedHabits == habits.size && habits.isNotEmpty()) {
+            
+            // Находим привычки, которые были активны в этот день
+            val activeHabitsForDay = habits.filter { habit ->
+                habit.isActive && 
+                (habit.startDate == null || habit.startDate <= date) &&
+                (habit.endDate == null || habit.endDate >= date)
+            }
+            
+            if (activeHabitsForDay.isEmpty()) continue
+            
+            val dayEntries = entries.filter { it.date == date && it.completed }
+            val completedHabitIds = dayEntries.map { it.habitId }.toSet()
+            
+            // День идеальный, если все активные привычки выполнены
+            val allCompleted = activeHabitsForDay.all { it.id in completedHabitIds }
+            
+            if (allCompleted) {
                 perfectDays++
             }
         }
