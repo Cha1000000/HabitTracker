@@ -1,6 +1,8 @@
 package com.habittracker.presentation.ui
 
+import android.Manifest
 import android.graphics.BitmapFactory
+import android.os.Build
 import android.util.Base64
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -132,9 +134,20 @@ fun ProfileScreen(
                 // Avatar + name section
                 Box(contentAlignment = Alignment.BottomEnd) {
                     val avatarSize = 112.dp
+                    
+                    // Launcher для выбора изображения
                     val imagePicker = rememberLauncherForActivityResult(
                         contract = ActivityResultContracts.GetContent()
                     ) { uri -> profileViewModel.onAvatarPicked(uri) }
+                    
+                    // Launcher для запроса разрешения
+                    val permissionLauncher = rememberLauncherForActivityResult(
+                        contract = ActivityResultContracts.RequestPermission()
+                    ) { isGranted ->
+                        if (isGranted) {
+                            imagePicker.launch("image/*")
+                        }
+                    }
 
                     val displayData: Any? = uiState.pendingAvatarUri
                         ?: uiState.user?.avatarThumbnailUrl?.takeIf { it.isNotBlank() }
@@ -237,7 +250,15 @@ fun ProfileScreen(
                                     },
                                     shape = CircleShape
                                 )
-                                .clickable { imagePicker.launch("image/*") },
+                                .clickable {
+                                    // Проверяем и запрашиваем разрешение
+                                    val permission = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                                        Manifest.permission.READ_MEDIA_IMAGES
+                                    } else {
+                                        Manifest.permission.READ_EXTERNAL_STORAGE
+                                    }
+                                    permissionLauncher.launch(permission)
+                                },
                             contentAlignment = Alignment.Center
                         ) {
                             Icon(

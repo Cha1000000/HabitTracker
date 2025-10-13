@@ -584,12 +584,16 @@ class SocialRepositoryImpl @Inject constructor(
 
             val job = scope.launch {
                 friendRequestDao.getIncomingFriendRequests(userId).collect { requests ->
+                    Log.d("SocialRepository", "Incoming FR Room collect: userId=$userId, count=${requests.size}")
                     val list = requests.mapNotNull { requestEntity ->
                         val request = requestEntity.toDomain()
                         val fromUser = getUserById(request.fromUserId)
                         val toUser = getUserById(request.toUserId)
+                        if (fromUser == null) Log.w("SocialRepository", "Incoming FR: fromUser is null for ${request.fromUserId}")
+                        if (toUser == null) Log.w("SocialRepository", "Incoming FR: toUser is null for ${request.toUserId}")
                         if (fromUser != null && toUser != null) FriendRequestWithUsers(request, fromUser, toUser) else null
                     }
+                    Log.d("SocialRepository", "Incoming FR mapped: userId=$userId, count=${list.size}")
                     trySend(list)
                 }
             }

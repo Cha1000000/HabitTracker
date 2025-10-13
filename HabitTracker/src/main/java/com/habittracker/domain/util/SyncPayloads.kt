@@ -8,6 +8,8 @@ import com.habittracker.domain.model.HabitEntry
 import com.habittracker.domain.model.HabitInvitation
 import com.habittracker.domain.model.HabitType
 import kotlinx.datetime.LocalDate
+import kotlinx.datetime.TimeZone
+import kotlinx.datetime.toInstant
 
 /**
  * Общие сериализаторы для payload'ов синхронизации (Outbox)
@@ -57,9 +59,9 @@ object SyncPayloads {
             "toUserId" to fr.toUserId,
             "status" to fr.status.name,
             "message" to fr.message,
-            "createdAt" to fr.createdAt,
-            "respondedAt" to fr.respondedAt,
-            "updatedAt" to fr.updatedAt
+            "createdAt" to fr.createdAt.toString(), // ISO 8601: "2025-10-13T15:07:00"
+            "respondedAt" to fr.respondedAt?.toString(),
+            "updatedAt" to fr.updatedAt.toString() // ISO 8601: "2025-10-13"
         )
     )
 
@@ -73,11 +75,11 @@ object SyncPayloads {
                 "userId2" to u2,
                 "status" to fs.status.name,
                 "requestedBy" to fs.requestedBy,
-                "requestedAt" to fs.requestedAt,
-                "acceptedAt" to fs.acceptedAt,
+                "requestedAt" to fs.requestedAt.toString(), // ISO 8601: "2025-10-13T15:07:00"
+                "acceptedAt" to fs.acceptedAt?.toString(),
                 "blockedBy" to fs.blockedBy,
-                "blockedAt" to fs.blockedAt,
-                "updatedAt" to fs.updatedAt
+                "blockedAt" to fs.blockedAt?.toString(),
+                "updatedAt" to fs.updatedAt.toString() // ISO 8601: "2025-10-13"
             )
         )
     }
