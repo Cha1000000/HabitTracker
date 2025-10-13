@@ -1,15 +1,15 @@
 package com.habittracker.domain.util
 
-import com.google.gson.Gson
 import com.google.gson.GsonBuilder
 import com.habittracker.domain.model.FriendRequest
 import com.habittracker.domain.model.Friendship
 import com.habittracker.domain.model.HabitEntry
 import com.habittracker.domain.model.HabitInvitation
 import com.habittracker.domain.model.HabitType
+import kotlinx.datetime.Instant
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.TimeZone
-import kotlinx.datetime.toInstant
+import kotlinx.datetime.toLocalDateTime
 
 /**
  * Общие сериализаторы для payload'ов синхронизации (Outbox)
@@ -84,7 +84,7 @@ object SyncPayloads {
         )
     }
 
-    // Habit invitation payload (updatedAt передается явно для соответствия текущей логике вызовов)
+    // Habit invitation payload
     fun habitInvitationToJson(inv: HabitInvitation, updatedAt: Long): String = gson.toJson(
         mapOf(
             "habitId" to inv.habitId,
@@ -94,10 +94,10 @@ object SyncPayloads {
             "toUserId" to inv.toUserId,
             "message" to inv.message,
             "status" to inv.status.name,
-            "createdAt" to inv.createdAt,
-            "respondedAt" to inv.respondedAt,
-            "expiresAt" to inv.expiresAt,
-            "updatedAt" to updatedAt
+            "createdAt" to inv.createdAt.toString(), // ISO 8601: "2025-10-13T15:07:00"
+            "respondedAt" to inv.respondedAt?.toString(),
+            "expiresAt" to inv.expiresAt?.toString(),
+            "updatedAt" to Instant.fromEpochMilliseconds(updatedAt).toLocalDateTime(TimeZone.currentSystemDefault()).date.toString() // ISO 8601: "2025-10-13"
         )
     )
 }

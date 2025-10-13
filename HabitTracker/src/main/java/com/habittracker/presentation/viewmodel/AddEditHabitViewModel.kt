@@ -34,7 +34,10 @@ import com.habittracker.presentation.utils.GroupHabitConstants
 import com.habittracker.presentation.utils.GroupHabitValidationResult
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -947,7 +950,9 @@ class AddEditHabitViewModel @Inject constructor(
     }
 
     override fun sendInvitations() {
-        viewModelScope.launch {
+        // Используем отдельный scope с SupervisorJob, чтобы отправка приглашений не отменялась при закрытии экрана
+        val invitationScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+        invitationScope.launch {
             try {
                 _uiState.update { it.copy(isSendingInvitations = true, error = null) }
                 Log.d("AddEditHabitViewModel", "[sendInvitations] start")
