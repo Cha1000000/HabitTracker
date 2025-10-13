@@ -1,15 +1,15 @@
 package com.habittracker.domain.usecase
 
 import android.util.Log
+import com.habittracker.data.sync.SyncManager
+import com.habittracker.data.sync.SyncWorkScheduler
 import com.habittracker.domain.model.HabitEntry
 import com.habittracker.domain.model.gamification.GamificationEvent
 import com.habittracker.domain.repository.HabitEntryRepository
 import com.habittracker.domain.usecase.gamification.UpdateUserPointsUseCase
 import com.habittracker.domain.usecase.notification.SendGroupHabitPushNotificationUseCase
-import com.habittracker.data.sync.SyncManager
-import com.habittracker.data.sync.SyncWorkScheduler
-import com.habittracker.domain.util.SyncPayloads
 import com.habittracker.domain.util.HabitEntryIds
+import com.habittracker.domain.util.SyncPayloads
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 import kotlinx.datetime.Clock
@@ -27,9 +27,9 @@ class MarkHabitCompletedUseCase @Inject constructor(
     private val habitEntryRepository: HabitEntryRepository,
     private val updateUserPointsUseCase: UpdateUserPointsUseCase,
     private val sendGroupHabitPushNotificationUseCase: SendGroupHabitPushNotificationUseCase,
-    private val coroutineScope: CoroutineScope,
     private val syncManager: SyncManager,
-    private val syncWorkScheduler: SyncWorkScheduler
+    private val syncWorkScheduler: SyncWorkScheduler,
+    coroutineScope: CoroutineScope,
 ) {
 
     private val backgroundTasksScope = coroutineScope
@@ -52,6 +52,11 @@ class MarkHabitCompletedUseCase @Inject constructor(
     ) {
         val now = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault())
         val today = now.date
+        
+        // Проверяем, была ли привычка уже выполнена в этот день
+        val existingEntry = habitEntryRepository.getEntry(habitId, userId, date)
+        val wasAlreadyCompleted = existingEntry?.completed == true
+        
         val entry = HabitEntry(
             habitId = habitId,
             userId = userId,
@@ -95,8 +100,11 @@ class MarkHabitCompletedUseCase @Inject constructor(
             }
 
             // 4) Асинхронные побочные эффекты (очки, уведомления)
+            // Начисляем очки только если привычка НЕ была выполнена ранее
             backgroundTasksScope.launch {
-                updateUserPointsUseCase(userId, GamificationEvent.HabitCompleted)
+                if (!wasAlreadyCompleted) {
+                    updateUserPointsUseCase(userId, GamificationEvent.HabitCompleted)
+                }
                 sendGroupHabitPushNotificationUseCase.invoke(habitId, userId)
             }
         }

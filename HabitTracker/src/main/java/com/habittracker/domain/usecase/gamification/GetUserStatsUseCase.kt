@@ -19,16 +19,14 @@ import com.habittracker.domain.repository.HabitRepository
 import com.habittracker.domain.repository.SocialRepository
 import com.habittracker.domain.repository.UserRepository
 import kotlinx.coroutines.flow.firstOrNull
-import kotlinx.datetime.Instant
 import kotlinx.datetime.Clock
 import kotlinx.datetime.DateTimeUnit
+import kotlinx.datetime.DayOfWeek
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.minus
 import kotlinx.datetime.plus
-import kotlinx.datetime.toLocalDateTime
 import kotlinx.datetime.todayIn
-import kotlinx.datetime.DayOfWeek
 import javax.inject.Inject
 
 /**
@@ -396,6 +394,6 @@ class GetUserStatsUseCase @Inject constructor(
             .toSet()
 
         val totalDays = 30f
-        return if (totalDays > 0) (daysWithCompletion.size / totalDays * 100f) else 0f
+        return daysWithCompletion.size / totalDays * 100f
     }
 }

@@ -42,8 +42,10 @@ class MarkHabitIncompleteUseCaseTest {
         habitEntryRepository = FakeHabitEntryRepositoryIncomplete()
         syncManager = mock()
         syncWorkScheduler = mock()
+        val updateUserPointsUseCase = mock<com.habittracker.domain.usecase.gamification.UpdateUserPointsUseCase>()
         markHabitIncompleteUseCase = MarkHabitIncompleteUseCase(
             habitEntryRepository = habitEntryRepository,
+            updateUserPointsUseCase = updateUserPointsUseCase,
             syncManager = syncManager,
             syncWorkScheduler = syncWorkScheduler,
             coroutineScope = CoroutineScope(Dispatchers.Unconfined)

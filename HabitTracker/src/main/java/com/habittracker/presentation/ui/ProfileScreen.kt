@@ -89,7 +89,7 @@ fun ProfileScreen(
 
     // Handle navigation after successful sign out
     LaunchedEffect(authState) {
-        if (authState is com.habittracker.presentation.viewmodel.AuthState.Unauthenticated) {
+        if (authState is AuthState.Unauthenticated) {
             // Navigate to login screen and clear back stack
             navController.navigate("login_screen") {
                 popUpTo(0) { inclusive = true }
@@ -138,13 +138,21 @@ fun ProfileScreen(
                     // Launcher для выбора изображения
                     val imagePicker = rememberLauncherForActivityResult(
                         contract = ActivityResultContracts.GetContent()
-                    ) { uri -> profileViewModel.onAvatarPicked(uri) }
+                    ) { uri -> 
+                        android.util.Log.d("ProfileScreen", "Image picked: $uri")
+                        profileViewModel.onAvatarPicked(uri) 
+                    }
                     
-                    // Launcher для запроса разрешения
+                    // Launcher для запроса разрешения (только для Android 12 и ниже)
                     val permissionLauncher = rememberLauncherForActivityResult(
                         contract = ActivityResultContracts.RequestPermission()
                     ) { isGranted ->
+                        android.util.Log.d("ProfileScreen", "Permission result: $isGranted")
                         if (isGranted) {
+                            imagePicker.launch("image/*")
+                        } else {
+                            // На Android 12 и ниже всё равно пробуем открыть picker
+                            // Некоторые устройства позволяют выбрать изображение без разрешения
                             imagePicker.launch("image/*")
                         }
                     }
@@ -152,7 +160,7 @@ fun ProfileScreen(
                     val displayData: Any? = uiState.pendingAvatarUri
                         ?: uiState.user?.avatarThumbnailUrl?.takeIf { it.isNotBlank() }
                         ?: uiState.user?.avatarUrl?.takeIf { it.isNotBlank() }
-
+                    
                     if (displayData != null) {
                         // Поддержка data:image/* base64 без Coil
                         val isDataUrl = (displayData as? String)?.startsWith("data:image") == true
@@ -251,13 +259,13 @@ fun ProfileScreen(
                                     shape = CircleShape
                                 )
                                 .clickable {
-                                    // Проверяем и запрашиваем разрешение
-                                    val permission = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                                        Manifest.permission.READ_MEDIA_IMAGES
+                                    // Android 13+ использует Photo Picker без разрешений
+                                    // Android 12 и ниже требует разрешение READ_EXTERNAL_STORAGE
+                                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                                        imagePicker.launch("image/*")
                                     } else {
-                                        Manifest.permission.READ_EXTERNAL_STORAGE
+                                        permissionLauncher.launch(Manifest.permission.READ_EXTERNAL_STORAGE)
                                     }
-                                    permissionLauncher.launch(permission)
                                 },
                             contentAlignment = Alignment.Center
                         ) {

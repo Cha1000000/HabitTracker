@@ -2,7 +2,9 @@ package com.habittracker.domain.usecase
 
 import android.util.Log
 import com.habittracker.domain.model.HabitEntry
+import com.habittracker.domain.model.gamification.GamificationEvent
 import com.habittracker.domain.repository.HabitEntryRepository
+import com.habittracker.domain.usecase.gamification.UpdateUserPointsUseCase
 import com.habittracker.data.sync.SyncManager
 import com.habittracker.data.sync.SyncWorkScheduler
 import com.habittracker.domain.util.SyncPayloads
@@ -22,6 +24,7 @@ import javax.inject.Inject
  */
 class MarkHabitIncompleteUseCase @Inject constructor(
     private val habitEntryRepository: HabitEntryRepository,
+    private val updateUserPointsUseCase: UpdateUserPointsUseCase,
     private val syncManager: SyncManager,
     private val syncWorkScheduler: SyncWorkScheduler,
     private val coroutineScope: CoroutineScope
@@ -39,6 +42,11 @@ class MarkHabitIncompleteUseCase @Inject constructor(
         date: LocalDate = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault()).date
     ) {
         val today = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault()).date
+        
+        // Проверяем, была ли привычка выполнена в этот день
+        val existingEntry = habitEntryRepository.getEntry(habitId, userId, date)
+        val wasCompleted = existingEntry?.completed == true
+        
         val habitEntry = HabitEntry(
             habitId = habitId,
             userId = userId,
@@ -77,6 +85,13 @@ class MarkHabitIncompleteUseCase @Inject constructor(
             backgroundTasksScope.launch {
                 try { syncManager.drainPending() } catch (e: Exception) {
                     Log.d("MarkHabitIncomplete", "drainPending failed (non-fatal): ${e.message}")
+                }
+            }
+            
+            // 3) Вычитаем очки, если привычка была выполнена
+            if (wasCompleted) {
+                backgroundTasksScope.launch {
+                    updateUserPointsUseCase(userId, GamificationEvent.HabitUncompleted)
                 }
             }
         }

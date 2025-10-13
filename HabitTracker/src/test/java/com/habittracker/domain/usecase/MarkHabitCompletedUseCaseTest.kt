@@ -66,9 +66,9 @@ class MarkHabitCompletedUseCaseTest {
     @Before
     fun setUp() {
         habitEntryRepository = FakeHabitEntryRepository()
-        updateUserPointsUseCase = FakeUpdateUserPointsUseCase(FakeUserRepository())
-        habitRepository = FakeHabitRepository()
         socialRepository = FakeSocialRepository()
+        updateUserPointsUseCase = FakeUpdateUserPointsUseCase(FakeUserRepository(), socialRepository)
+        habitRepository = FakeHabitRepository()
         firestoreRepository = mock()
         notificationRepository = mock()
         sendGroupHabitPushNotificationUseCase = SendGroupHabitPushNotificationUseCase(
@@ -182,7 +182,10 @@ class FakeHabitEntryRepository : HabitEntryRepository {
     override suspend fun markHabitIncomplete(habitId: String, userId: String, date: LocalDate) {}
 }
 
-class FakeUpdateUserPointsUseCase(private val userRepository: UserRepository) : UpdateUserPointsUseCase(userRepository) {
+class FakeUpdateUserPointsUseCase(
+    private val userRepository: UserRepository,
+    private val socialRepository: com.habittracker.domain.repository.SocialRepository
+) : UpdateUserPointsUseCase(userRepository, socialRepository) {
     var invokeCalled = false
     override suspend fun invoke(userId: String, event: GamificationEvent): Result<Unit> {
         invokeCalled = true
