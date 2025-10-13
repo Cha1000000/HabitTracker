@@ -19,20 +19,17 @@ import com.habittracker.R
 import com.habittracker.domain.model.Habit
 import com.habittracker.domain.model.HabitFrequency
 import com.habittracker.domain.model.HabitType
-import kotlinx.datetime.Clock
-import kotlinx.datetime.TimeZone
-import kotlinx.datetime.toLocalDateTime
 import com.habittracker.domain.repository.AuthRepository
+import com.habittracker.domain.repository.GroupHabitNotificationRepository
 import com.habittracker.domain.usecase.DeleteHabitUseCase
 import com.habittracker.domain.usecase.EnsureMySettingsForHabitUseCase
 import com.habittracker.domain.usecase.GetHabitCompletionStatusUseCase
 import com.habittracker.domain.usecase.GetHabitsForDateUseCase
-import com.habittracker.domain.usecase.MarkHabitCompletedUseCase
 import com.habittracker.domain.usecase.GetWeekCompletionDataUseCase
+import com.habittracker.domain.usecase.MarkHabitCompletedUseCase
 import com.habittracker.domain.usecase.MarkHabitIncompleteUseCase
 import com.habittracker.domain.usecase.ScheduleHabitReminderUseCase
 import com.habittracker.domain.usecase.habit.JoinHabitByCodeUseCase
-import com.habittracker.domain.repository.GroupHabitNotificationRepository
 import com.habittracker.presentation.viewmodel.FriendsViewModel
 import com.habittracker.presentation.viewmodel.HabitsViewModel
 import com.habittracker.presentation.viewmodel.NotificationsViewModel
@@ -42,6 +39,9 @@ import io.mockk.every
 import io.mockk.mockk
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.flowOf
+import kotlinx.datetime.Clock
+import kotlinx.datetime.TimeZone
+import kotlinx.datetime.toLocalDateTime
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
@@ -212,7 +212,7 @@ class HabitsScreenTest {
 
         // Snackbar appears; click Undo
         val undoText = composeRule.activity.getString(R.string.undo)
-        composeRule.onNode(hasClickAction() and androidx.compose.ui.test.hasText(undoText)).assertIsDisplayed().performClickSlow()
+        composeRule.onNode(hasClickAction() and hasText(undoText)).assertIsDisplayed().performClickSlow()
 
         // Item should be restored
         composeRule.onNodeWithTag("habit-h1").assertIsDisplayed()
