@@ -11,6 +11,9 @@ import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.habittracker.R
 import com.habittracker.domain.model.HabitInvitation
 import com.habittracker.domain.model.HabitInvitationStatus
+import kotlinx.datetime.Clock
+import kotlinx.datetime.TimeZone
+import kotlinx.datetime.toLocalDateTime
 import com.habittracker.domain.repository.AuthRepository
 import com.habittracker.domain.repository.GroupHabitNotificationRepository
 import com.habittracker.domain.usecase.habit.AcceptHabitInvitationUseCase
@@ -26,7 +29,6 @@ import io.mockk.every
 import io.mockk.impl.annotations.MockK
 import io.mockk.mockk
 import kotlinx.coroutines.flow.flowOf
-import kotlinx.datetime.Clock
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -141,7 +143,7 @@ class NotificationsScreenTest {
             toUserId = "u1",
             message = null,
             status = HabitInvitationStatus.PENDING,
-            createdAt = System.currentTimeMillis(),
+            createdAt = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault()),
             respondedAt = null,
             expiresAt = null
         )
@@ -179,7 +181,7 @@ class NotificationsScreenTest {
             toUserId = "u1",
             message = null,
             status = HabitInvitationStatus.PENDING,
-            createdAt = System.currentTimeMillis(),
+            createdAt = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault()),
             respondedAt = null,
             expiresAt = null
         )
@@ -215,7 +217,7 @@ class NotificationsScreenTest {
             toUserId = "u1",
             message = null,
             status = HabitInvitationStatus.PENDING,
-            createdAt = System.currentTimeMillis(),
+            createdAt = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault()),
             respondedAt = null,
             expiresAt = null
         )
@@ -252,7 +254,7 @@ class NotificationsScreenTest {
                 toUserId = "u1",
                 message = null,
                 status = HabitInvitationStatus.PENDING,
-                createdAt = System.currentTimeMillis(),
+                createdAt = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault()),
                 respondedAt = null,
                 expiresAt = null
             ),
@@ -265,7 +267,7 @@ class NotificationsScreenTest {
                 toUserId = "u1",
                 message = null,
                 status = HabitInvitationStatus.PENDING,
-                createdAt = System.currentTimeMillis(),
+                createdAt = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault()),
                 respondedAt = null,
                 expiresAt = null
             ),
@@ -278,7 +280,7 @@ class NotificationsScreenTest {
                 toUserId = "u1",
                 message = null,
                 status = HabitInvitationStatus.PENDING,
-                createdAt = System.currentTimeMillis(),
+                createdAt = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault()),
                 respondedAt = null,
                 expiresAt = null
             )

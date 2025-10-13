@@ -10,6 +10,9 @@ import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.habittracker.R
 import com.habittracker.domain.model.HabitInvitation
 import com.habittracker.domain.model.HabitInvitationStatus
+import kotlinx.datetime.Clock
+import kotlinx.datetime.TimeZone
+import kotlinx.datetime.toLocalDateTime
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -52,7 +55,7 @@ class InvitationsSectionTest {
 
     @Test
     fun shows_invitation_item_and_accept_decline_clicks() {
-        val inv = HabitInvitation(
+        val inv1 = HabitInvitation(
             id = "i1",
             habitId = "h1",
             habitTitle = "Run",
@@ -61,16 +64,17 @@ class InvitationsSectionTest {
             toUserId = "u1",
             message = null,
             status = HabitInvitationStatus.PENDING,
-            createdAt = System.currentTimeMillis(),
+            createdAt = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault()),
             respondedAt = null,
             expiresAt = null
         )
+        val inv2 = inv1.copy(id = "i2", habitTitle = "Swim")
         var acceptedId: String? = null
         var declinedId: String? = null
 
         composeRule.setContent {
             InvitationsSection(
-                invitations = listOf(inv),
+                invitations = listOf(inv1, inv2),
                 isLoading = false,
                 processingIds = emptySet(),
                 onAccept = { acceptedId = it },
@@ -98,7 +102,7 @@ class InvitationsSectionTest {
             toUserId = "u1",
             message = null,
             status = HabitInvitationStatus.PENDING,
-            createdAt = System.currentTimeMillis(),
+            createdAt = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault()),
             respondedAt = null,
             expiresAt = null
         )

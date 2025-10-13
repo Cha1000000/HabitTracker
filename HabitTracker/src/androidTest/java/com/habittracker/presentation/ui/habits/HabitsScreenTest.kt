@@ -19,11 +19,14 @@ import com.habittracker.R
 import com.habittracker.domain.model.Habit
 import com.habittracker.domain.model.HabitFrequency
 import com.habittracker.domain.model.HabitType
+import kotlinx.datetime.Clock
+import kotlinx.datetime.TimeZone
+import kotlinx.datetime.toLocalDateTime
 import com.habittracker.domain.repository.AuthRepository
 import com.habittracker.domain.usecase.DeleteHabitUseCase
 import com.habittracker.domain.usecase.EnsureMySettingsForHabitUseCase
 import com.habittracker.domain.usecase.GetHabitCompletionStatusUseCase
-import com.habittracker.domain.usecase.GetHabitsUseCase
+import com.habittracker.domain.usecase.GetHabitsForDateUseCase
 import com.habittracker.domain.usecase.MarkHabitCompletedUseCase
 import com.habittracker.domain.usecase.GetWeekCompletionDataUseCase
 import com.habittracker.domain.usecase.MarkHabitIncompleteUseCase
@@ -49,7 +52,7 @@ class HabitsScreenTest {
     val composeRule = createAndroidComposeRule<ComponentActivity>()
 
     private lateinit var authRepository: AuthRepository
-    private lateinit var getHabitsUseCase: GetHabitsUseCase
+    private lateinit var getHabitsForDateUseCase: GetHabitsForDateUseCase
     private lateinit var markHabitCompletedUseCase: MarkHabitCompletedUseCase
     private lateinit var markHabitIncompleteUseCase: MarkHabitIncompleteUseCase
     private lateinit var getHabitCompletionStatusUseCase: GetHabitCompletionStatusUseCase
@@ -94,9 +97,9 @@ class HabitsScreenTest {
         authRepository = mockk(relaxed = true)
         every { authRepository.getCurrentUserId() } returns "user1"
 
-        getHabitsUseCase = mockk()
+        getHabitsForDateUseCase = mockk()
         habitsFlow = MutableSharedFlow(replay = 1)
-        every { getHabitsUseCase.invoke("user1") } returns habitsFlow
+        every { getHabitsForDateUseCase.invoke("user1", any()) } returns habitsFlow
 
         markHabitCompletedUseCase = mockk(relaxed = true)
         markHabitIncompleteUseCase = mockk(relaxed = true)
@@ -111,7 +114,7 @@ class HabitsScreenTest {
 
         // --- Real VMs constructed with mocks ---
         habitsViewModel = HabitsViewModel(
-            getHabitsUseCase,
+            getHabitsForDateUseCase,
             markHabitCompletedUseCase,
             markHabitIncompleteUseCase,
             getHabitCompletionStatusUseCase,
@@ -172,6 +175,7 @@ class HabitsScreenTest {
         }
 
         // Emit initial habits
+        val today = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault()).date
         val habit1 = Habit(
             id = "h1",
             title = "Утренняя зарядка",
@@ -185,8 +189,8 @@ class HabitsScreenTest {
             maxParticipants = 1,
             isPublic = false,
             isActive = true,
-            createdAt = 0L,
-            updatedAt = 0L
+            createdAt = today,
+            updatedAt = today
         )
         val habit2 = habit1.copy(id = "h2", title = "Чтение")
         habitsFlow.tryEmit(listOf(habit1, habit2))
