@@ -18,8 +18,12 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.datetime.Clock
 import kotlinx.datetime.DayOfWeek
+import kotlinx.datetime.LocalDate
 import kotlinx.datetime.LocalTime
+import kotlinx.datetime.TimeZone
+import kotlinx.datetime.toLocalDateTime
 import javax.inject.Inject
 
 /**
@@ -283,11 +287,11 @@ class PreviewAddEditHabitViewModel @Inject constructor(
     }
 
     override fun loadAvailableFriends() {
-        val now = System.currentTimeMillis()
+        val today = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault()).date
         val friends = listOf(
-            User(id = "friend1", name = "Alice", email = "alice@example.com", avatarUrl = "", level = 1, points = 100, createdAt = now, lastActiveAt = now),
-            User(id = "friend2", name = "Bob", email = "bob@example.com", avatarUrl = "", level = 2, points = 250, createdAt = now, lastActiveAt = now),
-            User(id = "friend3", name = "Charlie", email = "charlie@example.com", avatarUrl = "", level = 3, points = 500, createdAt = now, lastActiveAt = now)
+            User(id = "friend1", name = "Alice", email = "alice@example.com", avatarUrl = "", level = 1, points = 100, createdAt = today, lastActiveAt = today),
+            User(id = "friend2", name = "Bob", email = "bob@example.com", avatarUrl = "", level = 2, points = 250, createdAt = today, lastActiveAt = today),
+            User(id = "friend3", name = "Charlie", email = "charlie@example.com", avatarUrl = "", level = 3, points = 500, createdAt = today, lastActiveAt = today)
         )
         _uiState.update { it.copy(availableFriends = friends) }
     }
@@ -336,7 +340,6 @@ class PreviewAddEditHabitViewModel @Inject constructor(
      */
     private fun createTempHabit(): Habit {
         val currentState = _uiState.value
-        val now = System.currentTimeMillis()
         return Habit(
             id = currentState.habitId ?: "preview_habit",
             title = currentState.title,
@@ -356,8 +359,8 @@ class PreviewAddEditHabitViewModel @Inject constructor(
             inviteCode = null, // простое значение по умолчанию
             isPublic = false, // простое значение по умолчанию
             isActive = true,
-            createdAt = now,
-            updatedAt = now
+            createdAt = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault()).date,
+            updatedAt = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault()).date
         )
     }
 
@@ -399,35 +402,19 @@ class PreviewAddEditHabitViewModel @Inject constructor(
             )
         }
     }
-}
-
-/**
- * Создает тестовый экземпляр ViewModel с заполненными данными для превью.
- */
-@Suppress("FunctionName")
-fun PreviewAddEditHabitViewModel(
-    title: String = "Бег по утрам",
-    description: String = "Пробежка в парке",
-    icon: String = "🏃",
-    type: HabitType = HabitType.PERSONAL,
-    frequency: HabitFrequency = HabitFrequency.DAILY,
-    reminderTime: LocalTime? = LocalTime(8, 30),
-    targetValue: Int = 5,
-    unit: String = "км",
-    isLoading: Boolean = false,
-    isHabitSaved: Boolean = false
-): PreviewAddEditHabitViewModel {
-    val testState = AddEditHabitUiState(
-        title = title,
-        description = description,
-        icon = icon,
-        type = type,
-        frequency = frequency,
-        reminderTime = reminderTime,
-        targetValue = targetValue,
-        unit = unit,
-        isLoading = isLoading,
-        isHabitSaved = isHabitSaved
-    )
-    return PreviewAddEditHabitViewModel(testState)
+    
+    // Методы для работы с датами привычек
+    override fun onStartDateChange(date: LocalDate?) {
+        _uiState.update { it.copy(
+            startDate = date,
+            hasUnsavedChanges = true
+        )}
+    }
+    
+    override fun onEndDateChange(date: LocalDate?) {
+        _uiState.update { it.copy(
+            endDate = date,
+            hasUnsavedChanges = true
+        )}
+    }
 }

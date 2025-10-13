@@ -1,6 +1,7 @@
 package com.habittracker.domain.model
 
 import kotlinx.datetime.DayOfWeek
+import kotlinx.datetime.LocalDate
 import kotlinx.datetime.LocalTime
 
 /**
@@ -13,6 +14,7 @@ data class HabitParticipantSettings(
     val reminderEnabled: Boolean = false,
     val reminderDays: Set<DayOfWeek> = emptySet(),
     val notificationsMuted: Boolean = false,
+    val personalEndDate: LocalDate? = null, // Персональная дата окончания участника
     val timeZone: String? = null,
     val updatedAt: Long = System.currentTimeMillis()
 )

@@ -10,6 +10,7 @@ import com.habittracker.domain.model.Habit
 import com.habittracker.domain.model.HabitEntry
 import com.habittracker.domain.model.HabitEntryWithUser
 import com.habittracker.domain.model.HabitInvitation
+import com.habittracker.domain.model.HabitParticipantSettings
 import com.habittracker.domain.model.HabitType
 import com.habittracker.domain.model.User
 import com.habittracker.domain.model.gamification.GamificationEvent
@@ -24,6 +25,8 @@ import com.habittracker.domain.usecase.notification.SendGroupHabitPushNotificati
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.test.advanceUntilIdle
@@ -63,9 +66,9 @@ class MarkHabitCompletedUseCaseTest {
     @Before
     fun setUp() {
         habitEntryRepository = FakeHabitEntryRepository()
-        updateUserPointsUseCase = FakeUpdateUserPointsUseCase(FakeUserRepository())
-        habitRepository = FakeHabitRepository()
         socialRepository = FakeSocialRepository()
+        updateUserPointsUseCase = FakeUpdateUserPointsUseCase(FakeUserRepository(), socialRepository)
+        habitRepository = FakeHabitRepository()
         firestoreRepository = mock()
         notificationRepository = mock()
         sendGroupHabitPushNotificationUseCase = SendGroupHabitPushNotificationUseCase(
@@ -179,7 +182,10 @@ class FakeHabitEntryRepository : HabitEntryRepository {
     override suspend fun markHabitIncomplete(habitId: String, userId: String, date: LocalDate) {}
 }
 
-class FakeUpdateUserPointsUseCase(private val userRepository: UserRepository) : UpdateUserPointsUseCase(userRepository) {
+class FakeUpdateUserPointsUseCase(
+    private val userRepository: UserRepository,
+    private val socialRepository: com.habittracker.domain.repository.SocialRepository
+) : UpdateUserPointsUseCase(userRepository, socialRepository) {
     var invokeCalled = false
     override suspend fun invoke(userId: String, event: GamificationEvent): Result<Unit> {
         invokeCalled = true
@@ -193,8 +199,8 @@ class FakeHabitRepository : HabitRepository {
         id = habitId,
         title = "Test Habit",
         createdBy = "testUserId",
-        createdAt = Clock.System.now().toEpochMilliseconds(),
-        updatedAt = Clock.System.now().toEpochMilliseconds(),
+        createdAt = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault()).date,
+        updatedAt = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault()).date,
         color = "#FFFFFF",
         type = HabitType.PERSONAL
     )
@@ -213,10 +219,13 @@ class FakeHabitRepository : HabitRepository {
     override suspend fun getHabitParticipants(habitId: String): List<String> = emptyList()
     override suspend fun searchHabits(userId: String, query: String): List<Habit> = emptyList()
     override fun getPublicHabits(): Flow<List<Habit>> = flowOf(emptyList())
+    override suspend fun getHabitParticipantSettings(habitId: String, userId: String) = null
+    override suspend fun updateHabitParticipantSettings(settings: HabitParticipantSettings) = throw NotImplementedError()
+    override fun observeHabitParticipantSettings(habitId: String, userId: String) = flowOf(null)
 }
 
 class FakeSocialRepository : SocialRepository {
-    override suspend fun getUserById(userId: String): User? = User(id = userId, name = "Test User", email = "test@test.com", createdAt = System.currentTimeMillis(), lastActiveAt = System.currentTimeMillis())
+    override suspend fun getUserById(userId: String): User? = User(id = userId, name = "Test User", email = "test@test.com", createdAt = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault()).date, lastActiveAt = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault()).date)
     override suspend fun getUserByIdFromFirestore(userId: String): User? = getUserById(userId)
     override suspend fun searchUsers(query: String, currentUserId: String): List<User> = emptyList()
     override suspend fun updateUserFcmToken(userId: String, token: String) {}
@@ -273,8 +282,8 @@ class FakeUserRepository : UserRepository {
             id = "test-user-id",
             name = "Test User",
             email = "test@test.com",
-            createdAt = System.currentTimeMillis(),
-            lastActiveAt = System.currentTimeMillis()
+            createdAt = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault()).date,
+            lastActiveAt = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault()).date
         )
         users[testUser.id] = testUser
     }

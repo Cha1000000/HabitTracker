@@ -1,5 +1,11 @@
 package com.habittracker.domain.model
 
+import kotlinx.datetime.Clock
+import kotlinx.datetime.LocalDateTime
+import kotlinx.datetime.TimeZone
+import kotlinx.datetime.toInstant
+import kotlinx.datetime.toLocalDateTime
+
 /**
  * Модель приглашения в групповую привычку
  */
@@ -12,9 +18,9 @@ data class HabitInvitation(
     val toUserId: String,
     val message: String? = null,
     val status: HabitInvitationStatus,
-    val createdAt: Long,
-    val respondedAt: Long? = null,
-    val expiresAt: Long? = null
+    val createdAt: LocalDateTime = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault()),
+    val respondedAt: LocalDateTime? = null,
+    val expiresAt: LocalDateTime? = null
 )
 
 /**
@@ -39,8 +45,8 @@ fun HabitInvitation.isAccepted() = status == HabitInvitationStatus.ACCEPTED
 fun HabitInvitation.isDeclined() = status == HabitInvitationStatus.DECLINED
 
 fun HabitInvitation.isExpired(): Boolean {
-    val now = System.currentTimeMillis()
-    return status == HabitInvitationStatus.EXPIRED || (expiresAt != null && now > expiresAt)
+    val now = Clock.System.now()
+    return status == HabitInvitationStatus.EXPIRED || (expiresAt != null && now > expiresAt.toInstant(TimeZone.currentSystemDefault()))
 }
 
 fun HabitInvitation.canRespond() = 
@@ -51,11 +57,12 @@ fun HabitInvitation.canCancel(userId: String) =
 
 // Получить текст времени создания приглашения
 fun HabitInvitation.getCreatedTimeText(): String {
-    val now = System.currentTimeMillis()
-    val diffMillis = now - createdAt
-    val diffMinutes = diffMillis / (1000 * 60)
-    val diffHours = diffMillis / (1000 * 60 * 60)
-    val diffDays = diffMillis / (1000 * 60 * 60 * 24)
+    val now = Clock.System.now()
+    val createdInstant = createdAt.toInstant(TimeZone.currentSystemDefault())
+    val duration = now - createdInstant
+    val diffMinutes = duration.inWholeMinutes
+    val diffHours = duration.inWholeHours
+    val diffDays = duration.inWholeDays
 
     return when {
         diffMinutes < 1 -> "только что"
@@ -70,11 +77,12 @@ fun HabitInvitation.getCreatedTimeText(): String {
 fun HabitInvitation.getRespondedTimeText(): String {
     val responseTime = respondedAt ?: return "не отвечено"
     
-    val now = System.currentTimeMillis()
-    val diffMillis = now - responseTime
-    val diffMinutes = diffMillis / (1000 * 60)
-    val diffHours = diffMillis / (1000 * 60 * 60)
-    val diffDays = diffMillis / (1000 * 60 * 60 * 24)
+    val now = Clock.System.now()
+    val respondedInstant = responseTime.toInstant(TimeZone.currentSystemDefault())
+    val duration = now - respondedInstant
+    val diffMinutes = duration.inWholeMinutes
+    val diffHours = duration.inWholeHours
+    val diffDays = duration.inWholeDays
 
     return when {
         diffMinutes < 1 -> "только что"
@@ -97,13 +105,14 @@ fun HabitInvitation.getStatusText() = when (status) {
 // Получить время до истечения приглашения
 fun HabitInvitation.getTimeUntilExpiry(): String? {
     val expiryTime = expiresAt ?: return null
-    val now = System.currentTimeMillis()
+    val now = Clock.System.now()
+    val expiryInstant = expiryTime.toInstant(TimeZone.currentSystemDefault())
     
-    if (now >= expiryTime) return "Истекло"
+    if (now >= expiryInstant) return "Истекло"
     
-    val diffMillis = expiryTime - now
-    val diffHours = diffMillis / (1000 * 60 * 60)
-    val diffDays = diffMillis / (1000 * 60 * 60 * 24)
+    val duration = expiryInstant - now
+    val diffHours = duration.inWholeHours
+    val diffDays = duration.inWholeDays
     
     return when {
         diffDays > 0 -> "Истекает через ${diffDays}д"

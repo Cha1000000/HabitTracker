@@ -22,6 +22,6 @@ data class ChallengeEntity(
     val reward: String,
     val status: String, // e.g., "ACTIVE", "COMPLETED", "CANCELLED"
     val winnerId: String?,
-    val createdAt: Long,
-    val updatedAt: Long
+    val createdAt: LocalDate,
+    val updatedAt: LocalDate
 )

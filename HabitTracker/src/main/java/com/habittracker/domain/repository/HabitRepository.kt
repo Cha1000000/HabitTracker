@@ -1,6 +1,7 @@
 package com.habittracker.domain.repository
 
 import com.habittracker.domain.model.Habit
+import com.habittracker.domain.model.HabitParticipantSettings
 import kotlinx.coroutines.flow.Flow
 
 interface HabitRepository {
@@ -34,4 +35,11 @@ interface HabitRepository {
     suspend fun searchHabits(userId: String, query: String): List<Habit>
     
     fun getPublicHabits(): Flow<List<Habit>>
+    
+    // HabitParticipantSettings methods
+    suspend fun getHabitParticipantSettings(habitId: String, userId: String): HabitParticipantSettings?
+    
+    suspend fun updateHabitParticipantSettings(settings: HabitParticipantSettings)
+    
+    fun observeHabitParticipantSettings(habitId: String, userId: String): Flow<HabitParticipantSettings?>
 }

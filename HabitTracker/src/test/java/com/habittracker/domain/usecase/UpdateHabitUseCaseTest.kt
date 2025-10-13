@@ -12,8 +12,12 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.test.runTest
 import kotlinx.datetime.Clock
+import kotlinx.datetime.TimeZone
+import kotlinx.datetime.toLocalDateTime
 import kotlinx.datetime.LocalDate
-import org.junit.Assert.*
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNotNull
+import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
 
@@ -37,8 +41,8 @@ class UpdateHabitUseCaseTest {
         unit = "раз",
         participants = emptyList(),
         isActive = true,
-        createdAt = Clock.System.now().toEpochMilliseconds(),
-        updatedAt = Clock.System.now().toEpochMilliseconds(),
+        createdAt = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault()).date,
+        updatedAt = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault()).date,
         createdBy = "test-user-id"
     )
 
@@ -140,5 +144,8 @@ class UpdateHabitUseCaseTest {
         override suspend fun getHabitParticipants(habitId: String) = throw NotImplementedError()
         override suspend fun searchHabits(userId: String, query: String) = throw NotImplementedError()
         override fun getPublicHabits(): Flow<List<Habit>> = flowOf(emptyList())
+        override suspend fun getHabitParticipantSettings(habitId: String, userId: String) = null
+        override suspend fun updateHabitParticipantSettings(settings: HabitParticipantSettings) = throw NotImplementedError()
+        override fun observeHabitParticipantSettings(habitId: String, userId: String) = flowOf(null)
     }
 }

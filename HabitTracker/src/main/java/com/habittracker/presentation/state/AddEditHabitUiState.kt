@@ -6,6 +6,7 @@ import com.habittracker.domain.model.User
 import com.habittracker.presentation.utils.GroupHabitConstants
 import com.habittracker.presentation.utils.GroupHabitValidationResult
 import kotlinx.datetime.DayOfWeek
+import kotlinx.datetime.LocalDate
 import kotlinx.datetime.LocalTime
 
 data class AddEditHabitUiState(
@@ -19,6 +20,11 @@ data class AddEditHabitUiState(
 
     // Настройки частоты
     val frequency: HabitFrequency = HabitFrequency.DAILY,
+    
+    // Даты начала и окончания привычки
+    val startDate: LocalDate? = null, // Дата начала (null = с сегодня)
+    val endDate: LocalDate? = null, // Дата окончания (null = бессрочно)
+    val canEditStartDate: Boolean = true, // Можно ли редактировать дату начала (false после первого выполнения)
 
     // Напоминание
     // Явный флаг включения напоминаний (не завязан на nullability времени)

@@ -20,13 +20,16 @@ import com.habittracker.domain.model.Habit
 import com.habittracker.domain.model.HabitFrequency
 import com.habittracker.domain.model.HabitType
 import com.habittracker.domain.repository.AuthRepository
+import com.habittracker.domain.repository.GroupHabitNotificationRepository
 import com.habittracker.domain.usecase.DeleteHabitUseCase
 import com.habittracker.domain.usecase.EnsureMySettingsForHabitUseCase
 import com.habittracker.domain.usecase.GetHabitCompletionStatusUseCase
-import com.habittracker.domain.usecase.GetHabitsUseCase
+import com.habittracker.domain.usecase.GetHabitsForDateUseCase
+import com.habittracker.domain.usecase.GetWeekCompletionDataUseCase
 import com.habittracker.domain.usecase.MarkHabitCompletedUseCase
 import com.habittracker.domain.usecase.MarkHabitIncompleteUseCase
 import com.habittracker.domain.usecase.ScheduleHabitReminderUseCase
+import com.habittracker.domain.usecase.habit.JoinHabitByCodeUseCase
 import com.habittracker.presentation.viewmodel.FriendsViewModel
 import com.habittracker.presentation.viewmodel.HabitsViewModel
 import com.habittracker.presentation.viewmodel.NotificationsViewModel
@@ -36,6 +39,9 @@ import io.mockk.every
 import io.mockk.mockk
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.flowOf
+import kotlinx.datetime.Clock
+import kotlinx.datetime.TimeZone
+import kotlinx.datetime.toLocalDateTime
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
@@ -46,13 +52,14 @@ class HabitsScreenTest {
     val composeRule = createAndroidComposeRule<ComponentActivity>()
 
     private lateinit var authRepository: AuthRepository
-    private lateinit var getHabitsUseCase: GetHabitsUseCase
+    private lateinit var getHabitsForDateUseCase: GetHabitsForDateUseCase
     private lateinit var markHabitCompletedUseCase: MarkHabitCompletedUseCase
     private lateinit var markHabitIncompleteUseCase: MarkHabitIncompleteUseCase
     private lateinit var getHabitCompletionStatusUseCase: GetHabitCompletionStatusUseCase
     private lateinit var deleteHabitUseCase: DeleteHabitUseCase
     private lateinit var ensureMySettingsForHabitUseCase: EnsureMySettingsForHabitUseCase
     private lateinit var scheduleHabitReminderUseCase: ScheduleHabitReminderUseCase
+    private lateinit var getWeekCompletionDataUseCase: GetWeekCompletionDataUseCase
 
     private lateinit var notificationsViewModel: NotificationsViewModel
     private lateinit var friendsViewModel: FriendsViewModel
@@ -90,9 +97,9 @@ class HabitsScreenTest {
         authRepository = mockk(relaxed = true)
         every { authRepository.getCurrentUserId() } returns "user1"
 
-        getHabitsUseCase = mockk()
+        getHabitsForDateUseCase = mockk()
         habitsFlow = MutableSharedFlow(replay = 1)
-        every { getHabitsUseCase.invoke("user1") } returns habitsFlow
+        every { getHabitsForDateUseCase.invoke("user1", any()) } returns habitsFlow
 
         markHabitCompletedUseCase = mockk(relaxed = true)
         markHabitIncompleteUseCase = mockk(relaxed = true)
@@ -101,11 +108,13 @@ class HabitsScreenTest {
         deleteHabitUseCase = mockk(relaxed = true)
         ensureMySettingsForHabitUseCase = mockk(relaxed = true)
         scheduleHabitReminderUseCase = mockk(relaxed = true)
-        val joinHabitByCodeUseCase = mockk<com.habittracker.domain.usecase.habit.JoinHabitByCodeUseCase>(relaxed = true)
+        getWeekCompletionDataUseCase = mockk(relaxed = true)
+        coEvery { getWeekCompletionDataUseCase.invoke(any(), any()) } returns emptyMap()
+        val joinHabitByCodeUseCase = mockk<JoinHabitByCodeUseCase>(relaxed = true)
 
         // --- Real VMs constructed with mocks ---
         habitsViewModel = HabitsViewModel(
-            getHabitsUseCase,
+            getHabitsForDateUseCase,
             markHabitCompletedUseCase,
             markHabitIncompleteUseCase,
             getHabitCompletionStatusUseCase,
@@ -114,6 +123,7 @@ class HabitsScreenTest {
             ensureMySettingsForHabitUseCase,
             scheduleHabitReminderUseCase,
             joinHabitByCodeUseCase,
+            getWeekCompletionDataUseCase,
             composeRule.activity.application
         )
 
@@ -122,16 +132,19 @@ class HabitsScreenTest {
         val getHabitInvitationsUseCase = mockk<com.habittracker.domain.usecase.habit.GetHabitInvitationsUseCase>()
         val acceptHabitInvitationUseCase = mockk<com.habittracker.domain.usecase.habit.AcceptHabitInvitationUseCase>()
         val declineHabitInvitationUseCase = mockk<com.habittracker.domain.usecase.habit.DeclineHabitInvitationUseCase>()
+        val groupHabitNotificationRepository = mockk<GroupHabitNotificationRepository>(relaxed = true)
         every { groupHabitNotificationUseCase.getGroupHabitNotifications(any()) } returns flowOf(emptyList())
         every { getHabitInvitationsUseCase.getPendingInvitationsCount(any()) } returns flowOf(0)
         every { getHabitInvitationsUseCase.getIncomingInvitations(any()) } returns flowOf(emptyList())
+        every { groupHabitNotificationRepository.getNotificationsForUser(any()) } returns flowOf(emptyList())
 
         notificationsViewModel = NotificationsViewModel(
             groupHabitNotificationUseCase,
             authRepository,
             getHabitInvitationsUseCase,
             acceptHabitInvitationUseCase,
-            declineHabitInvitationUseCase
+            declineHabitInvitationUseCase,
+            groupHabitNotificationRepository
         )
 
         // FriendsViewModel mocks and instance
@@ -162,6 +175,7 @@ class HabitsScreenTest {
         }
 
         // Emit initial habits
+        val today = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault()).date
         val habit1 = Habit(
             id = "h1",
             title = "Утренняя зарядка",
@@ -175,8 +189,8 @@ class HabitsScreenTest {
             maxParticipants = 1,
             isPublic = false,
             isActive = true,
-            createdAt = 0L,
-            updatedAt = 0L
+            createdAt = today,
+            updatedAt = today
         )
         val habit2 = habit1.copy(id = "h2", title = "Чтение")
         habitsFlow.tryEmit(listOf(habit1, habit2))
@@ -198,7 +212,7 @@ class HabitsScreenTest {
 
         // Snackbar appears; click Undo
         val undoText = composeRule.activity.getString(R.string.undo)
-        composeRule.onNode(hasClickAction() and androidx.compose.ui.test.hasText(undoText)).assertIsDisplayed().performClickSlow()
+        composeRule.onNode(hasClickAction() and hasText(undoText)).assertIsDisplayed().performClickSlow()
 
         // Item should be restored
         composeRule.onNodeWithTag("habit-h1").assertIsDisplayed()

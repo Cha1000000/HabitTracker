@@ -5,6 +5,8 @@ import com.habittracker.domain.model.ChallengeStatus
 import com.habittracker.domain.repository.ChallengeRepository
 import com.habittracker.domain.repository.SocialRepository
 import kotlinx.datetime.Clock
+import kotlinx.datetime.TimeZone
+import kotlinx.datetime.toLocalDateTime
 import javax.inject.Inject
 
 class LeaveChallengeUseCase @Inject constructor(
@@ -47,24 +49,25 @@ class LeaveChallengeUseCase @Inject constructor(
             
             // Удаляем участника
             val updatedParticipants = challenge.participants.filter { it != userId }
+            val today = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault()).date
             
-            // Если остался только создатель, отменяем челлендж
-            val updatedChallenge = if (updatedParticipants.size <= 1) {
+            // Если участников не осталось или остался только создатель, отменяем челлендж
+            val updatedChallenge = if (updatedParticipants.isEmpty() || updatedParticipants.size == 1) {
                 challenge.copy(
                     participants = updatedParticipants,
                     status = ChallengeStatus.CANCELLED,
-                    updatedAt = Clock.System.now().toEpochMilliseconds()
+                    updatedAt = today
                 )
             } else {
                 challenge.copy(
                     participants = updatedParticipants,
-                    updatedAt = Clock.System.now().toEpochMilliseconds()
+                    updatedAt = today
                 )
             }
             
             challengeRepository.updateChallenge(updatedChallenge)
             
-            // Уведомляем создателя о выходе участника
+            // Уведомляем создателя
             try {
                 val leavingUser = socialRepository.getUserById(userId)
                 socialRepository.sendChallengeLeftNotification(

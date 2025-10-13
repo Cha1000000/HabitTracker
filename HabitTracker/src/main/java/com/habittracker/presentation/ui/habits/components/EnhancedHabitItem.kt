@@ -62,6 +62,8 @@ import com.habittracker.domain.model.isGroupHabit
 import com.habittracker.presentation.viewmodel.HabitWithCompletion
 import kotlinx.datetime.Clock
 import kotlinx.datetime.LocalTime
+import kotlinx.datetime.TimeZone
+import kotlinx.datetime.toLocalDateTime
 
 /**
  * Улучшенный компонент для отображения привычки с поддержкой групповых привычек
@@ -343,8 +345,8 @@ private fun EnhancedHabitItemPreview() {
         createdBy = "user1",
         participants = listOf("user1"),
         isActive = true,
-        createdAt = Clock.System.now().toEpochMilliseconds(),
-        updatedAt = Clock.System.now().toEpochMilliseconds()
+        createdAt = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault()).date,
+        updatedAt = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault()).date
     )
     
     val groupHabit = Habit(
@@ -362,8 +364,8 @@ private fun EnhancedHabitItemPreview() {
         participants = listOf("user1", "user2", "user3"),
         maxParticipants = 10,
         isActive = true,
-        createdAt = Clock.System.now().toEpochMilliseconds(),
-        updatedAt = Clock.System.now().toEpochMilliseconds()
+        createdAt = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault()).date,
+        updatedAt = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault()).date
     )
     
     val sampleProgress = listOf(

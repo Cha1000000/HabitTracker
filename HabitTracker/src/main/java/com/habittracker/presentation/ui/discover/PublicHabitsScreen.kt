@@ -81,9 +81,6 @@ import com.habittracker.presentation.ui.habits.components.JoinByCodeDialog
 import com.habittracker.presentation.ui.habits.components.TahoeFilterChip
 import com.habittracker.presentation.ui.habits.components.TahoeGradientBackground
 import com.habittracker.presentation.viewmodel.PublicHabitsViewModel
-import java.text.SimpleDateFormat
-import java.util.Date
-import java.util.Locale.getDefault
 
 @Composable
 fun HabitCategory.getDisplayName(): String = stringResource(stringResId)
@@ -654,8 +651,6 @@ private fun getFrequencyText(habit: Habit): String {
     }
 }
 
-private fun formatDate(timestamp: Long): String {
-    val date = Date(timestamp)
-    val format = SimpleDateFormat("dd.MM.yy", getDefault())
-    return format.format(date)
+private fun formatDate(date: kotlinx.datetime.LocalDate): String {
+    return "${date.dayOfMonth.toString().padStart(2, '0')}.${date.monthNumber.toString().padStart(2, '0')}.${date.year.toString().takeLast(2)}"
 }

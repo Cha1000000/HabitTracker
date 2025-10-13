@@ -4,6 +4,7 @@ import androidx.room.ColumnInfo
 import androidx.room.Entity
 import androidx.room.Index
 import androidx.room.PrimaryKey
+import kotlinx.datetime.LocalDate
 import kotlinx.datetime.LocalTime
 
 @Entity(
@@ -21,6 +22,7 @@ data class HabitParticipantSettingsEntity(
     val reminderDays: List<Int> = emptyList(),
     @ColumnInfo(defaultValue = "0")
     val notificationsMuted: Boolean = false,
+    val personalEndDate: LocalDate? = null,
     val timeZone: String? = null,
     val updatedAt: Long
 )

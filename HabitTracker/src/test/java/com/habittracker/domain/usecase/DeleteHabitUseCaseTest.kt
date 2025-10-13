@@ -10,6 +10,9 @@ import com.habittracker.domain.repository.HabitRepository
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
+import kotlinx.datetime.Clock
+import kotlinx.datetime.TimeZone
+import kotlinx.datetime.toLocalDateTime
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Before
@@ -72,8 +75,8 @@ class DeleteHabitUseCaseTest {
         maxParticipants = 10,
         isPublic = false,
         isActive = true,
-        createdAt = 0L,
-        updatedAt = 0L
+        createdAt = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault()).date,
+        updatedAt = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault()).date
     )
 
     @Suppress("SameParameterValue")
@@ -90,8 +93,8 @@ class DeleteHabitUseCaseTest {
         maxParticipants = 1,
         isPublic = false,
         isActive = true,
-        createdAt = 0L,
-        updatedAt = 0L
+        createdAt = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault()).date,
+        updatedAt = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault()).date
     )
 
     @Test

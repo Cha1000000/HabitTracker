@@ -1,12 +1,15 @@
 package com.habittracker.domain.model
 
 import kotlinx.datetime.Clock
+import kotlinx.datetime.TimeZone
+import kotlinx.datetime.toLocalDateTime
 import org.junit.Test
 import org.junit.Assert.*
 
 class HabitValidationTest {
 
-    private val nowMillis = Clock.System.now().toEpochMilliseconds()
+    private val now = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault())
+    private val today = now.date
 
     private fun createValidHabit(): Habit = Habit(
         id = "test-id",
@@ -26,8 +29,8 @@ class HabitValidationTest {
         inviteCode = null,
         isPublic = false,
         isActive = true,
-        createdAt = nowMillis,
-        updatedAt = nowMillis
+        createdAt = today,
+        updatedAt = today
     )
 
     @Test

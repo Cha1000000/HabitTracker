@@ -3,15 +3,19 @@ package com.habittracker.presentation.ui.habits.components
 import android.annotation.SuppressLint
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.scaleIn
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
@@ -21,6 +25,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -29,16 +34,22 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.CalendarToday
+import androidx.compose.material.icons.filled.ChevronLeft
+import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExposedDropdownMenuBox
 import androidx.compose.material3.ExposedDropdownMenuBoxScope
@@ -55,14 +66,18 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TextFieldColors
 import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.scale
@@ -70,17 +85,26 @@ import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType.Companion.LongPress
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.font.FontWeight.Companion.SemiBold
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.VisualTransformation
+import androidx.compose.ui.text.style.TextAlign.Companion.Center
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.Popup
+import com.habittracker.R
 import com.habittracker.presentation.ui.theme.GlassBlack10
 import com.habittracker.presentation.ui.theme.GlassBlack20
 import com.habittracker.presentation.ui.theme.GlassBlack30
@@ -99,6 +123,14 @@ import com.habittracker.presentation.ui.theme.TahoeLightPurpleAccent
 import com.habittracker.presentation.ui.theme.TahoeMidnightBlue
 import com.habittracker.presentation.ui.theme.TahoeRoyalBlue
 import com.habittracker.presentation.ui.theme.TahoeSkyBlue
+import kotlinx.datetime.Clock.System
+import kotlinx.datetime.LocalDate
+import kotlinx.datetime.TimeZone.Companion.currentSystemDefault
+import kotlinx.datetime.toLocalDateTime
+import java.time.LocalDate.of
+import java.time.format.DateTimeFormatter
+import java.util.Locale
+import kotlin.math.ceil
 import kotlin.math.cos
 import kotlin.math.sin
 
@@ -1074,5 +1106,931 @@ fun TahoeTopBar(
         ) {
             actions?.invoke(this)
         }
+    }
+}
+
+/**
+ * Круговой прогрессбар для обертки круглых кнопок дат
+ */
+@Composable
+fun TahoeCircularProgressBorder(
+    progress: Float,
+    modifier: Modifier = Modifier,
+    isDarkTheme: Boolean = isSystemInDarkTheme(),
+    strokeWidth: Dp = 2.dp,
+    size: Dp = 48.dp
+) {
+    val progressColor = if (isDarkTheme) TahoeSkyBlue else TahoeLightAccent
+    val trackColor = if (isDarkTheme) GlassWhite10 else GlassBlack10.copy(alpha = 0.1f)
+    
+    Box(
+        modifier = modifier.size(size),
+        contentAlignment = Alignment.Center
+    ) {
+        // Фоновый круг (трек)
+        Canvas(
+            modifier = Modifier.size(size)
+        ) {
+            drawCircle(
+                color = trackColor,
+                radius = (size.toPx() - strokeWidth.toPx()) / 2,
+                style = androidx.compose.ui.graphics.drawscope.Stroke(
+                    width = strokeWidth.toPx()
+                )
+            )
+        }
+        
+        // Прогрессбар
+        if (progress > 0f) {
+            CircularProgressIndicator(
+                progress = { progress },
+                modifier = Modifier.size(size),
+                color = progressColor,
+                strokeWidth = strokeWidth,
+                trackColor = Color.Transparent
+            )
+        }
+    }
+}
+
+/**
+ * Заголовок с датой и прогрессом
+ */
+@Composable
+fun TahoeDateHeader(
+    selectedDate: LocalDate,
+    completionPercentage: Int,
+    isToday: Boolean,
+    modifier: Modifier = Modifier,
+    isDarkTheme: Boolean = isSystemInDarkTheme()
+) {
+    val dateFormatter = remember { 
+        DateTimeFormatter.ofPattern("d MMM").withLocale(Locale.getDefault())
+    }
+    val dateText = if (isToday) {
+        stringResource(R.string.label_today)
+    } else {
+        val javaDate = of(
+            selectedDate.year,
+            selectedDate.monthNumber,
+            selectedDate.dayOfMonth
+        )
+        javaDate.format(dateFormatter)
+    }
+    
+    GlassmorphicCard(
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 8.dp),
+        isDarkTheme = isDarkTheme,
+        cornerRadius = 12.dp
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 12.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Column {
+                Text(
+                    text = dateText,
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+                if (isToday) {
+                    Text(
+                        text = "${selectedDate.dayOfMonth} ${getMonthName(selectedDate.monthNumber)}.",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+            
+            Text(
+                text = stringResource(R.string.label_completed_percentage, completionPercentage),
+                style = MaterialTheme.typography.bodyLarge,
+                fontWeight = if (completionPercentage == 100) FontWeight.Bold else FontWeight.Normal,
+                color = if (completionPercentage == 100) {
+                    if (isDarkTheme) TahoeSkyBlue else TahoeLightAccent
+                } else {
+                    MaterialTheme.colorScheme.onSurfaceVariant
+                }
+            )
+        }
+    }
+}
+
+/**
+ * Вспомогательная функция для получения названия месяца
+ */
+@Composable
+private fun getMonthName(month: Int): String {
+    return when (month) {
+        1 -> stringResource(R.string.month_jan_short)
+        2 -> stringResource(R.string.month_feb_short)
+        3 -> stringResource(R.string.month_mar_short)
+        4 -> stringResource(R.string.month_apr_short)
+        5 -> stringResource(R.string.month_may_short)
+        6 -> stringResource(R.string.month_jun_short)
+        7 -> stringResource(R.string.month_jul_short)
+        8 -> stringResource(R.string.month_aug_short)
+        9 -> stringResource(R.string.month_sep_short)
+        10 -> stringResource(R.string.month_oct_short)
+        11 -> stringResource(R.string.month_nov_short)
+        12 -> stringResource(R.string.month_dec_short)
+        else -> ""
+    }
+}
+
+/**
+ * Компонент дня недели для селектора дат
+ */
+@Composable
+fun DayOfWeekItem(
+    dayNumber: Int,
+    isSelected: Boolean,
+    isToday: Boolean,
+    isCompleted: Boolean,
+    completionProgress: Float,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    isDarkTheme: Boolean = isSystemInDarkTheme(),
+    isFutureDate: Boolean = false
+) {
+    val backgroundColor = when {
+        isCompleted -> if (isDarkTheme) TahoeSkyBlue else TahoeLightAccent
+        isToday -> if (isDarkTheme) GlassWhite30 else GlassBlack20
+        else -> Color.Transparent
+    }
+    
+    val textColor = when {
+        isCompleted -> Color.White
+        isFutureDate -> MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f) // Приглушенный цвет для будущих дат
+        isToday -> MaterialTheme.colorScheme.onSurface
+        else -> MaterialTheme.colorScheme.onSurfaceVariant
+    }
+    
+    Box(
+        modifier = modifier
+            .size(48.dp)
+            .padding(2.dp),
+        contentAlignment = Alignment.Center
+    ) {
+        // Прогрессбар для частично выполненных дней
+        if (!isCompleted && completionProgress > 0f) {
+            TahoeCircularProgressBorder(
+                progress = completionProgress,
+                size = 44.dp,
+                isDarkTheme = isDarkTheme
+            )
+        }
+        
+        // Кнопка дня
+        Box(
+            modifier = Modifier
+                .size(40.dp)
+                .clip(CircleShape)
+                .background(backgroundColor)
+                .clickable { onClick() },
+            contentAlignment = Alignment.Center
+        ) {
+            Text(
+                text = dayNumber.toString(),
+                style = MaterialTheme.typography.bodyLarge,
+                fontWeight = if (isToday || isCompleted) FontWeight.Bold else FontWeight.Normal,
+                color = textColor
+            )
+        }
+        
+        // Индикатор выбранного дня
+        if (isSelected) {
+            Box(
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .offset(y = 6.dp)
+                    .size(width = 20.dp, height = 2.dp)
+                    .background(
+                        color = if (isDarkTheme) TahoeSkyBlue else TahoeLightAccent,
+                        shape = RoundedCornerShape(1.dp)
+                    )
+            )
+        }
+    }
+}
+
+/**
+ * Горизонтальный селектор дат с днями недели и поддержкой свайпов
+ */
+@Composable
+fun TahoeDateSelector(
+    selectedDate: LocalDate,
+    onDateSelected: (LocalDate) -> Unit,
+    weekDates: List<LocalDate>,
+    completionData: Map<LocalDate, Float>, // Прогресс выполнения для каждого дня (0f-1f)
+    modifier: Modifier = Modifier,
+    isDarkTheme: Boolean = isSystemInDarkTheme(),
+    onSwipeLeft: (() -> Unit)? = null, // Свайп влево = следующая неделя
+    onSwipeRight: (() -> Unit)? = null, // Свайп вправо = предыдущая неделя
+    canSwipeLeft: Boolean = true,
+    canSwipeRight: Boolean = true,
+    onBoundaryReached: ((String) -> Unit)? = null // Колбэк при достижении границы
+) {
+    val today = System.now().toLocalDateTime(currentSystemDefault()).date
+    
+    val weekDayNames = listOf(
+        stringResource(R.string.day_mon_short),
+        stringResource(R.string.day_tue_short),
+        stringResource(R.string.day_wed_short),
+        stringResource(R.string.day_thu_short),
+        stringResource(R.string.day_fri_short),
+        stringResource(R.string.day_sat_short),
+        stringResource(R.string.day_sun_short)
+    )
+    
+    var totalDrag by remember { androidx.compose.runtime.mutableFloatStateOf(0f) }
+    var currentOffset by remember { androidx.compose.runtime.mutableFloatStateOf(0f) }
+    val animatedOffset by animateFloatAsState(
+        targetValue = currentOffset,
+        animationSpec = spring(
+            dampingRatio = Spring.DampingRatioMediumBouncy,
+            stiffness = Spring.StiffnessLow
+        ),
+        label = "weekSwipeAnimation"
+    )
+
+    val hapticFeedback = LocalHapticFeedback.current
+    val boundaryReachedLeft = stringResource(R.string.boundary_reached_oldest)
+    val boundaryReachedRight = stringResource(R.string.boundary_reached_future)
+    
+    // Вычисляем расширенный список дат для отображения при свайпе
+    val itemWidth = 48f // ширина одного элемента в dp
+    val density = LocalDensity.current
+    val itemWidthPx = with(density) { itemWidth.dp.toPx() }
+    
+    // Определяем, сколько дополнительных дат нужно показать слева и справа
+    val offsetInDays = animatedOffset / itemWidthPx
+    val extraDaysLeft = if (offsetInDays > 0) ceil(offsetInDays).toInt().coerceAtMost(7) else 0
+    val extraDaysRight = if (offsetInDays < 0) ceil(kotlin.math.abs(offsetInDays)).toInt().coerceAtMost(7) else 0
+    
+    // Создаём расширенный список дат
+    val extendedDates = remember(weekDates, extraDaysLeft, extraDaysRight) {
+        val firstDate = weekDates.firstOrNull() ?: today
+        val lastDate = weekDates.lastOrNull() ?: today
+        
+        val leftDates: List<LocalDate> = if (extraDaysLeft > 0) {
+            (extraDaysLeft downTo 1).map { days -> 
+                LocalDate.Companion.fromEpochDays(
+                    firstDate.toEpochDays() - days
+                )
+            }
+        } else emptyList()
+        
+        val rightDates: List<LocalDate> = if (extraDaysRight > 0) {
+            (1..extraDaysRight).map { days -> 
+                LocalDate.Companion.fromEpochDays(
+                    lastDate.toEpochDays() + days
+                )
+            }
+        } else emptyList()
+        
+        leftDates + weekDates + rightDates
+    }
+    
+    Column(
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp)
+            .pointerInput(canSwipeLeft, canSwipeRight) {
+                detectHorizontalDragGestures(
+                    onDragStart = {
+                        totalDrag = 0f
+                    },
+                    onDragEnd = {
+                        // Порог для срабатывания свайпа
+                        val threshold = 100f
+                        
+                        if (totalDrag > threshold && canSwipeRight) {
+                            // Свайп вправо - предыдущая неделя
+                            onSwipeRight?.invoke()
+                        } else if (totalDrag < -threshold && canSwipeLeft) {
+                            // Свайп влево - следующая неделя
+                            onSwipeLeft?.invoke()
+                        } else if (totalDrag > threshold) {
+                            // Достигли границы слева
+                            hapticFeedback.performHapticFeedback(LongPress)
+                            onBoundaryReached?.invoke(boundaryReachedLeft)
+                        } else if (totalDrag < -threshold && !canSwipeLeft) {
+                            // Достигли границы справа
+                            hapticFeedback.performHapticFeedback(LongPress)
+                            onBoundaryReached?.invoke(boundaryReachedRight)
+                        }
+                        
+                        totalDrag = 0f
+                        currentOffset = 0f
+                    },
+                    onHorizontalDrag = { change, dragAmount ->
+                        change.consume()
+                        totalDrag += dragAmount
+                        
+                        // Ограничиваем визуальное смещение в зависимости от границ
+                        // Максимум 7 дней * ширина элемента = ~336px
+                        val maxOffset = itemWidthPx * 7
+                        val newOffset = (currentOffset + dragAmount).coerceIn(-maxOffset, maxOffset)
+                        
+                        // Применяем резистентность при достижении границ
+                        currentOffset = when {
+                            newOffset > 0 && !canSwipeRight -> newOffset * 0.3f // Резистентность слева
+                            newOffset < 0 && !canSwipeLeft -> newOffset * 0.3f // Резистентность справа
+                            else -> newOffset
+                        }
+                    }
+                )
+            }
+    ) {
+        // Строка с днями недели
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceEvenly
+        ) {
+            weekDayNames.forEach { dayName ->
+                Text(
+                    text = dayName,
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.width(48.dp),
+                    textAlign = Center
+                )
+            }
+        }
+        //Spacer(modifier = Modifier.height(8.dp))
+        // Строка с числами дней
+        Box(
+            modifier = Modifier
+                .fillMaxWidth().padding(start = 2.dp)
+                .height(48.dp)
+                .graphicsLayer { 
+                    clip = false // Отключаем обрезку для показа дополнительных дат
+                }
+        ) {
+            // Вычисляем параметры для выравнивания
+            val screenWidth = with(density) { 
+                LocalConfiguration.current.screenWidthDp.dp.toPx()
+            }
+            val containerWidth = screenWidth - with(density) { 32.dp.toPx() } // минус padding
+            val spacing = (containerWidth - (7 * itemWidthPx)) / 6.96f // расстояние между элементами
+            val totalItemWidth = itemWidthPx + spacing // полная ширина одного элемента с отступом
+            
+            // Создаём Row с фиксированными позициями элементов
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .graphicsLayer { 
+                        clip = false
+                        // Смещаем весь контент с учётом дополнительных дат слева
+                        translationX = animatedOffset - (extraDaysLeft * totalItemWidth)
+                    }
+            ) {
+                extendedDates.forEachIndexed { index, date ->
+                    val progress = completionData[date] ?: 0f
+                    val isCompleted = progress >= 1f
+                    val isFutureDate = date > today
+                    
+                    Box(
+                        modifier = Modifier
+                            .offset(x = with(density) { (index * totalItemWidth).toDp() })
+                            .width(48.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        DayOfWeekItem(
+                            dayNumber = date.dayOfMonth,
+                            isSelected = date == selectedDate,
+                            isToday = date == today,
+                            isCompleted = isCompleted,
+                            completionProgress = if (!isCompleted) progress else 0f,
+                            onClick = { onDateSelected(date) },
+                            isDarkTheme = isDarkTheme,
+                            isFutureDate = isFutureDate
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+/**
+ * Кнопка возврата к текущему дню
+ */
+@Composable
+fun TahoeBackToTodayButton(
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    isDarkTheme: Boolean = isSystemInDarkTheme()
+) {
+    GlassmorphicButton(
+        onClick = onClick,
+        modifier = modifier,
+        isDarkTheme = isDarkTheme
+    ) {
+        Icon(
+            imageVector = Icons.Default.ChevronRight,
+            contentDescription = null,
+            modifier = Modifier.size(16.dp)
+        )
+        Spacer(modifier = Modifier.width(4.dp))
+        Text(
+            text = stringResource(R.string.button_today),
+            style = MaterialTheme.typography.bodyMedium
+        )
+    }
+}
+
+/**
+ * DatePicker в стиле Tahoe с возможностью выбора даты начала и окончания
+ * @param date Дата для отображения
+ * @param onDateSelected Обратный вызов при выборе даты
+ * @param modifier Модификатор для настройки внешнего вид
+ * @param isEnabled Включен ли выбор даты
+ * @param label Подпись к полю ввода
+ * @param placeholder Плейсхолдер, если дата не выбрана
+ */
+@Composable
+fun TahoeDatePicker(
+    date: LocalDate?,
+    onDateSelected: (LocalDate) -> Unit,
+    modifier: Modifier = Modifier,
+    isEnabled: Boolean = true,
+    label: String = "",
+    placeholder: String = "",
+    minDate: LocalDate? = null,
+    maxDate: LocalDate? = null,
+) {
+    val showDatePicker = remember { mutableStateOf(false) }
+    
+    // Форматируем дату для отображения
+    val dateFormatter = remember {
+        DateTimeFormatter
+            .ofPattern("d MMM yyyy")
+            .withLocale(Locale.getDefault())
+    }
+    
+    // Текст для отображения выбранной даты
+    val displayText = remember(date) {
+        date?.let { 
+            val javaDate = of(it.year, it.monthNumber, it.dayOfMonth)
+            dateFormatter.format(javaDate) 
+        } ?: placeholder
+    }
+    
+    // Стили для текстового поля
+    val textFieldColors = TextFieldDefaults.colors(
+        focusedTextColor = MaterialTheme.colorScheme.onSurface,
+        unfocusedTextColor = MaterialTheme.colorScheme.onSurface,
+        disabledTextColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f),
+        errorTextColor = MaterialTheme.colorScheme.onSurface,
+        focusedContainerColor = Color.Transparent,
+        unfocusedContainerColor = Color.Transparent,
+        disabledContainerColor = Color.Transparent,
+        errorContainerColor = Color.Transparent,
+        cursorColor = MaterialTheme.colorScheme.primary,
+        errorCursorColor = MaterialTheme.colorScheme.error,
+        focusedIndicatorColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.8f),
+        unfocusedIndicatorColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.5f),
+        disabledIndicatorColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.38f),
+        errorIndicatorColor = MaterialTheme.colorScheme.error,
+        focusedLabelColor = MaterialTheme.colorScheme.primary,
+        unfocusedLabelColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
+        disabledLabelColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f),
+        errorLabelColor = MaterialTheme.colorScheme.error,
+        focusedPlaceholderColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
+        unfocusedPlaceholderColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
+        disabledPlaceholderColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f),
+        errorPlaceholderColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
+    )
+    
+    Box(modifier = modifier) {
+        // Поле для отображения выбранной даты
+        OutlinedTextField(
+            value = displayText,
+            onValueChange = {},
+            modifier = Modifier.fillMaxWidth(),
+            enabled = isEnabled,
+            readOnly = true,
+            label = { if (label.isNotEmpty()) Text(label) },
+            colors = textFieldColors,
+            trailingIcon = {
+                Icon(
+                    imageVector = Icons.Default.CalendarToday,
+                    contentDescription = stringResource(R.string.select_date),
+                    tint = if (isEnabled) {
+                        MaterialTheme.colorScheme.primary
+                    } else {
+                        MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f)
+                    }
+                )
+            },
+            shape = MaterialTheme.shapes.medium,
+            singleLine = true
+        )
+        
+        // Невидимая кнопка для открытия DatePicker
+        Box(
+            modifier = Modifier
+                .matchParentSize()
+                .alpha(0f)
+                .clickable(
+                    enabled = isEnabled,
+                    onClick = { showDatePicker.value = true }
+                )
+        )
+    }
+    
+    // Кастомный Tahoe DatePicker диалог
+    if (showDatePicker.value) {
+        TahoeDatePickerDialog(
+            initialDate = date,
+            minDate = minDate,
+            maxDate = maxDate,
+            onDateSelected = { selectedDate ->
+                onDateSelected(selectedDate)
+                showDatePicker.value = false
+            },
+            onDismiss = { showDatePicker.value = false }
+        )
+    }
+}
+
+/**
+ * Кастомный DatePicker диалог в стиле Tahoe с эффектом "жидкого стекла"
+ */
+@Composable
+private fun TahoeDatePickerDialog(
+    initialDate: LocalDate?,
+    minDate: LocalDate?,
+    maxDate: LocalDate?,
+    onDateSelected: (LocalDate) -> Unit,
+    onDismiss: () -> Unit
+) {
+    val today = remember {
+        System.now()
+            .toLocalDateTime(currentSystemDefault())
+            .date
+    }
+    
+    var selectedDate by remember { mutableStateOf(initialDate ?: today) }
+    var currentMonth by remember { mutableStateOf(selectedDate.year to selectedDate.monthNumber) }
+    
+    val isDarkTheme = isSystemInDarkTheme()
+    
+    Dialog(onDismissRequest = onDismiss) {
+        Surface(
+            modifier = Modifier
+                .fillMaxWidth()
+                .wrapContentHeight(),
+            shape = RoundedCornerShape(24.dp),
+            color = Color.Transparent
+        ) {
+            Box(
+                modifier = Modifier
+                    .background(
+                        brush = Brush.verticalGradient(
+                            colors = if (isDarkTheme) {
+                                listOf(
+                                    Color(0xFF1E3A5F).copy(alpha = 0.95f),
+                                    Color(0xFF0D1B2A).copy(alpha = 0.98f)
+                                )
+                            } else {
+                                listOf(
+                                    Color(0xFFE3F2FD).copy(alpha = 0.95f),
+                                    Color(0xFFBBDEFB).copy(alpha = 0.98f)
+                                )
+                            }
+                        ),
+                        shape = RoundedCornerShape(24.dp)
+                    )
+                    .border(
+                        width = 1.dp,
+                        brush = Brush.verticalGradient(
+                            colors = listOf(
+                                Color.White.copy(alpha = 0.3f),
+                                Color.White.copy(alpha = 0.1f)
+                            )
+                        ),
+                        shape = RoundedCornerShape(24.dp)
+                    )
+            ) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(24.dp)
+                ) {
+                    // Заголовок с выбранной датой
+                    TahoeDatePickerHeader(
+                        selectedDate = selectedDate,
+                        isDarkTheme = isDarkTheme
+                    )
+                    
+                    Spacer(modifier = Modifier.height(16.dp))
+                    
+                    // Навигация по месяцам
+                    TahoeMonthSelector(
+                        currentMonth = currentMonth,
+                        onPreviousMonth = {
+                            val (year, month) = currentMonth
+                            currentMonth = if (month == 1) {
+                                (year - 1) to 12
+                            } else {
+                                year to (month - 1)
+                            }
+                        },
+                        onNextMonth = {
+                            val (year, month) = currentMonth
+                            currentMonth = if (month == 12) {
+                                (year + 1) to 1
+                            } else {
+                                year to (month + 1)
+                            }
+                        },
+                        isDarkTheme = isDarkTheme
+                    )
+                    
+                    Spacer(modifier = Modifier.height(16.dp))
+                    
+                    // Календарная сетка
+                    TahoeCalendarGrid(
+                        currentMonth = currentMonth,
+                        selectedDate = selectedDate,
+                        minDate = minDate,
+                        maxDate = maxDate,
+                        onDateClick = { date -> selectedDate = date },
+                        isDarkTheme = isDarkTheme
+                    )
+                    
+                    Spacer(modifier = Modifier.height(24.dp))
+                    
+                    // Кнопки действий
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.End
+                    ) {
+                        TextButton(
+                            onClick = onDismiss,
+                            colors = ButtonDefaults.textButtonColors(
+                                contentColor = if (isDarkTheme) Color(0xFF64B5F6) else Color(0xFF1976D2)
+                            )
+                        ) {
+                            Text(stringResource(R.string.cancel))
+                        }
+                        
+                        Spacer(modifier = Modifier.width(8.dp))
+                        
+                        TextButton(
+                            onClick = { onDateSelected(selectedDate) },
+                            colors = ButtonDefaults.textButtonColors(
+                                contentColor = if (isDarkTheme) Color(0xFF64B5F6) else Color(0xFF1976D2)
+                            )
+                        ) {
+                            Text("OK")
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+/**
+ * Заголовок DatePicker с отображением выбранной даты
+ */
+@Composable
+private fun TahoeDatePickerHeader(
+    selectedDate: LocalDate,
+    isDarkTheme: Boolean
+) {
+    val dateFormatter = remember {
+        DateTimeFormatter
+            .ofPattern("EEEE, d MMMM", Locale.getDefault())
+    }
+    
+    val formattedDate = remember(selectedDate) {
+        val javaDate = of(selectedDate.year, selectedDate.monthNumber, selectedDate.dayOfMonth)
+        dateFormatter.format(javaDate)
+    }
+    
+    Column {
+        Text(
+            text = selectedDate.year.toString(),
+            style = MaterialTheme.typography.bodyLarge,
+            color = if (isDarkTheme) Color(0xFFB3E5FC) else Color(0xFF0277BD)
+        )
+        Text(
+            text = formattedDate,
+            style = MaterialTheme.typography.headlineMedium,
+            color = if (isDarkTheme) Color.White else Color(0xFF01579B),
+            fontWeight = FontWeight.Bold
+        )
+    }
+}
+
+/**
+ * Селектор месяца с кнопками навигации
+ */
+@Composable
+private fun TahoeMonthSelector(
+    currentMonth: Pair<Int, Int>,
+    onPreviousMonth: () -> Unit,
+    onNextMonth: () -> Unit,
+    isDarkTheme: Boolean
+) {
+    val (year, month) = currentMonth
+    val monthName = remember(month) {
+        val javaDate = of(year, month, 1)
+        DateTimeFormatter.ofPattern("LLLL yyyy", Locale.getDefault()).format(javaDate)
+    }
+    
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        IconButton(onClick = onPreviousMonth) {
+            Icon(
+                imageVector = Icons.Default.ChevronLeft,
+                contentDescription = "Previous month",
+                tint = if (isDarkTheme) Color(0xFF90CAF9) else Color(0xFF1976D2)
+            )
+        }
+        
+        Text(
+            text = monthName.replaceFirstChar { it.uppercase() },
+            style = MaterialTheme.typography.titleMedium,
+            color = if (isDarkTheme) Color.White else Color(0xFF01579B),
+            fontWeight = SemiBold
+        )
+        
+        IconButton(onClick = onNextMonth) {
+            Icon(
+                imageVector = Icons.Default.ChevronRight,
+                contentDescription = "Next month",
+                tint = if (isDarkTheme) Color(0xFF90CAF9) else Color(0xFF1976D2)
+            )
+        }
+    }
+}
+
+/**
+ * Календарная сетка с днями месяца
+ */
+@Composable
+private fun TahoeCalendarGrid(
+    currentMonth: Pair<Int, Int>,
+    selectedDate: LocalDate,
+    minDate: LocalDate?,
+    maxDate: LocalDate?,
+    onDateClick: (LocalDate) -> Unit,
+    isDarkTheme: Boolean
+) {
+    val (year, month) = currentMonth
+    
+    // Получаем все дни текущего месяца
+    val daysInMonth = remember(year, month) {
+        val firstDay = LocalDate(year, month, 1)
+        val lastDay = LocalDate(year, month, firstDay.monthNumber).let {
+            // Находим последний день месяца
+            var day = 28
+            while (day <= 31) {
+                try {
+                    LocalDate(year, month, day + 1)
+                    day++
+                } catch (_: Exception) {
+                    break
+                }
+            }
+            LocalDate(year, month, day)
+        }
+
+        val daysFromPreviousMonth = firstDay.dayOfWeek.value - 1
+        
+        buildList {
+            // Пустые ячейки для выравнивания
+            repeat(daysFromPreviousMonth) { add(null) }
+            // Дни текущего месяца
+            for (day in 1..lastDay.dayOfMonth) {
+                add(LocalDate(year, month, day))
+            }
+        }
+    }
+    
+    Column {
+        // Заголовки дней недели
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceEvenly
+        ) {
+            listOf(
+                R.string.weekday_mon,
+                R.string.weekday_tue,
+                R.string.weekday_wed,
+                R.string.weekday_thu,
+                R.string.weekday_fri,
+                R.string.weekday_sat,
+                R.string.weekday_sun
+            ).forEach { dayNameRes ->
+                Text(
+                    text = stringResource(dayNameRes),
+                    modifier = Modifier.weight(1f),
+                    textAlign = Center,
+                    style = MaterialTheme.typography.labelSmall,
+                    color = if (isDarkTheme) Color(0xFFB3E5FC) else Color(0xFF0277BD),
+                    fontWeight = FontWeight.Medium
+                )
+            }
+        }
+        
+        Spacer(modifier = Modifier.height(8.dp))
+        
+        // Сетка с днями
+        val rows = (daysInMonth.size + 6) / 7
+        for (row in 0 until rows) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceEvenly
+            ) {
+                for (col in 0 until 7) {
+                    val index = row * 7 + col
+                    val date = daysInMonth.getOrNull(index)
+                    
+                    Box(
+                        modifier = Modifier
+                            .weight(1f)
+                            .aspectRatio(1f)
+                            .padding(2.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        if (date != null) {
+                            TahoeDayCell(
+                                date = date,
+                                isSelected = date == selectedDate,
+                                isEnabled = (minDate == null || date >= minDate) && 
+                                           (maxDate == null || date <= maxDate),
+                                onClick = { if ((minDate == null || date >= minDate) && 
+                                              (maxDate == null || date <= maxDate)) {
+                                    onDateClick(date)
+                                }},
+                                isDarkTheme = isDarkTheme
+                            )
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+/**
+ * Ячейка дня в календаре
+ */
+@Composable
+private fun TahoeDayCell(
+    date: LocalDate,
+    isSelected: Boolean,
+    isEnabled: Boolean,
+    onClick: () -> Unit,
+    isDarkTheme: Boolean
+) {
+    val backgroundColor = when {
+        isSelected -> if (isDarkTheme) Color(0xFF0288D1) else Color(0xFF03A9F4)
+        !isEnabled -> Color.Transparent
+        else -> Color.Transparent
+    }
+    
+    val textColor = when {
+        isSelected -> Color.White
+        !isEnabled -> if (isDarkTheme) Color(0xFF546E7A) else Color(0xFFB0BEC5)
+        else -> if (isDarkTheme) Color.White else Color(0xFF263238)
+    }
+    
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .clip(CircleShape)
+            .background(backgroundColor)
+            .then(
+                if (isEnabled) {
+                    Modifier.clickable(onClick = onClick)
+                } else {
+                    Modifier
+                }
+            ),
+        contentAlignment = Alignment.Center
+    ) {
+        Text(
+            text = date.dayOfMonth.toString(),
+            style = MaterialTheme.typography.bodyMedium,
+            color = textColor,
+            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal
+        )
     }
 }

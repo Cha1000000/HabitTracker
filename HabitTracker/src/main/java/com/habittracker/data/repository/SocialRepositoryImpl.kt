@@ -38,6 +38,12 @@ import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.channels.awaitClose
+import kotlinx.datetime.Clock
+import kotlinx.datetime.Instant
+import kotlinx.datetime.TimeZone
+import kotlinx.datetime.atStartOfDayIn
+import kotlinx.datetime.toInstant
+import kotlinx.datetime.toLocalDateTime
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
 import kotlinx.coroutines.flow.first
@@ -260,16 +266,16 @@ class SocialRepositoryImpl @Inject constructor(
         return try {
             Log.d("SocialRepository", "📤 Sending friend request: from=$fromUserId, to=$toUserId")
             
-            val currentTime = System.currentTimeMillis()
+            val now = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault())
             val friendRequest = FriendRequest(
                 id = UUID.randomUUID().toString(),
                 fromUserId = fromUserId,
                 toUserId = toUserId,
                 status = FriendRequestStatus.PENDING,
                 message = message,
-                createdAt = currentTime,
+                createdAt = now,
                 respondedAt = null,
-                updatedAt = currentTime
+                updatedAt = now.date
             )
             // Room-first
             friendRequestDao.insertFriendRequest(friendRequest.toEntity())
@@ -280,7 +286,7 @@ class SocialRepositoryImpl @Inject constructor(
                 entityType = "friend_request",
                 entityId = friendRequest.id,
                 payloadJson = payload,
-                updatedAt = friendRequest.updatedAt
+                updatedAt = friendRequest.updatedAt.atStartOfDayIn(TimeZone.currentSystemDefault()).toEpochMilliseconds()
             )
             // Форсируем немедленный дренаж outbox, чтобы запись быстрее попала в Firestore
             try {
@@ -359,18 +365,18 @@ class SocialRepositoryImpl @Inject constructor(
             val friendRequest = getFriendRequestById(requestId)
                 ?: return Result.failure(IllegalArgumentException("Запрос не найден"))
 
+            val now = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault())
             val acceptedRequest = friendRequest.copy(
                 status = FriendRequestStatus.ACCEPTED,
-                respondedAt = System.currentTimeMillis(),
-                updatedAt = System.currentTimeMillis()
+                respondedAt = now,
+                updatedAt = now.date
             )
             
             val friendship = createFriendship(
                 userId1 = friendRequest.fromUserId,
                 userId2 = friendRequest.toUserId,
-                requestedBy = friendRequest.fromUserId,
-                requestedAt = friendRequest.createdAt
-            ).accept()
+                requestedBy = friendRequest.fromUserId
+            ).copy(requestedAt = friendRequest.createdAt).accept()
 
             // Room-first
             friendRequestDao.updateFriendRequest(acceptedRequest.toEntity())
@@ -399,7 +405,7 @@ class SocialRepositoryImpl @Inject constructor(
                 entityType = "friend_request",
                 entityId = acceptedRequest.id,
                 payloadJson = frPayload,
-                updatedAt = acceptedRequest.updatedAt
+                updatedAt = acceptedRequest.updatedAt.atStartOfDayIn(TimeZone.currentSystemDefault()).toEpochMilliseconds()
             )
             try { syncWorkScheduler.scheduleOneTimeSync() } catch (e: Exception) {
                 Log.w("SocialRepository", "scheduleOneTimeSync() failed after enqueueUpsert(friend_request accepted): ${e.message}", e)
@@ -411,7 +417,7 @@ class SocialRepositoryImpl @Inject constructor(
                 entityType = "friendship",
                 entityId = "${ordered.first}_${ordered.second}",
                 payloadJson = fsPayload,
-                updatedAt = friendship.updatedAt
+                updatedAt = friendship.updatedAt.atStartOfDayIn(TimeZone.currentSystemDefault()).toEpochMilliseconds()
             )
             try { syncWorkScheduler.scheduleOneTimeSync() } catch (e: Exception) {
                 Log.w("SocialRepository", "scheduleOneTimeSync() failed after enqueueUpsert(friendship in acceptFriendRequest): ${e.message}", e)
@@ -434,10 +440,11 @@ class SocialRepositoryImpl @Inject constructor(
             val friendRequest = getFriendRequestById(requestId)
                 ?: return Result.failure(IllegalArgumentException("Запрос не найден"))
 
+            val now = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault())
             val declinedRequest = friendRequest.copy(
                 status = FriendRequestStatus.DECLINED,
-                respondedAt = System.currentTimeMillis(),
-                updatedAt = System.currentTimeMillis()
+                respondedAt = now,
+                updatedAt = now.date
             )
 
             // Room-first
@@ -449,7 +456,7 @@ class SocialRepositoryImpl @Inject constructor(
                 entityType = "friend_request",
                 entityId = declinedRequest.id,
                 payloadJson = payload,
-                updatedAt = declinedRequest.updatedAt
+                updatedAt = declinedRequest.updatedAt.atStartOfDayIn(TimeZone.currentSystemDefault()).toEpochMilliseconds()
             )
             try { syncWorkScheduler.scheduleOneTimeSync() } catch (e: Exception) {
                 Log.w("SocialRepository", "scheduleOneTimeSync() failed after declineFriendRequest: ${e.message}", e)
@@ -577,12 +584,16 @@ class SocialRepositoryImpl @Inject constructor(
 
             val job = scope.launch {
                 friendRequestDao.getIncomingFriendRequests(userId).collect { requests ->
+                    Log.d("SocialRepository", "Incoming FR Room collect: userId=$userId, count=${requests.size}")
                     val list = requests.mapNotNull { requestEntity ->
                         val request = requestEntity.toDomain()
                         val fromUser = getUserById(request.fromUserId)
                         val toUser = getUserById(request.toUserId)
+                        if (fromUser == null) Log.w("SocialRepository", "Incoming FR: fromUser is null for ${request.fromUserId}")
+                        if (toUser == null) Log.w("SocialRepository", "Incoming FR: toUser is null for ${request.toUserId}")
                         if (fromUser != null && toUser != null) FriendRequestWithUsers(request, fromUser, toUser) else null
                     }
+                    Log.d("SocialRepository", "Incoming FR mapped: userId=$userId, count=${list.size}")
                     trySend(list)
                 }
             }
@@ -691,11 +702,11 @@ class SocialRepositoryImpl @Inject constructor(
                     userId2 = u2,
                     status = status,
                     requestedBy = requestedBy,
-                    requestedAt = requestedAt,
-                    acceptedAt = acceptedAt,
+                    requestedAt = Instant.fromEpochMilliseconds(requestedAt).toLocalDateTime(TimeZone.currentSystemDefault()),
+                    acceptedAt = acceptedAt?.let { Instant.fromEpochMilliseconds(it).toLocalDateTime(TimeZone.currentSystemDefault()) },
                     blockedBy = blockedBy,
-                    blockedAt = blockedAt,
-                    updatedAt = updatedAt
+                    blockedAt = blockedAt?.let { Instant.fromEpochMilliseconds(it).toLocalDateTime(TimeZone.currentSystemDefault()) },
+                    updatedAt = Instant.fromEpochMilliseconds(updatedAt).toLocalDateTime(TimeZone.currentSystemDefault()).date
                 )
             } else {
                 return friendshipDao.getFriendshipBetweenUsers(userId1, userId2)?.toDomain()
@@ -745,10 +756,11 @@ class SocialRepositoryImpl @Inject constructor(
             val friendship = getFriendshipBetweenUsers(currentUserId, userIdToBlock)
                 ?: return Result.failure(IllegalStateException("Дружба не найдена"))
 
+            val now = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault())
             val blockedFriendship = friendship.copy(
                 status = FriendshipStatus.BLOCKED,
                 blockedBy = currentUserId,
-                blockedAt = System.currentTimeMillis()
+                blockedAt = now
             )
 
             // Room-first
@@ -761,7 +773,7 @@ class SocialRepositoryImpl @Inject constructor(
                 entityType = "friendship",
                 entityId = "${orderedIds.first}_${orderedIds.second}",
                 payloadJson = payload,
-                updatedAt = blockedFriendship.updatedAt
+                updatedAt = blockedFriendship.updatedAt.atStartOfDayIn(TimeZone.currentSystemDefault()).toEpochMilliseconds()
             )
 
             Result.success(blockedFriendship)
@@ -791,7 +803,7 @@ class SocialRepositoryImpl @Inject constructor(
                 entityType = "friendship",
                 entityId = "${orderedIds.first}_${orderedIds.second}",
                 payloadJson = payload,
-                updatedAt = unblockedFriendship.updatedAt
+                updatedAt = unblockedFriendship.updatedAt.atStartOfDayIn(TimeZone.currentSystemDefault()).toEpochMilliseconds()
             )
 
             Result.success(unblockedFriendship)
@@ -874,11 +886,11 @@ class SocialRepositoryImpl @Inject constructor(
                                     userId2 = userId2,
                                     status = status,
                                     requestedBy = requestedBy,
-                                    requestedAt = requestedAt,
-                                    acceptedAt = acceptedAt,
+                                    requestedAt = Instant.fromEpochMilliseconds(requestedAt).toLocalDateTime(TimeZone.currentSystemDefault()),
+                                    acceptedAt = acceptedAt?.let { Instant.fromEpochMilliseconds(it).toLocalDateTime(TimeZone.currentSystemDefault()) },
                                     blockedBy = blockedBy,
-                                    blockedAt = blockedAt,
-                                    updatedAt = updatedAt
+                                    blockedAt = blockedAt?.let { Instant.fromEpochMilliseconds(it).toLocalDateTime(TimeZone.currentSystemDefault()) },
+                                    updatedAt = Instant.fromEpochMilliseconds(updatedAt).toLocalDateTime(TimeZone.currentSystemDefault()).date
                                 )
                                 friendshipDao.insertFriendship(fs.toEntity())
                             } catch (e: Exception) {
@@ -939,11 +951,11 @@ class SocialRepositoryImpl @Inject constructor(
                                     userId2 = userId2,
                                     status = status,
                                     requestedBy = requestedBy,
-                                    requestedAt = requestedAt,
-                                    acceptedAt = acceptedAt,
+                                    requestedAt = Instant.fromEpochMilliseconds(requestedAt).toLocalDateTime(TimeZone.currentSystemDefault()),
+                                    acceptedAt = acceptedAt?.let { Instant.fromEpochMilliseconds(it).toLocalDateTime(TimeZone.currentSystemDefault()) },
                                     blockedBy = blockedBy,
-                                    blockedAt = blockedAt,
-                                    updatedAt = updatedAt
+                                    blockedAt = blockedAt?.let { Instant.fromEpochMilliseconds(it).toLocalDateTime(TimeZone.currentSystemDefault()) },
+                                    updatedAt = Instant.fromEpochMilliseconds(updatedAt).toLocalDateTime(TimeZone.currentSystemDefault()).date
                                 )
                                 friendshipDao.insertFriendship(fs.toEntity())
                             } catch (e: Exception) {
@@ -1126,9 +1138,12 @@ class SocialRepositoryImpl @Inject constructor(
                 toUserId = toUserId,
                 message = message,
                 status = HabitInvitationStatus.PENDING,
-                createdAt = System.currentTimeMillis(),
+                createdAt = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault()),
                 respondedAt = null,
-                expiresAt = System.currentTimeMillis() + (7 * 24 * 60 * 60 * 1000) // Истекает через 7 дней
+                expiresAt = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault()).let { 
+                    val instant = it.toInstant(TimeZone.currentSystemDefault())
+                    instant.plus(kotlin.time.Duration.parse("P7D")).toLocalDateTime(TimeZone.currentSystemDefault())
+                } // Истекает через 7 дней
             )
 
             // Room-first
@@ -1137,7 +1152,8 @@ class SocialRepositoryImpl @Inject constructor(
             Log.d("SocialRepository", "[sendHabitInvitation] insert Room: DONE invitationId=${invitation.id}")
 
             // Enqueue UPSERT to Firestore via Outbox
-            val payload = SyncPayloads.habitInvitationToJson(invitation, invitation.createdAt)
+            val createdAtMillis = invitation.createdAt.toInstant(TimeZone.currentSystemDefault()).toEpochMilliseconds()
+            val payload = SyncPayloads.habitInvitationToJson(invitation, createdAtMillis)
             Log.d(
                 "SocialRepository",
                 "[sendHabitInvitation] enqueueUpsert Outbox: type=habit_invitation, id=${invitation.id}, payloadSize=${payload.length}"
@@ -1146,7 +1162,7 @@ class SocialRepositoryImpl @Inject constructor(
                 entityType = "habit_invitation",
                 entityId = invitation.id,
                 payloadJson = payload,
-                updatedAt = invitation.createdAt
+                updatedAt = createdAtMillis
             )
             // Форсируем немедленный дренаж outbox, чтобы приглашение быстрее появилось в Firestore
             try {
@@ -1196,7 +1212,7 @@ class SocialRepositoryImpl @Inject constructor(
 
             val acceptedInvitation = invitation.copy(
                 status = HabitInvitationStatus.ACCEPTED,
-                respondedAt = System.currentTimeMillis()
+                respondedAt = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault())
             )
 
             // Room-first update
@@ -1205,7 +1221,7 @@ class SocialRepositoryImpl @Inject constructor(
             Log.d("SocialRepository", "[acceptHabitInvitation] update Room DONE: invitationId=$invitationId")
 
             // Enqueue UPSERT for invitation status
-            val nowAccepted = System.currentTimeMillis()
+            val nowAccepted = acceptedInvitation.respondedAt?.toInstant(TimeZone.currentSystemDefault())?.toEpochMilliseconds() ?: Clock.System.now().toEpochMilliseconds()
             val payload = SyncPayloads.habitInvitationToJson(acceptedInvitation, nowAccepted)
             Log.d("SocialRepository", "[acceptHabitInvitation] enqueueUpsert Outbox: type=habit_invitation, id=$invitationId")
             syncManager.enqueueUpsert(
@@ -1285,7 +1301,7 @@ class SocialRepositoryImpl @Inject constructor(
 
             val declinedInvitation = invitation.copy(
                 status = HabitInvitationStatus.DECLINED,
-                respondedAt = System.currentTimeMillis()
+                respondedAt = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault())
             )
 
             // Room-first update
@@ -1294,7 +1310,7 @@ class SocialRepositoryImpl @Inject constructor(
             Log.d("SocialRepository", "[declineHabitInvitation] update Room DONE: invitationId=$invitationId")
 
             // Enqueue UPSERT for invitation status
-            val nowDeclined = System.currentTimeMillis()
+            val nowDeclined = declinedInvitation.respondedAt?.toInstant(TimeZone.currentSystemDefault())?.toEpochMilliseconds() ?: Clock.System.now().toEpochMilliseconds()
             val payload = SyncPayloads.habitInvitationToJson(declinedInvitation, nowDeclined)
             syncManager.enqueueUpsert(
                 entityType = "habit_invitation",
@@ -1338,7 +1354,7 @@ class SocialRepositoryImpl @Inject constructor(
 
             val cancelledInvitation = invitation.copy(
                 status = HabitInvitationStatus.CANCELLED,
-                respondedAt = System.currentTimeMillis()
+                respondedAt = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault())
             )
 
             // Room-first update
@@ -1347,7 +1363,7 @@ class SocialRepositoryImpl @Inject constructor(
             Log.d("SocialRepository", "[cancelHabitInvitation] update Room DONE: invitationId=$invitationId")
 
             // Enqueue UPSERT for invitation status
-            val nowCancelled = System.currentTimeMillis()
+            val nowCancelled = cancelledInvitation.respondedAt?.toInstant(TimeZone.currentSystemDefault())?.toEpochMilliseconds() ?: Clock.System.now().toEpochMilliseconds()
             val payload = SyncPayloads.habitInvitationToJson(cancelledInvitation, nowCancelled)
             Log.d("SocialRepository", "[cancelHabitInvitation] enqueueUpsert Outbox: type=habit_invitation, id=$invitationId")
             syncManager.enqueueUpsert(

@@ -1,4 +1,7 @@
 package com.habittracker.presentation.viewmodel
+import kotlinx.datetime.Clock
+import kotlinx.datetime.TimeZone
+import kotlinx.datetime.toLocalDateTime
 
 import android.app.Application
 import android.util.Log
@@ -11,7 +14,8 @@ import com.habittracker.domain.repository.AuthRepository
 import com.habittracker.domain.usecase.DeleteHabitUseCase
 import com.habittracker.domain.usecase.EnsureMySettingsForHabitUseCase
 import com.habittracker.domain.usecase.GetHabitCompletionStatusUseCase
-import com.habittracker.domain.usecase.GetHabitsUseCase
+import com.habittracker.domain.usecase.GetHabitsForDateUseCase
+import com.habittracker.domain.usecase.GetWeekCompletionDataUseCase
 import com.habittracker.domain.usecase.MarkHabitCompletedUseCase
 import com.habittracker.domain.usecase.MarkHabitIncompleteUseCase
 import com.habittracker.domain.usecase.ScheduleHabitReminderUseCase
@@ -44,7 +48,7 @@ class HabitsViewModelTest {
     @get:Rule
     val mainDispatcherRule = MainDispatcherRule()
 
-    private val getHabitsUseCase: GetHabitsUseCase = mock()
+    private val getHabitsForDateUseCase: GetHabitsForDateUseCase = mock()
     private val markHabitCompletedUseCase: MarkHabitCompletedUseCase = mock()
     private val markHabitIncompleteUseCase: MarkHabitIncompleteUseCase = mock()
     private val getHabitCompletionStatusUseCase: GetHabitCompletionStatusUseCase = mock()
@@ -53,6 +57,7 @@ class HabitsViewModelTest {
     private val ensureMySettingsForHabitUseCase: EnsureMySettingsForHabitUseCase = mock()
     private val scheduleHabitReminderUseCase: ScheduleHabitReminderUseCase = mock()
     private val joinHabitByCodeUseCase: JoinHabitByCodeUseCase = mock()
+    private val getWeekCompletionDataUseCase: GetWeekCompletionDataUseCase = mock()
     private val application: Application = mock()
     private lateinit var logMock: MockedStatic<Log>
 
@@ -84,8 +89,8 @@ class HabitsViewModelTest {
         maxParticipants = 1,
         isPublic = false,
         isActive = true,
-        createdAt = 0L,
-        updatedAt = 0L
+        createdAt = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault()).date,
+        updatedAt = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault()).date
     )
 
     private suspend fun createViewModelWithHabits(initial: List<Habit>): HabitsViewModel {
@@ -93,7 +98,8 @@ class HabitsViewModelTest {
         // Поток привычек
         val flow = MutableSharedFlow<List<Habit>>(replay = 1)
         flow.tryEmit(initial)
-        whenever(getHabitsUseCase.invoke("user1")).thenReturn(flow)
+        // Мокируем getHabitsForDateUseCase для работы с датами
+        whenever(getHabitsForDateUseCase.invoke(any(), any())).thenReturn(flow)
         // Статус выполнения по умолчанию false
         whenever(getHabitCompletionStatusUseCase.invoke(any(), any(), any())).thenReturn(false)
         // Сообщение об ошибке удаления (подставляем текст из аргумента)
@@ -101,7 +107,7 @@ class HabitsViewModelTest {
             "Не удалось удалить привычку: ${inv.getArgument<Any>(1)}"
         }
         return HabitsViewModel(
-            getHabitsUseCase,
+            getHabitsForDateUseCase,
             markHabitCompletedUseCase,
             markHabitIncompleteUseCase,
             getHabitCompletionStatusUseCase,
@@ -110,6 +116,7 @@ class HabitsViewModelTest {
             ensureMySettingsForHabitUseCase,
             scheduleHabitReminderUseCase,
             joinHabitByCodeUseCase,
+            getWeekCompletionDataUseCase,
             application
         )
     }

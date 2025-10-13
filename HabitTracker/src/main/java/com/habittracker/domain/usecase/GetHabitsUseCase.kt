@@ -31,8 +31,10 @@ class GetHabitsUseCase @Inject constructor(
                 // Синхронизируем привычки из Firestore в Room
                 // Это критически важно для работы DeleteHabitUseCase и других use cases,
                 // которые читают из Room через habitRepository.getHabitById()
+                Log.d("GetHabitsUseCase", "📊 Received ${habits.size} habits from Firestore")
                 try {
                     habits.forEach { habit ->
+                        Log.d("GetHabitsUseCase", "📅 Habit '${habit.title}': startDate=${habit.startDate}, endDate=${habit.endDate}")
                         try {
                             val existing = habitRepository.getHabitById(habit.id)
                             if (existing != null) {
@@ -40,11 +42,11 @@ class GetHabitsUseCase @Inject constructor(
                             } else {
                                 habitRepository.insertHabit(habit)
                             }
-                        } catch (e: Exception) {
+                        } catch (e: Throwable) {
                             Log.e("GetHabitsUseCase", "Failed to sync habit ${habit.id}: ${e.message}")
                         }
                     }
-                } catch (e: Exception) {
+                } catch (e: Throwable) {
                     Log.e("GetHabitsUseCase", "Failed to sync habits to Room: ${e.message}")
                 }
             }

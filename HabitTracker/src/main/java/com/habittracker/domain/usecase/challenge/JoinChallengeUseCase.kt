@@ -5,6 +5,8 @@ import com.habittracker.domain.model.ChallengeStatus
 import com.habittracker.domain.repository.ChallengeRepository
 import com.habittracker.domain.repository.SocialRepository
 import kotlinx.datetime.Clock
+import kotlinx.datetime.TimeZone
+import kotlinx.datetime.toLocalDateTime
 import javax.inject.Inject
 
 class JoinChallengeUseCase @Inject constructor(
@@ -52,9 +54,10 @@ class JoinChallengeUseCase @Inject constructor(
             }
             
             // Добавляем участника
+            val today = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault()).date
             val updatedChallenge = challenge.copy(
                 participants = challenge.participants + userId,
-                updatedAt = Clock.System.now().toEpochMilliseconds()
+                updatedAt = today
             )
             
             challengeRepository.updateChallenge(updatedChallenge)
@@ -67,7 +70,7 @@ class JoinChallengeUseCase @Inject constructor(
                     joiningUser?.name ?: "Пользователь",
                     challenge.title
                 )
-            } catch (e: Exception) {
+            } catch (_: Exception) {
                 // Игнорируем ошибки уведомлений
             }
             

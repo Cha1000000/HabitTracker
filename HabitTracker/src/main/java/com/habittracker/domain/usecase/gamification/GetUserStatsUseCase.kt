@@ -19,16 +19,14 @@ import com.habittracker.domain.repository.HabitRepository
 import com.habittracker.domain.repository.SocialRepository
 import com.habittracker.domain.repository.UserRepository
 import kotlinx.coroutines.flow.firstOrNull
-import kotlinx.datetime.Instant
 import kotlinx.datetime.Clock
 import kotlinx.datetime.DateTimeUnit
+import kotlinx.datetime.DayOfWeek
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.minus
 import kotlinx.datetime.plus
-import kotlinx.datetime.toLocalDateTime
 import kotlinx.datetime.todayIn
-import kotlinx.datetime.DayOfWeek
 import javax.inject.Inject
 
 /**
@@ -181,20 +179,17 @@ class GetUserStatsUseCase @Inject constructor(
         val completedEntries = entries.filter { it.completed && it.completedAt != null }
 
         val morningEntries = completedEntries.filter { entry ->
-            val hour = Instant.fromEpochMilliseconds(entry.completedAt!!)
-                .toLocalDateTime(TimeZone.currentSystemDefault()).hour
+            val hour = entry.completedAt!!.hour
             hour in 5..11
         }
 
         val afternoonEntries = completedEntries.filter { entry ->
-            val hour = Instant.fromEpochMilliseconds(entry.completedAt!!)
-                .toLocalDateTime(TimeZone.currentSystemDefault()).hour
+            val hour = entry.completedAt!!.hour
             hour in 12..17
         }
 
         val eveningEntries = completedEntries.filter { entry ->
-            val hour = Instant.fromEpochMilliseconds(entry.completedAt!!)
-                .toLocalDateTime(TimeZone.currentSystemDefault()).hour
+            val hour = entry.completedAt!!.hour
             hour in 18..22
         }
 
@@ -256,6 +251,7 @@ class GetUserStatsUseCase @Inject constructor(
 
     /**
      * Рассчитать количество идеальных дней
+     * День считается идеальным, если выполнены все активные привычки, которые были активны в этот день
      */
     private fun calculatePerfectDays(
         habits: List<Habit>,
@@ -269,10 +265,23 @@ class GetUserStatsUseCase @Inject constructor(
 
         for (i in 0..29) {
             val date = last30Days.plus(i, DateTimeUnit.DAY)
-            val dayEntries = entries.filter { it.date == date }
-            val completedHabits = dayEntries.count { it.completed }
-
-            if (completedHabits == habits.size && habits.isNotEmpty()) {
+            
+            // Находим привычки, которые были активны в этот день
+            val activeHabitsForDay = habits.filter { habit ->
+                habit.isActive && 
+                (habit.startDate == null || habit.startDate <= date) &&
+                (habit.endDate == null || habit.endDate >= date)
+            }
+            
+            if (activeHabitsForDay.isEmpty()) continue
+            
+            val dayEntries = entries.filter { it.date == date && it.completed }
+            val completedHabitIds = dayEntries.map { it.habitId }.toSet()
+            
+            // День идеальный, если все активные привычки выполнены
+            val allCompleted = activeHabitsForDay.all { it.id in completedHabitIds }
+            
+            if (allCompleted) {
                 perfectDays++
             }
         }
@@ -345,10 +354,8 @@ class GetUserStatsUseCase @Inject constructor(
         val times = entries.mapNotNull { it.completedAt }
         if (times.isEmpty()) return null
 
-        val timeZone = TimeZone.currentSystemDefault()
-        val minutesSinceMidnight = times.map { ts ->
-            val ldt = Instant.fromEpochMilliseconds(ts).toLocalDateTime(timeZone)
-            ldt.hour * 60 + ldt.minute
+        val minutesSinceMidnight = times.map { dateTime ->
+            dateTime.hour * 60 + dateTime.minute
         }
 
         val avgMinutes = minutesSinceMidnight.average().toInt()
@@ -364,12 +371,10 @@ class GetUserStatsUseCase @Inject constructor(
      */
     private fun findMostProductiveHour(entries: List<HabitEntry>): Int? {
         if (entries.isEmpty()) return null
-        val timeZone = TimeZone.currentSystemDefault()
         val counts = IntArray(24)
         entries.forEach { e ->
-            val ts = e.completedAt ?: return@forEach
-            val hour = Instant.fromEpochMilliseconds(ts).toLocalDateTime(timeZone).hour
-            counts[hour] += 1
+            val dateTime = e.completedAt ?: return@forEach
+            counts[dateTime.hour] += 1
         }
         val max = counts.maxOrNull() ?: return null
         if (max == 0) return null
@@ -389,6 +394,6 @@ class GetUserStatsUseCase @Inject constructor(
             .toSet()
 
         val totalDays = 30f
-        return if (totalDays > 0) (daysWithCompletion.size / totalDays * 100f) else 0f
+        return daysWithCompletion.size / totalDays * 100f
     }
 }

@@ -1,6 +1,12 @@
 package com.habittracker.domain.model
 
 import androidx.room.Entity
+import kotlinx.datetime.Clock
+import kotlinx.datetime.LocalDate
+import kotlinx.datetime.LocalDateTime
+import kotlinx.datetime.TimeZone
+import kotlinx.datetime.toInstant
+import kotlinx.datetime.toLocalDateTime
 
 @Entity(
     tableName = "friendships",
@@ -11,11 +17,11 @@ data class Friendship(
     val userId2: String, // всегда больший ID
     val status: FriendshipStatus = FriendshipStatus.PENDING,
     val requestedBy: String, // кто отправил запрос
-    val requestedAt: Long,
-    val acceptedAt: Long? = null,
+    val requestedAt: LocalDateTime = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault()),
+    val acceptedAt: LocalDateTime? = null,
     val blockedBy: String? = null, // кто заблокировал (если заблокировано)
-    val blockedAt: Long? = null,
-    val updatedAt: Long
+    val blockedAt: LocalDateTime? = null,
+    val updatedAt: LocalDate = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault()).date
 )
 
 enum class FriendshipStatus {
@@ -105,8 +111,10 @@ fun Friendship.isUserReceiver(currentUserId: String): Boolean =
 
 fun Friendship.getFriendshipDurationDays(): Int {
     return if (acceptedAt != null) {
-        val duration = (System.currentTimeMillis() - acceptedAt) / 86400000
-        duration.toInt()
+        val now = Clock.System.now()
+        val acceptedInstant = acceptedAt.toInstant(TimeZone.currentSystemDefault())
+        val duration = now - acceptedInstant
+        duration.inWholeDays.toInt()
     } else 0
 }
 
@@ -118,11 +126,12 @@ fun Friendship.getStatusText(): String = when (status) {
 }
 
 fun Friendship.getRequestTimeText(): String {
-    val now = System.currentTimeMillis()
-    val duration = now - requestedAt
-    val days = duration / 86400000
-    val hours = duration / 3600000
-    val minutes = duration / 60000
+    val now = Clock.System.now()
+    val requestedInstant = requestedAt.toInstant(TimeZone.currentSystemDefault())
+    val duration = now - requestedInstant
+    val days = duration.inWholeDays
+    val hours = duration.inWholeHours
+    val minutes = duration.inWholeMinutes
     
     return when {
         days > 0 -> if (days == 1L) "1 день назад" else "$days дней назад"
@@ -134,13 +143,14 @@ fun Friendship.getRequestTimeText(): String {
 
 fun Friendship.getAcceptedTimeText(): String {
     val acceptedTime = acceptedAt ?: requestedAt
-    val now = System.currentTimeMillis()
-    val duration = now - acceptedTime
+    val now = Clock.System.now()
+    val acceptedInstant = acceptedTime.toInstant(TimeZone.currentSystemDefault())
+    val duration = now - acceptedInstant
     
     return when {
-        duration / 86400000 > 0 -> "${duration / 86400000} дн. назад"
-        duration / 3600000 > 0 -> "${duration / 3600000} ч. назад"
-        duration / 60000 > 0 -> "${duration / 60000} мин. назад"
+        duration.inWholeDays > 0 -> "${duration.inWholeDays} дн. назад"
+        duration.inWholeHours > 0 -> "${duration.inWholeHours} ч. назад"
+        duration.inWholeMinutes > 0 -> "${duration.inWholeMinutes} мин. назад"
         else -> "Только что"
     }
 }
@@ -149,8 +159,7 @@ fun Friendship.getAcceptedTimeText(): String {
 fun createFriendship(
     userId1: String,
     userId2: String,
-    requestedBy: String,
-    requestedAt: Long = System.currentTimeMillis()
+    requestedBy: String
 ): Friendship {
     val (smallerId, largerId) = if (userId1 < userId2) userId1 to userId2 else userId2 to userId1
     
@@ -158,44 +167,43 @@ fun createFriendship(
         userId1 = smallerId,
         userId2 = largerId,
         status = FriendshipStatus.PENDING,
-        requestedBy = requestedBy,
-        requestedAt = requestedAt,
-        updatedAt = requestedAt
+        requestedBy = requestedBy
     )
 }
 
-fun Friendship.accept(acceptedAt: Long = System.currentTimeMillis()): Friendship {
+fun Friendship.accept(): Friendship {
+    val now = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault())
     return copy(
         status = FriendshipStatus.ACCEPTED,
-        acceptedAt = acceptedAt,
-        updatedAt = acceptedAt
+        acceptedAt = now,
+        updatedAt = now.date
     )
 }
 
-fun Friendship.decline(updatedAt: Long = System.currentTimeMillis()): Friendship {
+fun Friendship.decline(): Friendship {
     return copy(
         status = FriendshipStatus.DECLINED,
-        updatedAt = updatedAt
+        updatedAt = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault()).date
     )
 }
 
 fun Friendship.block(
-    blockedBy: String,
-    blockedAt: Long = System.currentTimeMillis()
+    blockedBy: String
 ): Friendship {
+    val now = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault())
     return copy(
         status = FriendshipStatus.BLOCKED,
         blockedBy = blockedBy,
-        blockedAt = blockedAt,
-        updatedAt = blockedAt
+        blockedAt = now,
+        updatedAt = now.date
     )
 }
 
-fun Friendship.unblock(updatedAt: Long = System.currentTimeMillis()): Friendship {
+fun Friendship.unblock(): Friendship {
     return copy(
         status = FriendshipStatus.ACCEPTED,
         blockedBy = null,
         blockedAt = null,
-        updatedAt = updatedAt
+        updatedAt = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault()).date
     )
 }

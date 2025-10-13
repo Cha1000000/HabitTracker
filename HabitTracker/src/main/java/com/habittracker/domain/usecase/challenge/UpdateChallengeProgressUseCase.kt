@@ -8,6 +8,7 @@ import com.habittracker.domain.repository.HabitEntryRepository
 import com.habittracker.domain.repository.SocialRepository
 import kotlinx.datetime.Clock
 import kotlinx.datetime.TimeZone
+import kotlinx.datetime.toLocalDateTime
 import kotlinx.datetime.todayIn
 import javax.inject.Inject
 
@@ -73,10 +74,11 @@ class UpdateChallengeProgressUseCase @Inject constructor(
             val winner = results.winner
             
             // Обновляем статус челленджа
+            val today = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault()).date
             val updatedChallenge = challenge.copy(
                 status = ChallengeStatus.COMPLETED,
                 winnerId = winner?.user?.id,
-                updatedAt = Clock.System.now().toEpochMilliseconds()
+                updatedAt = today
             )
             
             challengeRepository.updateChallenge(updatedChallenge)
@@ -115,7 +117,7 @@ class UpdateChallengeProgressUseCase @Inject constructor(
             }
             
             false
-        } catch (e: Exception) {
+        } catch (_: Exception) {
             false
         }
     }
@@ -145,7 +147,7 @@ class UpdateChallengeProgressUseCase @Inject constructor(
                     isWinner
                 )
             }
-        } catch (e: Exception) {
+        } catch (_: Exception) {
             // Игнорируем ошибки уведомлений
         }
     }
@@ -165,10 +167,11 @@ class UpdateChallengeProgressUseCase @Inject constructor(
                 return Result.failure(Exception("Челлендж уже завершен"))
             }
             
+            val today = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault()).date
             val updatedChallenge = challenge.copy(
                 status = ChallengeStatus.COMPLETED,
                 winnerId = winnerId,
-                updatedAt = Clock.System.now().toEpochMilliseconds()
+                updatedAt = today
             )
             
             challengeRepository.updateChallenge(updatedChallenge)
@@ -206,10 +209,10 @@ class UpdateChallengeProgressUseCase @Inject constructor(
             if (challenge.status == ChallengeStatus.CANCELLED) {
                 return Result.failure(Exception("Челлендж уже отменен"))
             }
-            
+            val today = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault()).date
             val updatedChallenge = challenge.copy(
                 status = ChallengeStatus.CANCELLED,
-                updatedAt = Clock.System.now().toEpochMilliseconds()
+                updatedAt = today
             )
             
             challengeRepository.updateChallenge(updatedChallenge)
@@ -223,7 +226,7 @@ class UpdateChallengeProgressUseCase @Inject constructor(
                         reason.ifBlank { "Челлендж отменен создателем" }
                     )
                 }
-            } catch (e: Exception) {
+            } catch (_: Exception) {
                 // Игнорируем ошибки уведомлений
             }
             

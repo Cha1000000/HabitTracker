@@ -14,7 +14,12 @@ import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.test.runTest
 import kotlinx.datetime.Clock
 import kotlinx.datetime.LocalDate
-import org.junit.Assert.*
+import kotlinx.datetime.TimeZone
+import kotlinx.datetime.toLocalDateTime
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
 
@@ -26,7 +31,7 @@ class GetHabitByIdUseCaseTest {
     private lateinit var getHabitByIdUseCase: GetHabitByIdUseCase
 
     private val testHabitId = "test-habit-id"
-    private val nowMillis = Clock.System.now().toEpochMilliseconds()
+    private val today = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault()).date
     private val testHabit = Habit(
         id = testHabitId,
         title = "Test Habit",
@@ -40,8 +45,8 @@ class GetHabitByIdUseCaseTest {
         unit = "раз",
         participants = emptyList(),
         isActive = true,
-        createdAt = nowMillis,
-        updatedAt = nowMillis,
+        createdAt = today,
+        updatedAt = today,
         createdBy = "test-user-id"
     )
 
@@ -169,5 +174,8 @@ class GetHabitByIdUseCaseTest {
         override suspend fun getHabitParticipants(habitId: String) = throw NotImplementedError()
         override suspend fun searchHabits(userId: String, query: String) = throw NotImplementedError()
         override fun getPublicHabits(): Flow<List<Habit>> = flow { emit(emptyList()) }
+        override suspend fun getHabitParticipantSettings(habitId: String, userId: String) = null
+        override suspend fun updateHabitParticipantSettings(settings: HabitParticipantSettings) = throw NotImplementedError()
+        override fun observeHabitParticipantSettings(habitId: String, userId: String) = flowOf(null)
     }
 }

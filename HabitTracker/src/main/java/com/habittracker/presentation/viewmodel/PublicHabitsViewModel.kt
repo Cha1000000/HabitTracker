@@ -19,6 +19,9 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.datetime.Clock
+import kotlinx.datetime.TimeZone
+import kotlinx.datetime.toLocalDateTime
 import javax.inject.Inject
 
 /**
@@ -205,7 +208,7 @@ class PublicHabitsViewModel @Inject constructor(
                             successMessage = getApplication<Application>().getString(R.string.join_habit_success, habit.title)
                         )
                     }
-                } catch (e: Exception) {
+                } catch (_: Exception) {
                     _uiState.update {
                         it.copy(
                             isLoading = false,
@@ -271,7 +274,22 @@ class PublicHabitsViewModel @Inject constructor(
         category: HabitCategory,
         sortByPopularity: Boolean
     ): List<Habit> {
+        val today = Clock.System.now()
+            .toLocalDateTime(TimeZone.currentSystemDefault())
+            .date
+        
         var filtered = habits
+        
+        // Фильтрация по датам активности
+        filtered = filtered.filter { habit ->
+            // Не показываем привычки, которые ещё не начались
+            val hasStarted = habit.startDate?.let { it <= today } ?: true
+            
+            // Не показываем привычки, которые уже закончились
+            val notEnded = habit.endDate?.let { it >= today } ?: true
+            
+            hasStarted && notEnded && habit.isActive
+        }
         
         // Фильтрация по поисковому запросу
         if (query.isNotEmpty()) {

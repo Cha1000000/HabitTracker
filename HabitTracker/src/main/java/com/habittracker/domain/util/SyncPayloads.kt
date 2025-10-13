@@ -1,11 +1,15 @@
 package com.habittracker.domain.util
 
 import com.google.gson.GsonBuilder
-import com.habittracker.domain.model.HabitEntry
 import com.habittracker.domain.model.FriendRequest
 import com.habittracker.domain.model.Friendship
+import com.habittracker.domain.model.HabitEntry
 import com.habittracker.domain.model.HabitInvitation
 import com.habittracker.domain.model.HabitType
+import kotlinx.datetime.Instant
+import kotlinx.datetime.LocalDate
+import kotlinx.datetime.TimeZone
+import kotlinx.datetime.toLocalDateTime
 
 /**
  * Общие сериализаторы для payload'ов синхронизации (Outbox)
@@ -20,11 +24,11 @@ object SyncPayloads {
             "userId" to entry.userId,
             "date" to entry.date.toString(),
             "completed" to entry.completed,
-            "completedAt" to entry.completedAt,
+            "completedAt" to entry.completedAt?.toString(),
             "value" to entry.value,
             "note" to entry.note,
-            "createdAt" to entry.createdAt,
-            "updatedAt" to entry.updatedAt
+            "createdAt" to entry.createdAt.toString(),
+            "updatedAt" to entry.updatedAt.toString()
         )
     )
 
@@ -34,10 +38,10 @@ object SyncPayloads {
         type: HabitType? = null,
         createdBy: String? = null,
         isActive: Boolean? = null,
-        updatedAt: Long
+        updatedAt: LocalDate
     ): String = gson.toJson(
         buildMap<String, Any?> {
-            put("updatedAt", updatedAt)
+            put("updatedAt", updatedAt.toString())
             if (participants != null) put("participants", participants)
             if (type != null) put("type", type.name)
             if (createdBy != null) put("createdBy", createdBy)
@@ -55,9 +59,9 @@ object SyncPayloads {
             "toUserId" to fr.toUserId,
             "status" to fr.status.name,
             "message" to fr.message,
-            "createdAt" to fr.createdAt,
-            "respondedAt" to fr.respondedAt,
-            "updatedAt" to fr.updatedAt
+            "createdAt" to fr.createdAt.toString(), // ISO 8601: "2025-10-13T15:07:00"
+            "respondedAt" to fr.respondedAt?.toString(),
+            "updatedAt" to fr.updatedAt.toString() // ISO 8601: "2025-10-13"
         )
     )
 
@@ -71,16 +75,16 @@ object SyncPayloads {
                 "userId2" to u2,
                 "status" to fs.status.name,
                 "requestedBy" to fs.requestedBy,
-                "requestedAt" to fs.requestedAt,
-                "acceptedAt" to fs.acceptedAt,
+                "requestedAt" to fs.requestedAt.toString(), // ISO 8601: "2025-10-13T15:07:00"
+                "acceptedAt" to fs.acceptedAt?.toString(),
                 "blockedBy" to fs.blockedBy,
-                "blockedAt" to fs.blockedAt,
-                "updatedAt" to fs.updatedAt
+                "blockedAt" to fs.blockedAt?.toString(),
+                "updatedAt" to fs.updatedAt.toString() // ISO 8601: "2025-10-13"
             )
         )
     }
 
-    // Habit invitation payload (updatedAt передается явно для соответствия текущей логике вызовов)
+    // Habit invitation payload
     fun habitInvitationToJson(inv: HabitInvitation, updatedAt: Long): String = gson.toJson(
         mapOf(
             "habitId" to inv.habitId,
@@ -90,10 +94,10 @@ object SyncPayloads {
             "toUserId" to inv.toUserId,
             "message" to inv.message,
             "status" to inv.status.name,
-            "createdAt" to inv.createdAt,
-            "respondedAt" to inv.respondedAt,
-            "expiresAt" to inv.expiresAt,
-            "updatedAt" to updatedAt
+            "createdAt" to inv.createdAt.toString(), // ISO 8601: "2025-10-13T15:07:00"
+            "respondedAt" to inv.respondedAt?.toString(),
+            "expiresAt" to inv.expiresAt?.toString(),
+            "updatedAt" to Instant.fromEpochMilliseconds(updatedAt).toLocalDateTime(TimeZone.currentSystemDefault()).date.toString() // ISO 8601: "2025-10-13"
         )
     )
 }

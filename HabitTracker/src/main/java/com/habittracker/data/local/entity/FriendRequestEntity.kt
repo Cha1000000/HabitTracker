@@ -2,6 +2,8 @@ package com.habittracker.data.local.entity
 
 import androidx.room.Entity
 import androidx.room.PrimaryKey
+import kotlinx.datetime.LocalDate
+import kotlinx.datetime.LocalDateTime
 
 @Entity(tableName = "friend_requests")
 data class FriendRequestEntity(
@@ -11,7 +13,7 @@ data class FriendRequestEntity(
     val toUserId: String,
     val status: String, // храним как String для Room
     val message: String? = null,
-    val createdAt: Long,
-    val respondedAt: Long? = null,
-    val updatedAt: Long
+    val createdAt: LocalDateTime,
+    val respondedAt: LocalDateTime? = null,
+    val updatedAt: LocalDate
 )

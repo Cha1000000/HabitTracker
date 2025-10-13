@@ -13,6 +13,7 @@ import com.habittracker.domain.model.HabitEntry
 import com.habittracker.domain.model.HabitEntryWithUser
 import com.habittracker.domain.model.HabitFrequency
 import com.habittracker.domain.model.HabitInvitation
+import com.habittracker.domain.model.HabitParticipantSettings
 import com.habittracker.domain.model.HabitType
 import com.habittracker.domain.model.User
 import com.habittracker.domain.repository.ChallengeRepository
@@ -23,6 +24,7 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.runBlocking
+import kotlinx.datetime.Clock
 import kotlinx.datetime.DateTimeUnit
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.TimeZone
@@ -104,6 +106,9 @@ class ChallengeUseCasesTest {
         override suspend fun getHabitParticipants(habitId: String): List<String> = emptyList()
         override suspend fun searchHabits(userId: String, query: String): List<Habit> = emptyList()
         override fun getPublicHabits(): Flow<List<Habit>> = MutableStateFlow(emptyList())
+        override suspend fun getHabitParticipantSettings(habitId: String, userId: String) = null
+        override suspend fun updateHabitParticipantSettings(settings: HabitParticipantSettings) = throw NotImplementedError()
+        override fun observeHabitParticipantSettings(habitId: String, userId: String) = MutableStateFlow(null)
     }
 
     private class FakeHabitEntryRepository : HabitEntryRepository {
@@ -206,8 +211,8 @@ class ChallengeUseCasesTest {
             createdBy = "creator",
             participants = emptyList(),
             isActive = true,
-            createdAt = System.currentTimeMillis(),
-            updatedAt = System.currentTimeMillis()
+            createdAt = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault()).date,
+            updatedAt = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault()).date
         )
         habitRepo.insertHabit(habit)
 
@@ -229,7 +234,8 @@ class ChallengeUseCasesTest {
         assertTrue(result.isSuccess)
         val ch = result.getOrNull()!!
         assertEquals("h1", ch.habitId)
-        assertTrue(ch.createdAt > 0 && ch.updatedAt > 0)
+        assertNotNull(ch.createdAt)
+        assertNotNull(ch.updatedAt)
     }
 
     @Test
@@ -250,8 +256,8 @@ class ChallengeUseCasesTest {
             reward = "",
             status = ChallengeStatus.ACTIVE,
             winnerId = null,
-            createdAt = System.currentTimeMillis(),
-            updatedAt = System.currentTimeMillis()
+            createdAt = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault()).date,
+            updatedAt = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault()).date
         )
         challengeRepo.insertChallenge(ch)
 
@@ -281,8 +287,8 @@ class ChallengeUseCasesTest {
             reward = "",
             status = ChallengeStatus.ACTIVE,
             winnerId = null,
-            createdAt = System.currentTimeMillis(),
-            updatedAt = System.currentTimeMillis()
+            createdAt = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault()).date,
+            updatedAt = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault()).date
         )
         challengeRepo.insertChallenge(ch)
 
@@ -316,8 +322,8 @@ class ChallengeUseCasesTest {
             reward = "",
             status = ChallengeStatus.ACTIVE,
             winnerId = null,
-            createdAt = System.currentTimeMillis(),
-            updatedAt = System.currentTimeMillis()
+            createdAt = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault()).date,
+            updatedAt = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault()).date
         )
         challengeRepo.insertChallenge(ch)
 
