@@ -13,6 +13,7 @@ import com.habittracker.domain.model.gamification.TimeStats
 import com.habittracker.domain.model.gamification.UserStats
 import com.habittracker.domain.model.getLevelProgress
 import com.habittracker.domain.model.getLevelTitle
+import com.habittracker.domain.model.isActiveOnDayOfWeek
 import com.habittracker.domain.repository.ChallengeRepository
 import com.habittracker.domain.repository.HabitEntryRepository
 import com.habittracker.domain.repository.HabitRepository
@@ -266,11 +267,12 @@ class GetUserStatsUseCase @Inject constructor(
         for (i in 0..29) {
             val date = last30Days.plus(i, DateTimeUnit.DAY)
             
-            // Находим привычки, которые были активны в этот день
+            // Находим привычки, которые были активны в этот день с учётом дня недели
             val activeHabitsForDay = habits.filter { habit ->
                 habit.isActive && 
                 (habit.startDate == null || habit.startDate <= date) &&
-                (habit.endDate == null || habit.endDate >= date)
+                (habit.endDate == null || habit.endDate >= date) &&
+                habit.isActiveOnDayOfWeek(date.dayOfWeek)
             }
             
             if (activeHabitsForDay.isEmpty()) continue

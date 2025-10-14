@@ -138,7 +138,13 @@
     <string name="weekday_sat">Сб</string>
     <string name="weekday_sun">Вс</string>
 
-    <!-- Reminder day selection hints -->
+    <!-- Active days selection (for habit frequency) -->
+    <string name="active_days_hint_weekly">Выберите день недели для этой привычки</string>
+    <string name="active_days_hint_twice">Выберите 2 дня недели для этой привычки</string>
+    <string name="active_days_hint_custom">Выберите дни недели для этой привычки</string>
+    <string name="active_days_info">💡 Привычка будет отображаться только в выбранные дни. Если включены напоминания, они также будут приходить в эти дни.</string>
+    
+    <!-- Reminder day selection hints (validation) -->
     <string name="reminder_days_hint_weekly">Выберите 1 день</string>
     <string name="reminder_days_hint_twice">Выберите 2 дня</string>
     <string name="reminder_days_hint_custom">Выберите дни</string>

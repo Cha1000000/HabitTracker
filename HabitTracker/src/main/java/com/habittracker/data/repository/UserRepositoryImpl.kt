@@ -34,7 +34,42 @@ class UserRepositoryImpl @Inject constructor(
     }
     
     override suspend fun updateUser(user: User) {
+        // Обновляем локальную БД
         userDao.updateUser(user.userToEntity())
+        
+        // Синхронизируем с Firestore
+        try {
+            val now = System.currentTimeMillis()
+            val userDoc = firestore.collection("users").document(user.id)
+            
+            val payload = hashMapOf(
+                "id" to user.id,
+                "name" to user.name,
+                "email" to user.email,
+                "level" to user.level,
+                "points" to user.points,
+                "streak" to user.streak,
+                "longestStreak" to user.longestStreak,
+                "friendsCount" to user.friendsCount,
+                "createdAt" to user.createdAt,
+                "lastActiveAt" to now,
+                "timezone" to user.timezone,
+                "updatedAt" to now
+            )
+            
+            // Добавляем опциональные поля
+            user.avatarUrl?.let { payload["avatarUrl"] = it }
+            user.avatarThumbnailUrl?.let { payload["avatarThumbnailUrl"] = it }
+            user.fcmToken?.let { payload["fcmToken"] = it }
+            
+            // Используем merge для обновления только указанных полей
+            userDoc.set(payload, SetOptions.merge()).await()
+            
+            Log.d("UserRepository", "User updated in Firestore: ${user.id}, points=${user.points}, level=${user.level}")
+        } catch (e: Exception) {
+            Log.w("UserRepository", "Failed to sync user to Firestore (non-fatal): ${e.message}", e)
+            // Не прерываем выполнение - локальные данные уже обновлены
+        }
     }
     
     override suspend fun deleteUser(userId: String) {

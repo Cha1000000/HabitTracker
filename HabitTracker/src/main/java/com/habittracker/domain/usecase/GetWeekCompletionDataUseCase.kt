@@ -1,5 +1,7 @@
 package com.habittracker.domain.usecase
 
+import com.habittracker.domain.model.isActiveOnDate
+import com.habittracker.domain.model.isActiveOnDayOfWeek
 import com.habittracker.domain.repository.FirestoreRepository
 import com.habittracker.domain.repository.HabitEntryRepository
 import com.habittracker.domain.repository.HabitRepository
@@ -53,11 +55,18 @@ class GetWeekCompletionDataUseCase @Inject constructor(
         // Для каждой даты недели подсчитываем процент выполнения
         val completionData = weekDates.map { weekDate ->
             async {
-                val totalHabits = habits.size
+                // Фильтруем привычки, которые активны в этот день недели и в этот период
+                val activeHabitsForDay = habits.filter { habit ->
+                    val isActiveByDate = habit.isActiveOnDate(weekDate, habit.createdAt)
+                    val isActiveByDayOfWeek = habit.isActiveOnDayOfWeek(weekDate.dayOfWeek)
+                    isActiveByDate && isActiveByDayOfWeek
+                }
+                
+                val totalHabits = activeHabitsForDay.size
                 var completedHabits = 0
                 
-                // Проверяем выполнение каждой привычки в этот день
-                habits.forEach { habit ->
+                // Проверяем выполнение каждой активной привычки в этот день
+                activeHabitsForDay.forEach { habit ->
                     val isCompleted = try {
                         // Сначала пытаемся получить из Firestore
                         val firestoreEntry = firestoreRepository.getHabitEntry(
