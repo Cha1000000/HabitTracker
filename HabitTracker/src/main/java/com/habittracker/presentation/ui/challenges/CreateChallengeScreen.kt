@@ -589,17 +589,27 @@ private fun HabitSelectorDialog(
         onDismissRequest = onDismiss,
         title = { Text(stringResource(R.string.select_habit)) },
         content = {
-            LazyColumn {
-                items(habits) { habit ->
-                    TextButton(
-                        onClick = { onHabitSelected(habit) },
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Text(
-                            text = habit.title,
-                            modifier = Modifier.fillMaxWidth(),
-                            textAlign = TextAlign.Start
-                        )
+            if (habits.isEmpty()) {
+                Text(
+                    text = stringResource(R.string.select_habit_empty_hint),
+                    style = MaterialTheme.typography.bodyMedium,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 8.dp)
+                )
+            } else {
+                LazyColumn {
+                    items(habits) { habit ->
+                        TextButton(
+                            onClick = { onHabitSelected(habit) },
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Text(
+                                text = habit.title,
+                                modifier = Modifier.fillMaxWidth(),
+                                textAlign = TextAlign.Start
+                            )
+                        }
                     }
                 }
             }

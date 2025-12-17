@@ -7,6 +7,7 @@ import com.habittracker.domain.model.Challenge
 import com.habittracker.domain.model.ChallengeRules
 import com.habittracker.domain.model.ChallengeType
 import com.habittracker.domain.model.Habit
+import com.habittracker.domain.model.HabitType
 import com.habittracker.domain.model.User
 import com.habittracker.domain.usecase.GetCurrentUserUseCase
 import com.habittracker.domain.usecase.GetHabitsUseCase
@@ -19,7 +20,10 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import kotlinx.datetime.Clock
 import kotlinx.datetime.LocalDate
+import kotlinx.datetime.TimeZone
+import kotlinx.datetime.todayIn
 import javax.inject.Inject
 
 @HiltViewModel
@@ -52,8 +56,17 @@ class CreateChallengeViewModel @Inject constructor(
                         // Загружаем привычки пользователя в отдельной корутине
                         launch {
                             getHabitsUseCase(currentUser.id).collect { habits ->
+                                val today = Clock.System.todayIn(TimeZone.currentSystemDefault())
+                                val filteredHabits = habits
+                                    .asSequence()
+                                    .filter { it.isActive }
+                                    .filter { it.type == HabitType.GROUP }
+                                    .filter { it.participants.size >= 2 }
+                                    .filter { it.startDate == null || it.startDate <= today }
+                                    .filter { it.endDate == null || it.endDate >= today }
+                                    .toList()
                                 _uiState.value = _uiState.value.copy(
-                                    availableHabits = habits
+                                    availableHabits = filteredHabits
                                 )
                             }
                         }

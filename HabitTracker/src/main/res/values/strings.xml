@@ -612,6 +612,7 @@
     <string name="challenge_description">Описание</string>
     <string name="challenge_description_hint">Опишите правила и цели челленджа</string>
     <string name="select_habit">Выберите привычку</string>
+    <string name="select_habit_empty_hint">Нет подходящих привычек. Для челленджа нужна групповая привычка с минимум 2 участниками и не истёкшей датой окончания.</string>
     <string name="select_participants">Выберите участников</string>
     <string name="challenge_dates">Даты челленджа</string>
     <string name="start_date">Дата начала</string>
