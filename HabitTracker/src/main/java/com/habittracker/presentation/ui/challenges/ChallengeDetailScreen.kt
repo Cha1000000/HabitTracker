@@ -1,5 +1,9 @@
 package com.habittracker.presentation.ui.challenges
 
+import android.graphics.BitmapFactory
+import android.util.Base64
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
@@ -34,6 +38,7 @@ import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.filled.Timeline
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
@@ -64,7 +69,10 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.platform.LocalContext
 import coil.compose.AsyncImage
+import coil.request.ImageRequest
 import com.habittracker.R
 import com.habittracker.domain.model.Challenge
 import com.habittracker.domain.model.ChallengeParticipantStats
@@ -77,6 +85,7 @@ import com.habittracker.domain.model.getDurationInDays
 import com.habittracker.domain.model.getProgressPercentage
 import com.habittracker.domain.model.getRulesText
 import com.habittracker.presentation.ui.habits.components.GlassmorphicCard
+import com.habittracker.presentation.ui.habits.components.GlassmorphicDialog
 import com.habittracker.presentation.ui.habits.components.GradientProgressBar
 import com.habittracker.presentation.ui.habits.components.TahoeGradientBackground
 import com.habittracker.presentation.viewmodel.ChallengeDetailViewModel
@@ -122,8 +131,12 @@ fun ChallengeDetailScreen(
                         }
                     },
                     actions = {
-                        // Показываем меню только для создателя
-                        if (uiState.challenge?.createdBy == uiState.currentUserId) {
+                        val isCreator = uiState.challenge?.createdBy == uiState.currentUserId
+                        val isActiveOrPending = uiState.challenge?.status != ChallengeStatus.CANCELLED &&
+                            uiState.challenge?.status != ChallengeStatus.COMPLETED
+                        
+                        // Показываем меню для создателя или для участников активных челленджей
+                        if (isCreator || isActiveOrPending) {
                             var showMenu by remember { mutableStateOf(false) }
                             IconButton(onClick = { showMenu = true }) {
                                 Icon(
@@ -135,29 +148,43 @@ fun ChallengeDetailScreen(
                                 expanded = showMenu,
                                 onDismissRequest = { showMenu = false }
                             ) {
-                                if (uiState.challenge?.status != ChallengeStatus.CANCELLED &&
-                                    uiState.challenge?.status != ChallengeStatus.COMPLETED) {
+                                if (isCreator) {
+                                    // Опции для создателя
+                                    if (isActiveOrPending) {
+                                        DropdownMenuItem(
+                                            text = { Text(stringResource(R.string.cancel_challenge)) },
+                                            onClick = {
+                                                showMenu = false
+                                                viewModel.showCancelConfirmDialog()
+                                            },
+                                            leadingIcon = {
+                                                Icon(Icons.Default.Cancel, contentDescription = null)
+                                            }
+                                        )
+                                    }
                                     DropdownMenuItem(
-                                        text = { Text("Отменить челлендж") },
+                                        text = { Text(stringResource(R.string.delete_challenge)) },
                                         onClick = {
                                             showMenu = false
-                                            viewModel.showCancelConfirmDialog()
+                                            viewModel.showDeleteConfirmDialog()
                                         },
                                         leadingIcon = {
-                                            Icon(Icons.Default.Cancel, contentDescription = null)
+                                            Icon(Icons.Default.Delete, contentDescription = null)
+                                        }
+                                    )
+                                } else if (isActiveOrPending) {
+                                    // Опция для участников (не создателей)
+                                    DropdownMenuItem(
+                                        text = { Text(stringResource(R.string.leave_challenge)) },
+                                        onClick = {
+                                            showMenu = false
+                                            viewModel.showLeaveConfirmDialog()
+                                        },
+                                        leadingIcon = {
+                                            Icon(Icons.Default.EventBusy, contentDescription = null)
                                         }
                                     )
                                 }
-                                DropdownMenuItem(
-                                    text = { Text("Удалить челлендж") },
-                                    onClick = {
-                                        showMenu = false
-                                        viewModel.showDeleteConfirmDialog()
-                                    },
-                                    leadingIcon = {
-                                        Icon(Icons.Default.Delete, contentDescription = null)
-                                    }
-                                )
                             }
                         }
                     },
@@ -211,6 +238,7 @@ fun ChallengeDetailScreen(
                         currentUserId = uiState.currentUserId,
                         isCreator = uiState.challenge!!.createdBy == uiState.currentUserId,
                         onResendInvitation = { userId -> viewModel.resendInvitation(userId) },
+                        onRemoveParticipant = { user -> viewModel.showRemoveParticipantDialog(user) },
                         onAddParticipants = { viewModel.showAddParticipantDialog() },
                         isDarkTheme = isDarkTheme,
                         modifier = Modifier
@@ -262,6 +290,39 @@ fun ChallengeDetailScreen(
             }
         )
     }
+    
+    // Leave Challenge Confirmation Dialog
+    if (uiState.showLeaveConfirmDialog) {
+        GlassmorphicDialog(
+            onDismissRequest = { viewModel.hideLeaveConfirmDialog() },
+            title = { Text(stringResource(R.string.leave_challenge_title)) },
+            content = {
+                Text(
+                    text = stringResource(R.string.leave_challenge_confirmation),
+                    style = MaterialTheme.typography.bodyMedium
+                )
+            },
+            actions = {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.End
+                ) {
+                    TextButton(onClick = { viewModel.hideLeaveConfirmDialog() }) {
+                        Text(stringResource(R.string.cancel))
+                    }
+                    Spacer(modifier = Modifier.width(8.dp))
+                    TextButton(
+                        onClick = { viewModel.leaveChallenge(onNavigateBack) }
+                    ) {
+                        Text(
+                            text = stringResource(R.string.leave),
+                            color = MaterialTheme.colorScheme.error
+                        )
+                    }
+                }
+            }
+        )
+    }
 
     // Error Snackbar
     uiState.error?.let { error ->
@@ -281,6 +342,40 @@ fun ChallengeDetailScreen(
             onDismiss = viewModel::hideAddParticipantDialog
         )
     }
+    
+    // Remove Participant Confirmation Dialog
+    val participantToRemove = uiState.participantToRemove
+    if (uiState.showRemoveParticipantDialog && participantToRemove != null) {
+        GlassmorphicDialog(
+            onDismissRequest = { viewModel.hideRemoveParticipantDialog() },
+            title = { Text(stringResource(R.string.remove_participant_title)) },
+            content = {
+                Text(
+                    text = stringResource(R.string.remove_participant_confirmation, participantToRemove.name),
+                    style = MaterialTheme.typography.bodyMedium
+                )
+            },
+            actions = {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.End
+                ) {
+                    TextButton(onClick = { viewModel.hideRemoveParticipantDialog() }) {
+                        Text(stringResource(R.string.cancel))
+                    }
+                    Spacer(modifier = Modifier.width(8.dp))
+                    TextButton(
+                        onClick = { viewModel.confirmRemoveParticipant() }
+                    ) {
+                        Text(
+                            text = stringResource(R.string.remove),
+                            color = MaterialTheme.colorScheme.error
+                        )
+                    }
+                }
+            }
+        )
+    }
 }
 
 @Composable
@@ -292,6 +387,7 @@ private fun ChallengeDetailContent(
     currentUserId: String?,
     isCreator: Boolean,
     onResendInvitation: (String) -> Unit,
+    onRemoveParticipant: (User) -> Unit,
     onAddParticipants: () -> Unit,
     isDarkTheme: Boolean,
     modifier: Modifier = Modifier
@@ -519,8 +615,8 @@ private fun ChallengeDetailContent(
                     fontWeight = FontWeight.Bold
                 )
                 
-                // Кнопка добавления участников (только для создателя и активного челленджа)
-                if (isCreator && challenge.status == ChallengeStatus.ACTIVE) {
+                // Кнопка добавления участников (только для создателя, для активного или ожидающего челленджа)
+                if (isCreator && (challenge.status == ChallengeStatus.ACTIVE || challenge.status == ChallengeStatus.PENDING)) {
                     OutlinedButton(
                         onClick = onAddParticipants,
                         contentPadding = PaddingValues(horizontal = 12.dp, vertical = 4.dp)
@@ -564,6 +660,9 @@ private fun ChallengeDetailContent(
             items(participants.sortedBy { participantStats[it.id]?.position ?: Int.MAX_VALUE }) { user ->
                 val stats = participantStats[user.id]
                 val hasAccepted = challenge.acceptedParticipants.contains(user.id) || user.id == challenge.createdBy
+                val canRemove = isCreator && 
+                    user.id != challenge.createdBy && 
+                    (challenge.status == ChallengeStatus.ACTIVE || challenge.status == ChallengeStatus.PENDING)
                 ParticipantCard(
                     user = user,
                     stats = stats,
@@ -571,7 +670,9 @@ private fun ChallengeDetailContent(
                     isChallengeCreator = user.id == challenge.createdBy,
                     hasAccepted = hasAccepted,
                     canResendInvitation = isCreator && !hasAccepted && user.id != challenge.createdBy,
+                    canRemoveParticipant = canRemove,
                     onResendInvitation = { onResendInvitation(user.id) },
+                    onRemoveParticipant = { onRemoveParticipant(user) },
                     isDarkTheme = isDarkTheme
                 )
             }
@@ -617,7 +718,9 @@ private fun ParticipantCard(
     isChallengeCreator: Boolean,
     hasAccepted: Boolean,
     canResendInvitation: Boolean,
+    canRemoveParticipant: Boolean,
     onResendInvitation: () -> Unit,
+    onRemoveParticipant: () -> Unit,
     isDarkTheme: Boolean
 ) {
     GlassmorphicCard(
@@ -657,37 +760,44 @@ private fun ParticipantCard(
                     Spacer(modifier = Modifier.width(8.dp))
                 }
 
-                // Avatar
-                if (!user.avatarUrl.isNullOrBlank()) {
-                    AsyncImage(
-                        model = user.avatarUrl,
-                        contentDescription = null,
-                        modifier = Modifier
-                            .size(40.dp)
-                            .clip(CircleShape),
-                        contentScale = ContentScale.Crop
-                    )
-                } else {
-                    Box(
-                        modifier = Modifier
-                            .size(40.dp)
-                            .clip(CircleShape),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Surface(
-                            modifier = Modifier.fillMaxSize(),
-                            color = MaterialTheme.colorScheme.primaryContainer
-                        ) {
-                            Box(contentAlignment = Alignment.Center) {
-                                Text(
-                                    text = user.name.take(1).uppercase(),
-                                    style = MaterialTheme.typography.titleMedium,
-                                    fontWeight = FontWeight.Bold,
-                                    color = MaterialTheme.colorScheme.onPrimaryContainer
-                                )
-                            }
+                // Avatar - используем thumbnailUrl или avatarUrl с поддержкой base64
+                val avatarUrl = user.avatarThumbnailUrl?.takeIf { it.isNotBlank() }
+                    ?: user.avatarUrl?.takeIf { it.isNotBlank() }
+                val avatarModifier = Modifier
+                    .size(40.dp)
+                    .clip(CircleShape)
+                    .background(MaterialTheme.colorScheme.surfaceVariant)
+                
+                if (!avatarUrl.isNullOrBlank()) {
+                    val isDataUrl = avatarUrl.startsWith("data:image")
+                    if (isDataUrl) {
+                        val base64 = avatarUrl.substringAfter(',')
+                        val bytes = runCatching { Base64.decode(base64, Base64.DEFAULT) }.getOrNull()
+                        val bmp = bytes?.let { BitmapFactory.decodeByteArray(it, 0, it.size) }
+                        if (bmp != null) {
+                            Image(
+                                bitmap = bmp.asImageBitmap(),
+                                contentDescription = null,
+                                modifier = avatarModifier,
+                                contentScale = ContentScale.Crop
+                            )
+                        } else {
+                            // Fallback на placeholder
+                            AvatarPlaceholder(user.name, avatarModifier)
                         }
+                    } else {
+                        AsyncImage(
+                            model = ImageRequest.Builder(LocalContext.current)
+                                .data(avatarUrl)
+                                .crossfade(true)
+                                .build(),
+                            contentDescription = null,
+                            modifier = avatarModifier,
+                            contentScale = ContentScale.Crop
+                        )
                     }
+                } else {
+                    AvatarPlaceholder(user.name, avatarModifier)
                 }
 
                 Spacer(modifier = Modifier.width(12.dp))
@@ -746,24 +856,38 @@ private fun ParticipantCard(
                     }
                 }
 
-                // Progress or Resend button
+                // Progress or streak indicator
                 if (hasAccepted && stats != null && stats.currentStreak > 0) {
-                    Column(horizontalAlignment = Alignment.End) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Icon(
-                                imageVector = Icons.Default.LocalFireDepartment,
-                                contentDescription = null,
-                                modifier = Modifier.size(16.dp),
-                                tint = MaterialTheme.colorScheme.error
-                            )
-                            Spacer(modifier = Modifier.width(2.dp))
-                            Text(
-                                text = "${stats.currentStreak}",
-                                style = MaterialTheme.typography.labelMedium,
-                                fontWeight = FontWeight.Bold,
-                                color = MaterialTheme.colorScheme.error
-                            )
-                        }
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(
+                            imageVector = Icons.Default.LocalFireDepartment,
+                            contentDescription = null,
+                            modifier = Modifier.size(16.dp),
+                            tint = MaterialTheme.colorScheme.error
+                        )
+                        Spacer(modifier = Modifier.width(2.dp))
+                        Text(
+                            text = "${stats.currentStreak}",
+                            style = MaterialTheme.typography.labelMedium,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.error
+                        )
+                    }
+                }
+                
+                // Remove participant button (only for creator, not for self or challenge creator)
+                if (canRemoveParticipant) {
+                    Spacer(modifier = Modifier.width(8.dp))
+                    IconButton(
+                        onClick = onRemoveParticipant,
+                        modifier = Modifier.size(32.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Delete,
+                            contentDescription = "Удалить участника",
+                            modifier = Modifier.size(18.dp),
+                            tint = MaterialTheme.colorScheme.error
+                        )
                     }
                 }
             }
@@ -800,13 +924,13 @@ private fun AddParticipantDialog(
     onConfirm: () -> Unit,
     onDismiss: () -> Unit
 ) {
-    AlertDialog(
+    GlassmorphicDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Добавить участников") },
-        text = {
+        title = { Text(stringResource(R.string.add_participants)) },
+        content = {
             if (availableFriends.isEmpty()) {
                 Text(
-                    text = "Нет доступных друзей для добавления",
+                    text = stringResource(R.string.no_friends_to_add),
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -820,7 +944,7 @@ private fun AddParticipantDialog(
                                 .padding(vertical = 8.dp),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-                            androidx.compose.material3.Checkbox(
+                            Checkbox(
                                 checked = selectedParticipants.contains(friend),
                                 onCheckedChange = { onParticipantToggle(friend) }
                             )
@@ -862,18 +986,45 @@ private fun AddParticipantDialog(
                 }
             }
         },
-        confirmButton = {
-            TextButton(
-                onClick = onConfirm,
-                enabled = selectedParticipants.isNotEmpty()
+        actions = {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.End
             ) {
-                Text("Добавить")
-            }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss) {
-                Text("Отмена")
+                TextButton(onClick = onDismiss) {
+                    Text(stringResource(R.string.cancel))
+                }
+                Spacer(modifier = Modifier.width(8.dp))
+                TextButton(
+                    onClick = onConfirm,
+                    enabled = selectedParticipants.isNotEmpty()
+                ) {
+                    Text(stringResource(R.string.add))
+                }
             }
         }
     )
+}
+
+@Composable
+private fun AvatarPlaceholder(name: String, modifier: Modifier = Modifier) {
+    Box(
+        modifier = modifier,
+        contentAlignment = Alignment.Center
+    ) {
+        Surface(
+            modifier = Modifier.fillMaxSize(),
+            color = MaterialTheme.colorScheme.primaryContainer,
+            shape = CircleShape
+        ) {
+            Box(contentAlignment = Alignment.Center) {
+                Text(
+                    text = name.take(1).uppercase(),
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onPrimaryContainer
+                )
+            }
+        }
+    }
 }

@@ -229,7 +229,7 @@ class FakeHabitRepository : HabitRepository {
 }
 
 class FakeSocialRepository : SocialRepository {
-    override suspend fun getUserById(userId: String): User? = User(id = userId, name = "Test User", email = "test@test.com", createdAt = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault()).date, lastActiveAt = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault()).date)
+    override suspend fun getUserById(userId: String): User? = User(id = userId, name = "Test User", email = "test@test.com", createdAt = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault()).date, lastActiveAt = Clock.System.now().toEpochMilliseconds())
     override suspend fun getUserByIdFromFirestore(userId: String): User? = getUserById(userId)
     override suspend fun searchUsers(query: String, currentUserId: String): List<User> = emptyList()
     override suspend fun updateUserFcmToken(userId: String, token: String) {}
@@ -287,7 +287,7 @@ class FakeUserRepository : UserRepository {
             name = "Test User",
             email = "test@test.com",
             createdAt = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault()).date,
-            lastActiveAt = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault()).date
+            lastActiveAt = Clock.System.now().toEpochMilliseconds()
         )
         users[testUser.id] = testUser
     }
@@ -319,4 +319,6 @@ class FakeUserRepository : UserRepository {
     override fun observeUser(userId: String): Flow<User?> = flowOf(users[userId])
 
     override suspend fun backfillAvatarThumbnails(): Result<Int> = Result.success(0)
+
+    override suspend fun updateLastActive(userId: String) {}
 }

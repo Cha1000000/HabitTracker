@@ -110,6 +110,29 @@ class ChallengesViewModelTest {
         override suspend fun updateChallengeStatus(challengeId: String, status: String) {}
         override suspend fun getChallengeLeaderboard(challengeId: String): List<Pair<String, Int>> = emptyList()
         override suspend fun endChallenge(challengeId: String, winnerId: String?) {}
+        override suspend fun getCompletedDaysForUserInChallenge(
+            challengeId: String,
+            habitId: String,
+            userId: String,
+            startDate: LocalDate,
+            endDate: LocalDate
+        ): Int = 0
+        override suspend fun getCurrentStreakForUserInChallenge(
+            habitId: String,
+            userId: String,
+            startDate: LocalDate,
+            endDate: LocalDate
+        ): Int = 0
+        override suspend fun getCompletedDaysFromFirestore(
+            habitId: String,
+            userId: String,
+            startDate: LocalDate,
+            endDate: LocalDate
+        ): Int = 0
+        override suspend fun acceptChallengeInvitation(challengeId: String, userId: String) {}
+        override suspend fun declineChallengeInvitation(challengeId: String, userId: String) {}
+        override suspend fun cancelChallenge(challengeId: String) {}
+        override suspend fun addParticipantsToChallenge(challengeId: String, participantIds: List<String>) {}
     }
 
     private fun createViewModel(

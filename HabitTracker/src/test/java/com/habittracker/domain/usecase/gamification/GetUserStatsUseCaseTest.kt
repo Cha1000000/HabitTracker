@@ -108,6 +108,7 @@ class GetUserStatsUseCaseTest {
                 override suspend fun upsertUserRemoteAndLocal(user: User, fcmToken: String?) {}
                 override fun observeUser(userId: String): Flow<User?> = flowOf(null)
                 override suspend fun backfillAvatarThumbnails(): Result<Int> = Result.success(0)
+                override suspend fun updateLastActive(userId: String) {}
             },
             habitRepository = object : HabitRepository {
                 override suspend fun insertHabit(habit: Habit) {}
@@ -160,6 +161,13 @@ class GetUserStatsUseCaseTest {
                 override suspend fun getChallengeLeaderboard(challengeId: String): List<Pair<String, Int>> = emptyList()
                 override suspend fun endChallenge(challengeId: String, winnerId: String?) {}
                 override fun observeChallengesForUser(userId: String): Flow<List<com.habittracker.domain.model.Challenge>> = flowOf(emptyList())
+                override suspend fun getCompletedDaysForUserInChallenge(challengeId: String, habitId: String, userId: String, startDate: LocalDate, endDate: LocalDate): Int = 0
+                override suspend fun getCurrentStreakForUserInChallenge(habitId: String, userId: String, startDate: LocalDate, endDate: LocalDate): Int = 0
+                override suspend fun getCompletedDaysFromFirestore(habitId: String, userId: String, startDate: LocalDate, endDate: LocalDate): Int = 0
+                override suspend fun acceptChallengeInvitation(challengeId: String, userId: String) {}
+                override suspend fun declineChallengeInvitation(challengeId: String, userId: String) {}
+                override suspend fun cancelChallenge(challengeId: String) {}
+                override suspend fun addParticipantsToChallenge(challengeId: String, participantIds: List<String>) {}
             },
             socialRepository = object : SocialRepository {
                 override suspend fun searchUsers(query: String, currentUserId: String): List<User> = emptyList()

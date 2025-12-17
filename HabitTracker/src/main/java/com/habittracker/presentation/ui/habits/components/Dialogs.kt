@@ -71,6 +71,7 @@ fun ConfirmDialog(
     message: String,
     confirmLabel: String,
     cancelLabel: String = "",
+    isDestructive: Boolean = false,
     onConfirm: () -> Unit,
     onDismiss: () -> Unit
 ) {
@@ -88,7 +89,10 @@ fun ConfirmDialog(
             }
             Spacer(modifier = Modifier.size(8.dp))
             GlassmorphicButton(onClick = { onConfirm() }) {
-                Text(text = confirmLabel)
+                Text(
+                    text = confirmLabel,
+                    color = if (isDestructive) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onPrimary
+                )
             }
         }
     )

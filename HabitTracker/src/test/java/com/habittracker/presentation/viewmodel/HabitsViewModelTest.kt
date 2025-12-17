@@ -11,6 +11,7 @@ import com.habittracker.domain.model.Habit
 import com.habittracker.domain.model.HabitFrequency
 import com.habittracker.domain.model.HabitType
 import com.habittracker.domain.repository.AuthRepository
+import com.habittracker.domain.repository.UserRepository
 import com.habittracker.domain.usecase.DeleteHabitUseCase
 import com.habittracker.domain.usecase.EnsureMySettingsForHabitUseCase
 import com.habittracker.domain.usecase.GetHabitCompletionStatusUseCase
@@ -53,6 +54,7 @@ class HabitsViewModelTest {
     private val markHabitIncompleteUseCase: MarkHabitIncompleteUseCase = mock()
     private val getHabitCompletionStatusUseCase: GetHabitCompletionStatusUseCase = mock()
     private val authRepository: AuthRepository = mock()
+    private val userRepository: UserRepository = mock()
     private val deleteHabitUseCase: DeleteHabitUseCase = mock()
     private val ensureMySettingsForHabitUseCase: EnsureMySettingsForHabitUseCase = mock()
     private val scheduleHabitReminderUseCase: ScheduleHabitReminderUseCase = mock()
@@ -112,6 +114,7 @@ class HabitsViewModelTest {
             markHabitIncompleteUseCase,
             getHabitCompletionStatusUseCase,
             authRepository,
+            userRepository,
             deleteHabitUseCase,
             ensureMySettingsForHabitUseCase,
             scheduleHabitReminderUseCase,

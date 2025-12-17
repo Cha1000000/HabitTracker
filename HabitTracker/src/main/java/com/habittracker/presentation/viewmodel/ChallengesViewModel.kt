@@ -159,9 +159,26 @@ class ChallengesViewModel @Inject constructor(
     }
 
     fun onLeaveChallengeClick(challengeId: String) {
+        // Показываем диалог подтверждения
+        _uiState.value = _uiState.value.copy(
+            showLeaveDialog = true,
+            leaveChallengeId = challengeId
+        )
+    }
+    
+    fun dismissLeaveDialog() {
+        _uiState.value = _uiState.value.copy(
+            showLeaveDialog = false,
+            leaveChallengeId = null
+        )
+    }
+    
+    fun confirmLeaveChallenge() {
+        val challengeId = _uiState.value.leaveChallengeId ?: return
         val userId = currentUserId ?: return
         
         viewModelScope.launch {
+            _uiState.value = _uiState.value.copy(showLeaveDialog = false, leaveChallengeId = null)
             try {
                 val result = leaveChallengeUseCase(challengeId, userId)
                 if (result.isSuccess) {

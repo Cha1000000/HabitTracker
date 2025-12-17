@@ -15,11 +15,14 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Email
 import androidx.compose.material.icons.filled.EmojiEvents
 import androidx.compose.material.icons.filled.Group
 import androidx.compose.material.icons.filled.Schedule
+import androidx.compose.material3.Badge
+import androidx.compose.material3.BadgedBox
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -58,6 +61,7 @@ import com.habittracker.presentation.viewmodel.ChallengesViewModel
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ChallengesScreen(
+    onNavigateBack: () -> Unit,
     onNavigateToCreateChallenge: () -> Unit,
     onNavigateToChallengeDetails: (String) -> Unit,
     initialTab: String? = null,
@@ -66,8 +70,8 @@ fun ChallengesScreen(
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val isDarkTheme = isSystemInDarkTheme()
     
-    // Устанавливаем начальную вкладку при первом запуске
-    LaunchedEffect(initialTab) {
+    // Устанавливаем начальную вкладку только один раз при первом запуске
+    LaunchedEffect(Unit) {
         initialTab?.let { tab ->
             val challengeTab = when (tab.lowercase()) {
                 "invitations" -> ChallengeTab.INVITATIONS
@@ -94,6 +98,14 @@ fun ChallengesScreen(
                             text = stringResource(R.string.challenges_title),
                             fontWeight = FontWeight.Bold
                         )
+                    },
+                    navigationIcon = {
+                        IconButton(onClick = onNavigateBack) {
+                            Icon(
+                                imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                                contentDescription = stringResource(R.string.cd_back)
+                            )
+                        }
                     },
                     actions = {
                         IconButton(onClick = onNavigateToCreateChallenge) {
@@ -138,38 +150,34 @@ fun ChallengesScreen(
                     selected = uiState.selectedTab == tab,
                     onClick = { viewModel.onTabSelected(tab) },
                     text = {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Text(
-                                text = when (tab) {
-                                    ChallengeTab.INVITATIONS -> "Приглашения"
-                                    ChallengeTab.ACTIVE -> stringResource(R.string.active_challenges)
-                                    ChallengeTab.ENDING_SOON -> stringResource(R.string.ending_soon)
-                                    ChallengeTab.COMPLETED -> stringResource(R.string.completed_challenges)
-                                },
-                                fontWeight = if (uiState.selectedTab == tab) FontWeight.Bold else FontWeight.Normal
-                            )
-                            if (badgeCount > 0) {
-                                Spacer(modifier = Modifier.width(4.dp))
-                                Text(
-                                    text = "$badgeCount",
-                                    style = MaterialTheme.typography.labelSmall,
-                                    color = MaterialTheme.colorScheme.onError,
-                                    modifier = Modifier
-                                        .padding(horizontal = 6.dp, vertical = 2.dp)
-                                )
-                            }
-                        }
+                        Text(
+                            text = when (tab) {
+                                ChallengeTab.INVITATIONS -> stringResource(R.string.invitations)
+                                ChallengeTab.ACTIVE -> stringResource(R.string.active_challenges)
+                                ChallengeTab.ENDING_SOON -> stringResource(R.string.ending_soon)
+                                ChallengeTab.COMPLETED -> stringResource(R.string.completed_challenges)
+                            },
+                            fontWeight = if (uiState.selectedTab == tab) FontWeight.Bold else FontWeight.Normal
+                        )
                     },
                     icon = {
-                        Icon(
-                            imageVector = when (tab) {
-                                ChallengeTab.INVITATIONS -> Icons.Default.Email
-                                ChallengeTab.ACTIVE -> Icons.Default.Group
-                                ChallengeTab.ENDING_SOON -> Icons.Default.Schedule
-                                ChallengeTab.COMPLETED -> Icons.Default.EmojiEvents
-                            },
-                            contentDescription = null
-                        )
+                        BadgedBox(
+                            badge = {
+                                if (tab == ChallengeTab.INVITATIONS && badgeCount > 0) {
+                                    Badge { Text("$badgeCount") }
+                                }
+                            }
+                        ) {
+                            Icon(
+                                imageVector = when (tab) {
+                                    ChallengeTab.INVITATIONS -> Icons.Default.Email
+                                    ChallengeTab.ACTIVE -> Icons.Default.Group
+                                    ChallengeTab.ENDING_SOON -> Icons.Default.Schedule
+                                    ChallengeTab.COMPLETED -> Icons.Default.EmojiEvents
+                                },
+                                contentDescription = null
+                            )
+                        }
                     }
                 )
             }
@@ -253,6 +261,19 @@ fun ChallengesScreen(
             cancelLabel = stringResource(R.string.cancel),
             onConfirm = { viewModel.onJoinChallengeConfirm() },
             onDismiss = { viewModel.onJoinChallengeCancel() }
+        )
+    }
+    
+    // Leave Challenge Dialog (Tahoe)
+    if (uiState.showLeaveDialog) {
+        ConfirmDialog(
+            title = stringResource(R.string.leave_challenge_title),
+            message = stringResource(R.string.leave_challenge_confirmation),
+            confirmLabel = stringResource(R.string.leave),
+            cancelLabel = stringResource(R.string.cancel),
+            isDestructive = true,
+            onConfirm = { viewModel.confirmLeaveChallenge() },
+            onDismiss = { viewModel.dismissLeaveDialog() }
         )
     }
 }

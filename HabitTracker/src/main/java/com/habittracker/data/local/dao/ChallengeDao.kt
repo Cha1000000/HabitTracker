@@ -30,12 +30,18 @@ interface ChallengeDao {
 
     @Query("SELECT * FROM challenges WHERE participants LIKE '%' || :userId || '%' ORDER BY endDate DESC")
     fun getUserChallenges(userId: String): Flow<List<ChallengeEntity>>
+    
+    @Query("SELECT * FROM challenges WHERE participants LIKE '%' || :userId || '%' ORDER BY endDate DESC")
+    suspend fun getUserChallengesSync(userId: String): List<ChallengeEntity>
 
     @Query("SELECT * FROM challenges WHERE status = :status ORDER BY endDate DESC")
     fun getChallengesByStatus(status: String): Flow<List<ChallengeEntity>>
 
     @Query("UPDATE challenges SET participants = :participants WHERE id = :challengeId")
     suspend fun updateChallengeParticipants(challengeId: String, participants: List<String>)
+
+    @Query("UPDATE challenges SET participants = :participants, acceptedParticipants = :acceptedParticipants, updatedAtMillis = :updatedAtMillis WHERE id = :challengeId")
+    suspend fun updateChallengeParticipantsAndAccepted(challengeId: String, participants: List<String>, acceptedParticipants: List<String>, updatedAtMillis: Long)
 
     @Query("UPDATE challenges SET status = :status WHERE id = :challengeId")
     suspend fun updateChallengeStatus(challengeId: String, status: String)

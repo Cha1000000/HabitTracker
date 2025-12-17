@@ -34,7 +34,7 @@ class SignInWithGoogleUseCaseTest {
         level = 1,
         points = 0,
         createdAt = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault()).date,
-        lastActiveAt = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault()).date
+        lastActiveAt = Clock.System.now().toEpochMilliseconds()
     )
 
     @Before

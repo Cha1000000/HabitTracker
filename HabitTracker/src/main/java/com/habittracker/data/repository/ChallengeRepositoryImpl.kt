@@ -13,15 +13,17 @@ import com.habittracker.domain.repository.ChallengeRepository
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
-import kotlinx.coroutines.cancel
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
 import kotlinx.datetime.LocalDate
+import kotlinx.datetime.TimeZone
+import kotlinx.datetime.toLocalDateTime
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonPrimitive
@@ -205,8 +207,8 @@ class ChallengeRepositoryImpl @Inject constructor(
         val updatedAcceptedParticipants = challenge.acceptedParticipants - userId
         val now = System.currentTimeMillis()
         
-        // Обновляем локальную базу
-        challengeDao.updateChallengeParticipants(challengeId, updatedParticipants)
+        // Обновляем локальную базу (participants, acceptedParticipants и updatedAtMillis)
+        challengeDao.updateChallengeParticipantsAndAccepted(challengeId, updatedParticipants, updatedAcceptedParticipants, now)
         
         // Обновляем Firestore напрямую для немедленной синхронизации
         try {
@@ -216,7 +218,8 @@ class ChallengeRepositoryImpl @Inject constructor(
                     mapOf(
                         "participants" to updatedParticipants,
                         "acceptedParticipants" to updatedAcceptedParticipants,
-                        "updatedAt" to kotlinx.datetime.Clock.System.now().toString()
+                        "updatedAt" to kotlinx.datetime.Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault()).date.toString(),
+                        "updatedAtMillis" to now
                     )
                 )
                 .await()
@@ -333,6 +336,22 @@ class ChallengeRepositoryImpl @Inject constructor(
                 Log.d(TAG, "Challenges listener: userId=$userId, docs=${docs.size}")
 
                 scope.launch {
+                    // Получаем ID челленджей из Firestore, где пользователь участник
+                    val remoteParticipantChallengeIds = docs.mapNotNull { it.id }.toSet()
+                    
+                    // Получаем локальные челленджи пользователя (где он участник, но не создатель)
+                    val localChallenges = challengeDao.getUserChallengesSync(userId)
+                    
+                    // Удаляем из локальной базы челленджи, где пользователь больше не участник
+                    // (кроме тех, где он создатель - они обрабатываются отдельным listener)
+                    for (localChallenge in localChallenges) {
+                        if (localChallenge.createdBy != userId && 
+                            !remoteParticipantChallengeIds.contains(localChallenge.id)) {
+                            Log.d(TAG, "Removing challenge ${localChallenge.id} - user no longer participant")
+                            challengeDao.deleteChallenge(localChallenge.id)
+                        }
+                    }
+                    
                     for (doc in docs) {
                         try {
                             val remoteChallenge = doc.toChallengeEntity()

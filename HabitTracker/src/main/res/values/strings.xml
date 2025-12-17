@@ -13,6 +13,7 @@
     <string name="action_ok">Понятно</string>
     <string name="save">Сохранить</string>
     <string name="cancel">Отменить</string>
+    <string name="add">Добавить</string>
     <string name="delete">Удалить</string>
     <string name="edit">Редактировать</string>
     <string name="menu_done">Выполнено</string>
@@ -552,6 +553,7 @@
     <!-- Challenge strings -->
     <string name="challenges_title">Челленджи</string>
     <string name="create_challenge">Создать челлендж</string>
+    <string name="invitations">Приглашения</string>
     <string name="active_challenges">Активные</string>
     <string name="ending_soon">Скоро завершатся</string>
     <string name="completed_challenges">Завершенные</string>
@@ -559,12 +561,21 @@
     <string name="join_challenge_confirmation">Вы уверены, что хотите присоединиться к этому челленджу?</string>
     <string name="join">Присоединиться</string>
     <string name="leave_challenge">Покинуть челлендж</string>
+    <string name="leave_challenge_title">Покинуть челлендж?</string>
+    <string name="leave_challenge_confirmation">Вы уверены, что хотите покинуть этот челлендж? Вы больше не сможете участвовать в нём.</string>
+    <string name="leave">Покинуть</string>
+    <string name="cancel_challenge">Отменить челлендж</string>
+    <string name="delete_challenge">Удалить челлендж</string>
+    <string name="remove_participant_title">Удалить участника?</string>
+    <string name="remove_participant_confirmation">Вы уверены, что хотите удалить %1$s из этого челленджа?</string>
     <string name="retry">Повторить</string>
     <string name="dismiss">Закрыть</string>
     <!-- Create Challenge UI helpers -->
     <string name="tap_to_select_habit">Нажмите для выбора привычки</string>
     <string name="tap_to_select_participants">Нажмите для выбора участников</string>
     <string name="selected_participants">Выбрано участников: %1$d</string>
+    <string name="add_participants">Добавить участников</string>
+    <string name="no_friends_to_add">Нет доступных друзей для добавления</string>
     
     <!-- Empty states -->
     <string name="no_active_challenges">Нет активных челленджей</string>

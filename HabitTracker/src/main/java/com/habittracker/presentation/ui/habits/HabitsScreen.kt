@@ -100,6 +100,7 @@ import com.habittracker.presentation.ui.habits.components.TahoeDockDivider
 import com.habittracker.presentation.ui.habits.components.TahoeDockItem
 import com.habittracker.presentation.ui.habits.components.TahoeGradientBackground
 import com.habittracker.presentation.ui.notifications.NotificationBadge
+import com.habittracker.presentation.viewmodel.ChallengesViewModel
 import com.habittracker.presentation.viewmodel.FriendsViewModel
 import com.habittracker.presentation.viewmodel.HabitWithCompletion
 import com.habittracker.presentation.viewmodel.HabitsViewModel
@@ -117,7 +118,8 @@ fun HabitsScreen(
     navController: NavController,
     viewModel: HabitsViewModel = hiltViewModel(),
     notificationsViewModel: NotificationsViewModel = hiltViewModel(),
-    friendsViewModel: FriendsViewModel = hiltViewModel()
+    friendsViewModel: FriendsViewModel = hiltViewModel(),
+    challengesViewModel: ChallengesViewModel = hiltViewModel()
 ) {
     val context = LocalContext.current
     val uiState by viewModel.uiState.collectAsState()
@@ -127,6 +129,8 @@ fun HabitsScreen(
     val badgeCount by notificationsViewModel.badgeCount.collectAsState()
     val friendsUiState by friendsViewModel.uiState.collectAsState()
     val friendRequestsBadgeCount = friendsUiState.incomingRequests.size
+    val challengesUiState by challengesViewModel.uiState.collectAsState()
+    val challengeInvitationsBadgeCount = challengesUiState.pendingInvitations.size
     var isRefreshing by remember { mutableStateOf(false) }
     var recomposeKey by remember { mutableIntStateOf(0) }
     
@@ -326,6 +330,7 @@ fun HabitsScreen(
                 TahoeDockItem(
                     icon = Icons.Default.Flag,
                     label = stringResource(R.string.cd_challenges),
+                    badge = challengeInvitationsBadgeCount,
                     onClick = { navController.navigate(Screen.Challenges.route) },
                     selected = false
                 )

@@ -89,6 +89,33 @@ class ChallengeUseCasesTest {
         override suspend fun endChallenge(challengeId: String, winnerId: String?) { /* not used */ }
         
         override fun observeChallengesForUser(userId: String): Flow<List<Challenge>> = allFlow.asStateFlow()
+        
+        override suspend fun getCompletedDaysForUserInChallenge(
+            challengeId: String,
+            habitId: String,
+            userId: String,
+            startDate: LocalDate,
+            endDate: LocalDate
+        ): Int = 0
+        
+        override suspend fun getCurrentStreakForUserInChallenge(
+            habitId: String,
+            userId: String,
+            startDate: LocalDate,
+            endDate: LocalDate
+        ): Int = 0
+        
+        override suspend fun getCompletedDaysFromFirestore(
+            habitId: String,
+            userId: String,
+            startDate: LocalDate,
+            endDate: LocalDate
+        ): Int = 0
+        
+        override suspend fun acceptChallengeInvitation(challengeId: String, userId: String) {}
+        override suspend fun declineChallengeInvitation(challengeId: String, userId: String) {}
+        override suspend fun cancelChallenge(challengeId: String) {}
+        override suspend fun addParticipantsToChallenge(challengeId: String, participantIds: List<String>) {}
     }
 
     private class FakeHabitRepository : HabitRepository {

@@ -13,6 +13,8 @@ data class ChallengesUiState(
     val selectedTab: ChallengeTab = ChallengeTab.ACTIVE,
     val showJoinDialog: Boolean = false,
     val joinChallengeId: String? = null,
+    val showLeaveDialog: Boolean = false,
+    val leaveChallengeId: String? = null,
     val isAcceptingInvitation: Boolean = false
 )
 

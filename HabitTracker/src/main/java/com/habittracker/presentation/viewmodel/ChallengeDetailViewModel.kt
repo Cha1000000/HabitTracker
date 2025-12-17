@@ -29,6 +29,9 @@ data class ChallengeDetailUiState(
     val isActionInProgress: Boolean = false,
     val showDeleteConfirmDialog: Boolean = false,
     val showCancelConfirmDialog: Boolean = false,
+    val showLeaveConfirmDialog: Boolean = false,
+    val showRemoveParticipantDialog: Boolean = false,
+    val participantToRemove: User? = null,
     val showAddParticipantDialog: Boolean = false,
     val availableFriends: List<User> = emptyList(),
     val selectedNewParticipants: List<User> = emptyList()
@@ -258,6 +261,33 @@ class ChallengeDetailViewModel @Inject constructor(
         _uiState.value = _uiState.value.copy(error = null)
     }
     
+    fun showLeaveConfirmDialog() {
+        _uiState.value = _uiState.value.copy(showLeaveConfirmDialog = true)
+    }
+    
+    fun hideLeaveConfirmDialog() {
+        _uiState.value = _uiState.value.copy(showLeaveConfirmDialog = false)
+    }
+    
+    fun leaveChallenge(onNavigateBack: () -> Unit) {
+        val challenge = _uiState.value.challenge ?: return
+        val currentUserId = _uiState.value.currentUserId ?: return
+        
+        viewModelScope.launch {
+            _uiState.value = _uiState.value.copy(isActionInProgress = true, showLeaveConfirmDialog = false)
+            try {
+                challengeRepository.leaveChallenge(challenge.id, currentUserId)
+                _uiState.value = _uiState.value.copy(isActionInProgress = false)
+                onNavigateBack()
+            } catch (e: Exception) {
+                _uiState.value = _uiState.value.copy(
+                    isActionInProgress = false,
+                    error = "Ошибка выхода из челленджа: ${e.message}"
+                )
+            }
+        }
+    }
+    
     fun showAddParticipantDialog() {
         viewModelScope.launch {
             val currentUserId = _uiState.value.currentUserId ?: return@launch
@@ -297,6 +327,52 @@ class ChallengeDetailViewModel @Inject constructor(
             currentSelected.add(user)
         }
         _uiState.value = _uiState.value.copy(selectedNewParticipants = currentSelected)
+    }
+    
+    fun showRemoveParticipantDialog(user: User) {
+        val challenge = _uiState.value.challenge ?: return
+        val currentUserId = _uiState.value.currentUserId ?: return
+        
+        // Нельзя удалить создателя или себя
+        if (user.id == challenge.createdBy || user.id == currentUserId) return
+        
+        _uiState.value = _uiState.value.copy(
+            showRemoveParticipantDialog = true,
+            participantToRemove = user
+        )
+    }
+    
+    fun hideRemoveParticipantDialog() {
+        _uiState.value = _uiState.value.copy(
+            showRemoveParticipantDialog = false,
+            participantToRemove = null
+        )
+    }
+    
+    fun confirmRemoveParticipant() {
+        val challenge = _uiState.value.challenge ?: return
+        val participant = _uiState.value.participantToRemove ?: return
+        
+        viewModelScope.launch {
+            _uiState.value = _uiState.value.copy(
+                isActionInProgress = true,
+                showRemoveParticipantDialog = false,
+                participantToRemove = null
+            )
+            try {
+                challengeRepository.leaveChallenge(challenge.id, participant.id)
+                
+                // Перезагружаем челлендж
+                loadChallenge(challenge.id)
+                
+                _uiState.value = _uiState.value.copy(isActionInProgress = false)
+            } catch (e: Exception) {
+                _uiState.value = _uiState.value.copy(
+                    isActionInProgress = false,
+                    error = "Ошибка удаления участника: ${e.message}"
+                )
+            }
+        }
     }
     
     fun addSelectedParticipants() {

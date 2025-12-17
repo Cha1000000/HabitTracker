@@ -47,25 +47,19 @@ class LeaveChallengeUseCase @Inject constructor(
                 return Result.failure(Exception("Челлендж уже отменен"))
             }
             
-            // Удаляем участника
+            // Удаляем участника из списков
             val updatedParticipants = challenge.participants.filter { it != userId }
+            val updatedAcceptedParticipants = challenge.acceptedParticipants.filter { it != userId }
             val today = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault()).date
             
-            // Если участников не осталось или остался только создатель, отменяем челлендж
-            val updatedChallenge = if (updatedParticipants.isEmpty() || updatedParticipants.size == 1) {
-                challenge.copy(
-                    participants = updatedParticipants,
-                    status = ChallengeStatus.CANCELLED,
-                    updatedAt = today
-                )
-            } else {
-                challenge.copy(
-                    participants = updatedParticipants,
-                    updatedAt = today
-                )
-            }
+            // Не отменяем челлендж автоматически - автор может добавить новых участников
+            val updatedChallenge = challenge.copy(
+                participants = updatedParticipants,
+                acceptedParticipants = updatedAcceptedParticipants,
+                updatedAt = today
+            )
             
-            challengeRepository.updateChallenge(updatedChallenge)
+            challengeRepository.leaveChallenge(challengeId, userId)
             
             // Уведомляем создателя
             try {
@@ -75,19 +69,6 @@ class LeaveChallengeUseCase @Inject constructor(
                     leavingUser?.name ?: "Пользователь",
                     challenge.title
                 )
-                
-                // Если челлендж отменен из-за недостатка участников, уведомляем всех
-                if (updatedChallenge.status == ChallengeStatus.CANCELLED) {
-                    updatedParticipants.forEach { participantId ->
-                        if (participantId != challenge.createdBy) {
-                            socialRepository.sendChallengeCancelledNotification(
-                                participantId,
-                                challenge.title,
-                                "Недостаточно участников"
-                            )
-                        }
-                    }
-                }
             } catch (e: Exception) {
                 // Игнорируем ошибки уведомлений
             }

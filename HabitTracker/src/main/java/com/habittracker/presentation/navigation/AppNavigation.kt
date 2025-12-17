@@ -192,6 +192,7 @@ fun AppNavHost(
         ) { backStackEntry ->
             val initialTab = backStackEntry.arguments?.getString("tab")
             ChallengesScreen(
+                onNavigateBack = { navController.popBackStack() },
                 onNavigateToCreateChallenge = {
                     navController.navigate(Screen.CreateChallenge.route)
                 },
