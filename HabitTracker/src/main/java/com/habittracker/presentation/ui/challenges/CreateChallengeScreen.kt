@@ -1,6 +1,17 @@
 package com.habittracker.presentation.ui.challenges
 
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.selection.selectable
@@ -10,10 +21,31 @@ import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material.icons.filled.CalendarToday
 import androidx.compose.material.icons.filled.Group
 import androidx.compose.material.icons.filled.Schedule
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.material3.Checkbox
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.DatePicker
+import androidx.compose.material3.DatePickerDialog
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.RadioButton
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.material3.rememberDatePickerState
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -24,10 +56,17 @@ import com.habittracker.R
 import com.habittracker.domain.model.ChallengeType
 import com.habittracker.domain.model.Habit
 import com.habittracker.domain.model.User
-import com.habittracker.presentation.viewmodel.CreateChallengeViewModel
 import com.habittracker.presentation.state.DatePickerType
-import kotlinx.datetime.LocalDate
+import com.habittracker.presentation.ui.habits.components.GlassmorphicButton
+import com.habittracker.presentation.ui.habits.components.GlassmorphicCard
 import com.habittracker.presentation.ui.habits.components.GlassmorphicDialog
+import com.habittracker.presentation.ui.habits.components.GlassmorphicTextField
+import com.habittracker.presentation.ui.habits.components.TahoeGradientBackground
+import com.habittracker.presentation.viewmodel.CreateChallengeViewModel
+import kotlinx.datetime.Clock
+import kotlinx.datetime.LocalDate
+import kotlinx.datetime.TimeZone
+import kotlinx.datetime.todayIn
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -37,133 +76,151 @@ fun CreateChallengeScreen(
     viewModel: CreateChallengeViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val snackbarHostState = remember { SnackbarHostState() }
+    val scope = rememberCoroutineScope()
 
-    Column(
-        modifier = Modifier.fillMaxSize()
+    TahoeGradientBackground(
+        modifier = Modifier.fillMaxSize(),
+        isDarkTheme = isSystemInDarkTheme()
     ) {
-        // Top App Bar
-        TopAppBar(
-            title = {
-                Text(
-                    text = stringResource(R.string.create_challenge_title),
-                    fontWeight = FontWeight.Bold
-                )
+        Scaffold(
+            containerColor = Color.Transparent,
+            contentColor = MaterialTheme.colorScheme.onBackground,
+            snackbarHost = {
+                SnackbarHost(hostState = snackbarHostState)
             },
-            navigationIcon = {
-                IconButton(onClick = onNavigateBack) {
-                    Icon(
-                        imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                        contentDescription = stringResource(R.string.back)
-                    )
-                }
-            }
-        )
-
-        // Content
-        LazyColumn(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp)
-        ) {
-            // Title
-            item {
-                OutlinedTextField(
-                    value = uiState.title,
-                    onValueChange = viewModel::onTitleChange,
-                    label = { Text(stringResource(R.string.challenge_name)) },
-                    placeholder = { Text(stringResource(R.string.challenge_name_hint)) },
-                    modifier = Modifier.fillMaxWidth(),
-                    singleLine = true
-                )
-            }
-
-            // Description
-            item {
-                OutlinedTextField(
-                    value = uiState.description,
-                    onValueChange = viewModel::onDescriptionChange,
-                    label = { Text(stringResource(R.string.challenge_description)) },
-                    placeholder = { Text(stringResource(R.string.challenge_description_hint)) },
-                    modifier = Modifier.fillMaxWidth(),
-                    minLines = 2,
-                    maxLines = 4
-                )
-            }
-
-            // Habit Selection
-            item {
-                HabitSelectionCard(
-                    selectedHabit = uiState.selectedHabit,
-                    onClick = { viewModel.showHabitSelector() }
-                )
-            }
-
-            // Participants Selection
-            item {
-                ParticipantsSelectionCard(
-                    selectedParticipants = uiState.selectedParticipants,
-                    onClick = { viewModel.showParticipantSelector() }
-                )
-            }
-
-            // Dates
-            item {
-                DateSelectionSection(
-                    startDate = uiState.startDate,
-                    endDate = uiState.endDate,
-                    onStartDateClick = { viewModel.showDatePicker(DatePickerType.START_DATE) },
-                    onEndDateClick = { viewModel.showDatePicker(DatePickerType.END_DATE) }
-                )
-            }
-
-            // Challenge Rules
-            item {
-                ChallengeRulesSection(
-                    challengeType = uiState.challengeType,
-                    targetValue = uiState.targetValue,
-                    allowMissedDays = uiState.allowMissedDays,
-                    requireConsecutive = uiState.requireConsecutive,
-                    onChallengeTypeChange = viewModel::onChallengeTypeSelected,
-                    onTargetValueChange = viewModel::onTargetValueChange,
-                    onAllowMissedDaysChange = viewModel::onAllowMissedDaysChange,
-                    onRequireConsecutiveToggle = viewModel::onRequireConsecutiveToggle
-                )
-            }
-
-            // Reward
-            item {
-                OutlinedTextField(
-                    value = uiState.reward,
-                    onValueChange = viewModel::onRewardChange,
-                    label = { Text(stringResource(R.string.reward)) },
-                    placeholder = { Text(stringResource(R.string.reward_hint)) },
-                    modifier = Modifier.fillMaxWidth(),
-                    minLines = 2,
-                    maxLines = 3
-                )
-            }
-
-            // Create Button
-            item {
-                Button(
-                    onClick = {
-                        viewModel.createChallenge { challenge ->
-                            onChallengeCreated(challenge.id)
+            topBar = {
+                TopAppBar(
+                    title = {
+                        Text(
+                            text = stringResource(R.string.create_challenge_title),
+                            fontWeight = FontWeight.Bold
+                        )
+                    },
+                    navigationIcon = {
+                        IconButton(onClick = onNavigateBack) {
+                            Icon(
+                                imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                                contentDescription = stringResource(R.string.back)
+                            )
                         }
                     },
-                    modifier = Modifier.fillMaxWidth(),
-                    enabled = !uiState.isCreating
-                ) {
-                    if (uiState.isCreating) {
-                        CircularProgressIndicator(
-                            modifier = Modifier.size(20.dp),
-                            strokeWidth = 2.dp
-                        )
-                    } else {
-                        Text(stringResource(R.string.create_challenge_button))
+                    colors = TopAppBarDefaults.topAppBarColors(
+                        containerColor = Color.Transparent,
+                        scrolledContainerColor = Color.Transparent
+                    )
+                )
+            }
+        ) { paddingValues ->
+            LazyColumn(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(paddingValues)
+                    .padding(horizontal = 16.dp),
+                verticalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                item { Spacer(modifier = Modifier.height(8.dp)) }
+                
+                // Title
+                item {
+                    GlassmorphicTextField(
+                        value = uiState.title,
+                        onValueChange = viewModel::onTitleChange,
+                        label = { Text(stringResource(R.string.challenge_name)) },
+                        placeholder = { Text(stringResource(R.string.challenge_name_hint)) },
+                        modifier = Modifier.fillMaxWidth(),
+                        singleLine = true
+                    )
+                }
+
+                // Description
+                item {
+                    GlassmorphicTextField(
+                        value = uiState.description,
+                        onValueChange = viewModel::onDescriptionChange,
+                        label = { Text(stringResource(R.string.challenge_description)) },
+                        placeholder = { Text(stringResource(R.string.challenge_description_hint)) },
+                        modifier = Modifier.fillMaxWidth(),
+                        singleLine = false
+                    )
+                }
+
+                // Habit Selection
+                item {
+                    HabitSelectionCard(
+                        selectedHabit = uiState.selectedHabit,
+                        onClick = { viewModel.showHabitSelector() }
+                    )
+                }
+
+                // Participants Selection
+                item {
+                    ParticipantsSelectionCard(
+                        selectedParticipants = uiState.selectedParticipants,
+                        onClick = { viewModel.showParticipantSelector() }
+                    )
+                }
+
+                // Dates
+                item {
+                    DateSelectionSection(
+                        startDate = uiState.startDate,
+                        endDate = uiState.endDate,
+                        onStartDateClick = { viewModel.showDatePicker(DatePickerType.START_DATE) },
+                        onEndDateClick = { viewModel.showDatePicker(DatePickerType.END_DATE) }
+                    )
+                }
+
+                // Challenge Rules
+                item {
+                    ChallengeRulesSection(
+                        challengeType = uiState.challengeType,
+                        targetValue = uiState.targetValue,
+                        allowMissedDays = uiState.allowMissedDays,
+                        requireConsecutive = uiState.requireConsecutive,
+                        onChallengeTypeChange = viewModel::onChallengeTypeSelected,
+                        onTargetValueChange = viewModel::onTargetValueChange,
+                        onAllowMissedDaysChange = viewModel::onAllowMissedDaysChange,
+                        onRequireConsecutiveToggle = viewModel::onRequireConsecutiveToggle
+                    )
+                }
+
+                // Reward
+                item {
+                    GlassmorphicTextField(
+                        value = uiState.reward,
+                        onValueChange = viewModel::onRewardChange,
+                        label = { Text(stringResource(R.string.reward)) },
+                        placeholder = { Text(stringResource(R.string.reward_hint)) },
+                        modifier = Modifier.fillMaxWidth(),
+                        singleLine = false
+                    )
+                }
+
+                // Create Button
+                item {
+                    GlassmorphicButton(
+                        onClick = {
+                            viewModel.createChallenge { challenge ->
+                                onChallengeCreated(challenge.id)
+                            }
+                        },
+                        modifier = Modifier.fillMaxWidth(),
+                        enabled = !uiState.isCreating
+                    ) {
+                        if (uiState.isCreating) {
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(20.dp),
+                                strokeWidth = 2.dp,
+                                color = MaterialTheme.colorScheme.onPrimary
+                            )
+                        } else {
+                            Text(stringResource(R.string.create_challenge_button))
+                        }
                     }
                 }
+                
+                item { Spacer(modifier = Modifier.height(16.dp)) }
             }
         }
     }
@@ -171,7 +228,8 @@ fun CreateChallengeScreen(
     // Error Snackbar
     uiState.errorMessage?.let { error ->
         LaunchedEffect(error) {
-            // Show snackbar
+            snackbarHostState.showSnackbar(error)
+            viewModel.clearError()
         }
     }
 
@@ -193,18 +251,74 @@ fun CreateChallengeScreen(
         )
     }
 
-    // TODO: Add DatePickerDialog when needed
+    // DatePicker Dialog
+    if (uiState.showDatePicker) {
+        val today = Clock.System.todayIn(TimeZone.currentSystemDefault())
+        val isStartDate = uiState.datePickerType == DatePickerType.START_DATE
+        
+        DatePickerDialogWrapper(
+            initialDate = if (isStartDate) uiState.startDate else uiState.endDate,
+            minDate = if (isStartDate) today else uiState.startDate,
+            onDateSelected = { date ->
+                if (isStartDate) {
+                    viewModel.onStartDateSelected(date)
+                } else {
+                    viewModel.onEndDateSelected(date)
+                }
+            },
+            onDismiss = { viewModel.hideDatePicker() }
+        )
+    }
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun DatePickerDialogWrapper(
+    initialDate: LocalDate,
+    minDate: LocalDate,
+    onDateSelected: (LocalDate) -> Unit,
+    onDismiss: () -> Unit
+) {
+    val datePickerState = rememberDatePickerState(
+        initialSelectedDateMillis = initialDate.toEpochDays() * 24 * 60 * 60 * 1000L
+    )
+    
+    DatePickerDialog(
+        onDismissRequest = onDismiss,
+        confirmButton = {
+            TextButton(
+                onClick = {
+                    datePickerState.selectedDateMillis?.let { millis ->
+                        val epochDays = millis / (24 * 60 * 60 * 1000L)
+                        val selectedDate = LocalDate.fromEpochDays(epochDays.toInt())
+                        if (selectedDate >= minDate) {
+                            onDateSelected(selectedDate)
+                        }
+                    }
+                }
+            ) {
+                Text(stringResource(R.string.done))
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text(stringResource(R.string.cancel))
+            }
+        }
+    ) {
+        DatePicker(state = datePickerState)
+    }
+}
+
 @Composable
 private fun HabitSelectionCard(
     selectedHabit: Habit?,
     onClick: () -> Unit
 ) {
-    Card(
-        onClick = onClick,
-        modifier = Modifier.fillMaxWidth()
+    GlassmorphicCard(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick)
     ) {
         Row(
             modifier = Modifier
@@ -242,15 +356,15 @@ private fun HabitSelectionCard(
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun ParticipantsSelectionCard(
     selectedParticipants: List<User>,
     onClick: () -> Unit
 ) {
-    Card(
-        onClick = onClick,
-        modifier = Modifier.fillMaxWidth()
+    GlassmorphicCard(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick)
     ) {
         Row(
             modifier = Modifier
@@ -305,7 +419,7 @@ private fun DateSelectionSection(
     onStartDateClick: () -> Unit,
     onEndDateClick: () -> Unit
 ) {
-    Card(
+    GlassmorphicCard(
         modifier = Modifier.fillMaxWidth()
     ) {
         Column(
@@ -322,12 +436,15 @@ private fun DateSelectionSection(
                 horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 // Start Date
-                OutlinedCard(
-                    onClick = onStartDateClick,
-                    modifier = Modifier.weight(1f)
+                GlassmorphicCard(
+                    modifier = Modifier
+                        .weight(1f)
+                        .clickable(onClick = onStartDateClick)
                 ) {
                     Column(
-                        modifier = Modifier.padding(12.dp),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(12.dp),
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {
                         Icon(
@@ -348,12 +465,15 @@ private fun DateSelectionSection(
                 }
                 
                 // End Date
-                OutlinedCard(
-                    onClick = onEndDateClick,
-                    modifier = Modifier.weight(1f)
+                GlassmorphicCard(
+                    modifier = Modifier
+                        .weight(1f)
+                        .clickable(onClick = onEndDateClick)
                 ) {
                     Column(
-                        modifier = Modifier.padding(12.dp),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(12.dp),
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {
                         Icon(
@@ -388,7 +508,7 @@ private fun ChallengeRulesSection(
     onAllowMissedDaysChange: (String) -> Unit,
     onRequireConsecutiveToggle: (Boolean) -> Unit
 ) {
-    Card(
+    GlassmorphicCard(
         modifier = Modifier.fillMaxWidth()
     ) {
         Column(
@@ -406,7 +526,7 @@ private fun ChallengeRulesSection(
                 style = MaterialTheme.typography.labelMedium
             )
             
-            ChallengeType.values().forEach { type ->
+            ChallengeType.entries.forEach { type ->
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -447,7 +567,7 @@ private fun ChallengeRulesSection(
             }
             
             // Target Value
-            OutlinedTextField(
+            GlassmorphicTextField(
                 value = targetValue,
                 onValueChange = onTargetValueChange,
                 label = { Text(stringResource(R.string.target_value)) },

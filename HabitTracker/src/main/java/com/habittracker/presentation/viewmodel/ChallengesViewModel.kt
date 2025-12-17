@@ -1,11 +1,12 @@
 package com.habittracker.presentation.viewmodel
 
+import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.habittracker.domain.model.ChallengeStatus
+import com.habittracker.domain.model.getDaysRemaining
+import com.habittracker.domain.repository.ChallengeRepository
 import com.habittracker.domain.usecase.GetCurrentUserUseCase
-import com.habittracker.domain.usecase.challenge.GetActiveChallengesUseCase
-import com.habittracker.domain.usecase.challenge.GetChallengeResultsUseCase
 import com.habittracker.domain.usecase.challenge.JoinChallengeUseCase
 import com.habittracker.domain.usecase.challenge.LeaveChallengeUseCase
 import com.habittracker.presentation.state.ChallengeTab
@@ -14,14 +15,17 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 import javax.inject.Inject
+
+private const val ENDING_SOON_DAYS = 3 // Челлендж считается "скоро заканчивающимся" если осталось <= 3 дней
+private const val TAG = "ChallengesViewModel"
 
 @HiltViewModel
 class ChallengesViewModel @Inject constructor(
     private val getCurrentUserUseCase: GetCurrentUserUseCase,
-    private val getActiveChallengesUseCase: GetActiveChallengesUseCase,
-    private val getChallengeResultsUseCase: GetChallengeResultsUseCase,
+    private val challengeRepository: ChallengeRepository,
     private val joinChallengeUseCase: JoinChallengeUseCase,
     private val leaveChallengeUseCase: LeaveChallengeUseCase
 ) : ViewModel() {
@@ -52,14 +56,43 @@ class ChallengesViewModel @Inject constructor(
             _uiState.value = _uiState.value.copy(isLoading = true)
             
             try {
-                getCurrentUserUseCase().collect { user ->
+                getCurrentUserUseCase().collectLatest { user ->
                     user?.let { currentUser ->
                         currentUserId = currentUser.id
+                        _uiState.value = _uiState.value.copy(currentUserId = currentUser.id)
                         
-                        getActiveChallengesUseCase(currentUser.id).collect { challenges ->
+                        // Используем realtime-наблюдение за челленджами
+                        challengeRepository.observeChallengesForUser(currentUser.id).collectLatest { challenges ->
+                            Log.d(TAG, "Received ${challenges.size} challenges for user ${currentUser.id}")
+                            challenges.forEach { c ->
+                                Log.d(TAG, "Challenge: ${c.title}, status=${c.status}, participants=${c.participants}, acceptedParticipants=${c.acceptedParticipants}, createdBy=${c.createdBy}")
+                            }
+                            
+                            // Приглашения - челленджи, где пользователь в participants, но не в acceptedParticipants
+                            // Включаем и PENDING и ACTIVE статусы
+                            val pendingInvitations = challenges.filter { challenge ->
+                                challenge.participants.contains(currentUser.id) &&
+                                !challenge.acceptedParticipants.contains(currentUser.id) &&
+                                challenge.createdBy != currentUser.id && // Создатель автоматически принят
+                                (challenge.status == ChallengeStatus.ACTIVE || challenge.status == ChallengeStatus.PENDING)
+                            }
+                            Log.d(TAG, "Pending invitations: ${pendingInvitations.size}")
+                            
+                            // Активные - челленджи, где пользователь принял приглашение или является создателем
+                            val acceptedChallenges = challenges.filter { challenge ->
+                                (challenge.acceptedParticipants.contains(currentUser.id) || 
+                                 challenge.createdBy == currentUser.id) &&
+                                (challenge.status == ChallengeStatus.ACTIVE || challenge.status == ChallengeStatus.PENDING)
+                            }
+                            
+                            val endingSoon = acceptedChallenges.filter { it.getDaysRemaining() <= ENDING_SOON_DAYS }
+                            val completed = challenges.filter { it.status == ChallengeStatus.COMPLETED }
+                            
                             _uiState.value = _uiState.value.copy(
-                                activeChallenges = challenges.filter { it.status == ChallengeStatus.ACTIVE },
-                                endingSoonChallenges = challenges.filter { it.status == ChallengeStatus.ACTIVE }, // Временно используем ACTIVE
+                                pendingInvitations = pendingInvitations,
+                                activeChallenges = acceptedChallenges,
+                                endingSoonChallenges = endingSoon,
+                                completedChallenges = completed,
                                 isLoading = false
                             )
                         }
@@ -152,5 +185,39 @@ class ChallengesViewModel @Inject constructor(
 
     fun clearError() {
         _uiState.value = _uiState.value.copy(errorMessage = null)
+    }
+
+    fun acceptChallengeInvitation(challengeId: String) {
+        val userId = currentUserId ?: return
+        
+        viewModelScope.launch {
+            _uiState.value = _uiState.value.copy(isAcceptingInvitation = true)
+            try {
+                challengeRepository.acceptChallengeInvitation(challengeId, userId)
+                _uiState.value = _uiState.value.copy(isAcceptingInvitation = false)
+            } catch (e: Exception) {
+                _uiState.value = _uiState.value.copy(
+                    isAcceptingInvitation = false,
+                    errorMessage = "Ошибка принятия приглашения: ${e.message}"
+                )
+            }
+        }
+    }
+
+    fun declineChallengeInvitation(challengeId: String) {
+        val userId = currentUserId ?: return
+        
+        viewModelScope.launch {
+            _uiState.value = _uiState.value.copy(isAcceptingInvitation = true)
+            try {
+                challengeRepository.declineChallengeInvitation(challengeId, userId)
+                _uiState.value = _uiState.value.copy(isAcceptingInvitation = false)
+            } catch (e: Exception) {
+                _uiState.value = _uiState.value.copy(
+                    isAcceptingInvitation = false,
+                    errorMessage = "Ошибка отклонения приглашения: ${e.message}"
+                )
+            }
+        }
     }
 }

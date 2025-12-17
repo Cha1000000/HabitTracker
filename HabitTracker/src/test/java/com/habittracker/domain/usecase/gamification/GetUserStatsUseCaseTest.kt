@@ -103,8 +103,6 @@ class GetUserStatsUseCaseTest {
                 override suspend fun getUserById(userId: String): User? = User(id = userId, name = "Test", level = 2, points = 150)
                 override suspend fun getUserByEmail(email: String): User? = null
                 override fun getAllUsers(): Flow<List<User>> = flowOf(emptyList())
-                override suspend fun getCurrentUser(): User? = null
-                override suspend fun setCurrentUser(userId: String) {}
                 override suspend fun searchUsersByName(query: String): List<User> = emptyList()
                 override suspend fun updateUserLevel(userId: String, level: Int, points: Int) {}
                 override suspend fun upsertUserRemoteAndLocal(user: User, fcmToken: String?) {}
@@ -161,6 +159,7 @@ class GetUserStatsUseCaseTest {
                 override suspend fun updateChallengeStatus(challengeId: String, status: String) {}
                 override suspend fun getChallengeLeaderboard(challengeId: String): List<Pair<String, Int>> = emptyList()
                 override suspend fun endChallenge(challengeId: String, winnerId: String?) {}
+                override fun observeChallengesForUser(userId: String): Flow<List<com.habittracker.domain.model.Challenge>> = flowOf(emptyList())
             },
             socialRepository = object : SocialRepository {
                 override suspend fun searchUsers(query: String, currentUserId: String): List<User> = emptyList()

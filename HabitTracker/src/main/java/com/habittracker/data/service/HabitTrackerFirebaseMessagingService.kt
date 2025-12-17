@@ -140,8 +140,18 @@ class HabitTrackerFirebaseMessagingService : FirebaseMessagingService() {
             }
         }
         
+        // Типы уведомлений, которые всегда должны показываться (приглашения, запросы дружбы и т.п.)
+        val alwaysShowTypes = listOf(
+            "challenge_invitation",
+            "habit_invitation",
+            "friend_request",
+            "friend_request_accepted"
+        )
+        
         // Показываем уведомление пользователю (только если не на главном экране, или не на экране уведомлений)
-        val shouldShowNotification = !(appStateManager.isHabitsScreenActive() || appStateManager.isNotificationsScreenActive())
+        // Исключение: важные уведомления (приглашения) показываем всегда
+        val shouldShowNotification = notificationType in alwaysShowTypes ||
+            !(appStateManager.isHabitsScreenActive() || appStateManager.isNotificationsScreenActive())
         
         if (shouldShowNotification) {
             val titleToShow = data["title"] ?: notification?.title ?: "HabitTracker"
@@ -151,9 +161,9 @@ class HabitTrackerFirebaseMessagingService : FirebaseMessagingService() {
                 body = bodyToShow,
                 data = data
             )
-            Log.d(TAG, "Notification shown: app not on HabitsScreen")
+            Log.d(TAG, "Notification shown: type=$notificationType, alwaysShow=${notificationType in alwaysShowTypes}")
         } else {
-            Log.d(TAG, "Notification suppressed: HabitsScreen is active")
+            Log.d(TAG, "Notification suppressed: HabitsScreen is active, type=$notificationType")
         }
         
         // Сохраняем уведомление в базу данных для отображения на экране уведомлений
@@ -161,7 +171,8 @@ class HabitTrackerFirebaseMessagingService : FirebaseMessagingService() {
         if (recipientUserId != null && notificationType in listOf(
                 "group_habit_completed",
                 "habit_invitation_accepted",
-                "new_participant"
+                "new_participant",
+                "challenge_invitation"
             )) {
             serviceScope.launch {
                 try {
@@ -251,6 +262,9 @@ class HabitTrackerFirebaseMessagingService : FirebaseMessagingService() {
             }
             "habit_invitation" -> {
                 notificationBuilder.setColor(getColor(R.color.secondary))
+            }
+            "challenge_invitation" -> {
+                notificationBuilder.setColor(getColor(R.color.primary))
             }
         }
 
@@ -343,6 +357,9 @@ class HabitTrackerFirebaseMessagingService : FirebaseMessagingService() {
             "habit_invitation" -> {
                 intent.putExtra("navigate_to", "habit_invitations")
             }
+            "challenge_invitation" -> {
+                intent.putExtra("navigate_to", "challenge_invitations")
+            }
             "habit_invitation_accepted" -> {
                 val habitId = data["habit_id"]
                 if (habitId != null) {
@@ -371,25 +388,73 @@ class HabitTrackerFirebaseMessagingService : FirebaseMessagingService() {
      * Сохраняет уведомление в базу данных
      */
     private fun saveGroupHabitNotification(data: Map<String, String>, notificationType: String) {
-        val habitId = data["habit_id"] ?: data["habitId"] ?: return
+        // Для челленджей habitId может отсутствовать
+        val habitId = data["habit_id"] ?: data["habitId"]
+        val challengeId = data["challenge_id"] ?: data["challengeId"]
         
         // Определяем тип и данные уведомления
-        val (type) = when (notificationType) {
+        val (type, entityId) = when (notificationType) {
             "group_habit_completed" -> {
+                if (habitId == null) return
                 val name = data["participant_name"] ?: "Участник"
-                Triple("PARTICIPANT_COMPLETED", name, data["body"] ?: "$name выполнил привычку!")
+                Triple("PARTICIPANT_COMPLETED", habitId, data["body"] ?: "$name выполнил привычку!")
             }
             "habit_invitation_accepted" -> {
+                if (habitId == null) return
                 val name = data["acceptedByName"] ?: "Пользователь"
-                Triple("INVITATION_ACCEPTED", name, data["body"] ?: "$name принял ваше приглашение")
+                Triple("INVITATION_ACCEPTED", habitId, data["body"] ?: "$name принял ваше приглашение")
             }
             "new_participant" -> {
+                if (habitId == null) return
                 val name = data["participant_name"] ?: "Пользователь"
-                Triple("FRIEND_JOINED", name, data["body"] ?: "$name присоединился к привычке")
+                Triple("FRIEND_JOINED", habitId, data["body"] ?: "$name присоединился к привычке")
+            }
+            "challenge_invitation" -> {
+                val challengeTitle = data["challengeTitle"] ?: "Челлендж"
+                val id = challengeId ?: "unknown"
+                Triple("CHALLENGE_INVITATION", id, data["body"] ?: "Вас пригласили в челлендж '$challengeTitle'")
             }
             else -> return
         }
 
-        Log.d(TAG, "Push-уведомление получено: type=$type, habitId=$habitId (синхронизация через Firestore)")
+        Log.d(TAG, "Push-уведомление получено: type=$type, entityId=$entityId (синхронизация через Firestore)")
+        
+        // Сохраняем уведомление в базу данных
+        if (notificationType == "challenge_invitation") {
+            saveChallengeNotificationToDb(data, type)
+        }
+    }
+    
+    /**
+     * Сохраняет уведомление о челлендже в базу данных
+     */
+    private fun saveChallengeNotificationToDb(data: Map<String, String>, type: String) {
+        val recipientUserId = data["recipientUserId"] ?: return
+        val body = data["body"] ?: ""
+        val challengeTitle = data["challengeTitle"] ?: ""
+        val habitTitle = data["habitTitle"] ?: ""
+        
+        serviceScope.launch {
+            try {
+                val groupHabitNotificationDao = HabitTrackerDatabase.getDatabase(applicationContext).groupHabitNotificationDao()
+                val notification = com.habittracker.data.local.entity.GroupHabitNotificationEntity(
+                    id = java.util.UUID.randomUUID().toString(),
+                    userId = recipientUserId,
+                    habitId = "challenge", // Используем маркер для челленджей
+                    type = type,
+                    participantId = "",
+                    participantName = "",
+                    habitTitle = "$challengeTitle ($habitTitle)",
+                    message = body,
+                    isRead = false,
+                    readAt = null,
+                    createdAt = System.currentTimeMillis()
+                )
+                groupHabitNotificationDao.insertNotification(notification)
+                Log.d(TAG, "Уведомление о челлендже сохранено в базу: $type")
+            } catch (e: Exception) {
+                Log.e(TAG, "Ошибка сохранения уведомления о челлендже", e)
+            }
+        }
     }
 }

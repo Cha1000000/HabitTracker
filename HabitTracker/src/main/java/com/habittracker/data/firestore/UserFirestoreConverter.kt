@@ -6,6 +6,7 @@ import kotlinx.datetime.Clock
 import kotlinx.datetime.Instant.Companion.fromEpochMilliseconds
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.TimeZone
+import kotlinx.datetime.atStartOfDayIn
 import kotlinx.datetime.toLocalDateTime
 
 /**
@@ -36,7 +37,7 @@ object UserFirestoreConverter {
             "longestStreak" to user.longestStreak,
             "friendsCount" to user.friendsCount,
             "createdAt" to user.createdAt.toString(), // LocalDate as ISO string
-            "lastActiveAt" to user.lastActiveAt.toString(), // LocalDate as ISO string
+            "lastActiveAt" to user.lastActiveAt, // Long timestamp для точного онлайн-статуса
             "timezone" to (user.timezone ?: "")
         )
         user.avatarThumbnailUrl?.takeIf { it.isNotBlank() }?.let { thumb ->
@@ -77,7 +78,7 @@ object UserFirestoreConverter {
                 friendsCount = extractInt(data, "friendsCount") ?: 0,
                 fcmToken = resolvedToken,
                 createdAt = extractDate(data, "createdAt") ?: Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault()).date,
-                lastActiveAt = extractDate(data, "lastActiveAt") ?: Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault()).date,
+                lastActiveAt = extractTimestamp(data, "lastActiveAt") ?: Clock.System.now().toEpochMilliseconds(),
                 timezone = extractString(data, "timezone")
             )
         } catch (e: Exception) {
@@ -126,6 +127,31 @@ object UserFirestoreConverter {
         }
     }
     
+    /**
+     * Извлекает timestamp (Long) с поддержкой различных форматов:
+     * - Long (прямой timestamp)
+     * - Number (конвертируем в Long)
+     * - String (ISO дата - конвертируем в timestamp начала дня)
+     */
+    private fun extractTimestamp(data: Map<String, Any>, key: String): Long? {
+        return when (val value = data[key]) {
+            is Long -> value
+            is Number -> value.toLong()
+            is String -> {
+                // Пробуем распарсить как ISO дату и конвертировать в timestamp
+                try {
+                    LocalDate.parse(value)
+                        .atStartOfDayIn(TimeZone.currentSystemDefault())
+                        .toEpochMilliseconds()
+                } catch (_: Exception) {
+                    value.toLongOrNull()
+                }
+            }
+            null -> null
+            else -> null
+        }
+    }
+
     /**
      * Извлекает LocalDate с поддержкой различных форматов:
      * - String (ISO формат: "2025-10-11")

@@ -1,5 +1,6 @@
 package com.habittracker.presentation.viewmodel
 
+import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.habittracker.domain.model.Challenge
@@ -46,21 +47,25 @@ class CreateChallengeViewModel @Inject constructor(
                 getCurrentUserUseCase().collect { user ->
                     user?.let { currentUser ->
                         currentUserId = currentUser.id
+                        _uiState.value = _uiState.value.copy(isLoading = false)
                         
-                        // Загружаем привычки пользователя
-                        getHabitsUseCase(currentUser.id).collect { habits ->
-                            _uiState.value = _uiState.value.copy(
-                                availableHabits = habits,
-                                isLoading = false
-                            )
+                        // Загружаем привычки пользователя в отдельной корутине
+                        launch {
+                            getHabitsUseCase(currentUser.id).collect { habits ->
+                                _uiState.value = _uiState.value.copy(
+                                    availableHabits = habits
+                                )
+                            }
                         }
                         
-                        // Загружаем друзей
-                        getFriendsUseCase(currentUser.id).collect { friendships ->
-                            val friends = friendships.mapNotNull { it.getOtherUser(currentUser.id) }
-                            _uiState.value = _uiState.value.copy(
-                                availableFriends = friends
-                            )
+                        // Загружаем друзей в отдельной корутине
+                        launch {
+                            getFriendsUseCase(currentUser.id).collect { friendships ->
+                                val friends = friendships.mapNotNull { it.getOtherUser(currentUser.id) }
+                                _uiState.value = _uiState.value.copy(
+                                    availableFriends = friends
+                                )
+                            }
                         }
                     }
                 }
@@ -161,41 +166,56 @@ class CreateChallengeViewModel @Inject constructor(
 
     fun createChallenge(onSuccess: (Challenge) -> Unit) {
         val state = _uiState.value
-        val userId = currentUserId ?: return
+        val userId = currentUserId
+        
+        Log.d("CreateChallengeVM", "createChallenge called, userId=$userId")
+        
+        if (userId == null) {
+            Log.e("CreateChallengeVM", "userId is null, cannot create challenge")
+            _uiState.value = state.copy(errorMessage = "Пользователь не авторизован")
+            return
+        }
 
         // Валидация
         if (state.title.isBlank()) {
+            Log.d("CreateChallengeVM", "Validation failed: title is blank")
             _uiState.value = state.copy(errorMessage = "Введите название челленджа")
             return
         }
 
         if (state.selectedHabit == null) {
+            Log.d("CreateChallengeVM", "Validation failed: no habit selected")
             _uiState.value = state.copy(errorMessage = "Выберите привычку")
             return
         }
 
         if (state.selectedParticipants.isEmpty()) {
+            Log.d("CreateChallengeVM", "Validation failed: no participants selected")
             _uiState.value = state.copy(errorMessage = "Выберите хотя бы одного участника")
             return
         }
 
         if (state.startDate >= state.endDate) {
+            Log.d("CreateChallengeVM", "Validation failed: startDate >= endDate")
             _uiState.value = state.copy(errorMessage = "Дата окончания должна быть позже даты начала")
             return
         }
 
         val targetValue = state.targetValue.toIntOrNull()
         if (targetValue == null || targetValue <= 0) {
+            Log.d("CreateChallengeVM", "Validation failed: invalid targetValue=${state.targetValue}")
             _uiState.value = state.copy(errorMessage = "Введите корректное целевое значение")
             return
         }
 
         val allowMissedDays = state.allowMissedDays.toIntOrNull()
         if (allowMissedDays == null || allowMissedDays < 0) {
+            Log.d("CreateChallengeVM", "Validation failed: invalid allowMissedDays=${state.allowMissedDays}")
             _uiState.value = state.copy(errorMessage = "Введите корректное количество пропущенных дней")
             return
         }
 
+        Log.d("CreateChallengeVM", "Validation passed, creating challenge...")
         _uiState.value = state.copy(isCreating = true, errorMessage = null)
 
         viewModelScope.launch {
@@ -207,6 +227,8 @@ class CreateChallengeViewModel @Inject constructor(
                     requireConsecutive = state.requireConsecutive
                 )
 
+                Log.d("CreateChallengeVM", "Calling createChallengeUseCase with habitId=${state.selectedHabit.id}, participants=${state.selectedParticipants.map { it.id }}")
+                
                 val result = createChallengeUseCase(
                     habitId = state.selectedHabit.id,
                     title = state.title,
@@ -219,16 +241,23 @@ class CreateChallengeViewModel @Inject constructor(
                     reward = state.reward
                 )
 
+                Log.d("CreateChallengeVM", "createChallengeUseCase result: isSuccess=${result.isSuccess}")
+
                 if (result.isSuccess) {
                     val challenge = result.getOrNull()!!
+                    Log.d("CreateChallengeVM", "Challenge created successfully: id=${challenge.id}")
+                    _uiState.value = _uiState.value.copy(isCreating = false)
                     onSuccess(challenge)
                 } else {
+                    val error = result.exceptionOrNull()?.message ?: "Ошибка создания челленджа"
+                    Log.e("CreateChallengeVM", "Challenge creation failed: $error")
                     _uiState.value = _uiState.value.copy(
                         isCreating = false,
-                        errorMessage = result.exceptionOrNull()?.message ?: "Ошибка создания челленджа"
+                        errorMessage = error
                     )
                 }
             } catch (e: Exception) {
+                Log.e("CreateChallengeVM", "Exception during challenge creation", e)
                 _uiState.value = _uiState.value.copy(
                     isCreating = false,
                     errorMessage = "Ошибка: ${e.message}"

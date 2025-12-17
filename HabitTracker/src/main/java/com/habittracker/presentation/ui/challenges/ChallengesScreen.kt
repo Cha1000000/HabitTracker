@@ -1,16 +1,45 @@
 package com.habittracker.presentation.ui.challenges
 
 import androidx.compose.foundation.isSystemInDarkTheme
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Email
 import androidx.compose.material.icons.filled.EmojiEvents
 import androidx.compose.material.icons.filled.Group
 import androidx.compose.material.icons.filled.Schedule
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.material3.Button
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Tab
+import androidx.compose.material3.TabRow
+import androidx.compose.material3.TabRowDefaults
+import androidx.compose.material3.TabRowDefaults.tabIndicatorOffset
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -21,9 +50,9 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.habittracker.R
-import com.habittracker.presentation.ui.habits.components.TahoeGradientBackground
-import com.habittracker.presentation.ui.habits.components.ConfirmDialog
 import com.habittracker.presentation.state.ChallengeTab
+import com.habittracker.presentation.ui.habits.components.ConfirmDialog
+import com.habittracker.presentation.ui.habits.components.TahoeGradientBackground
 import com.habittracker.presentation.viewmodel.ChallengesViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -31,10 +60,25 @@ import com.habittracker.presentation.viewmodel.ChallengesViewModel
 fun ChallengesScreen(
     onNavigateToCreateChallenge: () -> Unit,
     onNavigateToChallengeDetails: (String) -> Unit,
+    initialTab: String? = null,
     viewModel: ChallengesViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val isDarkTheme = isSystemInDarkTheme()
+    
+    // Устанавливаем начальную вкладку при первом запуске
+    LaunchedEffect(initialTab) {
+        initialTab?.let { tab ->
+            val challengeTab = when (tab.lowercase()) {
+                "invitations" -> ChallengeTab.INVITATIONS
+                "active" -> ChallengeTab.ACTIVE
+                "ending_soon" -> ChallengeTab.ENDING_SOON
+                "completed" -> ChallengeTab.COMPLETED
+                else -> null
+            }
+            challengeTab?.let { viewModel.onTabSelected(it) }
+        }
+    }
 
     TahoeGradientBackground(
         modifier = Modifier.fillMaxSize(),
@@ -78,24 +122,48 @@ fun ChallengesScreen(
         // Tab Row
         TabRow(
             selectedTabIndex = uiState.selectedTab.ordinal,
-            modifier = Modifier.fillMaxWidth()
+            modifier = Modifier.fillMaxWidth(),
+            containerColor = Color.Transparent,
+            contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
+            indicator = { tabPositions ->
+                TabRowDefaults.SecondaryIndicator(
+                    modifier = Modifier.tabIndicatorOffset(tabPositions[uiState.selectedTab.ordinal]),
+                    color = MaterialTheme.colorScheme.primary
+                )
+            }
         ) {
-            ChallengeTab.values().forEach { tab ->
+            ChallengeTab.entries.forEach { tab ->
+                val badgeCount = if (tab == ChallengeTab.INVITATIONS) uiState.pendingInvitations.size else 0
                 Tab(
                     selected = uiState.selectedTab == tab,
                     onClick = { viewModel.onTabSelected(tab) },
                     text = {
-                        Text(
-                            text = when (tab) {
-                                ChallengeTab.ACTIVE -> stringResource(R.string.active_challenges)
-                                ChallengeTab.ENDING_SOON -> stringResource(R.string.ending_soon)
-                                ChallengeTab.COMPLETED -> stringResource(R.string.completed_challenges)
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Text(
+                                text = when (tab) {
+                                    ChallengeTab.INVITATIONS -> "Приглашения"
+                                    ChallengeTab.ACTIVE -> stringResource(R.string.active_challenges)
+                                    ChallengeTab.ENDING_SOON -> stringResource(R.string.ending_soon)
+                                    ChallengeTab.COMPLETED -> stringResource(R.string.completed_challenges)
+                                },
+                                fontWeight = if (uiState.selectedTab == tab) FontWeight.Bold else FontWeight.Normal
+                            )
+                            if (badgeCount > 0) {
+                                Spacer(modifier = Modifier.width(4.dp))
+                                Text(
+                                    text = "$badgeCount",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = MaterialTheme.colorScheme.onError,
+                                    modifier = Modifier
+                                        .padding(horizontal = 6.dp, vertical = 2.dp)
+                                )
                             }
-                        )
+                        }
                     },
                     icon = {
                         Icon(
                             imageVector = when (tab) {
+                                ChallengeTab.INVITATIONS -> Icons.Default.Email
                                 ChallengeTab.ACTIVE -> Icons.Default.Group
                                 ChallengeTab.ENDING_SOON -> Icons.Default.Schedule
                                 ChallengeTab.COMPLETED -> Icons.Default.EmojiEvents
@@ -132,9 +200,10 @@ fun ChallengesScreen(
                 }
                 else -> {
                     val challenges = when (uiState.selectedTab) {
+                        ChallengeTab.INVITATIONS -> uiState.pendingInvitations
                         ChallengeTab.ACTIVE -> uiState.activeChallenges
                         ChallengeTab.ENDING_SOON -> uiState.endingSoonChallenges
-                        ChallengeTab.COMPLETED -> emptyList() // TODO: Implement completed challenges
+                        ChallengeTab.COMPLETED -> uiState.completedChallenges
                     }
 
                     if (challenges.isEmpty()) {
@@ -149,12 +218,22 @@ fun ChallengesScreen(
                             modifier = Modifier.fillMaxSize()
                         ) {
                             items(challenges) { challenge ->
-                                ChallengeCard(
-                                    challenge = challenge,
-                                    onChallengeClick = { onNavigateToChallengeDetails(challenge.id) },
-                                    onJoinClick = { viewModel.onJoinChallengeClick(challenge.id) },
-                                    onLeaveClick = { viewModel.onLeaveChallengeClick(challenge.id) }
-                                )
+                                if (uiState.selectedTab == ChallengeTab.INVITATIONS) {
+                                    ChallengeInvitationCard(
+                                        challenge = challenge,
+                                        onAccept = { viewModel.acceptChallengeInvitation(challenge.id) },
+                                        onDecline = { viewModel.declineChallengeInvitation(challenge.id) },
+                                        onChallengeClick = { onNavigateToChallengeDetails(challenge.id) }
+                                    )
+                                } else {
+                                    ChallengeCard(
+                                        challenge = challenge,
+                                        currentUserId = uiState.currentUserId,
+                                        onChallengeClick = { onNavigateToChallengeDetails(challenge.id) },
+                                        onJoinClick = { viewModel.onJoinChallengeClick(challenge.id) },
+                                        onLeaveClick = { viewModel.onLeaveChallengeClick(challenge.id) }
+                                    )
+                                }
                             }
                         }
                     }
@@ -229,6 +308,7 @@ private fun EmptyState(
     ) {
         Icon(
             imageVector = when (tab) {
+                ChallengeTab.INVITATIONS -> Icons.Default.Email
                 ChallengeTab.ACTIVE -> Icons.Default.Group
                 ChallengeTab.ENDING_SOON -> Icons.Default.Schedule
                 ChallengeTab.COMPLETED -> Icons.Default.EmojiEvents
@@ -242,6 +322,7 @@ private fun EmptyState(
         
         Text(
             text = when (tab) {
+                ChallengeTab.INVITATIONS -> "Нет приглашений"
                 ChallengeTab.ACTIVE -> stringResource(R.string.no_active_challenges)
                 ChallengeTab.ENDING_SOON -> stringResource(R.string.no_ending_soon_challenges)
                 ChallengeTab.COMPLETED -> stringResource(R.string.no_completed_challenges)
@@ -255,6 +336,7 @@ private fun EmptyState(
         
         Text(
             text = when (tab) {
+                ChallengeTab.INVITATIONS -> "Когда друзья пригласят вас в челлендж, приглашения появятся здесь"
                 ChallengeTab.ACTIVE -> stringResource(R.string.no_active_challenges_description)
                 ChallengeTab.ENDING_SOON -> stringResource(R.string.no_ending_soon_challenges_description)
                 ChallengeTab.COMPLETED -> stringResource(R.string.no_completed_challenges_description)
@@ -275,6 +357,72 @@ private fun EmptyState(
                 )
                 Spacer(modifier = Modifier.width(8.dp))
                 Text(stringResource(R.string.create_first_challenge))
+            }
+        }
+    }
+}
+
+@Composable
+private fun ChallengeInvitationCard(
+    challenge: com.habittracker.domain.model.Challenge,
+    onAccept: () -> Unit,
+    onDecline: () -> Unit,
+    onChallengeClick: () -> Unit
+) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 4.dp),
+        onClick = onChallengeClick,
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.7f)
+        )
+    ) {
+        Column(
+            modifier = Modifier.padding(16.dp)
+        ) {
+            Text(
+                text = challenge.title,
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold
+            )
+            
+            Spacer(modifier = Modifier.height(4.dp))
+            
+            Text(
+                text = challenge.description,
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                maxLines = 2
+            )
+            
+            Spacer(modifier = Modifier.height(8.dp))
+            
+            Text(
+                text = "Награда: ${challenge.reward.ifBlank { "Не указана" }}",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.primary
+            )
+            
+            Spacer(modifier = Modifier.height(12.dp))
+            
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                Button(
+                    onClick = onAccept,
+                    modifier = Modifier.weight(1f)
+                ) {
+                    Text("Принять")
+                }
+                
+                TextButton(
+                    onClick = onDecline,
+                    modifier = Modifier.weight(1f)
+                ) {
+                    Text("Отклонить")
+                }
             }
         }
     }

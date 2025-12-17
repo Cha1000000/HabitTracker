@@ -4,7 +4,6 @@ import androidx.room.Dao
 import androidx.room.Insert
 import androidx.room.OnConflictStrategy
 import androidx.room.Query
-import androidx.room.Update
 import com.habittracker.data.local.entity.SyncOutboxEntity
 import kotlinx.coroutines.flow.Flow
 
@@ -27,4 +26,7 @@ interface SyncOutboxDao {
 
     @Query("SELECT COUNT(*) FROM sync_outbox WHERE state = 'PENDING'")
     fun pendingCountFlow(): Flow<Int>
+
+    @Query("SELECT COUNT(*) FROM sync_outbox WHERE entityType = :entityType AND entityId = :entityId AND state IN ('PENDING', 'IN_PROGRESS')")
+    suspend fun hasPendingOperation(entityType: String, entityId: String): Int
 }

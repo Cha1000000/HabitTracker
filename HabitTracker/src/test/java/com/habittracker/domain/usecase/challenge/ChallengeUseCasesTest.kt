@@ -87,6 +87,8 @@ class ChallengeUseCasesTest {
         override suspend fun updateChallengeStatus(challengeId: String, status: String) { /* not used */ }
         override suspend fun getChallengeLeaderboard(challengeId: String): List<Pair<String, Int>> = emptyList()
         override suspend fun endChallenge(challengeId: String, winnerId: String?) { /* not used */ }
+        
+        override fun observeChallengesForUser(userId: String): Flow<List<Challenge>> = allFlow.asStateFlow()
     }
 
     private class FakeHabitRepository : HabitRepository {

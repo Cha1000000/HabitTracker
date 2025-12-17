@@ -116,6 +116,7 @@ class CreateChallengeUseCase @Inject constructor(
                 val creatorUser = socialRepository.getUserById(createdBy)
                 participantIds.forEach { participantId ->
                     if (participantId != createdBy) {
+                        android.util.Log.d("CreateChallengeUseCase", "Sending challenge invitation to $participantId")
                         socialRepository.sendChallengeInvitationNotification(
                             participantId,
                             creatorUser?.name ?: "Пользователь",
@@ -124,8 +125,8 @@ class CreateChallengeUseCase @Inject constructor(
                         )
                     }
                 }
-            } catch (_: Exception) {
-                // Игнорируем ошибки уведомлений
+            } catch (e: Exception) {
+                android.util.Log.e("CreateChallengeUseCase", "Error sending challenge notifications", e)
             }
             
             Result.success(challenge)

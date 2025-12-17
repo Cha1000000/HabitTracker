@@ -76,7 +76,7 @@ class NotificationHelper @Inject constructor(
         )
 
         val notification = NotificationCompat.Builder(context, HABIT_REMINDER_CHANNEL_ID)
-            .setSmallIcon(R.drawable.ic_notification) // TODO: Добавить иконку
+            .setSmallIcon(R.drawable.ic_notification)
             .setContentTitle("$habitIcon Время для привычки!")
             .setContentText(habitTitle)
             .setStyle(

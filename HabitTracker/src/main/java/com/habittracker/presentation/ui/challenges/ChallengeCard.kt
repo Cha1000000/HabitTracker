@@ -31,6 +31,7 @@ import kotlinx.datetime.todayIn
 @Composable
 fun ChallengeCard(
     challenge: Challenge,
+    currentUserId: String?,
     onChallengeClick: () -> Unit,
     onJoinClick: () -> Unit,
     onLeaveClick: () -> Unit,
@@ -192,17 +193,30 @@ fun ChallengeCard(
                 ChallengeTypeChip(type = challenge.rules.type)
             }
 
-            // Action buttons (if needed)
-            if (challenge.status == ChallengeStatus.ACTIVE) {
+            // Action buttons based on user participation
+            val isParticipant = currentUserId != null && 
+                (challenge.participants.contains(currentUserId) || challenge.createdBy == currentUserId)
+            val isCreator = currentUserId == challenge.createdBy
+            val canJoin = challenge.status == ChallengeStatus.PENDING && !isParticipant
+            val canLeave = (challenge.status == ChallengeStatus.PENDING || challenge.status == ChallengeStatus.ACTIVE) && 
+                isParticipant && !isCreator
+            
+            if (canJoin || canLeave) {
                 Spacer(modifier = Modifier.height(12.dp))
                 
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.End
                 ) {
-                    // TODO: Add join/leave logic based on current user participation
-                    TextButton(onClick = onLeaveClick) {
-                        Text(stringResource(R.string.leave_challenge))
+                    if (canJoin) {
+                        Button(onClick = onJoinClick) {
+                            Text(stringResource(R.string.join_challenge))
+                        }
+                    }
+                    if (canLeave) {
+                        TextButton(onClick = onLeaveClick) {
+                            Text(stringResource(R.string.leave_challenge))
+                        }
                     }
                 }
             }
@@ -211,7 +225,7 @@ fun ChallengeCard(
 }
 
 @Composable
-private fun ChallengeStatusBadge(
+internal fun ChallengeStatusBadge(
     status: ChallengeStatus,
     type: ChallengeType,
     modifier: Modifier = Modifier

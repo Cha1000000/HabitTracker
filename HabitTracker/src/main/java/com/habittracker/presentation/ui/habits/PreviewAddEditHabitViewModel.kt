@@ -288,10 +288,11 @@ class PreviewAddEditHabitViewModel @Inject constructor(
 
     override fun loadAvailableFriends() {
         val today = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault()).date
+        val now = Clock.System.now().toEpochMilliseconds()
         val friends = listOf(
-            User(id = "friend1", name = "Alice", email = "alice@example.com", avatarUrl = "", level = 1, points = 100, createdAt = today, lastActiveAt = today),
-            User(id = "friend2", name = "Bob", email = "bob@example.com", avatarUrl = "", level = 2, points = 250, createdAt = today, lastActiveAt = today),
-            User(id = "friend3", name = "Charlie", email = "charlie@example.com", avatarUrl = "", level = 3, points = 500, createdAt = today, lastActiveAt = today)
+            User(id = "friend1", name = "Alice", email = "alice@example.com", avatarUrl = "", level = 1, points = 100, createdAt = today, lastActiveAt = now),
+            User(id = "friend2", name = "Bob", email = "bob@example.com", avatarUrl = "", level = 2, points = 250, createdAt = today, lastActiveAt = now),
+            User(id = "friend3", name = "Charlie", email = "charlie@example.com", avatarUrl = "", level = 3, points = 500, createdAt = today, lastActiveAt = now)
         )
         _uiState.update { it.copy(availableFriends = friends) }
     }

@@ -20,6 +20,7 @@ import com.habittracker.domain.repository.HabitEntryRepository
 import com.habittracker.domain.repository.HabitRepository
 import com.habittracker.domain.repository.SocialRepository
 import com.habittracker.domain.repository.UserRepository
+import com.habittracker.domain.usecase.challenge.UpdateChallengeProgressUseCase
 import com.habittracker.domain.usecase.gamification.UpdateUserPointsUseCase
 import com.habittracker.domain.usecase.notification.SendGroupHabitPushNotificationUseCase
 import kotlinx.coroutines.CoroutineScope
@@ -57,6 +58,7 @@ class MarkHabitCompletedUseCaseTest {
     private lateinit var markHabitCompletedUseCase: MarkHabitCompletedUseCase
     private lateinit var syncManager: SyncManager
     private lateinit var syncWorkScheduler: SyncWorkScheduler
+    private lateinit var updateChallengeProgressUseCase: UpdateChallengeProgressUseCase
 
     private val testHabitId = "habit1"
     private val testUserId = "user1"
@@ -79,6 +81,7 @@ class MarkHabitCompletedUseCaseTest {
         )
         syncManager = mock()
         syncWorkScheduler = mock()
+        updateChallengeProgressUseCase = mock()
     }
 
     private fun setupUseCase(scope: CoroutineScope) {
@@ -86,6 +89,7 @@ class MarkHabitCompletedUseCaseTest {
             habitEntryRepository = habitEntryRepository,
             updateUserPointsUseCase = updateUserPointsUseCase,
             sendGroupHabitPushNotificationUseCase = sendGroupHabitPushNotificationUseCase,
+            updateChallengeProgressUseCase = updateChallengeProgressUseCase,
             coroutineScope = scope,
             syncManager = syncManager,
             syncWorkScheduler = syncWorkScheduler
@@ -305,10 +309,6 @@ class FakeUserRepository : UserRepository {
     override suspend fun getUserByEmail(email: String): User? = users.values.find { it.email == email }
 
     override fun getAllUsers(): Flow<List<User>> = flowOf(users.values.toList())
-
-    override suspend fun getCurrentUser(): User? = users.values.firstOrNull()
-
-    override suspend fun setCurrentUser(userId: String) {}
 
     override suspend fun searchUsersByName(query: String): List<User> = emptyList()
 

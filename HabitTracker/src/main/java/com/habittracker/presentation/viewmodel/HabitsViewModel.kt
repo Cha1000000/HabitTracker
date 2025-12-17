@@ -7,6 +7,7 @@ import androidx.lifecycle.viewModelScope
 import com.habittracker.R
 import com.habittracker.domain.model.Habit
 import com.habittracker.domain.repository.AuthRepository
+import com.habittracker.domain.repository.UserRepository
 import com.habittracker.domain.usecase.DeleteHabitUseCase
 import com.habittracker.domain.usecase.EnsureMySettingsForHabitUseCase
 import com.habittracker.domain.usecase.GetHabitCompletionStatusUseCase
@@ -62,6 +63,7 @@ class HabitsViewModel @Inject constructor(
     private val markHabitIncompleteUseCase: MarkHabitIncompleteUseCase,
     private val getHabitCompletionStatusUseCase: GetHabitCompletionStatusUseCase,
     private val authRepository: AuthRepository,
+    private val userRepository: UserRepository,
     private val deleteHabitUseCase: DeleteHabitUseCase,
     private val ensureMySettingsForHabitUseCase: EnsureMySettingsForHabitUseCase,
     private val scheduleHabitReminderUseCase: ScheduleHabitReminderUseCase,
@@ -108,9 +110,23 @@ class HabitsViewModel @Inject constructor(
             )
             loadHabitsForDate(userId, today)
             loadWeekCompletionData(userId, weekStart)
+            loadCurrentUserAvatar(userId)
         } else {
             Log.w(TAG, "⚠️ [init] No user ID found, cannot load habits")
         }
+    }
+    
+    private fun loadCurrentUserAvatar(userId: String) {
+        userRepository.observeUser(userId)
+            .onEach { user ->
+                _uiState.value = _uiState.value.copy(
+                    currentUserAvatarUrl = user?.avatarThumbnailUrl ?: user?.avatarUrl
+                )
+            }
+            .catch { e ->
+                Log.w(TAG, "Failed to load user avatar: ${e.message}")
+            }
+            .launchIn(viewModelScope)
     }
 
     /**

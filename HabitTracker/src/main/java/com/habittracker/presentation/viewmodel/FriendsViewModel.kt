@@ -2,6 +2,7 @@
 
 package com.habittracker.presentation.viewmodel
 
+import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.habittracker.domain.model.User
@@ -17,6 +18,7 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
@@ -46,9 +48,15 @@ class FriendsViewModel @Inject constructor(
     
     // Состояние поиска
     private val _isSearching = MutableStateFlow(false)
+    
+    // Job для отмены предыдущего запроса поиска (предотвращает race condition)
+    private var searchJob: Job? = null
 
     // Идентификаторы друзей, для которых идёт операция удаления (для дизейбла UI)
     private val _removingIds = MutableStateFlow<Set<String>>(emptySet())
+    
+    // Сообщение об ошибке для отображения пользователю
+    private val _errorMessage = MutableStateFlow<String?>(null)
 
     init {
         // Получаем текущего пользователя асинхронно
@@ -92,8 +100,8 @@ class FriendsViewModel @Inject constructor(
         )
     }
 
-    val uiState: StateFlow<FriendsUiState> = combine(baseUiState, _removingIds) { state, removing ->
-        state.copy(removingIds = removing)
+    val uiState: StateFlow<FriendsUiState> = combine(baseUiState, _removingIds, _errorMessage) { state, removing, error ->
+        state.copy(removingIds = removing, error = error)
     }.stateIn(
         scope = viewModelScope,
         started = SharingStarted.WhileSubscribed(5000),
@@ -116,7 +124,9 @@ class FriendsViewModel @Inject constructor(
      * 🔎 Поиск пользователей
      */
     private fun searchUsers(query: String) {
-        viewModelScope.launch {
+        // Отменяем предыдущий запрос поиска (предотвращает race condition)
+        searchJob?.cancel()
+        searchJob = viewModelScope.launch {
             _isSearching.value = true
             try {
                 val users = socialRepository.searchUsers(query, _currentUserId.value)
@@ -144,7 +154,8 @@ class FriendsViewModel @Inject constructor(
                     }
                 },
                 onFailure = { error ->
-                    // TODO: Показать ошибку пользователю
+                    Log.e(TAG, "Failed to send friend request", error)
+                    _errorMessage.value = "Не удалось отправить запрос дружбы"
                 }
             )
         }
@@ -160,7 +171,8 @@ class FriendsViewModel @Inject constructor(
                     // Запрос принят - состояние обновится через Flow
                 },
                 onFailure = { error ->
-                    // TODO: Показать ошибку пользователю
+                    Log.e(TAG, "Failed to accept friend request", error)
+                    _errorMessage.value = "Не удалось принять запрос дружбы"
                 }
             )
         }
@@ -176,7 +188,8 @@ class FriendsViewModel @Inject constructor(
                     // Запрос отклонен - состояние обновится через Flow
                 },
                 onFailure = { error ->
-                    // TODO: Показать ошибку пользователю
+                    Log.e(TAG, "Failed to decline friend request", error)
+                    _errorMessage.value = "Не удалось отклонить запрос дружбы"
                 }
             )
         }
@@ -192,7 +205,8 @@ class FriendsViewModel @Inject constructor(
                     // Запрос отменен - состояние обновится через Flow
                 },
                 onFailure = { error ->
-                    // TODO: Показать ошибку пользователю
+                    Log.e(TAG, "Failed to cancel friend request", error)
+                    _errorMessage.value = "Не удалось отменить запрос дружбы"
                 }
             )
         }
@@ -208,7 +222,8 @@ class FriendsViewModel @Inject constructor(
                     // Друг удален - состояние обновится через Flow
                 },
                 onFailure = { error ->
-                    // TODO: Показать ошибку пользователю
+                    Log.e(TAG, "Failed to remove friend", error)
+                    _errorMessage.value = "Не удалось удалить друга"
                 }
             )
         }
@@ -223,19 +238,30 @@ class FriendsViewModel @Inject constructor(
             try {
                 socialRepository.removeFriend(_currentUserId.value, friendId).fold(
                     onSuccess = {
-                        // Опциональный выход из совместных привычек: реализуем отдельно в use case (todo)
+                        // Опциональный выход из совместных привычек: будет реализовано в Этапе D
                         if (leaveGroupHabits) {
-                            // TODO: trigger bulk leave from shared habits with this friend
+                            Log.d(TAG, "Bulk leave from shared habits not yet implemented")
                         }
                     },
-                    onFailure = { _ ->
-                        // Ошибку можно отобразить через отдельный механизм (snackbar/диалог)
+                    onFailure = { error ->
+                        Log.e(TAG, "Failed to remove friend with options", error)
+                        _errorMessage.value = "Не удалось удалить друга"
                     }
                 )
             } finally {
-                _removingIds.value = _removingIds.value - friendId
+                _removingIds.value -= friendId
             }
         }
     }
-}
 
+    /**
+     * Очищает сообщение об ошибке после показа пользователю
+     */
+    fun clearError() {
+        _errorMessage.value = null
+    }
+
+    companion object {
+        private const val TAG = "FriendsViewModel"
+    }
+}

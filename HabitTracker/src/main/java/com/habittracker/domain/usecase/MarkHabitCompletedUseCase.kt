@@ -6,6 +6,7 @@ import com.habittracker.data.sync.SyncWorkScheduler
 import com.habittracker.domain.model.HabitEntry
 import com.habittracker.domain.model.gamification.GamificationEvent
 import com.habittracker.domain.repository.HabitEntryRepository
+import com.habittracker.domain.usecase.challenge.UpdateChallengeProgressUseCase
 import com.habittracker.domain.usecase.gamification.UpdateUserPointsUseCase
 import com.habittracker.domain.usecase.notification.SendGroupHabitPushNotificationUseCase
 import com.habittracker.domain.util.HabitEntryIds
@@ -27,6 +28,7 @@ class MarkHabitCompletedUseCase @Inject constructor(
     private val habitEntryRepository: HabitEntryRepository,
     private val updateUserPointsUseCase: UpdateUserPointsUseCase,
     private val sendGroupHabitPushNotificationUseCase: SendGroupHabitPushNotificationUseCase,
+    private val updateChallengeProgressUseCase: UpdateChallengeProgressUseCase,
     private val syncManager: SyncManager,
     private val syncWorkScheduler: SyncWorkScheduler,
     coroutineScope: CoroutineScope,
@@ -99,13 +101,20 @@ class MarkHabitCompletedUseCase @Inject constructor(
                 }
             }
 
-            // 4) Асинхронные побочные эффекты (очки, уведомления)
+            // 4) Асинхронные побочные эффекты (очки, уведомления, челленджи)
             // Начисляем очки только если привычка НЕ была выполнена ранее
             backgroundTasksScope.launch {
                 if (!wasAlreadyCompleted) {
                     updateUserPointsUseCase(userId, GamificationEvent.HabitCompleted)
                 }
                 sendGroupHabitPushNotificationUseCase.invoke(habitId, userId)
+                
+                // Обновляем прогресс челленджей, связанных с этой привычкой
+                try {
+                    updateChallengeProgressUseCase(habitId, userId)
+                } catch (e: Exception) {
+                    Log.w("MarkHabitCompleted", "updateChallengeProgress failed: ${e.message}", e)
+                }
             }
         }
     }

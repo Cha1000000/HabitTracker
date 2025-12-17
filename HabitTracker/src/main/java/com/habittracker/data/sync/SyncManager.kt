@@ -205,6 +205,7 @@ class SyncManager @Inject constructor(
         "habit" -> "habits" to entityId
         "habit_entry" -> "habit_entries" to entityId
         "habit_invitation" -> "habit_invitations" to entityId
+        "challenge" -> "challenges" to entityId
         else -> entityType + "s" to entityId // на всякий случай
     }
 

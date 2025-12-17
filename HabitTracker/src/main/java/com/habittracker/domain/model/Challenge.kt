@@ -6,6 +6,7 @@ import kotlinx.datetime.Clock
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toLocalDateTime
+import kotlinx.serialization.Serializable
 
 @Entity(tableName = "challenges")
 data class Challenge(
@@ -15,7 +16,8 @@ data class Challenge(
     val title: String,
     val description: String = "",
     val createdBy: String, // userId создателя
-    val participants: List<String>, // список userId участников
+    val participants: List<String>, // список userId участников (приглашённых)
+    val acceptedParticipants: List<String> = emptyList(), // список userId участников, принявших приглашение
     val startDate: LocalDate,
     val endDate: LocalDate,
     val rules: ChallengeRules,
@@ -26,6 +28,7 @@ data class Challenge(
     val updatedAt: LocalDate = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault()).date
 )
 
+@Serializable
 data class ChallengeRules(
     val type: ChallengeType = ChallengeType.COMPLETION_RATE,
     val targetValue: Int = 100, // целевое значение (проценты, дни и т.д.)
@@ -33,6 +36,7 @@ data class ChallengeRules(
     val requireConsecutive: Boolean = false // требуется ли последовательность
 )
 
+@Serializable
 enum class ChallengeType {
     COMPLETION_RATE,    // по проценту выполнения
     STREAK,            // по длине серии

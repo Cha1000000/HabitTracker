@@ -15,6 +15,7 @@ fun ChallengeEntity.toDomain(): Challenge = Challenge(
     description = description,
     createdBy = createdBy,
     participants = participants,
+    acceptedParticipants = acceptedParticipants,
     startDate = startDate,
     endDate = endDate,
     rules = Json.decodeFromString<ChallengeRules>(rules),
@@ -25,13 +26,14 @@ fun ChallengeEntity.toDomain(): Challenge = Challenge(
     updatedAt = updatedAt
 )
 
-fun Challenge.toEntity(): ChallengeEntity = ChallengeEntity(
+fun Challenge.toEntity(updatedAtMillis: Long = System.currentTimeMillis()): ChallengeEntity = ChallengeEntity(
     id = id,
     habitId = habitId,
     title = title,
     description = description,
     createdBy = createdBy,
     participants = participants,
+    acceptedParticipants = acceptedParticipants,
     startDate = startDate,
     endDate = endDate,
     rules = Json.encodeToString(rules),
@@ -39,5 +41,6 @@ fun Challenge.toEntity(): ChallengeEntity = ChallengeEntity(
     status = status.name,
     winnerId = winnerId,
     createdAt = createdAt,
-    updatedAt = updatedAt
+    updatedAt = updatedAt,
+    updatedAtMillis = updatedAtMillis
 )

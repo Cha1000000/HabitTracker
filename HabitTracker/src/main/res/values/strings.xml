@@ -50,6 +50,7 @@
     <string name="cd_friends">Друзья</string>
     <string name="cd_stats">Статистика</string>
     <string name="cd_achievements">Достижения</string>
+    <string name="cd_challenges">Челленджи</string>
     <string name="cd_refresh">Обновить</string>
     <string name="cd_habit_icon">Иконка привычки</string>
     <string name="cd_invitation_icon">Иконка приглашения</string>
@@ -589,6 +590,9 @@
     <string name="streak_challenge">Серия</string>
     <string name="total_days">Всего дней</string>
     <string name="first_to_target">Первый к цели</string>
+    
+    <!-- Challenge details -->
+    <string name="challenge_details_title">Детали челленджа</string>
     
     <!-- Create challenge -->
     <string name="create_challenge_title">Создание челленджа</string>

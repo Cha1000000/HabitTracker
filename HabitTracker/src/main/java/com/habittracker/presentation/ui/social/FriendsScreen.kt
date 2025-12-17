@@ -91,6 +91,8 @@ import coil.request.ImageRequest
 import com.habittracker.R
 import com.habittracker.domain.model.FriendRequestWithUsers
 import com.habittracker.domain.model.User
+import com.habittracker.domain.model.getLastActiveText
+import com.habittracker.domain.model.isOnline
 import com.habittracker.presentation.ui.habits.components.GlassmorphicCard
 import com.habittracker.presentation.ui.habits.components.TahoeGradientBackground
 import com.habittracker.presentation.ui.theme.GlassBlack10
@@ -688,21 +690,22 @@ private fun FriendCard(
                     color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
                 )
                 
-                // Статус онлайн
+                // Статус онлайн/оффлайн
+                val isUserOnline = friend.isOnline()
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Box(
                         modifier = Modifier
                             .size(8.dp)
                             .background(
-                                color = Color.Green,
+                                color = if (isUserOnline) Color.Green else Color.Gray,
                                 shape = CircleShape
                             )
                     )
                     Spacer(modifier = Modifier.width(6.dp))
                     Text(
-                        text = stringResource(id = R.string.online),
+                        text = if (isUserOnline) stringResource(id = R.string.online) else friend.getLastActiveText(),
                         style = MaterialTheme.typography.bodySmall,
-                        color = Color.Green
+                        color = if (isUserOnline) Color.Green else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
                     )
                 }
             }

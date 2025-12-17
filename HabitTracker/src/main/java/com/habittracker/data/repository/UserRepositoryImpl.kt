@@ -93,15 +93,6 @@ class UserRepositoryImpl @Inject constructor(
         }
     }
     
-    override suspend fun getCurrentUser(): User? {
-        // TODO: Implement current user logic (SharedPreferences or similar)
-        return null
-    }
-    
-    override suspend fun setCurrentUser(userId: String) {
-        // TODO: Implement current user storage (SharedPreferences or similar)
-    }
-    
     override suspend fun searchUsersByName(query: String): List<User> {
         // Используем getAllUsers и фильтруем локально, пока не добавим метод в DAO
         val allUsers = userDao.getAllUsers()
@@ -216,6 +207,20 @@ class UserRepositoryImpl @Inject constructor(
             Result.success(updated)
         } catch (e: Exception) {
             Result.failure(e)
+        }
+    }
+
+    override suspend fun updateLastActive(userId: String) {
+        val now = System.currentTimeMillis()
+        try {
+            // Обновляем локально
+            userDao.updateLastActive(userId, now)
+            // Обновляем в Firestore
+            firestore.collection("users").document(userId)
+                .update("lastActiveAt", now)
+                .await()
+        } catch (e: Exception) {
+            Log.d("UserRepository", "updateLastActive failed: ${e.message}")
         }
     }
 }

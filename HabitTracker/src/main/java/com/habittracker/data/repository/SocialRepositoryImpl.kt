@@ -7,6 +7,7 @@ import com.habittracker.data.firestore.UserFirestoreConverter
 import com.habittracker.data.local.dao.FriendRequestDao
 import com.habittracker.data.local.dao.FriendshipDao
 import com.habittracker.data.local.dao.HabitInvitationDao
+import com.habittracker.data.local.dao.SyncOutboxDao
 import com.habittracker.data.local.dao.UserDao
 import com.habittracker.data.local.mappers.toDomain
 import com.habittracker.data.local.mappers.toEntity
@@ -70,7 +71,8 @@ class SocialRepositoryImpl @Inject constructor(
     private val habitRepository: HabitRepository,
     private val syncManager: SyncManager,
     private val syncWorkScheduler: SyncWorkScheduler,
-    private val notificationRepository: GroupHabitNotificationRepository
+    private val notificationRepository: GroupHabitNotificationRepository,
+    private val syncOutboxDao: SyncOutboxDao
 ) : SocialRepository {
 
     // Repository-level scope for fire-and-forget background tasks (safe: singleton)
@@ -82,59 +84,77 @@ class SocialRepositoryImpl @Inject constructor(
         return if (token.length > 8) "${token.take(4)}****${token.takeLast(4)}" else "****"
     }
 
+    // Helper to parse timestamp from Firestore (supports both Number and ISO 8601 String)
+    private fun parseTimestamp(value: Any?, fallback: Long = System.currentTimeMillis()): Long {
+        return when (value) {
+            is Number -> value.toLong()
+            is String -> try {
+                // Try parsing as ISO 8601 LocalDateTime (e.g., "2025-12-16T11:05:03")
+                kotlinx.datetime.LocalDateTime.parse(value)
+                    .toInstant(TimeZone.currentSystemDefault())
+                    .toEpochMilliseconds()
+            } catch (e: Exception) {
+                try {
+                    // Try parsing as ISO 8601 LocalDate (e.g., "2025-12-16")
+                    kotlinx.datetime.LocalDate.parse(value)
+                        .atStartOfDayIn(TimeZone.currentSystemDefault())
+                        .toEpochMilliseconds()
+                } catch (e2: Exception) {
+                    fallback
+                }
+            }
+            else -> fallback
+        }
+    }
+
     override suspend fun searchUsers(query: String, currentUserId: String): List<User> {
+        val queryLower = query.lowercase()
+        
+        // Получаем список ID друзей для исключения из результатов
+        val friendIds = try {
+            friendshipDao.getFriendIdsForUser(currentUserId)
+        } catch (e: Exception) {
+            emptyList()
+        }
+        
         return try {
             Log.d("SocialRepository", "🔍 Searching users: query='$query', currentUserId='$currentUserId'")
             
-            // Поиск в Firestore по имени и email
-            val nameResults = firestore.collection("users")
-                .whereGreaterThanOrEqualTo("name", query)
-                .whereLessThanOrEqualTo("name", query + "\uf8ff")
-                .limit(20)
-                .get()
+            // Загружаем всех пользователей и фильтруем локально
+            // (Firestore не поддерживает поиск подстроки в середине строки)
+            val allUsersSnapshot = firestore.collection("users")
+                .limit(200)
+                .get(com.google.firebase.firestore.Source.SERVER)
                 .await()
-            
-            Log.d("SocialRepository", "📝 Name results: ${nameResults.documents.size} documents")
 
-            val emailResults = firestore.collection("users")
-                .whereGreaterThanOrEqualTo("email", query)
-                .whereLessThanOrEqualTo("email", query + "\uf8ff")
-                .limit(20)
-                .get()
-                .await()
-                
-            Log.d("SocialRepository", "📧 Email results: ${emailResults.documents.size} documents")
-
-            val allResults = (nameResults.documents + emailResults.documents)
-                .distinctBy { it.id }
+            val allResults = allUsersSnapshot.documents
                 .mapNotNull { doc ->
                     try {
-                        Log.d("SocialRepository", "🔄 Processing document: id=${doc.id}")
-                        // Используем профессиональный конвертер вместо стандартной десериализации
-                        val user = UserFirestoreConverter.fromFirestore(doc.data ?: emptyMap(), doc.id)
-                        if (user != null) {
-                            Log.d("SocialRepository", "✅ Successfully converted user: id=${user.id}, name=${user.name}, email=${user.email}")
-                        } else {
-                            Log.w("SocialRepository", "⚠️ UserFirestoreConverter returned null for document: id=${doc.id}")
-                        }
-                        user
+                        UserFirestoreConverter.fromFirestore(doc.data ?: emptyMap(), doc.id)
                     } catch (e: Exception) {
-                        Log.e("SocialRepository", "❌ Error mapping user document: ${e.message}")
                         null
                     }
                 }
-                .filter { it.id != currentUserId } // Исключаем текущего пользователя
+                .filter { user ->
+                    user.id != currentUserId &&
+                    user.id !in friendIds &&
+                    (user.name.lowercase().contains(queryLower) || user.email.lowercase().contains(queryLower))
+                }
+                .take(20)
         
-            Log.d("SocialRepository", "🎯 Before filtering: ${allResults.size + (if (allResults.any { it.id == currentUserId }) 1 else 0)} users")
-            Log.d("SocialRepository", "🎯 After filtering (excluding currentUserId=$currentUserId): ${allResults.size} users")
+            Log.d("SocialRepository", "🎯 After filtering: ${allResults.size} users")
             allResults
         } catch (e: Exception) {
             Log.e("SocialRepository", "💥 Firestore search failed: ${e.message}")
             
             // Fallback на локальный поиск
-            val localResults = userDao.searchUsers("%$query%")
+            val localResults = userDao.searchUsers("%$queryLower%")
                 .map { it.toDomain() }
-                .filter { it.id != currentUserId }
+                .filter { user ->
+                    user.id != currentUserId &&
+                    user.id !in friendIds &&
+                    (user.name.lowercase().contains(queryLower) || user.email.lowercase().contains(queryLower))
+                }
                 
             Log.d("SocialRepository", "🗄️ Fallback local results: ${localResults.size} users")
             localResults
@@ -383,18 +403,22 @@ class SocialRepositoryImpl @Inject constructor(
             
             // Важно: сначала сохраняем пользователей, чтобы избежать FOREIGN KEY constraint
             try {
-                val fromUser = searchUsers("", "").find { it.id == friendRequest.fromUserId }
-                val toUser = searchUsers("", "").find { it.id == friendRequest.toUserId }
+                val fromUser = getUserById(friendRequest.fromUserId)
+                val toUser = getUserById(friendRequest.toUserId)
                 
                 if (fromUser != null) {
                     userDao.insertUser(fromUser.toEntity())
+                } else {
+                    Log.w("SocialRepository", "acceptFriendRequest: fromUser not found for id=${friendRequest.fromUserId}")
                 }
                 
                 if (toUser != null) {
                     userDao.insertUser(toUser.toEntity())
+                } else {
+                    Log.w("SocialRepository", "acceptFriendRequest: toUser not found for id=${friendRequest.toUserId}")
                 }
             } catch (e: Exception) {
-                Log.d("SocialRepository", "acceptFriendRequest: optional user upsert failed (non-fatal): ${e.message}")
+                Log.w("SocialRepository", "acceptFriendRequest: user upsert failed: ${e.message}", e)
             }
             
             friendshipDao.insertFriendship(friendship.toEntity())
@@ -818,32 +842,34 @@ class SocialRepositoryImpl @Inject constructor(
             // Накопление ключей из обоих слушателей для reconcile
             var lastKeys1: Set<String> = emptySet()
             var lastKeys2: Set<String> = emptySet()
+            var listener1Received = false
+            var listener2Received = false
             suspend fun reconcileFriends() {
+                // Ждём пока оба listener'а получат хотя бы один snapshot
+                if (!listener1Received || !listener2Received) return
                 val combined = (lastKeys1 + lastKeys2).toSet()
                 try {
                     val local = friendshipDao.getFriendsForUser(userId).first()
                     val toDelete = local.filter { entity ->
                         val key = "${entity.userId1}_${entity.userId2}"
-                        key !in combined
+                        if (key in combined) return@filter false
+                        // Не удаляем, если есть pending операция синхронизации
+                        val hasPending = syncOutboxDao.hasPendingOperation("friendship", key) > 0
+                        !hasPending
                     }
-                    if (toDelete.isNotEmpty()) {
-                        Log.d("SocialRepository", "Friends reconcile: deleting ${toDelete.size} stale friendships for user=$userId")
-                        toDelete.forEach { entity ->
-                            friendshipDao.deleteFriendshipBetweenUsers(entity.userId1, entity.userId2)
-                        }
+                    toDelete.forEach { entity ->
+                        friendshipDao.deleteFriendshipBetweenUsers(entity.userId1, entity.userId2)
                     }
-                } catch (e: Exception) {
-                    Log.w("SocialRepository", "Friends reconcile failed for user=$userId: ${e.message}", e)
-                }
+                } catch (_: Exception) { }
             }
             // Два слушателя: userId как userId1 и как userId2
             val reg1 = firestore.collection("friendships")
                 .whereEqualTo("userId1", userId)
                 .addSnapshotListener { snapshot, error ->
-                    if (error != null) { Log.w("SocialRepository", "Friends listener1 error: ${error.message}", error); return@addSnapshotListener }
+                    if (error != null) return@addSnapshotListener
                     val docs = snapshot?.documents ?: emptyList()
-                    Log.d("SocialRepository", "Friends listener1: userId1=$userId, docs=${docs.size}")
                     scope.launch {
+                        listener1Received = true
                         // Текущий набор ключей из этого снапшота
                         lastKeys1 = docs.mapNotNull { d ->
                             val data = d.data ?: return@mapNotNull null
@@ -875,11 +901,11 @@ class SocialRepositoryImpl @Inject constructor(
                                 }
                                 val status = (data["status"] as? String)?.let { runCatching { FriendshipStatus.valueOf(it.uppercase()) }.getOrNull() } ?: FriendshipStatus.PENDING
                                 val requestedBy = data["requestedBy"] as? String ?: userId1
-                                val requestedAt = (data["requestedAt"] as? Number)?.toLong() ?: System.currentTimeMillis()
-                                val acceptedAt = (data["acceptedAt"] as? Number)?.toLong()
+                                val requestedAt = parseTimestamp(data["requestedAt"])
+                                val acceptedAt = data["acceptedAt"]?.let { parseTimestamp(it) }
                                 val blockedBy = data["blockedBy"] as? String
-                                val blockedAt = (data["blockedAt"] as? Number)?.toLong()
-                                val updatedAt = (data["updatedAt"] as? Number)?.toLong() ?: requestedAt
+                                val blockedAt = data["blockedAt"]?.let { parseTimestamp(it) }
+                                val updatedAt = parseTimestamp(data["updatedAt"], requestedAt)
 
                                 val fs = Friendship(
                                     userId1 = userId1,
@@ -894,7 +920,7 @@ class SocialRepositoryImpl @Inject constructor(
                                 )
                                 friendshipDao.insertFriendship(fs.toEntity())
                             } catch (e: Exception) {
-                                Log.w("SocialRepository", "Friends listener1 mapping error for doc=${doc.id}: ${e.message}", e)
+                                Log.w("SocialRepository", "Friends listener1 mapping error: ${e.message}")
                             }
                         }
                         // Reconcile после обработки снапшота
@@ -905,10 +931,10 @@ class SocialRepositoryImpl @Inject constructor(
             val reg2 = firestore.collection("friendships")
                 .whereEqualTo("userId2", userId)
                 .addSnapshotListener { snapshot, error ->
-                    if (error != null) { Log.w("SocialRepository", "Friends listener2 error: ${error.message}", error); return@addSnapshotListener }
+                    if (error != null) return@addSnapshotListener
                     val docs = snapshot?.documents ?: emptyList()
-                    Log.d("SocialRepository", "Friends listener2: userId2=$userId, docs=${docs.size}")
                     scope.launch {
+                        listener2Received = true
                         // Текущий набор ключей из этого снапшота
                         lastKeys2 = docs.mapNotNull { d ->
                             val data = d.data ?: return@mapNotNull null
@@ -940,11 +966,11 @@ class SocialRepositoryImpl @Inject constructor(
                                 }
                                 val status = (data["status"] as? String)?.let { runCatching { FriendshipStatus.valueOf(it.uppercase()) }.getOrNull() } ?: FriendshipStatus.PENDING
                                 val requestedBy = data["requestedBy"] as? String ?: userId1
-                                val requestedAt = (data["requestedAt"] as? Number)?.toLong() ?: System.currentTimeMillis()
-                                val acceptedAt = (data["acceptedAt"] as? Number)?.toLong()
+                                val requestedAt = parseTimestamp(data["requestedAt"])
+                                val acceptedAt = data["acceptedAt"]?.let { parseTimestamp(it) }
                                 val blockedBy = data["blockedBy"] as? String
-                                val blockedAt = (data["blockedAt"] as? Number)?.toLong()
-                                val updatedAt = (data["updatedAt"] as? Number)?.toLong() ?: requestedAt
+                                val blockedAt = data["blockedAt"]?.let { parseTimestamp(it) }
+                                val updatedAt = parseTimestamp(data["updatedAt"], requestedAt)
 
                                 val fs = Friendship(
                                     userId1 = userId1,
@@ -959,7 +985,7 @@ class SocialRepositoryImpl @Inject constructor(
                                 )
                                 friendshipDao.insertFriendship(fs.toEntity())
                             } catch (e: Exception) {
-                                Log.w("SocialRepository", "Friends listener2 mapping error for doc=${doc.id}: ${e.message}", e)
+                                Log.w("SocialRepository", "Friends listener2 mapping error: ${e.message}")
                             }
                         }
                         // Reconcile после обработки снапшота
@@ -972,11 +998,19 @@ class SocialRepositoryImpl @Inject constructor(
                     val list = friendshipEntities.mapNotNull { friendshipEntity ->
                         val friendship = friendshipEntity.toDomain()
                         try {
-                            val user1 = runBlocking { getUserById(friendship.userId1) }
-                            val user2 = runBlocking { getUserById(friendship.userId2) }
-                            if (user1 != null && user2 != null) FriendshipWithUsers(friendship, user1, user2) else null
+                            // Используем Firestore для получения актуальных данных (включая lastActiveAt)
+                            val friendId = if (friendship.userId1 == userId) friendship.userId2 else friendship.userId1
+                            val currentUser = runBlocking { getUserById(userId) }
+                            val friendUser = runBlocking { getUserByIdFromFirestore(friendId) }
+                            if (currentUser != null && friendUser != null) {
+                                // Сохраняем порядок user1/user2 как в friendship
+                                if (friendship.userId1 == userId) {
+                                    FriendshipWithUsers(friendship, currentUser, friendUser)
+                                } else {
+                                    FriendshipWithUsers(friendship, friendUser, currentUser)
+                                }
+                            } else null
                         } catch (e: Exception) {
-                            Log.d("SocialRepository", "Map FriendshipWithUsers failed (non-fatal): ${e.message}")
                             null
                         }
                     }.filter { it.friendship.status == FriendshipStatus.ACCEPTED }

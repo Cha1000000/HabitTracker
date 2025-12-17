@@ -51,7 +51,7 @@ class AuthRepositoryImpl @Inject constructor(
                     avatarUrl = firebaseUser.photoUrl?.toString(),
                     avatarThumbnailUrl = firebaseUser.photoUrl?.toString(),
                     createdAt = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault()).date,
-                    lastActiveAt = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault()).date
+                    lastActiveAt = Clock.System.now().toEpochMilliseconds()
                 )
             )
         }
@@ -84,7 +84,7 @@ class AuthRepositoryImpl @Inject constructor(
                     avatarUrl = firebaseUser.photoUrl?.toString(),
                     avatarThumbnailUrl = firebaseUser.photoUrl?.toString(),
                     createdAt = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault()).date,
-                    lastActiveAt = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault()).date
+                    lastActiveAt = Clock.System.now().toEpochMilliseconds()
                 )
 
                 val token = try { firebaseMessaging.token.await() } catch (_: Exception) { null }
@@ -126,7 +126,7 @@ class AuthRepositoryImpl @Inject constructor(
                                     avatarUrl = firebaseUser.photoUrl?.toString(),
                                     avatarThumbnailUrl = firebaseUser.photoUrl?.toString(),
                                     createdAt = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault()).date,
-                                    lastActiveAt = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault()).date
+                                    lastActiveAt = Clock.System.now().toEpochMilliseconds()
                                 )
                                 val token = try { firebaseMessaging.token.await() } catch (_: Exception) { null }
                                 upsertSignedInUser(user, token)

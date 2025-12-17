@@ -17,10 +17,6 @@ interface UserRepository {
     
     fun getAllUsers(): Flow<List<User>>
     
-    suspend fun getCurrentUser(): User?
-    
-    suspend fun setCurrentUser(userId: String)
-    
     suspend fun searchUsersByName(query: String): List<User>
     
     suspend fun updateUserLevel(userId: String, level: Int, points: Int)
@@ -40,4 +36,9 @@ interface UserRepository {
      * у кого миниатюра отсутствует. Возвращает количество обновленных документов.
      */
     suspend fun backfillAvatarThumbnails(): Result<Int>
+
+    /**
+     * Обновляет время последней активности пользователя (для онлайн-статуса)
+     */
+    suspend fun updateLastActive(userId: String)
 }

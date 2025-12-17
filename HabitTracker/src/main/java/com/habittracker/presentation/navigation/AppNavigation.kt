@@ -20,6 +20,9 @@ import com.habittracker.presentation.ui.notifications.NotificationsScreen
 import com.habittracker.presentation.ui.social.FriendsScreen
 import com.habittracker.presentation.ui.splash.SplashScreen
 import com.habittracker.presentation.ui.stats.StatsScreen
+import com.habittracker.presentation.ui.challenges.ChallengeDetailScreen
+import com.habittracker.presentation.ui.challenges.ChallengesScreen
+import com.habittracker.presentation.ui.challenges.CreateChallengeScreen
 
 /**
  * Запечатанный класс для определения маршрутов навигации.
@@ -43,9 +46,16 @@ sealed class Screen(val route: String) {
         fun createRoute(habitId: String) = "group_habit_detail_screen/$habitId"
     }
     object PublicHabits : Screen("public_habits_screen")
+    // Challenges
+    object Challenges : Screen("challenges_screen?tab={tab}") {
+        fun createRoute(tab: String? = null) = if (tab != null) "challenges_screen?tab=$tab" else "challenges_screen"
+    }
+    object CreateChallenge : Screen("create_challenge_screen")
+    object ChallengeDetail : Screen("challenge_detail_screen/{challengeId}") {
+        fun createRoute(challengeId: String) = "challenge_detail_screen/$challengeId"
+    }
     // Debug screens (только для debug сборки)
     object FCMTest : Screen("fcm_test_screen")
-    // TODO: Добавить другие экраны по мере их создания
 }
 
 /**
@@ -170,6 +180,50 @@ fun AppNavHost(
         composable(route = Screen.FCMTest.route) {
             FCMTestScreen()
         }
-        // TODO: Определить навигацию для других экранов
+        
+        // Challenges
+        composable(
+            route = Screen.Challenges.route,
+            arguments = listOf(navArgument("tab") {
+                type = NavType.StringType
+                nullable = true
+                defaultValue = null
+            })
+        ) { backStackEntry ->
+            val initialTab = backStackEntry.arguments?.getString("tab")
+            ChallengesScreen(
+                onNavigateToCreateChallenge = {
+                    navController.navigate(Screen.CreateChallenge.route)
+                },
+                onNavigateToChallengeDetails = { challengeId ->
+                    navController.navigate(Screen.ChallengeDetail.createRoute(challengeId))
+                },
+                initialTab = initialTab
+            )
+        }
+        
+        composable(route = Screen.CreateChallenge.route) {
+            CreateChallengeScreen(
+                onNavigateBack = { navController.popBackStack() },
+                onChallengeCreated = { challengeId ->
+                    navController.popBackStack()
+                    navController.navigate(Screen.ChallengeDetail.createRoute(challengeId))
+                }
+            )
+        }
+        
+        composable(
+            route = Screen.ChallengeDetail.route,
+            arguments = listOf(navArgument("challengeId") {
+                type = NavType.StringType
+                nullable = false
+            })
+        ) { backStackEntry ->
+            val challengeId = backStackEntry.arguments?.getString("challengeId") ?: return@composable
+            ChallengeDetailScreen(
+                challengeId = challengeId,
+                onNavigateBack = { navController.popBackStack() }
+            )
+        }
     }
 }

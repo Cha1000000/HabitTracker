@@ -1,5 +1,6 @@
 package com.habittracker.domain.usecase.habit
 
+import android.util.Log
 import com.habittracker.domain.model.isPending
 import com.habittracker.domain.repository.SocialRepository
 import kotlinx.coroutines.CoroutineScope
@@ -11,7 +12,6 @@ import kotlinx.coroutines.launch
 import kotlinx.datetime.Clock
 import kotlinx.datetime.DateTimeUnit
 import kotlinx.datetime.Instant
-import kotlinx.datetime.LocalDateTime
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.atTime
 import kotlinx.datetime.plus
@@ -34,6 +34,7 @@ class HabitInvitationManagerUseCase @Inject constructor(
     companion object {
         private const val CHECK_INTERVAL_MINUTES = 60L // Проверяем каждый час
         private const val INVITATION_EXPIRY_DAYS = 7L // Приглашения истекают через 7 дней
+        private const val TAG = "HabitInvitationManager"
     }
 
     /**
@@ -55,8 +56,7 @@ class HabitInvitationManagerUseCase @Inject constructor(
                     // Ждем до следующей проверки
                     delay(CHECK_INTERVAL_MINUTES * 60 * 1000)
                 } catch (e: Exception) {
-                    // Логируем ошибку, но продолжаем работу
-                    // TODO: Добавить логирование
+                    Log.e(TAG, "Error during invitation management cycle", e)
                     delay(CHECK_INTERVAL_MINUTES * 60 * 1000)
                 }
             }
@@ -118,8 +118,7 @@ class HabitInvitationManagerUseCase @Inject constructor(
                 }
             }
         } catch (e: Exception) {
-            // Игнорируем ошибки, но логируем
-            // TODO: Добавить логирование
+            Log.e(TAG, "Error expiring invitations for habit: $habitId", e)
         }
     }
 
@@ -137,8 +136,7 @@ class HabitInvitationManagerUseCase @Inject constructor(
                 }
             }
         } catch (e: Exception) {
-            // Игнорируем ошибки, но логируем
-            // TODO: Добавить логирование
+            Log.e(TAG, "Error cancelling all invitations for user: $userId", e)
         }
     }
 }

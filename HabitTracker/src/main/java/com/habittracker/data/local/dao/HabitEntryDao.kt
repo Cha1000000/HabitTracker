@@ -67,4 +67,20 @@ interface HabitEntryDao {
     
     @Query("DELETE FROM habit_entries WHERE userId = :userId")
     suspend fun deleteAllEntriesForUser(userId: String)
+    
+    @Query("SELECT COUNT(*) FROM habit_entries WHERE habitId = :habitId AND userId = :userId AND completed = 1 AND date BETWEEN :startDate AND :endDate")
+    suspend fun getCompletedEntriesCountForUserInRange(
+        habitId: String,
+        userId: String,
+        startDate: String,
+        endDate: String
+    ): Int
+    
+    @Query("SELECT * FROM habit_entries WHERE habitId = :habitId AND userId = :userId AND date BETWEEN :startDate AND :endDate ORDER BY date DESC")
+    suspend fun getEntriesForUserInRange(
+        habitId: String,
+        userId: String,
+        startDate: String,
+        endDate: String
+    ): List<HabitEntryEntity>
 }

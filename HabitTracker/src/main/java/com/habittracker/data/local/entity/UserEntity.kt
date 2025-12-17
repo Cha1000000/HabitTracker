@@ -19,6 +19,6 @@ data class UserEntity(
     val friendsCount: Int = 0,
     val fcmToken: String? = null,
     val createdAt: LocalDate,
-    val lastActiveAt: LocalDate,
+    val lastActiveAt: Long, // timestamp в миллисекундах для точного определения онлайн-статуса
     val timezone: String
 )

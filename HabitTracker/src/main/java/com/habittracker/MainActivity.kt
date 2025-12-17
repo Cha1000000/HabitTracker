@@ -19,6 +19,7 @@ import androidx.navigation.NavHostController
 import com.habittracker.data.service.PendingNotificationManager
 import com.habittracker.domain.repository.AuthRepository
 import com.habittracker.domain.repository.SocialRepository
+import com.habittracker.domain.repository.UserRepository
 import com.habittracker.presentation.navigation.AppNavHost
 import com.habittracker.presentation.navigation.Screen
 import com.habittracker.presentation.ui.theme.HabitTrackerTheme
@@ -37,6 +38,8 @@ class MainActivity : ComponentActivity() {
     lateinit var authRepository: AuthRepository
     @Inject
     lateinit var socialRepository: SocialRepository
+    @Inject
+    lateinit var userRepository: UserRepository
 
     private val authViewModel: AuthViewModel by viewModels()
     private var socialSyncJob: Job? = null
@@ -74,6 +77,9 @@ class MainActivity : ComponentActivity() {
         lifecycleScope.launch(Dispatchers.IO) {
             runCatching { PendingNotificationManager.deliverForCurrentUser(applicationContext, authRepository) }
         }
+
+        // Обновляем время последней активности при старте
+        updateUserLastActive()
 
         // Также доставляем при успешной аутентификации/переключении пользователя
         lifecycleScope.launch {
@@ -156,6 +162,7 @@ class MainActivity : ComponentActivity() {
             "friends" -> Screen.Friends.route
             "friend_requests" -> Screen.Friends.route + "?tab=requests"
             "habit_invitations" -> Screen.Notifications.route
+            "challenge_invitations" -> Screen.Challenges.createRoute("invitations")
             "notifications" -> Screen.Notifications.route
             "group_habit_detail" -> habitId?.let { Screen.GroupHabitDetail.createRoute(it) } ?: Screen.Habits.route
             "habits" -> Screen.Habits.route
@@ -263,6 +270,26 @@ class MainActivity : ComponentActivity() {
         socialSyncJob?.cancel()
         socialSyncJob = null
         Log.d("MainActivity", "[bootstrap] Social realtime sync stopped")
+    }
+
+    override fun onResume() {
+        super.onResume()
+        // Обновляем время последней активности при возобновлении
+        updateUserLastActive()
+    }
+
+    override fun onPause() {
+        super.onPause()
+        // Обновляем время последней активности при сворачивании/закрытии
+        // чтобы статус "был X мин назад" отсчитывался от момента закрытия
+        updateUserLastActive()
+    }
+
+    private fun updateUserLastActive() {
+        val userId = authRepository.getCurrentUserId() ?: return
+        lifecycleScope.launch(Dispatchers.IO) {
+            runCatching { userRepository.updateLastActive(userId) }
+        }
     }
 
     private val notificationsPermissionLauncher =

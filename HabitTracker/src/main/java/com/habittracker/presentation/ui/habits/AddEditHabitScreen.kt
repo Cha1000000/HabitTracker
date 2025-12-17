@@ -36,6 +36,8 @@ import androidx.compose.material.icons.filled.PersonAdd
 import androidx.compose.material.icons.filled.Timeline
 import androidx.compose.material.icons.filled.Title
 import androidx.compose.material3.AssistChip
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExposedDropdownMenuDefaults
@@ -86,6 +88,7 @@ import com.habittracker.domain.model.HabitFrequency
 import com.habittracker.domain.model.HabitType
 import com.habittracker.presentation.state.AddEditHabitUiState
 import com.habittracker.presentation.ui.components.FieldValidationFeedback
+import com.habittracker.presentation.ui.components.LiveValidationIndicator
 import com.habittracker.presentation.ui.habits.components.ConfirmDialog
 import com.habittracker.presentation.ui.habits.components.EmojiPickerDialog
 import com.habittracker.presentation.ui.habits.components.FriendsSelectDialog
@@ -153,7 +156,7 @@ private fun DaysOfWeekSelector(
         DayOfWeek.SATURDAY,
         DayOfWeek.SUNDAY
     )
-    
+
     Row(
         modifier = modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.SpaceBetween
@@ -168,7 +171,7 @@ private fun DaysOfWeekSelector(
                 colors = FilterChipDefaults.filterChipColors(
                     selectedContainerColor = if (isDarkTheme)
                         MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = 0.48f) else
-                            MaterialTheme.colorScheme.tertiary.copy(alpha = 0.48f),
+                        MaterialTheme.colorScheme.tertiary.copy(alpha = 0.48f),
                     selectedLabelColor = MaterialTheme.colorScheme.onPrimaryContainer
                 )
             )
@@ -176,7 +179,6 @@ private fun DaysOfWeekSelector(
     }
 }
 
- 
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -188,7 +190,7 @@ private fun HabitTypeSelector(
     var expanded by remember { mutableStateOf(false) }
     val items = HabitType.entries
     val isDarkTheme = isSystemInDarkTheme()
-    
+
     GlassmorphicExposedDropdownMenuBox(
         expanded = expanded,
         onExpandedChange = { expanded = !expanded },
@@ -210,7 +212,7 @@ private fun HabitTypeSelector(
             singleLine = true,
             readOnly = true
         )
-        
+
         GlassmorphicDropdownMenu(
             expanded = expanded,
             onDismissRequest = { expanded = false },
@@ -218,7 +220,7 @@ private fun HabitTypeSelector(
         ) {
             items.forEach { type ->
                 GlassmorphicDropdownMenuItem(
-                    text = { 
+                    text = {
                         Text(
                             text = when (type) {
                                 HabitType.PERSONAL -> stringResource(R.string.habit_type_personal)
@@ -270,7 +272,7 @@ private fun GroupSettings(
                 text = stringResource(R.string.group_habit_settings),
                 isDarkTheme = isDarkTheme
             )
-            
+
             // Максимальное количество участников
             Row(
                 verticalAlignment = Alignment.CenterVertically,
@@ -281,17 +283,18 @@ private fun GroupSettings(
                     contentDescription = null,
                     tint = MaterialTheme.colorScheme.onSurfaceVariant
                 )
-                
+
                 Text(
                     text = stringResource(R.string.max_participants),
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurface,
                     modifier = Modifier.weight(1f)
                 )
-                
+
                 run {
                     val valueOrNull = uiState.maxParticipantsInput.toIntOrNull()
-                    val exceeds = valueOrNull?.let { it > GroupHabitConstants.MAX_PARTICIPANTS } == true
+                    val exceeds =
+                        valueOrNull?.let { it > GroupHabitConstants.MAX_PARTICIPANTS } == true
                     val tooLow = valueOrNull == 1
 
                     GlassmorphicTextField(
@@ -310,7 +313,8 @@ private fun GroupSettings(
                                     textAlign = TextAlign.Center,
                                     lineHeight = 18.sp
                                 ),
-                            ) },
+                            )
+                        },
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                         singleLine = true,
                         modifier = Modifier
@@ -354,7 +358,7 @@ private fun GroupSettings(
                 inviteCode = uiState.inviteCode,
                 isPublic = uiState.isPublic,
                 isGenerating = uiState.isGeneratingInviteCode,
-                onGenerateCode = { 
+                onGenerateCode = {
                     if (uiState.habitId != null) {
                         viewModel.generateInviteCode()
                     } else {
@@ -367,7 +371,7 @@ private fun GroupSettings(
                 onDisableCode = { viewModel.disableInviteCode() },
                 isNewHabit = uiState.habitId == null
             )
-            
+
             // Кнопка приглашения друзей
             GlassmorphicOutlinedButton(
                 onClick = { viewModel.onShowFriendSelector(true) },
@@ -381,15 +385,18 @@ private fun GroupSettings(
                 )
                 Text(stringResource(R.string.invite_friends))
             }
-            
+
             // Показываем выбранных друзей
             if (uiState.selectedFriendsToInvite.isNotEmpty()) {
                 Text(
-                    text = stringResource(R.string.selected_friends, uiState.selectedFriendsToInvite.size),
+                    text = stringResource(
+                        R.string.selected_friends,
+                        uiState.selectedFriendsToInvite.size
+                    ),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.primary
                 )
-                
+
                 LazyRow(
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                     contentPadding = PaddingValues(vertical = 4.dp)
@@ -412,8 +419,10 @@ private fun GroupSettings(
 
             // Кнопка отправки приглашений (Variant B)
             run {
-                val enabled = uiState.selectedFriendsToInvite.isNotEmpty() && !uiState.isSendingInvitations
-                val wouldExceedLimit = (uiState.participants.size + uiState.selectedFriendsToInvite.size) > uiState.maxParticipants
+                val enabled =
+                    uiState.selectedFriendsToInvite.isNotEmpty() && !uiState.isSendingInvitations
+                val wouldExceedLimit =
+                    (uiState.participants.size + uiState.selectedFriendsToInvite.size) > uiState.maxParticipants
 
                 GlassmorphicButton(
                     onClick = { viewModel.requestInvitations() },
@@ -428,7 +437,12 @@ private fun GroupSettings(
                             strokeWidth = 2.dp
                         )
                     }
-                    Text(stringResource(R.string.invite_selected, uiState.selectedFriendsToInvite.size))
+                    Text(
+                        stringResource(
+                            R.string.invite_selected,
+                            uiState.selectedFriendsToInvite.size
+                        )
+                    )
                 }
 
                 if (wouldExceedLimit) {
@@ -480,7 +494,7 @@ private fun FrequencySelector(
             singleLine = true,
             readOnly = true
         )
-        
+
         GlassmorphicDropdownMenu(
             expanded = expanded && enabled,
             onDismissRequest = { expanded = false },
@@ -488,7 +502,7 @@ private fun FrequencySelector(
         ) {
             items.forEach { frequency ->
                 GlassmorphicDropdownMenuItem(
-                    text = { 
+                    text = {
                         Text(
                             text = when (frequency) {
                                 HabitFrequency.DAILY -> stringResource(R.string.frequency_daily)
@@ -575,7 +589,7 @@ fun AddEditHabitScreen(
     if (showColorPicker) {
         ColorPickerDialog(
             selectedColor = String.format("#%08X", uiState.color),
-            onColorSelected = { colorHex -> 
+            onColorSelected = { colorHex ->
                 viewModel.onColorChange(Color(colorHex.toColorInt()).toArgb())
             },
             onDismiss = { showColorPicker = false }
@@ -592,9 +606,9 @@ fun AddEditHabitScreen(
         val currentTime = uiState.reminderTime ?: LocalTime(12, 0)
         TimePickerDialog(
             initialTime = currentTime,
-            onTimeSelected = { 
+            onTimeSelected = {
                 timeSelectedDuringDialog = true
-                viewModel.onReminderTimeChange(it) 
+                viewModel.onReminderTimeChange(it)
             },
             onDismiss = {
                 showTimePicker = false
@@ -677,7 +691,7 @@ fun AddEditHabitScreen(
             contentColor = MaterialTheme.colorScheme.onBackground,
             topBar = {
                 TopAppBar(
-                    title = { 
+                    title = {
                         Text(
                             if (uiState.habitId == null) {
                                 stringResource(R.string.habit_new_title)
@@ -713,7 +727,8 @@ fun AddEditHabitScreen(
             },
             floatingActionButton = {
                 // Анимированная кнопка сохранения
-                val isSaveEnabled = uiState.title.isNotBlank() && !uiState.isLoading && !uiState.isHabitSaved
+                val isSaveEnabled =
+                    uiState.title.isNotBlank() && !uiState.isLoading && !uiState.isHabitSaved
                 val fabScale by animateFloatAsState(
                     targetValue = if (uiState.isLoading) 0.8f else 1f,
                     animationSpec = tween(300),
@@ -741,478 +756,559 @@ fun AddEditHabitScreen(
                 }
             },
             snackbarHost = { SnackbarHost(snackbarHostState) }
-    ) { paddingValues ->
+        ) { paddingValues ->
             LazyColumn(
                 modifier = Modifier
                     .fillMaxSize()
-                    .padding(paddingValues).padding(horizontal = 12.dp),
+                    .padding(paddingValues)
+                    .padding(horizontal = 12.dp),
                 verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-            item {
-                // Выбор иконки и цвета
-                Column(
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(vertical = 8.dp)
-                ) {
-                    // Иконка с цветным фоном
-                    Text(
-                        text = uiState.icon,
-                        style = MaterialTheme.typography.displayLarge,
+                item {
+                    // Выбор иконки и цвета
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally,
                         modifier = Modifier
-                            .size(80.dp)
-                            .clip(CircleShape)
-                            .clickable { showIconPicker = true }
-                            .background(Color(uiState.color))
-                            .padding(8.dp),
-                        textAlign = TextAlign.Center
-                    )
-                    Text(
-                        text = stringResource(R.string.habit_click_to_change_icon),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.padding(top = 4.dp)
-                    )
-                    
-                    //Spacer(modifier = Modifier.height(4.dp))
-                    
-                    // Выбор цвета
-                    Row(
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
-                        verticalAlignment = Alignment.CenterVertically
+                            .fillMaxWidth()
+                            .padding(vertical = 8.dp)
                     ) {
+                        // Иконка с цветным фоном
                         Text(
-                            text = stringResource(R.string.habit_color_label),
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurface
-                        )
-                        
-                        Box(
+                            text = uiState.icon,
+                            style = MaterialTheme.typography.displayLarge,
                             modifier = Modifier
-                                .size(32.dp)
+                                .size(80.dp)
                                 .clip(CircleShape)
+                                .clickable { showIconPicker = true }
                                 .background(Color(uiState.color))
-                                .clickable { showColorPicker = true }
-                                .border(
-                                    width = 2.dp,
-                                    color = MaterialTheme.colorScheme.outline,
-                                    shape = CircleShape
-                                )
+                                .padding(8.dp),
+                            textAlign = TextAlign.Center
                         )
-                        
-                        TextButton(
-                            onClick = { showColorPicker = true }
+                        Text(
+                            text = stringResource(R.string.habit_click_to_change_icon),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.padding(top = 4.dp)
+                        )
+
+                        //Spacer(modifier = Modifier.height(4.dp))
+
+                        // Выбор цвета
+                        Row(
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            verticalAlignment = Alignment.CenterVertically
                         ) {
-                            Text(stringResource(R.string.habit_change_color))
+                            Text(
+                                text = stringResource(R.string.habit_color_label),
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurface
+                            )
+
+                            Box(
+                                modifier = Modifier
+                                    .size(32.dp)
+                                    .clip(CircleShape)
+                                    .background(Color(uiState.color))
+                                    .clickable { showColorPicker = true }
+                                    .border(
+                                        width = 2.dp,
+                                        color = MaterialTheme.colorScheme.outline,
+                                        shape = CircleShape
+                                    )
+                            )
+
+                            TextButton(
+                                onClick = { showColorPicker = true }
+                            ) {
+                                Text(stringResource(R.string.habit_change_color))
+                            }
                         }
                     }
                 }
-            }
 
-            item {
-                // Название
-                GlassmorphicTextField(
-                    value = uiState.title,
-                    onValueChange = { viewModel.onTitleChange(it) },
-                    label = { Text(stringResource(R.string.habit_name_label)) },
-                    modifier = Modifier.fillMaxWidth(),
-                    singleLine = true,
-                    leadingIcon = { Icon(Icons.Default.Title, null) },
-                )
-                FieldValidationFeedback(
-                    errorMessage = uiState.titleError
-                        ?: if (uiState.title.isBlank()) stringResource(R.string.habit_name_required_hint) else null
-                )
-            }
-
-            item {
-                // Описание
-                GlassmorphicTextField(
-                    value = uiState.description,
-                    onValueChange = { viewModel.onDescriptionChange(it) },
-                    label = { Text(stringResource(R.string.habit_description_label)) },
-                    modifier = Modifier.fillMaxWidth(),
-                    singleLine = false,
-                    leadingIcon = { Icon(Icons.Default.Description, null) },
-                )
-                FieldValidationFeedback(uiState.descriptionError)
-            }
-
-            item {
-                // Тип привычки
-                HabitTypeSelector(
-                    currentType = uiState.type,
-                    onTypeSelected = { viewModel.onTypeChange(it) },
-                    modifier = Modifier.fillMaxWidth()
-                )
-            }
-
-            item {
-                // Настройки групповой привычки
-                if (uiState.type == HabitType.GROUP) {
-                    GroupSettings(
-                        uiState = uiState,
-                        viewModel = viewModel
+                item {
+                    // Название
+                    GlassmorphicTextField(
+                        value = uiState.title,
+                        onValueChange = { viewModel.onTitleChange(it) },
+                        label = { Text(stringResource(R.string.habit_name_label)) },
+                        modifier = Modifier.fillMaxWidth(),
+                        singleLine = true,
+                        leadingIcon = { Icon(Icons.Default.Title, null) },
                     )
-                }
-            }
-
-            item {
-                // Частота
-                val isGroup = uiState.type == HabitType.GROUP
-                val isExisting = uiState.habitId != null
-                val isAuthor = uiState.canApplyReminderToAll
-                val canEditFrequency = !isGroup || !isExisting || isAuthor
-
-                var showFrequencyConfirm by remember { mutableStateOf(false) }
-                var pendingFrequency by remember { mutableStateOf<HabitFrequency?>(null) }
-
-                FrequencySelector(
-                    currentFrequency = uiState.frequency,
-                    onFrequencySelected = { newFreq ->
-                        val shouldConfirm = isGroup && isExisting && isAuthor
-                        if (shouldConfirm) {
-                            pendingFrequency = newFreq
-                            showFrequencyConfirm = true
-                        } else {
-                            viewModel.onFrequencyChange(newFreq)
-                        }
-                    },
-                    modifier = Modifier.fillMaxWidth(),
-                    enabled = canEditFrequency,
-                )
-
-                if (!canEditFrequency) {
-                    Spacer(modifier = Modifier.height(4.dp))
-                    Text(
-                        text = stringResource(R.string.frequency_global_hint),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    FieldValidationFeedback(
+                        errorMessage = uiState.titleError
+                            ?: if (uiState.title.isBlank()) stringResource(R.string.habit_name_required_hint) else null
                     )
                 }
 
-                if (showFrequencyConfirm && pendingFrequency != null) {
-                    ConfirmDialog(
-                        title = stringResource(R.string.confirm_change_frequency_title),
-                        message = stringResource(R.string.confirm_change_frequency_message),
-                        confirmLabel = stringResource(R.string.apply),
-                        cancelLabel = stringResource(R.string.action_cancel),
-                        onConfirm = {
-                            pendingFrequency?.let { viewModel.onFrequencyChange(it) }
-                            showFrequencyConfirm = false
-                            pendingFrequency = null
+                item {
+                    // Описание
+                    GlassmorphicTextField(
+                        value = uiState.description,
+                        onValueChange = { viewModel.onDescriptionChange(it) },
+                        label = { Text(stringResource(R.string.habit_description_label)) },
+                        modifier = Modifier.fillMaxWidth(),
+                        singleLine = false,
+                        leadingIcon = { Icon(Icons.Default.Description, null) },
+                    )
+                    FieldValidationFeedback(uiState.descriptionError)
+                }
+
+                item {
+                    // Тип привычки
+                    HabitTypeSelector(
+                        currentType = uiState.type,
+                        onTypeSelected = { viewModel.onTypeChange(it) },
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                }
+
+                item {
+                    // Настройки групповой привычки
+                    if (uiState.type == HabitType.GROUP) {
+                        GroupSettings(
+                            uiState = uiState,
+                            viewModel = viewModel
+                        )
+                    }
+                }
+
+                item {
+                    // Частота
+                    val isGroup = uiState.type == HabitType.GROUP
+                    val isExisting = uiState.habitId != null
+                    val isAuthor = uiState.canApplyReminderToAll
+                    val canEditFrequency = !isGroup || !isExisting || isAuthor
+
+                    var showFrequencyConfirm by remember { mutableStateOf(false) }
+                    var pendingFrequency by remember { mutableStateOf<HabitFrequency?>(null) }
+
+                    FrequencySelector(
+                        currentFrequency = uiState.frequency,
+                        onFrequencySelected = { newFreq ->
+                            val shouldConfirm = isGroup && isExisting && isAuthor
+                            if (shouldConfirm) {
+                                pendingFrequency = newFreq
+                                showFrequencyConfirm = true
+                            } else {
+                                viewModel.onFrequencyChange(newFreq)
+                            }
                         },
-                        onDismiss = { showFrequencyConfirm = false; pendingFrequency = null }
+                        modifier = Modifier.fillMaxWidth(),
+                        enabled = canEditFrequency,
                     )
-                }
-            }
 
-            // Выбор дней недели для WEEKLY/TWICE_A_WEEK/CUSTOM
-            item {
-                when (uiState.frequency) {
-                    HabitFrequency.WEEKLY, HabitFrequency.TWICE_A_WEEK, HabitFrequency.CUSTOM -> {
-                        Spacer(modifier = Modifier.height(6.dp))
-                        
-                        val hint = when (uiState.frequency) {
-                            HabitFrequency.WEEKLY -> stringResource(R.string.active_days_hint_weekly)
-                            HabitFrequency.TWICE_A_WEEK -> stringResource(R.string.active_days_hint_twice)
-                            else -> stringResource(R.string.active_days_hint_custom)
-                        }
-                        
+                    if (!canEditFrequency) {
+                        Spacer(modifier = Modifier.height(4.dp))
                         Text(
-                            text = hint,
+                            text = stringResource(R.string.frequency_global_hint),
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
-                        
-                        Spacer(modifier = Modifier.height(2.dp))
-                        
-                        DaysOfWeekSelector(
-                            selectedDays = uiState.reminderDaysInput,
-                            onToggle = { day -> viewModel.onReminderDayToggle(day) },
-                            enabled = !uiState.isLoading && !uiState.isHabitSaved
-                        )
-                        
-                        // Мягкая валидация выбора дней
-                        val warnText = when (uiState.frequency) {
-                            HabitFrequency.WEEKLY -> if (uiState.reminderDaysInput.size != 1) stringResource(R.string.reminder_days_hint_weekly) else null
-                            HabitFrequency.TWICE_A_WEEK -> if (uiState.reminderDaysInput.size != 2) stringResource(R.string.reminder_days_hint_twice) else null
-                            HabitFrequency.CUSTOM -> if (uiState.reminderDaysInput.isEmpty()) stringResource(R.string.reminder_days_hint_custom) else null
-                            else -> null
-                        }
-                        
-                        if (warnText != null) {
-                            Spacer(modifier = Modifier.height(2.dp))
-                            Text(
-                                text = warnText,
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.error
-                            )
-                        }
-                        
-                        Spacer(modifier = Modifier.height(4.dp))
-                        Text(
-                            text = stringResource(R.string.active_days_info),
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
+                    }
+
+                    if (showFrequencyConfirm && pendingFrequency != null) {
+                        ConfirmDialog(
+                            title = stringResource(R.string.confirm_change_frequency_title),
+                            message = stringResource(R.string.confirm_change_frequency_message),
+                            confirmLabel = stringResource(R.string.apply),
+                            cancelLabel = stringResource(R.string.action_cancel),
+                            onConfirm = {
+                                pendingFrequency?.let { viewModel.onFrequencyChange(it) }
+                                showFrequencyConfirm = false
+                                pendingFrequency = null
+                            },
+                            onDismiss = { showFrequencyConfirm = false; pendingFrequency = null }
                         )
                     }
-                    else -> { /* no-op */ }
                 }
-            }
 
-            item {
-                // Целевое значение
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    GlassmorphicTextField(
-                        value = uiState.targetValueInput,
-                        onValueChange = { input ->
-                            viewModel.onTargetValueInputChange(input)
-                        },
-                        label = { Text(stringResource(R.string.habit_target_value_label)) },
-                        modifier = Modifier.weight(1f),
-                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                        singleLine = true,
-                        leadingIcon = { Icon(Icons.Default.Timeline, null) },
-                    )
-                    
-                    GlassmorphicTextField(
-                        value = uiState.unit,
-                        onValueChange = { viewModel.onUnitChange(it) },
-                        label = { Text(stringResource(R.string.habit_unit_label)) },
-                        modifier = Modifier.width(100.dp),
-                        singleLine = true,
-                    )
-                }
-                FieldValidationFeedback(uiState.targetValueError)
-            }
+                // Выбор дней недели для WEEKLY/TWICE_A_WEEK/CUSTOM
+                item {
+                    when (uiState.frequency) {
+                        HabitFrequency.WEEKLY, HabitFrequency.TWICE_A_WEEK, HabitFrequency.CUSTOM -> {
+                            Spacer(modifier = Modifier.height(6.dp))
 
-            // Секция выбора дат привычки
-            item {
-                Spacer(modifier = Modifier.height(4.dp))
-                val isDarkTheme = isSystemInDarkTheme()
-                GlassmorphicCard(
-                    modifier = Modifier.fillMaxWidth(),
-                    isDarkTheme = isDarkTheme,
-                    cornerRadius = 16.dp,
-                    glassAlpha = if (isDarkTheme) 0.15f else 0.85f,
-                    borderAlpha = if (isDarkTheme) 0.3f else 0.15f,
-                    elevation = 2.dp
-                ) {
-                    Column(
-                        modifier = Modifier.padding(16.dp)
-                    ) {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            modifier = Modifier.fillMaxWidth()
-                        ) {
-                            Icon(
-                                Icons.Default.DateRange,
-                                contentDescription = null,
-                                tint = if (isDarkTheme) TahoeLightBlue else MaterialTheme.colorScheme.primary,
-                                modifier = Modifier.padding(end = 16.dp)
+                            val hint = when (uiState.frequency) {
+                                HabitFrequency.WEEKLY -> stringResource(R.string.active_days_hint_weekly)
+                                HabitFrequency.TWICE_A_WEEK -> stringResource(R.string.active_days_hint_twice)
+                                else -> stringResource(R.string.active_days_hint_custom)
+                            }
+
+                            Text(
+                                text = hint,
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
-                            GlassmorphicSectionHeader(
-                                text = stringResource(R.string.habit_dates_section),
-                                isDarkTheme = isDarkTheme
+
+                            Spacer(modifier = Modifier.height(2.dp))
+
+                            DaysOfWeekSelector(
+                                selectedDays = uiState.reminderDaysInput,
+                                onToggle = { day -> viewModel.onReminderDayToggle(day) },
+                                enabled = !uiState.isLoading && !uiState.isHabitSaved
+                            )
+
+                            // Мягкая валидация выбора дней
+                            val warnText = when (uiState.frequency) {
+                                HabitFrequency.WEEKLY -> if (uiState.reminderDaysInput.size != 1) stringResource(
+                                    R.string.reminder_days_hint_weekly
+                                ) else null
+
+                                HabitFrequency.TWICE_A_WEEK -> if (uiState.reminderDaysInput.size != 2) stringResource(
+                                    R.string.reminder_days_hint_twice
+                                ) else null
+
+                                HabitFrequency.CUSTOM -> if (uiState.reminderDaysInput.isEmpty()) stringResource(
+                                    R.string.reminder_days_hint_custom
+                                ) else null
+
+                                else -> null
+                            }
+
+                            if (warnText != null) {
+                                Spacer(modifier = Modifier.height(2.dp))
+                                Text(
+                                    text = warnText,
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.error
+                                )
+                            }
+
+                            Spacer(modifier = Modifier.height(4.dp))
+                            Text(
+                                text = stringResource(R.string.active_days_info),
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
                             )
                         }
-                        
-                        Spacer(modifier = Modifier.height(16.dp))
-                        
-                        // Дата начала
-                        TahoeDatePicker(
-                            date = uiState.startDate,
-                            onDateSelected = viewModel::onStartDateChange,
-                            label = stringResource(R.string.habit_start_date_label),
-                            placeholder = stringResource(R.string.habit_start_date_placeholder),
-                            isEnabled = uiState.canEditStartDate,
-                            modifier = Modifier.fillMaxWidth()
+
+                        else -> { /* no-op */
+                        }
+                    }
+                }
+
+                item {
+                    // Целевое значение
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        GlassmorphicTextField(
+                            value = uiState.targetValueInput,
+                            onValueChange = { input ->
+                                viewModel.onTargetValueInputChange(input)
+                            },
+                            label = { Text(stringResource(R.string.habit_target_value_label)) },
+                            modifier = Modifier.weight(1f),
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                            singleLine = true,
+                            leadingIcon = { Icon(Icons.Default.Timeline, null) },
                         )
-                        
-                        if (!uiState.canEditStartDate) {
+
+                        GlassmorphicTextField(
+                            value = uiState.unit,
+                            onValueChange = { viewModel.onUnitChange(it) },
+                            label = { Text(stringResource(R.string.habit_unit_label)) },
+                            modifier = Modifier.width(100.dp),
+                            singleLine = true,
+                        )
+                    }
+                    FieldValidationFeedback(uiState.targetValueError)
+                }
+
+                // Секция выбора дат привычки
+                item {
+                    Spacer(modifier = Modifier.height(4.dp))
+                    val isDarkTheme = isSystemInDarkTheme()
+                    GlassmorphicCard(
+                        modifier = Modifier.fillMaxWidth(),
+                        isDarkTheme = isDarkTheme,
+                        cornerRadius = 16.dp,
+                        glassAlpha = if (isDarkTheme) 0.15f else 0.85f,
+                        borderAlpha = if (isDarkTheme) 0.3f else 0.15f,
+                        elevation = 2.dp
+                    ) {
+                        Column(
+                            modifier = Modifier.padding(16.dp)
+                        ) {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                Icon(
+                                    Icons.Default.DateRange,
+                                    contentDescription = null,
+                                    tint = if (isDarkTheme) TahoeLightBlue else MaterialTheme.colorScheme.primary,
+                                    modifier = Modifier.padding(end = 16.dp)
+                                )
+                                GlassmorphicSectionHeader(
+                                    text = stringResource(R.string.habit_dates_section),
+                                    isDarkTheme = isDarkTheme
+                                )
+                            }
+
+                            Spacer(modifier = Modifier.height(16.dp))
+
+                            // Дата начала
+                            TahoeDatePicker(
+                                date = uiState.startDate,
+                                onDateSelected = viewModel::onStartDateChange,
+                                label = stringResource(R.string.habit_start_date_label),
+                                placeholder = stringResource(R.string.habit_start_date_placeholder),
+                                isEnabled = uiState.canEditStartDate,
+                                modifier = Modifier.fillMaxWidth()
+                            )
+
+                            if (!uiState.canEditStartDate) {
+                                Text(
+                                    text = stringResource(R.string.habit_start_date_locked_hint),
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    modifier = Modifier.padding(top = 4.dp, start = 16.dp)
+                                )
+                            }
+
+                            Spacer(modifier = Modifier.height(12.dp))
+
+                            // Дата окончания
+                            TahoeDatePicker(
+                                date = uiState.endDate,
+                                onDateSelected = viewModel::onEndDateChange,
+                                label = stringResource(R.string.habit_end_date_label),
+                                placeholder = stringResource(R.string.habit_end_date_placeholder),
+                                isEnabled = true,
+                                minDate = uiState.startDate ?: kotlinx.datetime.Clock.System.now()
+                                    .toLocalDateTime(kotlinx.datetime.TimeZone.currentSystemDefault())
+                                    .date,
+                                modifier = Modifier.fillMaxWidth()
+                            )
+
                             Text(
-                                text = stringResource(R.string.habit_start_date_locked_hint),
+                                text = stringResource(R.string.habit_end_date_hint),
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 modifier = Modifier.padding(top = 4.dp, start = 16.dp)
                             )
                         }
-                        
-                        Spacer(modifier = Modifier.height(12.dp))
-                        
-                        // Дата окончания
-                        TahoeDatePicker(
-                            date = uiState.endDate,
-                            onDateSelected = viewModel::onEndDateChange,
-                            label = stringResource(R.string.habit_end_date_label),
-                            placeholder = stringResource(R.string.habit_end_date_placeholder),
-                            isEnabled = true,
-                            minDate = uiState.startDate ?: kotlinx.datetime.Clock.System.now()
-                                .toLocalDateTime(kotlinx.datetime.TimeZone.currentSystemDefault())
-                                .date,
-                            modifier = Modifier.fillMaxWidth()
-                        )
-                        
-                        Text(
-                            text = stringResource(R.string.habit_end_date_hint),
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            modifier = Modifier.padding(top = 4.dp, start = 16.dp)
-                        )
                     }
                 }
-            }
 
-            item {
-                Spacer(modifier = Modifier.height(4.dp))
-                // Напоминание
-                val isDarkTheme = isSystemInDarkTheme()
-                GlassmorphicCard(
-                    modifier = Modifier.fillMaxWidth(),
-                    isDarkTheme = isDarkTheme,
-                    cornerRadius = 16.dp,
-                    glassAlpha = if (isDarkTheme) 0.15f else 0.85f,
-                    borderAlpha = if (isDarkTheme) 0.3f else 0.15f,
-                    elevation = 2.dp
-                ) {
-                    Column(
-                        modifier = Modifier.padding(16.dp)
+                item {
+                    Spacer(modifier = Modifier.height(4.dp))
+                    // Напоминание
+                    val isDarkTheme = isSystemInDarkTheme()
+                    GlassmorphicCard(
+                        modifier = Modifier.fillMaxWidth(),
+                        isDarkTheme = isDarkTheme,
+                        cornerRadius = 16.dp,
+                        glassAlpha = if (isDarkTheme) 0.15f else 0.85f,
+                        borderAlpha = if (isDarkTheme) 0.3f else 0.15f,
+                        elevation = 2.dp
                     ) {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            modifier = Modifier.fillMaxWidth()
+                        Column(
+                            modifier = Modifier.padding(16.dp)
                         ) {
-                            Icon(
-                                Icons.Default.Notifications,
-                                contentDescription = null,
-                                tint = if (isDarkTheme) TahoeLightBlue else MaterialTheme.colorScheme.primary,
-                                modifier = Modifier.padding(end = 16.dp)
-                            )
-
-                            Column(modifier = Modifier.weight(1f)) {
-                                GlassmorphicSectionHeader(
-                                    text = stringResource(R.string.habit_reminder_label),
-                                    isDarkTheme = isDarkTheme
-                                )
-                                if (!uiState.isInitialized) {
-                                    CircularProgressIndicator(
-                                        modifier = Modifier
-                                            .padding(top = 6.dp)
-                                            .size(16.dp),
-                                        strokeWidth = 2.dp
-                                    )
-                                } else {
-                                    Text(
-                                        text = if (uiState.reminderEnabled && uiState.reminderTime != null) {
-                                            val time = uiState.reminderTime!!
-                                            val timePart = stringResource(R.string.at_time_format, time.hour, time.minute)
-                                            when (uiState.frequency) {
-                                                HabitFrequency.DAILY -> "${stringResource(R.string.frequency_daily)} $timePart"
-                                                HabitFrequency.WEEKDAYS -> "${stringResource(R.string.frequency_weekdays)} $timePart"
-                                                HabitFrequency.WEEKENDS -> "${stringResource(R.string.frequency_weekends)} $timePart"
-                                                HabitFrequency.WEEKLY, HabitFrequency.TWICE_A_WEEK, HabitFrequency.CUSTOM -> {
-                                                    val dayNames = listOf(
-                                                        DayOfWeek.MONDAY,
-                                                        DayOfWeek.TUESDAY,
-                                                        DayOfWeek.WEDNESDAY,
-                                                        DayOfWeek.THURSDAY,
-                                                        DayOfWeek.FRIDAY,
-                                                        DayOfWeek.SATURDAY,
-                                                        DayOfWeek.SUNDAY
-                                                    ).associateWith { stringResource(dayShortNameRes(it)) }
-                                                    val daysText = uiState.reminderDaysInput
-                                                        .sortedBy { it.value }
-                                                        .joinToString(", ") { day -> dayNames[day] ?: "" }
-                                                    if (daysText.isNotBlank()) "$daysText $timePart" else stringResource(R.string.habit_reminder_not_set)
-                                                }
-                                            }
-                                        } else {
-                                            stringResource(R.string.habit_reminder_disabled)
-                                        },
-                                        style = MaterialTheme.typography.bodySmall,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                                    )
-                                }
-                            }
-
-                            if (!uiState.isInitialized) {
-                                CircularProgressIndicator(
-                                    modifier = Modifier.size(24.dp),
-                                    strokeWidth = 2.dp
-                                )
-                            } else {
-                                CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Ltr) {
-                                    GlassmorphicSwitch(
-                                        checked = uiState.reminderEnabled,
-                                        onCheckedChange = { isChecked ->
-                                            if (isChecked) {
-                                                if (!hasPermission) { shouldRequestNotificationPermission = true }
-                                                viewModel.onReminderEnabledChange(true)
-                                                if (uiState.reminderTime == null) {
-                                                    pendingEnableFromSwitch = true
-                                                    showTimePicker = true
-                                                }
-                                            } else {
-                                                viewModel.onReminderEnabledChange(false)
-                                            }
-                                        },
-                                        enabled = !uiState.isLoading && !uiState.isHabitSaved,
-                                        isDarkTheme = isDarkTheme
-                                    )
-                                }
-                            }
-                        }
-
-                        if (uiState.reminderEnabled && uiState.reminderTime != null) {
-                            Spacer(modifier = Modifier.height(8.dp))
-                            OutlinedButton(
-                                onClick = { showTimePicker = true },
-                                modifier = Modifier.fillMaxWidth(),
-                                enabled = !uiState.isLoading && !uiState.isHabitSaved
-                            ) {
-                                Text(
-                                    text = stringResource(R.string.habit_change_reminder_time),
-                                    color = TahoeElectricBlue
-                                )
-                            }
-                            Spacer(modifier = Modifier.height(8.dp))
-                            // Лёгкая подпись о персональности напоминания и кнопка "Применить для всех"
                             Row(
                                 verticalAlignment = Alignment.CenterVertically,
                                 modifier = Modifier.fillMaxWidth()
                             ) {
-                                Row(
-                                    verticalAlignment = Alignment.CenterVertically,
-                                    modifier = Modifier.weight(1f)
-                                ) {
-                                    Icon(
-                                        imageVector = Icons.Default.Person,
-                                        contentDescription = null,
-                                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                                        modifier = Modifier.size(18.dp).padding(end = 6.dp)
+                                Icon(
+                                    Icons.Default.Notifications,
+                                    contentDescription = null,
+                                    tint = if (isDarkTheme) TahoeLightBlue else MaterialTheme.colorScheme.primary,
+                                    modifier = Modifier.padding(end = 16.dp)
+                                )
+
+                                Column(modifier = Modifier.weight(1f)) {
+                                    GlassmorphicSectionHeader(
+                                        text = stringResource(R.string.habit_reminder_label),
+                                        isDarkTheme = isDarkTheme
                                     )
+                                    if (!uiState.isInitialized) {
+                                        CircularProgressIndicator(
+                                            modifier = Modifier
+                                                .padding(top = 6.dp)
+                                                .size(16.dp),
+                                            strokeWidth = 2.dp
+                                        )
+                                    } else {
+                                        Text(
+                                            text = if (uiState.reminderEnabled && uiState.reminderTime != null) {
+                                                val time = uiState.reminderTime!!
+                                                val timePart = stringResource(
+                                                    R.string.at_time_format,
+                                                    time.hour,
+                                                    time.minute
+                                                )
+                                                when (uiState.frequency) {
+                                                    HabitFrequency.DAILY -> "${stringResource(R.string.frequency_daily)} $timePart"
+                                                    HabitFrequency.WEEKDAYS -> "${stringResource(R.string.frequency_weekdays)} $timePart"
+                                                    HabitFrequency.WEEKENDS -> "${stringResource(R.string.frequency_weekends)} $timePart"
+                                                    HabitFrequency.WEEKLY, HabitFrequency.TWICE_A_WEEK, HabitFrequency.CUSTOM -> {
+                                                        val dayNames = listOf(
+                                                            DayOfWeek.MONDAY,
+                                                            DayOfWeek.TUESDAY,
+                                                            DayOfWeek.WEDNESDAY,
+                                                            DayOfWeek.THURSDAY,
+                                                            DayOfWeek.FRIDAY,
+                                                            DayOfWeek.SATURDAY,
+                                                            DayOfWeek.SUNDAY
+                                                        ).associateWith {
+                                                            stringResource(
+                                                                dayShortNameRes(it)
+                                                            )
+                                                        }
+                                                        val daysText = uiState.reminderDaysInput
+                                                            .sortedBy { it.value }
+                                                            .joinToString(", ") { day ->
+                                                                dayNames[day] ?: ""
+                                                            }
+                                                        if (daysText.isNotBlank()) "$daysText $timePart" else stringResource(
+                                                            R.string.habit_reminder_not_set
+                                                        )
+                                                    }
+                                                }
+                                            } else {
+                                                stringResource(R.string.habit_reminder_disabled)
+                                            },
+                                            style = MaterialTheme.typography.bodySmall,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                                        )
+                                    }
+                                }
+
+                                if (!uiState.isInitialized) {
+                                    CircularProgressIndicator(
+                                        modifier = Modifier.size(24.dp),
+                                        strokeWidth = 2.dp
+                                    )
+                                } else {
+                                    CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Ltr) {
+                                        GlassmorphicSwitch(
+                                            checked = uiState.reminderEnabled,
+                                            onCheckedChange = { isChecked ->
+                                                if (isChecked) {
+                                                    if (!hasPermission) {
+                                                        shouldRequestNotificationPermission = true
+                                                    }
+                                                    viewModel.onReminderEnabledChange(true)
+                                                    if (uiState.reminderTime == null) {
+                                                        pendingEnableFromSwitch = true
+                                                        showTimePicker = true
+                                                    }
+                                                } else {
+                                                    viewModel.onReminderEnabledChange(false)
+                                                }
+                                            },
+                                            enabled = !uiState.isLoading && !uiState.isHabitSaved,
+                                            isDarkTheme = isDarkTheme
+                                        )
+                                    }
+                                }
+                            }
+
+                            if (uiState.reminderEnabled && uiState.reminderTime != null) {
+                                Spacer(modifier = Modifier.height(8.dp))
+                                OutlinedButton(
+                                    onClick = { showTimePicker = true },
+                                    modifier = Modifier.fillMaxWidth(),
+                                    enabled = !uiState.isLoading && !uiState.isHabitSaved
+                                ) {
                                     Text(
-                                        text = stringResource(R.string.reminder_personal_hint),
-                                        style = MaterialTheme.typography.bodySmall,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                        text = stringResource(R.string.habit_change_reminder_time),
+                                        color = TahoeElectricBlue
                                     )
                                 }
-                                if (uiState.canApplyReminderToAll) {
-                                    GlassmorphicButton(
-                                        onClick = { showApplyAllConfirm = true },
-                                        enabled = !uiState.isLoading && !uiState.isHabitSaved,
+                                Spacer(modifier = Modifier.height(8.dp))
+                                // Лёгкая подпись о персональности напоминания и кнопка "Применить для всех"
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    modifier = Modifier.fillMaxWidth()
+                                ) {
+                                    Row(
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        modifier = Modifier.weight(1f)
                                     ) {
                                         Icon(
-                                            imageVector = Icons.Default.Group,
+                                            imageVector = Icons.Default.Person,
                                             contentDescription = null,
-                                            modifier = Modifier.padding(end = 6.dp)
+                                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                            modifier = Modifier
+                                                .size(18.dp)
+                                                .padding(end = 6.dp)
                                         )
-                                        Text(stringResource(R.string.apply_reminder_to_all))
+                                        Text(
+                                            text = stringResource(R.string.reminder_personal_hint),
+                                            style = MaterialTheme.typography.bodySmall,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                                        )
+                                    }
+                                    if (uiState.canApplyReminderToAll) {
+                                        GlassmorphicButton(
+                                            onClick = { showApplyAllConfirm = true },
+                                            enabled = !uiState.isLoading && !uiState.isHabitSaved,
+                                        ) {
+                                            Icon(
+                                                imageVector = Icons.Default.Group,
+                                                contentDescription = null,
+                                                modifier = Modifier.padding(end = 6.dp)
+                                            )
+                                            Text(stringResource(R.string.apply_reminder_to_all))
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+
+                item {
+                    uiState.groupHabitValidationResult?.let { validationResult ->
+                        // Не показываем карточку:
+                        // 1) когда все поля корректны (нет варнингов)
+                        // 2) когда единственная ошибка — это ошибка заголовка, уже показанная под полем
+                        val onlyTitleError = validationResult.errors.size == 1 &&
+                                uiState.titleError != null &&
+                                validationResult.errors.first() == uiState.titleError
+
+                        val shouldShowValidationCard =
+                            (!validationResult.isValid || validationResult.warnings.isNotEmpty()) && !onlyTitleError
+
+                        if (shouldShowValidationCard) {
+                            Card(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(vertical = 8.dp),
+                                colors = CardDefaults.cardColors(
+                                    containerColor = if (validationResult.isValid) {
+                                        MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f)
+                                    } else {
+                                        MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.3f)
+                                    }
+                                )
+                            ) {
+                                Column(
+                                    modifier = Modifier.padding(16.dp)
+                                ) {
+                                    Row(
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        LiveValidationIndicator(
+                                            isValid = validationResult.isValid,
+                                            hasWarnings = validationResult.warnings.isNotEmpty()
+                                        )
+                                    }
+
+                                    // Отображение всех ошибок
+                                    validationResult.errors.forEach { error ->
+                                        FieldValidationFeedback(error)
+                                    }
+
+                                    // Отображение предупреждений
+                                    validationResult.warnings.forEach { warning ->
+                                        FieldValidationFeedback(warning, isWarning = true)
                                     }
                                 }
                             }
@@ -1220,65 +1316,9 @@ fun AddEditHabitScreen(
                     }
                 }
             }
-
-            item {
-                // Временно закомментировано для исправления компиляции
-                // TODO: Восстановить после добавления groupHabitValidationResult в uiState
-                /*
-                uiState.groupHabitValidationResult?.let { validationResult ->
-                    // Не показываем карточку:
-                    // 1) когда все поля корректны (нет варнингов)
-                    // 2) когда единственная ошибка — это ошибка заголовка, уже показанная под полем
-                    val onlyTitleError = validationResult.errors.size == 1 &&
-                            uiState.titleError != null &&
-                            validationResult.errors.first() == uiState.titleError
-
-                    val shouldShowValidationCard = (!validationResult.isValid || validationResult.warnings.isNotEmpty()) && !onlyTitleError
-
-                    if (shouldShowValidationCard) {
-                        Card(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(vertical = 8.dp),
-                            colors = CardDefaults.cardColors(
-                                containerColor = if (validationResult.isValid) {
-                                    MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f)
-                                } else {
-                                    MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.3f)
-                                }
-                            )
-                        ) {
-                            Column(
-                                modifier = Modifier.padding(16.dp)
-                            ) {
-                                Row(
-                                    verticalAlignment = Alignment.CenterVertically
-                                ) {
-                                    LiveValidationIndicator(
-                                        isValid = validationResult.isValid,
-                                        hasWarnings = validationResult.warnings.isNotEmpty()
-                                    )
-                                }
-
-                                // Отображение всех ошибок
-                                validationResult.errors.forEach { error ->
-                                    FieldValidationFeedback(error)
-                                }
-
-                                // Отображение предупреждений
-                                validationResult.warnings.forEach { warning ->
-                                    FieldValidationFeedback(warning, isWarning = true)
-                                }
-                            }
-                        }
-                    }
-                }
-                */
-            }
-        }
         }
     }
-    
+
     // Обработчик запроса разрешения на уведомления
     NotificationPermissionHandler(
         shouldRequest = shouldRequestNotificationPermission,
@@ -1298,7 +1338,7 @@ fun AddEditHabitScreenPreview() {
     MaterialTheme {
         val navController = rememberNavController()
         val viewModel = remember { PreviewAddEditHabitViewModel() }
-        
+
         // Set initial state
         LaunchedEffect(Unit) {
             viewModel.onTitleChange("Бег по утрам")
@@ -1306,7 +1346,7 @@ fun AddEditHabitScreenPreview() {
             viewModel.onIconChange("🏃")
             viewModel.onTypeChange(HabitType.PERSONAL)
         }
-        
+
         AddEditHabitScreen(
             navController = navController,
             viewModel = viewModel
@@ -1320,7 +1360,7 @@ fun AddEditHabitScreenEditModePreview() {
     MaterialTheme {
         val navController = rememberNavController()
         val viewModel = remember { PreviewAddEditHabitViewModel() }
-        
+
         // Set initial state for editing
         LaunchedEffect(Unit) {
             viewModel.onTitleChange("Медитация")
@@ -1329,7 +1369,7 @@ fun AddEditHabitScreenEditModePreview() {
             viewModel.onTypeChange(HabitType.GROUP)
             viewModel.onFrequencyChange(HabitFrequency.DAILY)
         }
-        
+
         AddEditHabitScreen(
             navController = navController,
             viewModel = viewModel
@@ -1351,7 +1391,7 @@ fun AddEditHabitScreenLoadingPreview() {
                 )
             )
         }
-        
+
         AddEditHabitScreen(
             navController = navController,
             viewModel = viewModel
