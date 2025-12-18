@@ -20,36 +20,26 @@
 **Текущее состояние**: Экраны и ViewModels созданы, но не подключены к навигации.
 
 **Задачи:**
-- [ ] Добавить маршруты в `AppNavigation.kt`:
+- [x] Добавить маршруты в `AppNavigation.kt`:
   - `Screen.Challenges` — список челленджей
   - `Screen.CreateChallenge` — создание челленджа
   - `Screen.ChallengeDetail` — детали челленджа
-- [ ] Добавить composable destinations для каждого экрана
-- [ ] Добавить кнопку/вкладку для доступа к челленджам (BottomNavigation или из профиля)
-
-**TODO для закрытия:**
-- `AppNavigation.kt:48` — `// TODO: Добавить другие экраны по мере их создания`
-- `AppNavigation.kt:173` — `// TODO: Определить навигацию для других экранов`
-
-**Файлы для изменения:**
-```
-presentation/navigation/AppNavigation.kt
-presentation/ui/habits/HabitsScreen.kt (или ProfileScreen.kt)
-```
+- [x] Добавить composable destinations для каждого экрана
+- [x] Добавить кнопку/вкладку для доступа к челленджам (BottomNavigation или из профиля)
 
 ### A.2 Доработка UI экранов челленджей (1 день)
 **Задачи:**
-- [ ] `ChallengesScreen.kt`:
+- [x] `ChallengesScreen.kt`:
   - Проверить интеграцию с `ChallengesViewModel`
   - Добавить фильтры (активные/завершённые/мои)
   - Добавить FAB для создания челленджа
   - Добавить pull-to-refresh
-- [ ] `CreateChallengeScreen.kt`:
+- [x] `CreateChallengeScreen.kt`:
   - Проверить валидацию формы
   - Добавить выбор привычки из списка
   - Добавить выбор участников (только друзья)
   - Добавить выбор дат и правил
-- [ ] `ChallengeCard.kt`:
+- [x] `ChallengeCard.kt`:
   - Отображение прогресса участников
   - Статус челленджа (pending/active/completed)
   - Кнопки действий (присоединиться/покинуть)
@@ -68,14 +58,14 @@ presentation/ui/challenges/ChallengeCard.kt
 
 ### A.3 Интеграция с данными (1 день)
 **Задачи:**
-- [ ] Проверить `ChallengeRepositoryImpl` — корректность CRUD операций
-- [ ] Добавить Outbox-операции для челленджей:
+- [x] Проверить `ChallengeRepositoryImpl` — корректность CRUD операций
+- [x] Добавить Outbox-операции для челленджей:
   - CREATE_CHALLENGE
   - UPDATE_CHALLENGE
   - JOIN_CHALLENGE
   - LEAVE_CHALLENGE
-- [ ] Добавить realtime-слушатель Firestore для коллекции `challenges`
-- [ ] Обновить `SyncManager` для обработки челленджей
+- [x] Добавить realtime-слушатель Firestore для коллекции `challenges`
+- [x] Обновить `SyncManager` для обработки челленджей
 
 **Файлы для изменения:**
 ```
@@ -86,8 +76,8 @@ data/local/dao/ChallengeDao.kt
 
 ### A.4 Автоматическое обновление прогресса (0.5 дня)
 **Задачи:**
-- [ ] При отметке выполнения привычки — обновлять прогресс в связанных челленджах
-- [ ] Интегрировать `UpdateChallengeProgressUseCase` в `MarkHabitCompletedUseCase`
+- [x] При отметке выполнения привычки — обновлять прогресс в связанных челленджах
+- [x] Интегрировать `UpdateChallengeProgressUseCase` в `MarkHabitCompletedUseCase`
 - [ ] Автоматическое определение победителя при завершении челленджа
 - [ ] Уведомления о завершении челленджа и победителе
 
@@ -99,9 +89,9 @@ domain/usecase/challenge/UpdateChallengeProgressUseCase.kt
 
 ### A.5 Тестирование челленджей (0.5 дня)
 **Задачи:**
-- [ ] Unit-тесты для Use Cases челленджей
-- [ ] Проверка сценариев: создание, присоединение, выход, завершение
-- [ ] Проверка edge cases: челлендж без участников, истёкший челлендж
+- [x] Unit-тесты для Use Cases челленджей
+- [x] Проверка сценариев: создание, присоединение, выход, завершение
+- [x] Проверка edge cases: челлендж без участников, истёкший челлендж
 
 ---
 

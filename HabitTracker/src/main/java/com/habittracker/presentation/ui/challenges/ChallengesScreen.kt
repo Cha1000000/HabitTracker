@@ -13,7 +13,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+import androidx.compose.material.ExperimentalMaterialApi
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
@@ -21,6 +21,8 @@ import androidx.compose.material.icons.filled.Email
 import androidx.compose.material.icons.filled.EmojiEvents
 import androidx.compose.material.icons.filled.Group
 import androidx.compose.material.icons.filled.Schedule
+import androidx.compose.material.pullrefresh.pullRefresh
+import androidx.compose.material.pullrefresh.rememberPullRefreshState
 import androidx.compose.material3.Badge
 import androidx.compose.material3.BadgedBox
 import androidx.compose.material3.Button
@@ -43,6 +45,9 @@ import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -50,15 +55,18 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.zIndex
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.habittracker.R
+import com.habittracker.domain.model.Challenge
 import com.habittracker.presentation.state.ChallengeTab
+import com.habittracker.presentation.ui.components.GradientPullRefreshIndicator
 import com.habittracker.presentation.ui.habits.components.ConfirmDialog
 import com.habittracker.presentation.ui.habits.components.TahoeGradientBackground
 import com.habittracker.presentation.viewmodel.ChallengesViewModel
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterialApi::class)
 @Composable
 fun ChallengesScreen(
     onNavigateBack: () -> Unit,
@@ -69,6 +77,28 @@ fun ChallengesScreen(
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val isDarkTheme = isSystemInDarkTheme()
+
+    var isRefreshing by remember { mutableStateOf(false) }
+    LaunchedEffect(
+        uiState.isLoading,
+        uiState.errorMessage,
+        uiState.pendingInvitations,
+        uiState.activeChallenges,
+        uiState.endingSoonChallenges,
+        uiState.completedChallenges
+    ) {
+        if (!uiState.isLoading) {
+            isRefreshing = false
+        }
+    }
+
+    val pullRefreshState = rememberPullRefreshState(
+        refreshing = isRefreshing,
+        onRefresh = {
+            isRefreshing = true
+            viewModel.onRefresh()
+        }
+    )
     
     // Устанавливаем начальную вкладку только один раз при первом запуске
     LaunchedEffect(Unit) {
@@ -125,134 +155,148 @@ fun ChallengesScreen(
                 )
             }
         ) { paddingValues ->
-            Column(
+            Box(
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(paddingValues)
+                    .pullRefresh(pullRefreshState)
             ) {
+                Column(modifier = Modifier.fillMaxSize()) {
 
-        // Tab Row
-        TabRow(
-            selectedTabIndex = uiState.selectedTab.ordinal,
-            modifier = Modifier.fillMaxWidth(),
-            containerColor = Color.Transparent,
-            contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
-            indicator = { tabPositions ->
-                TabRowDefaults.SecondaryIndicator(
-                    modifier = Modifier.tabIndicatorOffset(tabPositions[uiState.selectedTab.ordinal]),
-                    color = MaterialTheme.colorScheme.primary
-                )
-            }
-        ) {
-            ChallengeTab.entries.forEach { tab ->
-                val badgeCount = if (tab == ChallengeTab.INVITATIONS) uiState.pendingInvitations.size else 0
-                Tab(
-                    selected = uiState.selectedTab == tab,
-                    onClick = { viewModel.onTabSelected(tab) },
-                    text = {
-                        Text(
-                            text = when (tab) {
-                                ChallengeTab.INVITATIONS -> stringResource(R.string.invitations)
-                                ChallengeTab.ACTIVE -> stringResource(R.string.active_challenges)
-                                ChallengeTab.ENDING_SOON -> stringResource(R.string.ending_soon)
-                                ChallengeTab.COMPLETED -> stringResource(R.string.completed_challenges)
-                            },
-                            fontWeight = if (uiState.selectedTab == tab) FontWeight.Bold else FontWeight.Normal
-                        )
-                    },
-                    icon = {
-                        BadgedBox(
-                            badge = {
-                                if (tab == ChallengeTab.INVITATIONS && badgeCount > 0) {
-                                    Badge { Text("$badgeCount") }
-                                }
-                            }
-                        ) {
-                            Icon(
-                                imageVector = when (tab) {
-                                    ChallengeTab.INVITATIONS -> Icons.Default.Email
-                                    ChallengeTab.ACTIVE -> Icons.Default.Group
-                                    ChallengeTab.ENDING_SOON -> Icons.Default.Schedule
-                                    ChallengeTab.COMPLETED -> Icons.Default.EmojiEvents
+                    // Tab Row
+                    TabRow(
+                        selectedTabIndex = uiState.selectedTab.ordinal,
+                        modifier = Modifier.fillMaxWidth(),
+                        containerColor = Color.Transparent,
+                        contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                        indicator = { tabPositions ->
+                            TabRowDefaults.SecondaryIndicator(
+                                modifier = Modifier.tabIndicatorOffset(tabPositions[uiState.selectedTab.ordinal]),
+                                color = MaterialTheme.colorScheme.primary
+                            )
+                        }
+                    ) {
+                        ChallengeTab.entries.forEach { tab ->
+                            val badgeCount = if (tab == ChallengeTab.INVITATIONS) uiState.pendingInvitations.size else 0
+                            Tab(
+                                selected = uiState.selectedTab == tab,
+                                onClick = { viewModel.onTabSelected(tab) },
+                                text = {
+                                    Text(
+                                        text = when (tab) {
+                                            ChallengeTab.INVITATIONS -> stringResource(R.string.invitations)
+                                            ChallengeTab.ACTIVE -> stringResource(R.string.active_challenges)
+                                            ChallengeTab.ENDING_SOON -> stringResource(R.string.ending_soon)
+                                            ChallengeTab.COMPLETED -> stringResource(R.string.completed_challenges)
+                                        },
+                                        fontWeight = if (uiState.selectedTab == tab) FontWeight.Bold else FontWeight.Normal
+                                    )
                                 },
-                                contentDescription = null
+                                icon = {
+                                    BadgedBox(
+                                        badge = {
+                                            if (tab == ChallengeTab.INVITATIONS && badgeCount > 0) {
+                                                Badge { Text("$badgeCount") }
+                                            }
+                                        }
+                                    ) {
+                                        Icon(
+                                            imageVector = when (tab) {
+                                                ChallengeTab.INVITATIONS -> Icons.Default.Email
+                                                ChallengeTab.ACTIVE -> Icons.Default.Group
+                                                ChallengeTab.ENDING_SOON -> Icons.Default.Schedule
+                                                ChallengeTab.COMPLETED -> Icons.Default.EmojiEvents
+                                            },
+                                            contentDescription = null
+                                        )
+                                    }
+                                }
                             )
                         }
                     }
-                )
-            }
-        }
 
-        // Content
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(16.dp)
-        ) {
-            when {
-                uiState.isLoading -> {
-                    CircularProgressIndicator(
-                        modifier = Modifier.align(Alignment.Center)
-                    )
-                }
-                uiState.errorMessage != null -> {
-                    val errorMsg = uiState.errorMessage
-                    if (errorMsg != null) {
-                        ErrorMessage(
-                            message = errorMsg,
-                            onRetry = { viewModel.onRefresh() },
-                            onDismiss = { viewModel.clearError() },
-                            modifier = Modifier.align(Alignment.Center)
-                        )
-                    }
-                }
-                else -> {
-                    val challenges = when (uiState.selectedTab) {
-                        ChallengeTab.INVITATIONS -> uiState.pendingInvitations
-                        ChallengeTab.ACTIVE -> uiState.activeChallenges
-                        ChallengeTab.ENDING_SOON -> uiState.endingSoonChallenges
-                        ChallengeTab.COMPLETED -> uiState.completedChallenges
-                    }
+                    // Content
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(16.dp)
+                    ) {
+                        when {
+                            uiState.isLoading -> {
+                                CircularProgressIndicator(
+                                    modifier = Modifier.align(Alignment.Center)
+                                )
+                            }
+                            uiState.errorMessage != null -> {
+                                val errorMsg = uiState.errorMessage
+                                if (errorMsg != null) {
+                                    ErrorMessage(
+                                        message = errorMsg,
+                                        onRetry = { viewModel.onRefresh() },
+                                        onDismiss = { viewModel.clearError() },
+                                        modifier = Modifier.align(Alignment.Center)
+                                    )
+                                }
+                            }
+                            else -> {
+                                val challenges = when (uiState.selectedTab) {
+                                    ChallengeTab.INVITATIONS -> uiState.pendingInvitations
+                                    ChallengeTab.ACTIVE -> uiState.activeChallenges
+                                    ChallengeTab.ENDING_SOON -> uiState.endingSoonChallenges
+                                    ChallengeTab.COMPLETED -> uiState.completedChallenges
+                                }
 
-                    if (challenges.isEmpty()) {
-                        EmptyState(
-                            tab = uiState.selectedTab,
-                            onCreateChallenge = onNavigateToCreateChallenge,
-                            modifier = Modifier.align(Alignment.Center)
-                        )
-                    } else {
-                        LazyColumn(
-                            verticalArrangement = Arrangement.spacedBy(8.dp),
-                            modifier = Modifier.fillMaxSize()
-                        ) {
-                            items(challenges) { challenge ->
-                                if (uiState.selectedTab == ChallengeTab.INVITATIONS) {
-                                    ChallengeInvitationCard(
-                                        challenge = challenge,
-                                        onAccept = { viewModel.acceptChallengeInvitation(challenge.id) },
-                                        onDecline = { viewModel.declineChallengeInvitation(challenge.id) },
-                                        onChallengeClick = { onNavigateToChallengeDetails(challenge.id) }
+                                if (challenges.isEmpty()) {
+                                    EmptyState(
+                                        tab = uiState.selectedTab,
+                                        onCreateChallenge = onNavigateToCreateChallenge,
+                                        modifier = Modifier.align(Alignment.Center)
                                     )
                                 } else {
-                                    ChallengeCard(
-                                        challenge = challenge,
-                                        currentUserId = uiState.currentUserId,
-                                        onChallengeClick = { onNavigateToChallengeDetails(challenge.id) },
-                                        onJoinClick = { viewModel.onJoinChallengeClick(challenge.id) },
-                                        onLeaveClick = { viewModel.onLeaveChallengeClick(challenge.id) }
-                                    )
+                                    LazyColumn(
+                                        verticalArrangement = Arrangement.spacedBy(8.dp),
+                                        modifier = Modifier.fillMaxSize()
+                                    ) {
+                                        items(
+                                            count = challenges.size,
+                                            key = { index -> challenges[index].id }
+                                        ) { index ->
+                                            val challenge = challenges[index]
+                                            if (uiState.selectedTab == ChallengeTab.INVITATIONS) {
+                                                ChallengeInvitationCard(
+                                                    challenge = challenge,
+                                                    onAccept = { viewModel.acceptChallengeInvitation(challenge.id) },
+                                                    onDecline = { viewModel.declineChallengeInvitation(challenge.id) },
+                                                    onChallengeClick = { onNavigateToChallengeDetails(challenge.id) }
+                                                )
+                                            } else {
+                                                ChallengeCard(
+                                                    challenge = challenge,
+                                                    currentUserId = uiState.currentUserId,
+                                                    onChallengeClick = { onNavigateToChallengeDetails(challenge.id) },
+                                                    onJoinClick = { viewModel.onJoinChallengeClick(challenge.id) },
+                                                    onLeaveClick = { viewModel.onLeaveChallengeClick(challenge.id) }
+                                                )
+                                            }
+                                        }
+                                    }
                                 }
                             }
                         }
                     }
                 }
+
+                GradientPullRefreshIndicator(
+                    refreshing = isRefreshing,
+                    state = pullRefreshState,
+                    modifier = Modifier
+                        .align(Alignment.TopCenter)
+                        .zIndex(1f)
+                )
             }
         }
     }
-    }
-    }
-
-    // Join Challenge Dialog (Tahoe)
+ // Join Challenge Dialog (Tahoe)
     if (uiState.showJoinDialog) {
         ConfirmDialog(
             title = stringResource(R.string.join_challenge),

@@ -12,6 +12,8 @@ import com.habittracker.domain.usecase.challenge.LeaveChallengeUseCase
 import com.habittracker.presentation.state.ChallengeTab
 import com.habittracker.presentation.state.ChallengesUiState
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -35,6 +37,8 @@ class ChallengesViewModel @Inject constructor(
 
     private var currentUserId: String? = null
 
+    private var loadJob: Job? = null
+
     init {
         initializeUser()
     }
@@ -52,7 +56,8 @@ class ChallengesViewModel @Inject constructor(
     }
 
     private fun loadChallenges() {
-        viewModelScope.launch {
+        loadJob?.cancel()
+        loadJob = viewModelScope.launch {
             _uiState.value = _uiState.value.copy(isLoading = true)
             
             try {
@@ -98,6 +103,8 @@ class ChallengesViewModel @Inject constructor(
                         }
                     }
                 }
+            } catch (_: CancellationException) {
+                // Нормальная отмена при refresh / пересоздании подписки
             } catch (e: Exception) {
                 _uiState.value = _uiState.value.copy(
                     isLoading = false,
