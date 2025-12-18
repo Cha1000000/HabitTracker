@@ -672,24 +672,29 @@ private fun ParticipantSelectorDialog(
     onParticipantToggle: (User) -> Unit,
     onDismiss: () -> Unit
 ) {
+    val selectedParticipantIds = remember(selectedParticipants) {
+        selectedParticipants.map { it.id }.toSet()
+    }
+
     GlassmorphicDialog(
         onDismissRequest = onDismiss,
         title = { Text(stringResource(R.string.select_participants)) },
         content = {
             LazyColumn {
                 items(friends) { friend ->
+                    val isSelected = selectedParticipantIds.contains(friend.id)
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
                             .selectable(
-                                selected = selectedParticipants.contains(friend),
+                                selected = isSelected,
                                 onClick = { onParticipantToggle(friend) }
                             )
                             .padding(vertical = 4.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Checkbox(
-                            checked = selectedParticipants.contains(friend),
+                            checked = isSelected,
                             onCheckedChange = { onParticipantToggle(friend) }
                         )
                         Spacer(modifier = Modifier.width(8.dp))

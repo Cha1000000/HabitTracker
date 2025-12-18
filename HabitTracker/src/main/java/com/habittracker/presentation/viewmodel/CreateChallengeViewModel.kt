@@ -125,8 +125,8 @@ class CreateChallengeViewModel @Inject constructor(
 
     fun onParticipantToggle(user: User) {
         val currentParticipants = _uiState.value.selectedParticipants
-        val updatedParticipants = if (currentParticipants.contains(user)) {
-            currentParticipants - user
+        val updatedParticipants = if (currentParticipants.any { it.id == user.id }) {
+            currentParticipants.filterNot { it.id == user.id }
         } else {
             currentParticipants + user
         }
