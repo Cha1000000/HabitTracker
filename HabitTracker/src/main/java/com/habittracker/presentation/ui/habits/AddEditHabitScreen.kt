@@ -1,5 +1,6 @@
 package com.habittracker.presentation.ui.habits
 
+import android.util.Log
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
@@ -546,7 +547,7 @@ fun AddEditHabitScreen(
 
     // Диагностируем текущее состояние напоминаний на уровне UI-композиции
     LaunchedEffect(uiState.reminderEnabled, uiState.reminderTime) {
-        android.util.Log.d(
+        Log.d(
             "AddEditHabitScreen",
             "[compose] reminder: enabled=${uiState.reminderEnabled}, time=${uiState.reminderTime}"
         )
@@ -565,18 +566,21 @@ fun AddEditHabitScreen(
             "🏃", "🏋️", "🧘", "🚴", "🏊", "🧗", "🤸", "🚶", "🛼", "⛹️",
             // Food & Drink
             "🍎", "🥗", "🥦", "🥛", "☕", "💧", "🍵", "🥑", "🥜", "🥝",
+            "🍌", "🍔", "🥕", "🌯", "🍼", "🫖", "☕️", "🥃", "🍻", "🍽",
             // Personal Growth
             "📚", "✍️", "🎯", "🎨", "🎵", "🎸", "📖", "📝", "🧠", "🎓",
+            "🎧", "🎤", "🏓", "🎹", "🎳", "🛹", "🛠️", "✈️", "🏕️", "💻",
             // Productivity
-            "⏰", "📅", "✅", "📊", "📈", "📱", "💡", "🔔", "🎮", "📱",
+            "⏰", "📅", "✅", "📊", "📈", "📱", "💡", "🔔", "🎮", "📫",
             // Well-being
             "😴", "💤", "🧘", "🌞", "🌙", "🌱", "🌿", "🌸", "🌍", "🌈",
             // Social & Family
             "👨‍👩‍👧‍👦", "👥", "❤️", "🤝", "👨‍👧", "👩‍👧", "👨‍👩‍👧", "🐕", "🐈", "🐦",
+            "🐹", "🐢", "🦷", "💊", "👛", "🎒", "🥊", "🐠", "💐", "🎱",
             // Work & Study
             "💼", "📊", "📝", "📌", "📋", "✂️", "📎", "📏", "📐", "📚",
             // Other
-            "🎲", "🧩", "🧵", "🧶", "🛁", "🧼", "🛌", "🧹", "🧺", "🧸"
+            "🎲", "🧩", "🧵", "🧶", "🛁", "🧼", "🛌", "🧹", "🧺", "🧸",
         )
         EmojiPickerDialog(
             emojis = icons,
