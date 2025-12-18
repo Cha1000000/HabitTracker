@@ -4,8 +4,11 @@ import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.habittracker.domain.model.ChallengeStatus
+import com.habittracker.domain.model.HabitType
 import com.habittracker.domain.model.getDaysRemaining
 import com.habittracker.domain.repository.ChallengeRepository
+import com.habittracker.domain.repository.FirestoreRepository
+import com.habittracker.domain.repository.HabitRepository
 import com.habittracker.domain.usecase.GetCurrentUserUseCase
 import com.habittracker.domain.usecase.challenge.JoinChallengeUseCase
 import com.habittracker.domain.usecase.challenge.LeaveChallengeUseCase
@@ -28,6 +31,8 @@ private const val TAG = "ChallengesViewModel"
 class ChallengesViewModel @Inject constructor(
     private val getCurrentUserUseCase: GetCurrentUserUseCase,
     private val challengeRepository: ChallengeRepository,
+    private val firestoreRepository: FirestoreRepository,
+    private val habitRepository: HabitRepository,
     private val joinChallengeUseCase: JoinChallengeUseCase,
     private val leaveChallengeUseCase: LeaveChallengeUseCase
 ) : ViewModel() {
@@ -217,12 +222,52 @@ class ChallengesViewModel @Inject constructor(
         viewModelScope.launch {
             _uiState.value = _uiState.value.copy(isAcceptingInvitation = true)
             try {
-                challengeRepository.acceptChallengeInvitation(challengeId, userId)
+                val localOrUiChallenge = challengeRepository.getChallengeById(challengeId)
+                    ?: _uiState.value.pendingInvitations.firstOrNull { it.id == challengeId }
+                    ?: _uiState.value.activeChallenges.firstOrNull { it.id == challengeId }
+                    ?: throw IllegalStateException("Челлендж не найден")
+
+                val habit = firestoreRepository.getHabitById(localOrUiChallenge.habitId)
+                    ?: throw IllegalStateException("Привычка не найдена")
+
+                val shouldJoinHabit = habit.type == HabitType.GROUP && !habit.participants.contains(userId)
+                val previousHabit = if (shouldJoinHabit) habit else null
+
+                if (shouldJoinHabit) {
+                    if (habit.participants.size >= habit.maxParticipants) {
+                        throw IllegalStateException("Группа заполнена")
+                    }
+
+                    val updatedHabit = habit.copy(participants = habit.participants + userId)
+                    firestoreRepository.updateHabit(updatedHabit)
+                    habitRepository.updateHabit(updatedHabit)
+                }
+
+                try {
+                    challengeRepository.acceptChallengeInvitation(challengeId, userId)
+                } catch (e: Exception) {
+                    if (previousHabit != null) {
+                        runCatching {
+                            firestoreRepository.updateHabit(previousHabit)
+                            habitRepository.updateHabit(previousHabit)
+                        }.onFailure { rollbackError ->
+                            Log.w(TAG, "Rollback failed for habitId=${previousHabit.id}", rollbackError)
+                        }
+                    }
+                    throw e
+                }
+
                 _uiState.value = _uiState.value.copy(isAcceptingInvitation = false)
             } catch (e: Exception) {
+                val message = when (e.message) {
+                    "Группа заполнена" -> "Группа привычки заполнена — не удалось принять приглашение"
+                    "Челлендж не найден" -> "Приглашение больше недоступно"
+                    "Привычка не найдена" -> "Привычка недоступна — не удалось принять приглашение"
+                    else -> "Не удалось принять приглашение: ${e.message ?: "неизвестная ошибка"}"
+                }
                 _uiState.value = _uiState.value.copy(
                     isAcceptingInvitation = false,
-                    errorMessage = "Ошибка принятия приглашения: ${e.message}"
+                    errorMessage = message
                 )
             }
         }

@@ -188,7 +188,8 @@ class SocialRepositoryImpl @Inject constructor(
             val doc = firestore.collection("users").document(userId).get().await()
             if (doc.exists()) {
                 val data = doc.data ?: emptyMap()
-                Log.d("SocialRepository", "📋 Firestore data for $userId: fcmToken=${data["fcmToken"]?.toString()?.take(20)}...")
+                val hasToken = !(data["fcmToken"] as? String).isNullOrBlank()
+                Log.d("SocialRepository", "📋 Firestore data for $userId: fcmToken=${if (hasToken) "EXISTS" else "EMPTY"}")
                 
                 val user = UserFirestoreConverter.fromFirestore(data, doc.id)
                 // Обновляем локальный кэш с актуальными данными
@@ -200,7 +201,7 @@ class SocialRepositoryImpl @Inject constructor(
                         Log.w("SocialRepository", "Failed to update local cache for user $userId", e)
                     }
                 }
-                Log.d("SocialRepository", "✅ User fetched: ${user?.name}, fcmToken: ${user?.fcmToken?.take(8)}...${user?.fcmToken?.takeLast(4)}")
+                Log.d("SocialRepository", "✅ User fetched: ${user?.name}")
                 user
             } else {
                 Log.w("SocialRepository", "❌ User not found in Firestore: $userId")

@@ -6,8 +6,12 @@ import com.habittracker.domain.model.Challenge
 import com.habittracker.domain.model.ChallengeRules
 import com.habittracker.domain.model.ChallengeStatus
 import com.habittracker.domain.model.ChallengeType
+import com.habittracker.domain.model.Habit
+import com.habittracker.domain.model.HabitType
 import com.habittracker.domain.model.User
 import com.habittracker.domain.repository.ChallengeRepository
+import com.habittracker.domain.repository.FirestoreRepository
+import com.habittracker.domain.repository.HabitRepository
 import com.habittracker.domain.usecase.GetCurrentUserUseCase
 import com.habittracker.domain.usecase.challenge.JoinChallengeUseCase
 import com.habittracker.domain.usecase.challenge.LeaveChallengeUseCase
@@ -35,7 +39,10 @@ import org.junit.Test
 import org.mockito.MockedStatic
 import org.mockito.Mockito
 import org.mockito.kotlin.any
+import org.mockito.kotlin.eq
 import org.mockito.kotlin.mock
+import org.mockito.kotlin.never
+import org.mockito.kotlin.verify
 import org.mockito.kotlin.whenever
 
 @OptIn(ExperimentalCoroutinesApi::class)
@@ -92,6 +99,8 @@ class ChallengesViewModelTest {
     private class FakeChallengeRepository(
         private val challengesFlow: MutableStateFlow<List<Challenge>> = MutableStateFlow(emptyList())
     ) : ChallengeRepository {
+
+        val acceptedInvitations: MutableList<Pair<String, String>> = mutableListOf()
         
         override fun observeChallengesForUser(userId: String): Flow<List<Challenge>> = challengesFlow
 
@@ -129,7 +138,9 @@ class ChallengesViewModelTest {
             startDate: LocalDate,
             endDate: LocalDate
         ): Int = 0
-        override suspend fun acceptChallengeInvitation(challengeId: String, userId: String) {}
+        override suspend fun acceptChallengeInvitation(challengeId: String, userId: String) {
+            acceptedInvitations.add(challengeId to userId)
+        }
         override suspend fun declineChallengeInvitation(challengeId: String, userId: String) {}
         override suspend fun cancelChallenge(challengeId: String) {}
         override suspend fun addParticipantsToChallenge(challengeId: String, participantIds: List<String>) {}
@@ -137,20 +148,46 @@ class ChallengesViewModelTest {
 
     private fun createViewModel(
         challenges: List<Challenge> = emptyList(),
-        currentUser: User? = User(id = "user1", name = "Test User")
+        currentUser: User? = User(id = "user1", name = "Test User"),
+        firestoreRepository: FirestoreRepository = mock(),
+        habitRepository: HabitRepository = mock(),
+        repository: FakeChallengeRepository? = null
     ): ChallengesViewModel {
         val challengesFlow = MutableStateFlow(challenges)
-        val repository = FakeChallengeRepository(challengesFlow)
+        val actualRepository = repository ?: FakeChallengeRepository(challengesFlow)
         
         whenever(getCurrentUserUseCase.invoke()).thenReturn(flowOf(currentUser))
         
         return ChallengesViewModel(
             getCurrentUserUseCase = getCurrentUserUseCase,
-            challengeRepository = repository,
+            challengeRepository = actualRepository,
+            firestoreRepository = firestoreRepository,
+            habitRepository = habitRepository,
             joinChallengeUseCase = joinChallengeUseCase,
             leaveChallengeUseCase = leaveChallengeUseCase
         )
     }
+
+    private fun groupHabit(
+        id: String = "habit1",
+        participants: List<String>,
+        maxParticipants: Int
+    ) = Habit(
+        id = id,
+        title = "Habit $id",
+        description = "",
+        icon = "✅",
+        color = "#00FFAA",
+        type = HabitType.GROUP,
+        frequency = com.habittracker.domain.model.HabitFrequency.DAILY,
+        createdBy = "creator",
+        participants = participants,
+        maxParticipants = maxParticipants,
+        isPublic = false,
+        isActive = true,
+        createdAt = today,
+        updatedAt = today
+    )
 
     @Test
     fun `initial state has empty challenges and loading false after init`() = runTest {
@@ -271,21 +308,18 @@ class ChallengesViewModelTest {
     }
 
     @Test
-    fun `onLeaveChallengeClick success does not set error`() = runTest {
+    fun `onLeaveChallengeClick opens leave dialog`() = runTest {
         val challenge = createChallenge("ch1")
         val vm = createViewModel(listOf(challenge))
         advanceUntilIdle()
-
-        whenever(leaveChallengeUseCase.invoke(any(), any())).thenReturn(Result.success(challenge))
-
         vm.onLeaveChallengeClick("ch1")
-        advanceUntilIdle()
 
-        assertNull(vm.uiState.value.errorMessage)
+        assertTrue(vm.uiState.value.showLeaveDialog)
+        assertEquals("ch1", vm.uiState.value.leaveChallengeId)
     }
 
     @Test
-    fun `onLeaveChallengeClick failure sets error message`() = runTest {
+    fun `confirmLeaveChallenge failure sets error message`() = runTest {
         val challenge = createChallenge("ch1")
         val vm = createViewModel(listOf(challenge))
         advanceUntilIdle()
@@ -294,6 +328,7 @@ class ChallengesViewModelTest {
             .thenReturn(Result.failure(Exception("Leave failed")))
 
         vm.onLeaveChallengeClick("ch1")
+        vm.confirmLeaveChallenge()
         advanceUntilIdle()
 
         assertEquals("Leave failed", vm.uiState.value.errorMessage)
@@ -309,6 +344,7 @@ class ChallengesViewModelTest {
             .thenReturn(Result.failure(Exception("Error")))
 
         vm.onLeaveChallengeClick("ch1")
+        vm.confirmLeaveChallenge()
         advanceUntilIdle()
         assertEquals("Error", vm.uiState.value.errorMessage)
 
@@ -322,5 +358,76 @@ class ChallengesViewModelTest {
         advanceUntilIdle()
 
         assertEquals("user1", vm.uiState.value.currentUserId)
+    }
+
+    @Test
+    fun `acceptChallengeInvitation auto-joins habit then accepts invitation`() = runTest {
+        val challenge = createChallenge(
+            id = "ch1",
+            status = ChallengeStatus.ACTIVE,
+            participants = listOf("user1")
+        ).copy(createdBy = "creator", acceptedParticipants = emptyList())
+
+        val repo = FakeChallengeRepository(MutableStateFlow(listOf(challenge)))
+        val firestore: FirestoreRepository = mock()
+        val habitRepo: HabitRepository = mock()
+
+        val habit = groupHabit(participants = listOf("creator"), maxParticipants = 10)
+        whenever(firestore.getHabitById(eq("habit1"))).thenReturn(habit)
+
+        val vm = createViewModel(
+            challenges = listOf(challenge),
+            currentUser = User(id = "user1", name = "Test User"),
+            firestoreRepository = firestore,
+            habitRepository = habitRepo,
+            repository = repo
+        )
+        advanceUntilIdle()
+
+        vm.acceptChallengeInvitation("ch1")
+        advanceUntilIdle()
+
+        verify(firestore).updateHabit(eq(habit.copy(participants = listOf("creator", "user1"))))
+        verify(habitRepo).updateHabit(eq(habit.copy(participants = listOf("creator", "user1"))))
+        assertEquals(listOf("ch1" to "user1"), repo.acceptedInvitations)
+        assertNull(vm.uiState.value.errorMessage)
+        assertFalse(vm.uiState.value.isAcceptingInvitation)
+    }
+
+    @Test
+    fun `acceptChallengeInvitation when group is full does not accept`() = runTest {
+        val challenge = createChallenge(
+            id = "ch1",
+            status = ChallengeStatus.ACTIVE,
+            participants = listOf("user1")
+        ).copy(createdBy = "creator", acceptedParticipants = emptyList())
+
+        val repo = FakeChallengeRepository(MutableStateFlow(listOf(challenge)))
+        val firestore: FirestoreRepository = mock()
+        val habitRepo: HabitRepository = mock()
+
+        val habit = groupHabit(participants = listOf("a", "b"), maxParticipants = 2)
+        whenever(firestore.getHabitById(eq("habit1"))).thenReturn(habit)
+
+        val vm = createViewModel(
+            challenges = listOf(challenge),
+            currentUser = User(id = "user1", name = "Test User"),
+            firestoreRepository = firestore,
+            habitRepository = habitRepo,
+            repository = repo
+        )
+        advanceUntilIdle()
+
+        vm.acceptChallengeInvitation("ch1")
+        advanceUntilIdle()
+
+        verify(firestore, never()).updateHabit(any())
+        verify(habitRepo, never()).updateHabit(any())
+        assertTrue(repo.acceptedInvitations.isEmpty())
+        assertEquals(
+            "Группа привычки заполнена — не удалось принять приглашение",
+            vm.uiState.value.errorMessage
+        )
+        assertFalse(vm.uiState.value.isAcceptingInvitation)
     }
 }

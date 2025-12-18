@@ -299,7 +299,7 @@ class ChallengeUseCasesTest {
     }
 
     @Test
-    fun leaveChallenge_cancelIfOnlyCreatorLeft() = runBlocking {
+    fun leaveChallenge_keepsChallengeActiveWhenOnlyCreatorLeft() = runBlocking {
         val challengeRepo = FakeChallengeRepository()
         val socialRepo = FakeSocialRepository()
 
@@ -326,7 +326,7 @@ class ChallengeUseCasesTest {
         assertTrue(res.isSuccess)
         val updated = res.getOrNull()!!
         assertEquals(1, updated.participants.size)
-        assertEquals(ChallengeStatus.CANCELLED, updated.status)
+        assertEquals(ChallengeStatus.ACTIVE, updated.status)
     }
 
     @Test

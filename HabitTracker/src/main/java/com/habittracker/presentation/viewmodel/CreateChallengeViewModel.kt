@@ -195,7 +195,7 @@ class CreateChallengeViewModel @Inject constructor(
         _uiState.value = _uiState.value.copy(showDatePicker = false)
     }
 
-    fun createChallenge(onSuccess: (Challenge) -> Unit) {
+    fun createChallenge() {
         val state = _uiState.value
         val userId = currentUserId
         
@@ -246,8 +246,39 @@ class CreateChallengeViewModel @Inject constructor(
             return
         }
 
+        val selectedHabit = state.selectedHabit
+        val isGroupHabit = selectedHabit.type == HabitType.GROUP
+        val isGroupFull = isGroupHabit && selectedHabit.participants.size >= selectedHabit.maxParticipants
+
+        val skipped = if (isGroupFull) {
+            state.selectedParticipants
+                .filter { it.id !in selectedHabit.participants }
+        } else {
+            emptyList()
+        }
+
+        val filteredParticipants = if (isGroupFull) {
+            state.selectedParticipants
+                .filter { it.id in selectedHabit.participants }
+        } else {
+            state.selectedParticipants
+        }
+
+        if (filteredParticipants.isEmpty()) {
+            _uiState.value = state.copy(
+                errorMessage = "В привычке нет свободных мест для новых участников"
+            )
+            return
+        }
+
         Log.d("CreateChallengeVM", "Validation passed, creating challenge...")
-        _uiState.value = state.copy(isCreating = true, errorMessage = null)
+        _uiState.value = state.copy(
+            isCreating = true,
+            errorMessage = null,
+            createdChallengeId = null,
+            skippedInviteeNames = skipped.map { it.name },
+            skippedInviteMaxParticipants = if (skipped.isNotEmpty()) selectedHabit.maxParticipants else null
+        )
 
         viewModelScope.launch {
             try {
@@ -265,7 +296,7 @@ class CreateChallengeViewModel @Inject constructor(
                     title = state.title,
                     description = state.description,
                     createdBy = userId,
-                    participantIds = state.selectedParticipants.map { it.id },
+                    participantIds = filteredParticipants.map { it.id },
                     startDate = state.startDate,
                     endDate = state.endDate,
                     rules = rules,
@@ -277,8 +308,10 @@ class CreateChallengeViewModel @Inject constructor(
                 if (result.isSuccess) {
                     val challenge = result.getOrNull()!!
                     Log.d("CreateChallengeVM", "Challenge created successfully: id=${challenge.id}")
-                    _uiState.value = _uiState.value.copy(isCreating = false)
-                    onSuccess(challenge)
+                    _uiState.value = _uiState.value.copy(
+                        isCreating = false,
+                        createdChallengeId = challenge.id
+                    )
                 } else {
                     val error = result.exceptionOrNull()?.message ?: "Ошибка создания челленджа"
                     Log.e("CreateChallengeVM", "Challenge creation failed: $error")
@@ -295,6 +328,14 @@ class CreateChallengeViewModel @Inject constructor(
                 )
             }
         }
+    }
+
+    fun consumeCreatedChallenge() {
+        _uiState.value = _uiState.value.copy(
+            createdChallengeId = null,
+            skippedInviteeNames = emptyList(),
+            skippedInviteMaxParticipants = null
+        )
     }
 
     fun clearError() {

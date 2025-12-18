@@ -238,9 +238,7 @@ fun CreateChallengeScreen(
                                         onChallengeCreated(challenge.id)
                                     }
                                 } else {
-                                    viewModel.createChallenge { challenge ->
-                                        onChallengeCreated(challenge.id)
-                                    }
+                                    viewModel.createChallenge()
                                 }
                             },
                             modifier = Modifier.fillMaxWidth(),
@@ -269,6 +267,25 @@ fun CreateChallengeScreen(
         LaunchedEffect(error) {
             snackbarHostState.showSnackbar(error)
             viewModel.clearError()
+        }
+    }
+
+    uiState.createdChallengeId?.let { createdId ->
+        val skippedNames = uiState.skippedInviteeNames
+        val skippedMessage = if (skippedNames.isNotEmpty()) {
+            stringResource(
+                R.string.challenge_invite_skipped_due_to_full_habit,
+                uiState.skippedInviteMaxParticipants ?: 0,
+                skippedNames.joinToString(", ")
+            )
+        } else {
+            null
+        }
+
+        LaunchedEffect(createdId) {
+            skippedMessage?.let { snackbarHostState.showSnackbar(it) }
+            viewModel.consumeCreatedChallenge()
+            onChallengeCreated(createdId)
         }
     }
 

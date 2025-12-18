@@ -38,6 +38,11 @@ class FCMApiClient @Inject constructor() {
         private const val CHANNEL_ID = "habit_tracker_notifications"
     }
 
+    private fun maskToken(token: String?): String {
+        if (token.isNullOrBlank()) return "(null)"
+        return if (token.length > 8) "${token.take(4)}****${token.takeLast(4)}" else "****"
+    }
+
     private val httpClient = OkHttpClient.Builder()
         .connectTimeout(30, TimeUnit.SECONDS)
         .readTimeout(30, TimeUnit.SECONDS)
@@ -126,26 +131,26 @@ class FCMApiClient @Inject constructor() {
                 .post(requestBody)
                 .build()
 
-            Log.d(TAG, "Отправка FCM HTTP v1 сообщения: $requestBody")
+            Log.d(TAG, "Отправка FCM HTTP v1 сообщения (payloadSize=${requestBody.contentLength()} bytes, to=${maskToken(fcmToken)})")
 
             val response = httpClient.newCall(request).execute()
             val responseBody = response.body?.string() ?: ""
 
-            Log.d(TAG, "FCM HTTP v1 ответ: ${response.code} - $responseBody")
+            Log.d(TAG, "FCM HTTP v1 ответ: ${response.code}")
 
             if (response.isSuccessful) {
                 Log.d(TAG, "✅ Push-уведомление успешно отправлено")
                 Result.success(Unit)
             } else {
-                Log.w(TAG, "❌ Ошибка FCM HTTP v1: ${response.code} - $responseBody")
+                Log.w(TAG, "❌ Ошибка FCM HTTP v1: ${response.code}")
                 
                 // Проверяем, является ли ошибка UNREGISTERED
                 if (responseBody.contains("UNREGISTERED")) {
                     Log.w(TAG, "🔄 Токен UNREGISTERED, требуется обновление токена на устройстве получателя")
                     // Возвращаем специальную ошибку для обработки
-                    Result.failure(UnregisteredTokenException("FCM token is unregistered: ${response.code} - $responseBody"))
+                    Result.failure(UnregisteredTokenException("FCM token is unregistered: ${response.code}"))
                 } else {
-                    Result.failure(Exception("FCM HTTP v1 ошибка: ${response.code} - $responseBody"))
+                    Result.failure(Exception("FCM HTTP v1 ошибка: ${response.code}"))
                 }
             }
         } catch (e: Exception) {

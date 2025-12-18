@@ -11,6 +11,7 @@ import com.habittracker.domain.model.Habit
 import com.habittracker.domain.model.HabitEntry
 import com.habittracker.domain.model.HabitParticipantSettings
 import com.habittracker.domain.repository.FirestoreRepository
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
@@ -426,6 +427,9 @@ class FirestoreRepositoryImpl @Inject constructor(
                 Log.d(TAG, "Habit entry not found: $entryId")
                 null
             }
+        } catch (e: CancellationException) {
+            Log.d(TAG, "getHabitEntry cancelled: habit=$habitId user=$userId date=$date")
+            throw e
         } catch (e: Exception) {
             Log.e(TAG, "Error getting habit entry", e)
             throw e
@@ -476,6 +480,9 @@ class FirestoreRepositoryImpl @Inject constructor(
                 timeZone = timeZone,
                 updatedAt = updatedAt
             )
+        } catch (e: CancellationException) {
+            Log.d(TAG, "getParticipantSettings cancelled: habit=$habitId user=$userId")
+            null
         } catch (e: Exception) {
             Log.e(TAG, "Error getParticipantSettings: habit=$habitId user=$userId", e)
             null

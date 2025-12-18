@@ -20,6 +20,7 @@ import com.habittracker.domain.usecase.habit.JoinHabitByCodeUseCase
 import com.habittracker.presentation.state.HabitsUiState
 import com.habittracker.presentation.ui.habits.components.ParticipantProgress
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.async
@@ -327,7 +328,11 @@ class HabitsViewModel @Inject constructor(
                         habits.map { habit ->
                             async {
                                 // Ленивая инициализация персональных настроек для текущего пользователя
-                                try { ensureMySettingsForHabitUseCase(habit) } catch (e: Exception) {
+                                try {
+                                    ensureMySettingsForHabitUseCase(habit)
+                                } catch (e: CancellationException) {
+                                    throw e
+                                } catch (e: Exception) {
                                     Log.d(TAG, "ensureMySettingsForHabitUseCase failed (non-fatal) for habit=${habit.id}: ${e.message}")
                                 }
 
@@ -346,13 +351,19 @@ class HabitsViewModel @Inject constructor(
                                 val lastKey = lastScheduleKeyByHabit[habit.id]
                                 if (lastKey != scheduleKey) {
                                     lastScheduleKeyByHabit[habit.id] = scheduleKey
-                                    try { scheduleHabitReminderUseCase(habit) } catch (e: Exception) {
+                                    try {
+                                        scheduleHabitReminderUseCase(habit)
+                                    } catch (e: CancellationException) {
+                                        throw e
+                                    } catch (e: Exception) {
                                         Log.w(TAG, "scheduleHabitReminderUseCase failed for habit=${habit.id}: ${e.message}", e)
                                     }
                                 }
 
                                 val isCompleted = try {
                                     getHabitCompletionStatusUseCase(habit.id, userId, date)
+                                } catch (e: CancellationException) {
+                                    throw e
                                 } catch (e: Exception) {
                                     Log.d(TAG, "getHabitCompletionStatusUseCase failed for habit=${habit.id}: ${e.message}")
                                     false

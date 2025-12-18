@@ -612,9 +612,10 @@
     <string name="challenge_name">Название челленджа</string>
     <string name="challenge_name_hint">Введите название челленджа</string>
     <string name="challenge_description">Описание</string>
-    <string name="challenge_description_hint">Опишите правила и цели челленджа</string>
+    <string name="challenge_description_hint">Краткое описание челленджа (необязательно)</string>
+    <string name="challenge_invite_skipped_due_to_full_habit">В привычке уже максимум %1$d участников. Эти друзья не могут быть приглашены в челлендж: %2$s</string>
     <string name="select_habit">Выберите привычку</string>
-    <string name="select_habit_empty_hint">Нет подходящих привычек. Для челленджа нужна групповая привычка с минимум 2 участниками и не истёкшей датой окончания.</string>
+    <string name="select_habit_empty_hint">У вас нет доступных групповых привычек для создания челленджа</string>
     <string name="select_participants">Выберите участников</string>
     <string name="challenge_dates">Даты челленджа</string>
     <string name="start_date">Дата начала</string>
