@@ -59,7 +59,6 @@ import androidx.compose.ui.zIndex
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.habittracker.R
-import com.habittracker.domain.model.Challenge
 import com.habittracker.presentation.state.ChallengeTab
 import com.habittracker.presentation.ui.components.GradientPullRefreshIndicator
 import com.habittracker.presentation.ui.habits.components.ConfirmDialog
@@ -72,6 +71,7 @@ fun ChallengesScreen(
     onNavigateBack: () -> Unit,
     onNavigateToCreateChallenge: () -> Unit,
     onNavigateToChallengeDetails: (String) -> Unit,
+    onNavigateToEditChallenge: (String) -> Unit,
     initialTab: String? = null,
     viewModel: ChallengesViewModel = hiltViewModel()
 ) {
@@ -275,7 +275,8 @@ fun ChallengesScreen(
                                                     currentUserId = uiState.currentUserId,
                                                     onChallengeClick = { onNavigateToChallengeDetails(challenge.id) },
                                                     onJoinClick = { viewModel.onJoinChallengeClick(challenge.id) },
-                                                    onLeaveClick = { viewModel.onLeaveChallengeClick(challenge.id) }
+                                                    onLeaveClick = { viewModel.onLeaveChallengeClick(challenge.id) },
+                                                    onEditClick = { onNavigateToEditChallenge(challenge.id) }
                                                 )
                                             }
                                         }

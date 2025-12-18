@@ -50,7 +50,10 @@ sealed class Screen(val route: String) {
     object Challenges : Screen("challenges_screen?tab={tab}") {
         fun createRoute(tab: String? = null) = if (tab != null) "challenges_screen?tab=$tab" else "challenges_screen"
     }
-    object CreateChallenge : Screen("create_challenge_screen")
+    object CreateChallenge : Screen("create_challenge_screen?challengeId={challengeId}") {
+        fun createRoute(challengeId: String? = null) =
+            if (challengeId != null) "create_challenge_screen?challengeId=$challengeId" else "create_challenge_screen"
+    }
     object ChallengeDetail : Screen("challenge_detail_screen/{challengeId}") {
         fun createRoute(challengeId: String) = "challenge_detail_screen/$challengeId"
     }
@@ -194,22 +197,34 @@ fun AppNavHost(
             ChallengesScreen(
                 onNavigateBack = { navController.popBackStack() },
                 onNavigateToCreateChallenge = {
-                    navController.navigate(Screen.CreateChallenge.route)
+                    navController.navigate(Screen.CreateChallenge.createRoute())
                 },
                 onNavigateToChallengeDetails = { challengeId ->
                     navController.navigate(Screen.ChallengeDetail.createRoute(challengeId))
+                },
+                onNavigateToEditChallenge = { challengeId ->
+                    navController.navigate(Screen.CreateChallenge.createRoute(challengeId))
                 },
                 initialTab = initialTab
             )
         }
         
-        composable(route = Screen.CreateChallenge.route) {
+        composable(
+            route = Screen.CreateChallenge.route,
+            arguments = listOf(navArgument("challengeId") {
+                type = NavType.StringType
+                nullable = true
+                defaultValue = null
+            })
+        ) { backStackEntry ->
+            val challengeId = backStackEntry.arguments?.getString("challengeId")
             CreateChallengeScreen(
                 onNavigateBack = { navController.popBackStack() },
                 onChallengeCreated = { challengeId ->
                     navController.popBackStack()
                     navController.navigate(Screen.ChallengeDetail.createRoute(challengeId))
-                }
+                },
+                challengeId = challengeId
             )
         }
         

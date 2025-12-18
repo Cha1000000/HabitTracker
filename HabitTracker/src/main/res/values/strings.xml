@@ -16,6 +16,8 @@
     <string name="add">Добавить</string>
     <string name="delete">Удалить</string>
     <string name="edit">Редактировать</string>
+    <string name="edit_challenge_title_format">Изменить %1$s</string>
+    <string name="edit_challenge_title_fallback">Изменить челлендж</string>
     <string name="menu_done">Выполнено</string>
     <string name="back">Назад</string>
     <string name="clear">Очистить</string>

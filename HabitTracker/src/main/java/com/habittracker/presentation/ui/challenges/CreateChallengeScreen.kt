@@ -42,13 +42,13 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -73,11 +73,19 @@ import kotlinx.datetime.todayIn
 fun CreateChallengeScreen(
     onNavigateBack: () -> Unit,
     onChallengeCreated: (String) -> Unit,
+    challengeId: String? = null,
     viewModel: CreateChallengeViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }
-    val scope = rememberCoroutineScope()
+
+    val isEditMode = challengeId != null
+
+    LaunchedEffect(challengeId) {
+        if (challengeId != null) {
+            viewModel.startEdit(challengeId)
+        }
+    }
 
     TahoeGradientBackground(
         modifier = Modifier.fillMaxSize(),
@@ -93,8 +101,18 @@ fun CreateChallengeScreen(
                 TopAppBar(
                     title = {
                         Text(
-                            text = stringResource(R.string.create_challenge_title),
-                            fontWeight = FontWeight.Bold
+                            text = if (isEditMode) {
+                                if (uiState.title.isNotBlank()) {
+                                    stringResource(R.string.edit_challenge_title_format, uiState.title)
+                                } else {
+                                    stringResource(R.string.edit_challenge_title_fallback)
+                                }
+                            } else {
+                                stringResource(R.string.create_challenge_title)
+                            },
+                            fontWeight = FontWeight.Bold,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
                         )
                     },
                     navigationIcon = {
@@ -112,115 +130,136 @@ fun CreateChallengeScreen(
                 )
             }
         ) { paddingValues ->
-            LazyColumn(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(paddingValues)
-                    .padding(horizontal = 16.dp),
-                verticalArrangement = Arrangement.spacedBy(16.dp)
-            ) {
-                item { Spacer(modifier = Modifier.height(8.dp)) }
-                
-                // Title
-                item {
-                    GlassmorphicTextField(
-                        value = uiState.title,
-                        onValueChange = viewModel::onTitleChange,
-                        label = { Text(stringResource(R.string.challenge_name)) },
-                        placeholder = { Text(stringResource(R.string.challenge_name_hint)) },
-                        modifier = Modifier.fillMaxWidth(),
-                        singleLine = true
-                    )
+            if (uiState.isLoading) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(paddingValues),
+                    verticalArrangement = Arrangement.Center,
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    CircularProgressIndicator()
                 }
+            } else {
+                LazyColumn(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(paddingValues)
+                        .padding(horizontal = 16.dp),
+                    verticalArrangement = Arrangement.spacedBy(16.dp)
+                ) {
+                    item { Spacer(modifier = Modifier.height(8.dp)) }
 
-                // Description
-                item {
-                    GlassmorphicTextField(
-                        value = uiState.description,
-                        onValueChange = viewModel::onDescriptionChange,
-                        label = { Text(stringResource(R.string.challenge_description)) },
-                        placeholder = { Text(stringResource(R.string.challenge_description_hint)) },
-                        modifier = Modifier.fillMaxWidth(),
-                        singleLine = false
-                    )
-                }
+                    // Title
+                    item {
+                        GlassmorphicTextField(
+                            value = uiState.title,
+                            onValueChange = viewModel::onTitleChange,
+                            label = { Text(stringResource(R.string.challenge_name)) },
+                            placeholder = { Text(stringResource(R.string.challenge_name_hint)) },
+                            modifier = Modifier.fillMaxWidth(),
+                            singleLine = true
+                        )
+                    }
 
-                // Habit Selection
-                item {
-                    HabitSelectionCard(
-                        selectedHabit = uiState.selectedHabit,
-                        onClick = { viewModel.showHabitSelector() }
-                    )
-                }
+                    // Description
+                    item {
+                        GlassmorphicTextField(
+                            value = uiState.description,
+                            onValueChange = viewModel::onDescriptionChange,
+                            label = { Text(stringResource(R.string.challenge_description)) },
+                            placeholder = { Text(stringResource(R.string.challenge_description_hint)) },
+                            modifier = Modifier.fillMaxWidth(),
+                            singleLine = false
+                        )
+                    }
 
-                // Participants Selection
-                item {
-                    ParticipantsSelectionCard(
-                        selectedParticipants = uiState.selectedParticipants,
-                        onClick = { viewModel.showParticipantSelector() }
-                    )
-                }
+                    // Habit Selection
+                    item {
+                        HabitSelectionCard(
+                            selectedHabit = uiState.selectedHabit,
+                            enabled = !isEditMode,
+                            onClick = { viewModel.showHabitSelector() }
+                        )
+                    }
 
-                // Dates
-                item {
-                    DateSelectionSection(
-                        startDate = uiState.startDate,
-                        endDate = uiState.endDate,
-                        onStartDateClick = { viewModel.showDatePicker(DatePickerType.START_DATE) },
-                        onEndDateClick = { viewModel.showDatePicker(DatePickerType.END_DATE) }
-                    )
-                }
+                    // Participants Selection
+                    item {
+                        ParticipantsSelectionCard(
+                            selectedParticipants = uiState.selectedParticipants,
+                            onClick = { viewModel.showParticipantSelector() }
+                        )
+                    }
 
-                // Challenge Rules
-                item {
-                    ChallengeRulesSection(
-                        challengeType = uiState.challengeType,
-                        targetValue = uiState.targetValue,
-                        allowMissedDays = uiState.allowMissedDays,
-                        requireConsecutive = uiState.requireConsecutive,
-                        onChallengeTypeChange = viewModel::onChallengeTypeSelected,
-                        onTargetValueChange = viewModel::onTargetValueChange,
-                        onAllowMissedDaysChange = viewModel::onAllowMissedDaysChange,
-                        onRequireConsecutiveToggle = viewModel::onRequireConsecutiveToggle
-                    )
-                }
+                    // Dates
+                    item {
+                        DateSelectionSection(
+                            startDate = uiState.startDate,
+                            endDate = uiState.endDate,
+                            onStartDateClick = { viewModel.showDatePicker(DatePickerType.START_DATE) },
+                            onEndDateClick = { viewModel.showDatePicker(DatePickerType.END_DATE) }
+                        )
+                    }
 
-                // Reward
-                item {
-                    GlassmorphicTextField(
-                        value = uiState.reward,
-                        onValueChange = viewModel::onRewardChange,
-                        label = { Text(stringResource(R.string.reward)) },
-                        placeholder = { Text(stringResource(R.string.reward_hint)) },
-                        modifier = Modifier.fillMaxWidth(),
-                        singleLine = false
-                    )
-                }
-
-                // Create Button
-                item {
-                    GlassmorphicButton(
-                        onClick = {
-                            viewModel.createChallenge { challenge ->
-                                onChallengeCreated(challenge.id)
-                            }
-                        },
-                        modifier = Modifier.fillMaxWidth(),
-                        enabled = !uiState.isCreating
-                    ) {
-                        if (uiState.isCreating) {
-                            CircularProgressIndicator(
-                                modifier = Modifier.size(20.dp),
-                                strokeWidth = 2.dp,
-                                color = MaterialTheme.colorScheme.onPrimary
+                    if (!isEditMode) {
+                        // Challenge Rules
+                        item {
+                            ChallengeRulesSection(
+                                challengeType = uiState.challengeType,
+                                targetValue = uiState.targetValue,
+                                allowMissedDays = uiState.allowMissedDays,
+                                requireConsecutive = uiState.requireConsecutive,
+                                onChallengeTypeChange = viewModel::onChallengeTypeSelected,
+                                onTargetValueChange = viewModel::onTargetValueChange,
+                                onAllowMissedDaysChange = viewModel::onAllowMissedDaysChange,
+                                onRequireConsecutiveToggle = viewModel::onRequireConsecutiveToggle
                             )
-                        } else {
-                            Text(stringResource(R.string.create_challenge_button))
+                        }
+
+                        // Reward
+                        item {
+                            GlassmorphicTextField(
+                                value = uiState.reward,
+                                onValueChange = viewModel::onRewardChange,
+                                label = { Text(stringResource(R.string.reward)) },
+                                placeholder = { Text(stringResource(R.string.reward_hint)) },
+                                modifier = Modifier.fillMaxWidth(),
+                                singleLine = false
+                            )
                         }
                     }
+
+                    // Save/Create Button
+                    item {
+                        GlassmorphicButton(
+                            onClick = {
+                                if (isEditMode) {
+                                    viewModel.updateChallenge { challenge ->
+                                        onChallengeCreated(challenge.id)
+                                    }
+                                } else {
+                                    viewModel.createChallenge { challenge ->
+                                        onChallengeCreated(challenge.id)
+                                    }
+                                }
+                            },
+                            modifier = Modifier.fillMaxWidth(),
+                            enabled = !uiState.isCreating
+                        ) {
+                            if (uiState.isCreating) {
+                                CircularProgressIndicator(
+                                    modifier = Modifier.size(20.dp),
+                                    strokeWidth = 2.dp,
+                                    color = MaterialTheme.colorScheme.onPrimary
+                                )
+                            } else {
+                                Text(if (isEditMode) stringResource(R.string.save) else stringResource(R.string.create_challenge_button))
+                            }
+                        }
+                    }
+
+                    item { Spacer(modifier = Modifier.height(16.dp)) }
                 }
-                
-                item { Spacer(modifier = Modifier.height(16.dp)) }
             }
         }
     }
@@ -255,10 +294,11 @@ fun CreateChallengeScreen(
     if (uiState.showDatePicker) {
         val today = Clock.System.todayIn(TimeZone.currentSystemDefault())
         val isStartDate = uiState.datePickerType == DatePickerType.START_DATE
+        val minStartDate = if (isEditMode) minOf(today, uiState.startDate) else today
         
         DatePickerDialogWrapper(
             initialDate = if (isStartDate) uiState.startDate else uiState.endDate,
-            minDate = if (isStartDate) today else uiState.startDate,
+            minDate = if (isStartDate) minStartDate else uiState.startDate,
             onDateSelected = { date ->
                 if (isStartDate) {
                     viewModel.onStartDateSelected(date)
@@ -313,12 +353,13 @@ private fun DatePickerDialogWrapper(
 @Composable
 private fun HabitSelectionCard(
     selectedHabit: Habit?,
+    enabled: Boolean,
     onClick: () -> Unit
 ) {
     GlassmorphicCard(
         modifier = Modifier
             .fillMaxWidth()
-            .clickable(onClick = onClick)
+            .clickable(enabled = enabled, onClick = onClick)
     ) {
         Row(
             modifier = Modifier
@@ -338,7 +379,7 @@ private fun HabitSelectionCard(
                     Text(
                         text = selectedHabit.title,
                         style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.primary
+                        color = if (enabled) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 } else {
                     Text(
@@ -348,10 +389,14 @@ private fun HabitSelectionCard(
                     )
                 }
             }
-            Icon(
-                imageVector = Icons.Filled.ArrowDropDown,
-                contentDescription = null
-            )
+            if (enabled) {
+                Icon(
+                    imageVector = Icons.Filled.ArrowDropDown,
+                    contentDescription = null
+                )
+            } else {
+                Spacer(modifier = Modifier.size(24.dp))
+            }
         }
     }
 }

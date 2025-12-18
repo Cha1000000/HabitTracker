@@ -5,10 +5,14 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.habittracker.domain.model.Challenge
 import com.habittracker.domain.model.ChallengeRules
+import com.habittracker.domain.model.ChallengeStatus
 import com.habittracker.domain.model.ChallengeType
 import com.habittracker.domain.model.Habit
 import com.habittracker.domain.model.HabitType
 import com.habittracker.domain.model.User
+import com.habittracker.domain.repository.ChallengeRepository
+import com.habittracker.domain.repository.HabitRepository
+import com.habittracker.domain.repository.SocialRepository
 import com.habittracker.domain.usecase.GetCurrentUserUseCase
 import com.habittracker.domain.usecase.GetHabitsUseCase
 import com.habittracker.domain.usecase.social.GetFriendsUseCase
@@ -28,6 +32,9 @@ import javax.inject.Inject
 
 @HiltViewModel
 class CreateChallengeViewModel @Inject constructor(
+    private val challengeRepository: ChallengeRepository,
+    private val habitRepository: HabitRepository,
+    private val socialRepository: SocialRepository,
     private val getCurrentUserUseCase: GetCurrentUserUseCase,
     private val getHabitsUseCase: GetHabitsUseCase,
     private val getFriendsUseCase: GetFriendsUseCase,
@@ -38,6 +45,7 @@ class CreateChallengeViewModel @Inject constructor(
     val uiState: StateFlow<CreateChallengeUiState> = _uiState.asStateFlow()
 
     private var currentUserId: String? = null
+    private var pendingEditId: String? = null
 
     init {
         initializeData()
@@ -80,6 +88,14 @@ class CreateChallengeViewModel @Inject constructor(
                                 )
                             }
                         }
+
+                        val editId = pendingEditId
+                        if (editId != null) {
+                            pendingEditId = null
+                            launch {
+                                loadChallengeForEdit(editId, currentUser.id)
+                            }
+                        }
                     }
                 }
             } catch (e: Exception) {
@@ -100,6 +116,7 @@ class CreateChallengeViewModel @Inject constructor(
     }
 
     fun onHabitSelected(habit: Habit) {
+        if (_uiState.value.editingChallengeId != null) return
         _uiState.value = _uiState.value.copy(
             selectedHabit = habit,
             showHabitSelector = false
@@ -151,6 +168,7 @@ class CreateChallengeViewModel @Inject constructor(
     }
 
     fun showHabitSelector() {
+        if (_uiState.value.editingChallengeId != null) return
         _uiState.value = _uiState.value.copy(showHabitSelector = true)
     }
 
@@ -281,5 +299,176 @@ class CreateChallengeViewModel @Inject constructor(
 
     fun clearError() {
         _uiState.value = _uiState.value.copy(errorMessage = null)
+    }
+
+    fun startEdit(challengeId: String) {
+        if (challengeId.isBlank()) return
+        if (_uiState.value.editingChallengeId == challengeId) return
+
+        _uiState.value = _uiState.value.copy(
+            editingChallengeId = challengeId,
+            showHabitSelector = false,
+            showParticipantSelector = false,
+            showDatePicker = false
+        )
+
+        val userId = currentUserId
+        if (userId == null) {
+            pendingEditId = challengeId
+            return
+        }
+
+        viewModelScope.launch {
+            loadChallengeForEdit(challengeId, userId)
+        }
+    }
+
+    private suspend fun loadChallengeForEdit(challengeId: String, userId: String) {
+        _uiState.value = _uiState.value.copy(isLoading = true, errorMessage = null)
+
+        try {
+            val challenge = challengeRepository.getChallengeById(challengeId)
+            if (challenge == null) {
+                _uiState.value = _uiState.value.copy(isLoading = false, errorMessage = "Челлендж не найден")
+                return
+            }
+            if (challenge.createdBy != userId) {
+                _uiState.value = _uiState.value.copy(isLoading = false, errorMessage = "Нет прав на редактирование")
+                return
+            }
+            if (challenge.status != ChallengeStatus.PENDING && challenge.status != ChallengeStatus.ACTIVE) {
+                _uiState.value = _uiState.value.copy(isLoading = false, errorMessage = "Редактирование недоступно")
+                return
+            }
+
+            val habit = habitRepository.getHabitById(challenge.habitId)
+            val friendsById = _uiState.value.availableFriends.associateBy { it.id }
+
+            val participantUsers = mutableListOf<User>()
+            for (participantId in challenge.participants) {
+                if (participantId == challenge.createdBy) continue
+                val user = friendsById[participantId] ?: socialRepository.getUserById(participantId)
+                if (user != null) {
+                    participantUsers.add(user)
+                }
+            }
+
+            _uiState.value = _uiState.value.copy(
+                isLoading = false,
+                title = challenge.title,
+                description = challenge.description,
+                selectedHabit = habit,
+                selectedParticipants = participantUsers,
+                startDate = challenge.startDate,
+                endDate = challenge.endDate,
+                challengeType = challenge.rules.type,
+                targetValue = challenge.rules.targetValue.toString(),
+                allowMissedDays = challenge.rules.allowMissedDays.toString(),
+                requireConsecutive = challenge.rules.requireConsecutive,
+                reward = challenge.reward
+            )
+        } catch (e: Exception) {
+            _uiState.value = _uiState.value.copy(
+                isLoading = false,
+                errorMessage = "Ошибка загрузки челленджа: ${e.message}"
+            )
+        }
+    }
+
+    fun updateChallenge(onSuccess: (Challenge) -> Unit) {
+        val state = _uiState.value
+        val challengeId = state.editingChallengeId ?: return
+        val userId = currentUserId
+
+        if (userId == null) {
+            _uiState.value = state.copy(errorMessage = "Пользователь не авторизован")
+            return
+        }
+
+        if (state.title.isBlank()) {
+            _uiState.value = state.copy(errorMessage = "Введите название челленджа")
+            return
+        }
+
+        if (state.selectedParticipants.isEmpty()) {
+            _uiState.value = state.copy(errorMessage = "Выберите хотя бы одного участника")
+            return
+        }
+
+        if (state.startDate >= state.endDate) {
+            _uiState.value = state.copy(errorMessage = "Дата окончания должна быть позже даты начала")
+            return
+        }
+
+        val today = Clock.System.todayIn(TimeZone.currentSystemDefault())
+        if (state.endDate <= today) {
+            _uiState.value = state.copy(errorMessage = "Дата окончания должна быть в будущем")
+            return
+        }
+
+        _uiState.value = state.copy(isCreating = true, errorMessage = null)
+
+        viewModelScope.launch {
+            try {
+                val existing = challengeRepository.getChallengeById(challengeId)
+                if (existing == null) {
+                    _uiState.value = _uiState.value.copy(isCreating = false, errorMessage = "Челлендж не найден")
+                    return@launch
+                }
+                if (existing.createdBy != userId) {
+                    _uiState.value = _uiState.value.copy(isCreating = false, errorMessage = "Нет прав на редактирование")
+                    return@launch
+                }
+                if (existing.status != ChallengeStatus.PENDING && existing.status != ChallengeStatus.ACTIVE) {
+                    _uiState.value = _uiState.value.copy(isCreating = false, errorMessage = "Редактирование недоступно")
+                    return@launch
+                }
+
+                val newParticipantIds = (state.selectedParticipants.map { it.id } + userId).distinct()
+                val newAcceptedParticipants = existing.acceptedParticipants.filter { it in newParticipantIds }
+
+                val updatedChallenge = existing.copy(
+                    title = state.title,
+                    description = state.description,
+                    participants = newParticipantIds,
+                    acceptedParticipants = newAcceptedParticipants,
+                    startDate = state.startDate,
+                    endDate = state.endDate,
+                    status = if (state.startDate <= today) ChallengeStatus.ACTIVE else ChallengeStatus.PENDING,
+                    updatedAt = today
+                )
+
+                challengeRepository.updateChallenge(updatedChallenge)
+
+                // Уведомления новым участникам (best-effort)
+                try {
+                    val creatorUser = socialRepository.getUserById(userId)
+                    val habitTitle = state.selectedHabit?.title
+                        ?: habitRepository.getHabitById(updatedChallenge.habitId)?.title
+                        ?: ""
+                    val addedParticipants = newParticipantIds
+                        .filter { it != userId }
+                        .filterNot { it in existing.participants }
+                    addedParticipants.forEach { participantId ->
+                        socialRepository.sendChallengeInvitationNotification(
+                            toUserId = participantId,
+                            fromUserName = creatorUser?.name ?: "Пользователь",
+                            challengeTitle = updatedChallenge.title,
+                            habitTitle = habitTitle
+                        )
+                    }
+                } catch (_: Exception) {
+                    // ignore
+                }
+
+                _uiState.value = _uiState.value.copy(isCreating = false)
+                onSuccess(updatedChallenge)
+            } catch (e: Exception) {
+                _uiState.value = _uiState.value.copy(
+                    isCreating = false,
+                    errorMessage = "Ошибка сохранения: ${e.message}"
+                )
+            }
+        }
     }
 }

@@ -11,14 +11,15 @@ import kotlinx.datetime.plus
 import kotlinx.datetime.todayIn
 
 data class CreateChallengeUiState(
+    val editingChallengeId: String? = null,
     val title: String = "",
     val description: String = "",
     val selectedHabit: Habit? = null,
     val availableHabits: List<Habit> = emptyList(),
     val selectedParticipants: List<User> = emptyList(),
     val availableFriends: List<User> = emptyList(),
-    val startDate: LocalDate = Clock.System.todayIn(TimeZone.Companion.currentSystemDefault()),
-    val endDate: LocalDate = Clock.System.todayIn(TimeZone.Companion.currentSystemDefault()).plus(7, DateTimeUnit.Companion.DAY),
+    val startDate: LocalDate = Clock.System.todayIn(TimeZone.currentSystemDefault()),
+    val endDate: LocalDate = Clock.System.todayIn(TimeZone.currentSystemDefault()).plus(7, DateTimeUnit.DAY),
     val challengeType: ChallengeType = ChallengeType.COMPLETION_RATE,
     val targetValue: String = "100",
     val allowMissedDays: String = "0",
