@@ -26,7 +26,6 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material.icons.filled.Cancel
 import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material.icons.filled.EmojiEvents
 import androidx.compose.material.icons.filled.Error
 import androidx.compose.material.icons.filled.EventBusy
 import androidx.compose.material.icons.filled.Flag
@@ -62,15 +61,17 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import androidx.compose.ui.graphics.asImageBitmap
-import androidx.compose.ui.platform.LocalContext
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import com.habittracker.R
@@ -424,13 +425,6 @@ private fun ChallengeDetailContent(
                         
                         if (challenge.reward.isNotBlank()) {
                             Row(verticalAlignment = Alignment.CenterVertically) {
-                                Icon(
-                                    imageVector = Icons.Default.EmojiEvents,
-                                    contentDescription = null,
-                                    modifier = Modifier.size(16.dp),
-                                    tint = MaterialTheme.colorScheme.primary
-                                )
-                                Spacer(modifier = Modifier.width(4.dp))
                                 Text(
                                     text = challenge.reward,
                                     style = MaterialTheme.typography.bodySmall,
@@ -663,13 +657,15 @@ private fun ChallengeDetailContent(
                 val canRemove = isCreator && 
                     user.id != challenge.createdBy && 
                     (challenge.status == ChallengeStatus.ACTIVE || challenge.status == ChallengeStatus.PENDING)
+                val isWinner = !challenge.winnerId.isNullOrBlank() && challenge.winnerId == user.id
                 ParticipantCard(
                     user = user,
                     stats = stats,
                     isCurrentUser = user.id == currentUserId,
                     isChallengeCreator = user.id == challenge.createdBy,
+                    isWinner = isWinner,
                     hasAccepted = hasAccepted,
-                    canResendInvitation = isCreator && !hasAccepted && user.id != challenge.createdBy,
+                    canResendInvitation = isCreator && !hasAccepted,
                     canRemoveParticipant = canRemove,
                     onResendInvitation = { onResendInvitation(user.id) },
                     onRemoveParticipant = { onRemoveParticipant(user) },
@@ -716,6 +712,7 @@ private fun ParticipantCard(
     stats: ChallengeParticipantStats?,
     isCurrentUser: Boolean,
     isChallengeCreator: Boolean,
+    isWinner: Boolean,
     hasAccepted: Boolean,
     canResendInvitation: Boolean,
     canRemoveParticipant: Boolean,
@@ -804,28 +801,62 @@ private fun ParticipantCard(
 
                 // Name and badges
                 Column(modifier = Modifier.weight(1f)) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
+                    if (isWinner) {
                         Text(
-                            text = user.name,
-                            style = MaterialTheme.typography.bodyLarge,
-                            fontWeight = if (isCurrentUser) FontWeight.Bold else FontWeight.Normal
+                            text = "ПОБЕДИТЕЛЬ!",
+                            modifier = Modifier.fillMaxWidth(),
+                            style = MaterialTheme.typography.labelLarge,
+                            textAlign = TextAlign.Center,
+                            fontWeight = FontWeight.SemiBold,
+                            color = MaterialTheme.colorScheme.primary
                         )
-                        if (isCurrentUser) {
-                            Spacer(modifier = Modifier.width(4.dp))
+                    }
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Row(
+                            modifier = Modifier.weight(1f),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
                             Text(
-                                text = "(вы)",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.primary
+                                text = user.name,
+                                modifier = Modifier.weight(1f),
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                                style = MaterialTheme.typography.bodyLarge,
+                                fontWeight = if (isCurrentUser) FontWeight.Bold else FontWeight.Normal
                             )
+                            if (isCurrentUser) {
+                                Spacer(modifier = Modifier.width(4.dp))
+                                Text(
+                                    text = "(Вы)",
+                                    maxLines = 1,
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.primary
+                                )
+                            }
                         }
-                        if (isChallengeCreator) {
-                            Spacer(modifier = Modifier.width(4.dp))
-                            Icon(
-                                imageVector = Icons.Default.Star,
-                                contentDescription = "Создатель",
-                                modifier = Modifier.size(16.dp),
-                                tint = MaterialTheme.colorScheme.primary
-                            )
+
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.End
+                        ) {
+                            if (isChallengeCreator) {
+                                Icon(
+                                    imageVector = Icons.Default.Star,
+                                    contentDescription = "Создатель",
+                                    modifier = Modifier.size(16.dp),
+                                    tint = MaterialTheme.colorScheme.primary
+                                )
+                            }
+                            if (isWinner) {
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text(
+                                    text = "🥇",
+                                    fontSize = 18.sp
+                                )
+                            }
                         }
                     }
                     
