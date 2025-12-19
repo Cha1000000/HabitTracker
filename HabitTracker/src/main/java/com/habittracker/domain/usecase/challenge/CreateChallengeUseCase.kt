@@ -120,6 +120,7 @@ class CreateChallengeUseCase @Inject constructor(
                         socialRepository.sendChallengeInvitationNotification(
                             participantId,
                             creatorUser?.name ?: "Пользователь",
+                            challenge.id,
                             title,
                             habit.title
                         )

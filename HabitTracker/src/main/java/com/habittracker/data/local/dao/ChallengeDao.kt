@@ -10,7 +10,7 @@ import kotlinx.coroutines.flow.Flow
 
 @Dao
 interface ChallengeDao {
-    @Insert(onConflict = OnConflictStrategy.Companion.REPLACE)
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertChallenge(challenge: ChallengeEntity)
 
     @Update
@@ -36,6 +36,9 @@ interface ChallengeDao {
 
     @Query("SELECT * FROM challenges WHERE status = :status ORDER BY endDate DESC")
     fun getChallengesByStatus(status: String): Flow<List<ChallengeEntity>>
+
+    @Query("SELECT * FROM challenges WHERE status IN (:statuses) ORDER BY endDate DESC")
+    fun getChallengesByStatuses(statuses: List<String>): Flow<List<ChallengeEntity>>
 
     @Query("UPDATE challenges SET participants = :participants WHERE id = :challengeId")
     suspend fun updateChallengeParticipants(challengeId: String, participants: List<String>)

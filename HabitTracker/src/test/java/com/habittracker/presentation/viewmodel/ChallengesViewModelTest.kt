@@ -9,10 +9,12 @@ import com.habittracker.domain.model.ChallengeType
 import com.habittracker.domain.model.Habit
 import com.habittracker.domain.model.HabitType
 import com.habittracker.domain.model.User
+import com.habittracker.domain.repository.AuthRepository
 import com.habittracker.domain.repository.ChallengeRepository
 import com.habittracker.domain.repository.FirestoreRepository
 import com.habittracker.domain.repository.HabitRepository
 import com.habittracker.domain.usecase.GetCurrentUserUseCase
+import com.habittracker.domain.usecase.challenge.CloseExpiredChallengesUseCase
 import com.habittracker.domain.usecase.challenge.JoinChallengeUseCase
 import com.habittracker.domain.usecase.challenge.LeaveChallengeUseCase
 import com.habittracker.presentation.state.ChallengeTab
@@ -138,6 +140,13 @@ class ChallengesViewModelTest {
             startDate: LocalDate,
             endDate: LocalDate
         ): Int = 0
+
+        override suspend fun getCurrentStreakFromFirestore(
+            habitId: String,
+            userId: String,
+            startDate: LocalDate,
+            endDate: LocalDate
+        ): Int = 0
         override suspend fun acceptChallengeInvitation(challengeId: String, userId: String) {
             acceptedInvitations.add(challengeId to userId)
         }
@@ -155,6 +164,14 @@ class ChallengesViewModelTest {
     ): ChallengesViewModel {
         val challengesFlow = MutableStateFlow(challenges)
         val actualRepository = repository ?: FakeChallengeRepository(challengesFlow)
+
+        val authRepository: AuthRepository = mock()
+        whenever(authRepository.getCurrentUserId()).thenReturn(currentUser?.id)
+        val closeExpiredChallengesUseCase = CloseExpiredChallengesUseCase(
+            authRepository = authRepository,
+            challengeRepository = actualRepository,
+            socialRepository = mock()
+        )
         
         whenever(getCurrentUserUseCase.invoke()).thenReturn(flowOf(currentUser))
         
@@ -164,7 +181,8 @@ class ChallengesViewModelTest {
             firestoreRepository = firestoreRepository,
             habitRepository = habitRepository,
             joinChallengeUseCase = joinChallengeUseCase,
-            leaveChallengeUseCase = leaveChallengeUseCase
+            leaveChallengeUseCase = leaveChallengeUseCase,
+            closeExpiredChallengesUseCase = closeExpiredChallengesUseCase
         )
     }
 

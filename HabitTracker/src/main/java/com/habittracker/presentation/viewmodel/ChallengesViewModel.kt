@@ -6,10 +6,12 @@ import androidx.lifecycle.viewModelScope
 import com.habittracker.domain.model.ChallengeStatus
 import com.habittracker.domain.model.HabitType
 import com.habittracker.domain.model.getDaysRemaining
+import com.habittracker.domain.model.isCompleted
 import com.habittracker.domain.repository.ChallengeRepository
 import com.habittracker.domain.repository.FirestoreRepository
 import com.habittracker.domain.repository.HabitRepository
 import com.habittracker.domain.usecase.GetCurrentUserUseCase
+import com.habittracker.domain.usecase.challenge.CloseExpiredChallengesUseCase
 import com.habittracker.domain.usecase.challenge.JoinChallengeUseCase
 import com.habittracker.domain.usecase.challenge.LeaveChallengeUseCase
 import com.habittracker.presentation.state.ChallengeTab
@@ -34,7 +36,8 @@ class ChallengesViewModel @Inject constructor(
     private val firestoreRepository: FirestoreRepository,
     private val habitRepository: HabitRepository,
     private val joinChallengeUseCase: JoinChallengeUseCase,
-    private val leaveChallengeUseCase: LeaveChallengeUseCase
+    private val leaveChallengeUseCase: LeaveChallengeUseCase,
+    private val closeExpiredChallengesUseCase: CloseExpiredChallengesUseCase
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(ChallengesUiState())
@@ -45,6 +48,9 @@ class ChallengesViewModel @Inject constructor(
     private var loadJob: Job? = null
 
     init {
+        viewModelScope.launch {
+            closeExpiredChallengesUseCase()
+        }
         initializeUser()
     }
 
@@ -96,7 +102,7 @@ class ChallengesViewModel @Inject constructor(
                             }
                             
                             val endingSoon = acceptedChallenges.filter { it.getDaysRemaining() <= ENDING_SOON_DAYS }
-                            val completed = challenges.filter { it.status == ChallengeStatus.COMPLETED }
+                            val completed = challenges.filter { it.isCompleted() }
                             
                             _uiState.value = _uiState.value.copy(
                                 pendingInvitations = pendingInvitations,

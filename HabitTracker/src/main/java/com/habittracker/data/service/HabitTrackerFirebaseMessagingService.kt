@@ -143,6 +143,8 @@ class HabitTrackerFirebaseMessagingService : FirebaseMessagingService() {
         // Типы уведомлений, которые всегда должны показываться (приглашения, запросы дружбы и т.п.)
         val alwaysShowTypes = listOf(
             "challenge_invitation",
+            "challenge_completed",
+            "challenge_cancelled",
             "habit_invitation",
             "friend_request",
             "friend_request_accepted"
@@ -172,7 +174,11 @@ class HabitTrackerFirebaseMessagingService : FirebaseMessagingService() {
                 "group_habit_completed",
                 "habit_invitation_accepted",
                 "new_participant",
-                "challenge_invitation"
+                "challenge_invitation",
+                "challenge_completed",
+                "challenge_cancelled",
+                "challenge_joined",
+                "challenge_left"
             )) {
             serviceScope.launch {
                 try {
@@ -348,6 +354,16 @@ class HabitTrackerFirebaseMessagingService : FirebaseMessagingService() {
                     intent.putExtra("habit_id", habitId)
                 }
             }
+            "challenge_completed", "challenge_cancelled", "challenge_joined", "challenge_left" -> {
+                val challengeId = data["challenge_id"] ?: data["challengeId"]
+                if (challengeId != null) {
+                    intent.putExtra("navigate_to", "challenge_detail")
+                    intent.putExtra("challenge_id", challengeId)
+                    intent.putExtra("challengeId", challengeId)
+                } else {
+                    intent.putExtra("navigate_to", "challenge_invitations")
+                }
+            }
             "friend_request" -> {
                 intent.putExtra("navigate_to", "friend_requests")
             }
@@ -393,7 +409,7 @@ class HabitTrackerFirebaseMessagingService : FirebaseMessagingService() {
         val challengeId = data["challenge_id"] ?: data["challengeId"]
         
         // Определяем тип и данные уведомления
-        val (type, entityId) = when (notificationType) {
+        val (type, entityId, message) = when (notificationType) {
             "group_habit_completed" -> {
                 if (habitId == null) return
                 val name = data["participant_name"] ?: "Участник"
@@ -414,23 +430,43 @@ class HabitTrackerFirebaseMessagingService : FirebaseMessagingService() {
                 val id = challengeId ?: "unknown"
                 Triple("CHALLENGE_INVITATION", id, data["body"] ?: "Вас пригласили в челлендж '$challengeTitle'")
             }
+            "challenge_completed" -> {
+                val challengeTitle = data["challengeTitle"] ?: "Челлендж"
+                val id = challengeId ?: "unknown"
+                Triple("CHALLENGE_COMPLETED", id, data["body"] ?: "Челлендж '$challengeTitle' завершен")
+            }
+            "challenge_cancelled" -> {
+                val challengeTitle = data["challengeTitle"] ?: "Челлендж"
+                val id = challengeId ?: "unknown"
+                Triple("CHALLENGE_CANCELLED", id, data["body"] ?: "Челлендж '$challengeTitle' отменен")
+            }
+            "challenge_joined" -> {
+                val challengeTitle = data["challengeTitle"] ?: "Челлендж"
+                val id = challengeId ?: "unknown"
+                Triple("CHALLENGE_JOINED", id, data["body"] ?: "Новый участник присоединился к челленджу '$challengeTitle'")
+            }
+            "challenge_left" -> {
+                val challengeTitle = data["challengeTitle"] ?: "Челлендж"
+                val id = challengeId ?: "unknown"
+                Triple("CHALLENGE_LEFT", id, data["body"] ?: "Участник покинул челлендж '$challengeTitle'")
+            }
             else -> return
         }
 
         Log.d(TAG, "Push-уведомление получено: type=$type, entityId=$entityId (синхронизация через Firestore)")
         
         // Сохраняем уведомление в базу данных
-        if (notificationType == "challenge_invitation") {
-            saveChallengeNotificationToDb(data, type)
+        if (notificationType.startsWith("challenge_")) {
+            saveChallengeNotificationToDb(data, type, entityId, message)
         }
     }
     
     /**
      * Сохраняет уведомление о челлендже в базу данных
      */
-    private fun saveChallengeNotificationToDb(data: Map<String, String>, type: String) {
+    private fun saveChallengeNotificationToDb(data: Map<String, String>, type: String, challengeId: String, message: String) {
         val recipientUserId = data["recipientUserId"] ?: return
-        val body = data["body"] ?: ""
+        val body = message
         val challengeTitle = data["challengeTitle"] ?: ""
         val habitTitle = data["habitTitle"] ?: ""
         
@@ -440,7 +476,7 @@ class HabitTrackerFirebaseMessagingService : FirebaseMessagingService() {
                 val notification = com.habittracker.data.local.entity.GroupHabitNotificationEntity(
                     id = java.util.UUID.randomUUID().toString(),
                     userId = recipientUserId,
-                    habitId = "challenge", // Используем маркер для челленджей
+                    habitId = challengeId,
                     type = type,
                     participantId = "",
                     participantName = "",

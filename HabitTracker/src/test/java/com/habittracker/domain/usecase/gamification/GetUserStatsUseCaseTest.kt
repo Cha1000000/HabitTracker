@@ -164,6 +164,13 @@ class GetUserStatsUseCaseTest {
                 override suspend fun getCompletedDaysForUserInChallenge(challengeId: String, habitId: String, userId: String, startDate: LocalDate, endDate: LocalDate): Int = 0
                 override suspend fun getCurrentStreakForUserInChallenge(habitId: String, userId: String, startDate: LocalDate, endDate: LocalDate): Int = 0
                 override suspend fun getCompletedDaysFromFirestore(habitId: String, userId: String, startDate: LocalDate, endDate: LocalDate): Int = 0
+
+                override suspend fun getCurrentStreakFromFirestore(
+                    habitId: String,
+                    userId: String,
+                    startDate: LocalDate,
+                    endDate: LocalDate
+                ): Int = 0
                 override suspend fun acceptChallengeInvitation(challengeId: String, userId: String) {}
                 override suspend fun declineChallengeInvitation(challengeId: String, userId: String) {}
                 override suspend fun cancelChallenge(challengeId: String) {}
@@ -295,11 +302,11 @@ class GetUserStatsUseCaseTest {
                 override suspend fun sendHabitInvitationNotification(toUserId: String, fromUserName: String, habitTitle: String) {}
                 override suspend fun sendHabitInvitationAcceptedNotification(toUserId: String, acceptedByName: String, habitTitle: String, habitId: String) {}
                 override suspend fun sendParticipantJoinedNotification(toUserId: String, joinedUserName: String, habitTitle: String, habitId: String) {}
-                override suspend fun sendChallengeInvitationNotification(toUserId: String, fromUserName: String, challengeTitle: String, habitTitle: String) {}
-                override suspend fun sendChallengeJoinedNotification(toUserId: String, joinedUserName: String, challengeTitle: String) {}
-                override suspend fun sendChallengeLeftNotification(toUserId: String, leftUserName: String, challengeTitle: String) {}
-                override suspend fun sendChallengeCompletedNotification(toUserId: String, challengeTitle: String, message: String, isWinner: Boolean) {}
-                override suspend fun sendChallengeCancelledNotification(toUserId: String, challengeTitle: String, reason: String) {}
+                override suspend fun sendChallengeInvitationNotification(toUserId: String, fromUserName: String, challengeId: String, challengeTitle: String, habitTitle: String) {}
+                override suspend fun sendChallengeJoinedNotification(toUserId: String, joinedUserName: String, challengeId: String, challengeTitle: String) {}
+                override suspend fun sendChallengeLeftNotification(toUserId: String, leftUserName: String, challengeId: String, challengeTitle: String) {}
+                override suspend fun sendChallengeCompletedNotification(toUserId: String, challengeId: String, challengeTitle: String, message: String, isWinner: Boolean) {}
+                override suspend fun sendChallengeCancelledNotification(toUserId: String, challengeId: String, challengeTitle: String, reason: String) {}
                 override suspend fun sendPushNotification(fcmToken: String, title: String, body: String, data: Map<String, String>) {}
             }
         )

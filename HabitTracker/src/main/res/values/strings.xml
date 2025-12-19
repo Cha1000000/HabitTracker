@@ -592,6 +592,7 @@
     <string name="challenge_pending">Ожидает</string>
     <string name="challenge_active">Активный</string>
     <string name="challenge_completed">Завершен</string>
+    <string name="challenge_expired">Истёк</string>
     <string name="challenge_cancelled">Отменен</string>
     <string name="challenge_ended">Завершен</string>
     <string name="one_day_left">1 день</string>

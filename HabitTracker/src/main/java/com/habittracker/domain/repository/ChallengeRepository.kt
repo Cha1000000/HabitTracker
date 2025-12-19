@@ -74,6 +74,13 @@ interface ChallengeRepository {
         startDate: LocalDate,
         endDate: LocalDate
     ): Int
+
+    suspend fun getCurrentStreakFromFirestore(
+        habitId: String,
+        userId: String,
+        startDate: LocalDate,
+        endDate: LocalDate
+    ): Int
     
     /**
      * Принять приглашение в челлендж

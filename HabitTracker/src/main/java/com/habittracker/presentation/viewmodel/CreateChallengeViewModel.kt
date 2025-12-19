@@ -494,6 +494,7 @@ class CreateChallengeViewModel @Inject constructor(
                         socialRepository.sendChallengeInvitationNotification(
                             toUserId = participantId,
                             fromUserName = creatorUser?.name ?: "Пользователь",
+                            challengeId = updatedChallenge.id,
                             challengeTitle = updatedChallenge.title,
                             habitTitle = habitTitle
                         )

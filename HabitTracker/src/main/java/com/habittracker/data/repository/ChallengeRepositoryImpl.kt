@@ -23,6 +23,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.TimeZone
+import kotlinx.datetime.minus
 import kotlinx.datetime.toLocalDateTime
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
@@ -172,7 +173,7 @@ class ChallengeRepositoryImpl @Inject constructor(
     }
     
     override fun getCompletedChallenges(): Flow<List<Challenge>> {
-        return challengeDao.getChallengesByStatus("COMPLETED").map { entities ->
+        return challengeDao.getChallengesByStatuses(listOf("COMPLETED", "EXPIRED")).map { entities ->
             entities.map { it.challengeToDomain() }
         }
     }
@@ -507,6 +508,43 @@ class ChallengeRepositoryImpl @Inject constructor(
             snapshot.documents.size
         } catch (e: Exception) {
             Log.e(TAG, "Error getting completed days from Firestore: ${e.message}", e)
+            0
+        }
+    }
+
+    override suspend fun getCurrentStreakFromFirestore(
+        habitId: String,
+        userId: String,
+        startDate: LocalDate,
+        endDate: LocalDate
+    ): Int {
+        return try {
+            val snapshot = firestore.collection("habit_entries")
+                .whereEqualTo("habitId", habitId)
+                .whereEqualTo("userId", userId)
+                .whereEqualTo("completed", true)
+                .whereGreaterThanOrEqualTo("date", startDate.toString())
+                .whereLessThanOrEqualTo("date", endDate.toString())
+                .get()
+                .await()
+
+            val completedDates = snapshot.documents.mapNotNull { doc ->
+                (doc.getString("date") ?: doc.get("date") as? String)?.let { runCatching { LocalDate.parse(it) }.getOrNull() }
+            }.toSet()
+
+            var streak = 0
+            var current = endDate
+            while (current >= startDate) {
+                if (completedDates.contains(current)) {
+                    streak++
+                    current = current.minus(1, kotlinx.datetime.DateTimeUnit.DAY)
+                } else {
+                    break
+                }
+            }
+            streak
+        } catch (e: Exception) {
+            Log.e(TAG, "Error getting current streak from Firestore: ${e.message}", e)
             0
         }
     }

@@ -226,6 +226,14 @@ fun NotificationsScreen(
                                                 // Навигация на экран Челленджей, вкладка Приглашения
                                                 navController.navigate(Screen.Challenges.createRoute("invitations"))
                                             }
+                                            "CHALLENGE_COMPLETED", "CHALLENGE_CANCELLED", "CHALLENGE_JOINED", "CHALLENGE_LEFT" -> {
+                                                val challengeId = notification.habitId
+                                                if (challengeId.isNotBlank()) {
+                                                    navController.navigate(Screen.ChallengeDetail.createRoute(challengeId))
+                                                } else {
+                                                    navController.navigate(Screen.Challenges.route)
+                                                }
+                                            }
                                             else -> {
                                                 // Навигация к деталям групповой привычки
                                                 navController.navigate(Screen.GroupHabitDetail.createRoute(notification.habitId))

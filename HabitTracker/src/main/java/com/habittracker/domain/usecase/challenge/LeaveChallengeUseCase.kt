@@ -2,6 +2,7 @@ package com.habittracker.domain.usecase.challenge
 
 import com.habittracker.domain.model.Challenge
 import com.habittracker.domain.model.ChallengeStatus
+import com.habittracker.domain.model.isCompleted
 import com.habittracker.domain.repository.ChallengeRepository
 import com.habittracker.domain.repository.SocialRepository
 import kotlinx.datetime.Clock
@@ -39,7 +40,7 @@ class LeaveChallengeUseCase @Inject constructor(
             }
             
             // Проверяем статус челленджа
-            if (challenge.status == ChallengeStatus.COMPLETED) {
+            if (challenge.isCompleted()) {
                 return Result.failure(Exception("Нельзя покинуть завершенный челлендж"))
             }
             
@@ -67,6 +68,7 @@ class LeaveChallengeUseCase @Inject constructor(
                 socialRepository.sendChallengeLeftNotification(
                     challenge.createdBy,
                     leavingUser?.name ?: "Пользователь",
+                    challenge.id,
                     challenge.title
                 )
             } catch (e: Exception) {

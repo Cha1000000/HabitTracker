@@ -48,6 +48,7 @@ enum class ChallengeStatus {
     PENDING,    // ожидает начала
     ACTIVE,     // активный
     COMPLETED,  // завершен
+    EXPIRED,    // истек (без победителя)
     CANCELLED   // отменен
 }
 
@@ -73,7 +74,7 @@ fun Challenge.isActive(): Boolean = status == ChallengeStatus.ACTIVE
 
 fun Challenge.isPending(): Boolean = status == ChallengeStatus.PENDING
 
-fun Challenge.isCompleted(): Boolean = status == ChallengeStatus.COMPLETED
+fun Challenge.isCompleted(): Boolean = status == ChallengeStatus.COMPLETED || status == ChallengeStatus.EXPIRED
 
 fun Challenge.getDurationInDays(): Int {
     return (endDate.toEpochDays() - startDate.toEpochDays()).toInt() + 1
@@ -123,6 +124,7 @@ fun Challenge.getStatusText(): String = when (status) {
     ChallengeStatus.PENDING -> "Ожидает начала"
     ChallengeStatus.ACTIVE -> "Активный"
     ChallengeStatus.COMPLETED -> "Завершен"
+    ChallengeStatus.EXPIRED -> "Истек"
     ChallengeStatus.CANCELLED -> "Отменен"
 }
 

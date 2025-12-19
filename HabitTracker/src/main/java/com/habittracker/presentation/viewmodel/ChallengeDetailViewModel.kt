@@ -241,6 +241,7 @@ class ChallengeDetailViewModel @Inject constructor(
                 socialRepository.sendChallengeInvitationNotification(
                     toUserId = userId,
                     fromUserName = creatorUser?.name ?: "Пользователь",
+                    challengeId = challenge.id,
                     challengeTitle = challenge.title,
                     habitTitle = habit.title
                 )
@@ -399,6 +400,7 @@ class ChallengeDetailViewModel @Inject constructor(
                     socialRepository.sendChallengeInvitationNotification(
                         toUserId = participant.id,
                         fromUserName = creatorUser?.name ?: "Пользователь",
+                        challengeId = challenge.id,
                         challengeTitle = challenge.title,
                         habitTitle = habit.title
                     )

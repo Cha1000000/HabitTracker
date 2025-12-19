@@ -13,6 +13,7 @@ import org.json.JSONObject
 import java.util.UUID
 import javax.inject.Inject
 import javax.inject.Singleton
+import kotlin.coroutines.resume
 import kotlin.coroutines.resumeWithException
 
 /**
@@ -263,7 +264,7 @@ private suspend fun <T> suspendCancellableAwait(task: com.google.android.gms.tas
         task.addOnCompleteListener { t ->
             if (t.isSuccessful) {
                 @Suppress("UNCHECKED_CAST")
-                cont.resume(t.result as T) {}
+                cont.resume(t.result as T)
             } else {
                 cont.resumeWithException(t.exception ?: RuntimeException("Task failed"))
             }

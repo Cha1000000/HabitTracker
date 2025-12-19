@@ -385,6 +385,14 @@ internal fun ChallengeStatusBadge(
                 Icons.Default.EmojiEvents
             )
         }
+        ChallengeStatus.EXPIRED -> {
+            Tuple4(
+                MaterialTheme.colorScheme.surfaceVariant,
+                MaterialTheme.colorScheme.onSurfaceVariant,
+                stringResource(R.string.challenge_expired),
+                Icons.Default.Timer
+            )
+        }
         ChallengeStatus.CANCELLED -> {
             Tuple4(
                 MaterialTheme.colorScheme.errorContainer,

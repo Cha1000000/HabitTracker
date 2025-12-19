@@ -1899,7 +1899,7 @@ class SocialRepositoryImpl @Inject constructor(
         }
     }
 
-    override suspend fun sendChallengeInvitationNotification(toUserId: String, fromUserName: String, challengeTitle: String, habitTitle: String) {
+    override suspend fun sendChallengeInvitationNotification(toUserId: String, fromUserName: String, challengeId: String, challengeTitle: String, habitTitle: String) {
         try {
             val userDoc = firestore.collection("users").document(toUserId).get().await()
             val tokensFromArray = (userDoc.get("fcmTokens") as? List<*>)?.mapNotNull { it as? String } ?: emptyList()
@@ -1922,6 +1922,8 @@ class SocialRepositoryImpl @Inject constructor(
                 body = "$fromUserName приглашает вас к участию в челлендже '$challengeTitle' по привычке '$habitTitle'",
                 data = mapOf(
                     "type" to "challenge_invitation",
+                    "challengeId" to challengeId,
+                    "challenge_id" to challengeId,
                     "challengeTitle" to challengeTitle,
                     "habitTitle" to habitTitle,
                     "recipientUserId" to toUserId
@@ -1941,7 +1943,7 @@ class SocialRepositoryImpl @Inject constructor(
         }
     }
     
-    override suspend fun sendChallengeJoinedNotification(toUserId: String, joinedUserName: String, challengeTitle: String) {
+    override suspend fun sendChallengeJoinedNotification(toUserId: String, joinedUserName: String, challengeId: String, challengeTitle: String) {
         try {
             val userDoc = firestore.collection("users").document(toUserId).get().await()
             val tokensFromArray = (userDoc.get("fcmTokens") as? List<*>)?.mapNotNull { it as? String } ?: emptyList()
@@ -1964,6 +1966,8 @@ class SocialRepositoryImpl @Inject constructor(
                 body = "$joinedUserName присоединился к челленджу '$challengeTitle'",
                 data = mapOf(
                     "type" to "challenge_joined",
+                    "challengeId" to challengeId,
+                    "challenge_id" to challengeId,
                     "challengeTitle" to challengeTitle,
                     "recipientUserId" to toUserId
                 )
@@ -1982,7 +1986,7 @@ class SocialRepositoryImpl @Inject constructor(
         }
     }
     
-    override suspend fun sendChallengeLeftNotification(toUserId: String, leftUserName: String, challengeTitle: String) {
+    override suspend fun sendChallengeLeftNotification(toUserId: String, leftUserName: String, challengeId: String, challengeTitle: String) {
         try {
             val userDoc = firestore.collection("users").document(toUserId).get().await()
             val tokensFromArray = (userDoc.get("fcmTokens") as? List<*>)?.mapNotNull { it as? String } ?: emptyList()
@@ -2005,6 +2009,8 @@ class SocialRepositoryImpl @Inject constructor(
                 body = "$leftUserName покинул челлендж '$challengeTitle'",
                 data = mapOf(
                     "type" to "challenge_left",
+                    "challengeId" to challengeId,
+                    "challenge_id" to challengeId,
                     "challengeTitle" to challengeTitle,
                     "recipientUserId" to toUserId
                 )
@@ -2023,7 +2029,7 @@ class SocialRepositoryImpl @Inject constructor(
         }
     }
     
-    override suspend fun sendChallengeCompletedNotification(toUserId: String, challengeTitle: String, message: String, isWinner: Boolean) {
+    override suspend fun sendChallengeCompletedNotification(toUserId: String, challengeId: String, challengeTitle: String, message: String, isWinner: Boolean) {
         try {
             val userDoc = firestore.collection("users").document(toUserId).get().await()
             val tokensFromArray = (userDoc.get("fcmTokens") as? List<*>)?.mapNotNull { it as? String } ?: emptyList()
@@ -2047,6 +2053,8 @@ class SocialRepositoryImpl @Inject constructor(
                 body = message,
                 data = mapOf(
                     "type" to "challenge_completed",
+                    "challengeId" to challengeId,
+                    "challenge_id" to challengeId,
                     "challengeTitle" to challengeTitle,
                     "isWinner" to isWinner.toString(),
                     "recipientUserId" to toUserId
@@ -2066,7 +2074,7 @@ class SocialRepositoryImpl @Inject constructor(
         }
     }
     
-    override suspend fun sendChallengeCancelledNotification(toUserId: String, challengeTitle: String, reason: String) {
+    override suspend fun sendChallengeCancelledNotification(toUserId: String, challengeId: String, challengeTitle: String, reason: String) {
         try {
             val userDoc = firestore.collection("users").document(toUserId).get().await()
             val tokensFromArray = (userDoc.get("fcmTokens") as? List<*>)?.mapNotNull { it as? String } ?: emptyList()
@@ -2089,6 +2097,8 @@ class SocialRepositoryImpl @Inject constructor(
                 body = "Челлендж '$challengeTitle' был отменен. $reason",
                 data = mapOf(
                     "type" to "challenge_cancelled",
+                    "challengeId" to challengeId,
+                    "challenge_id" to challengeId,
                     "challengeTitle" to challengeTitle,
                     "reason" to reason,
                     "recipientUserId" to toUserId

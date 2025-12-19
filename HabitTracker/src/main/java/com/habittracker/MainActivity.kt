@@ -157,6 +157,7 @@ class MainActivity : ComponentActivity() {
     private fun handleIntentForNavigation(intent: android.content.Intent) {
         val navigateTo = intent.getStringExtra("navigate_to")
         val habitId = intent.getStringExtra("habit_id") ?: intent.getStringExtra("habitId")
+        val challengeId = intent.getStringExtra("challenge_id") ?: intent.getStringExtra("challengeId")
 
         val route: String? = when (navigateTo) {
             "friends" -> Screen.Friends.route
@@ -165,6 +166,7 @@ class MainActivity : ComponentActivity() {
             "challenge_invitations" -> Screen.Challenges.createRoute("invitations")
             "notifications" -> Screen.Notifications.route
             "group_habit_detail" -> habitId?.let { Screen.GroupHabitDetail.createRoute(it) } ?: Screen.Habits.route
+            "challenge_detail" -> challengeId?.let { Screen.ChallengeDetail.createRoute(it) } ?: Screen.Challenges.route
             "habits" -> Screen.Habits.route
             null -> {
                 if (habitId != null) Screen.Habits.route else null
@@ -223,11 +225,14 @@ class MainActivity : ComponentActivity() {
         try {
             val hadNavigateTo = intent?.hasExtra("navigate_to") == true
             val hadHabitId = intent?.hasExtra("habit_id") == true || intent?.hasExtra("habitId") == true
+            val hadChallengeId = intent?.hasExtra("challenge_id") == true || intent?.hasExtra("challengeId") == true
             intent?.removeExtra("navigate_to")
             intent?.removeExtra("habit_id")
             intent?.removeExtra("habitId")
-            if (hadNavigateTo || hadHabitId) {
-                Log.d("MainActivity", "[push-nav] cleared deep link extras (navigate_to/habit_id)")
+            intent?.removeExtra("challenge_id")
+            intent?.removeExtra("challengeId")
+            if (hadNavigateTo || hadHabitId || hadChallengeId) {
+                Log.d("MainActivity", "[push-nav] cleared deep link extras (navigate_to/habit_id/challenge_id)")
             }
         } catch (e: Exception) {
             Log.w("MainActivity", "[push-nav] failed to clear deep link extras: ${e.message}", e)

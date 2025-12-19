@@ -1,6 +1,7 @@
 package com.habittracker.domain.usecase.challenge
 
 import com.habittracker.domain.model.Challenge
+import com.habittracker.domain.model.ChallengeStatus
 import com.habittracker.domain.model.ChallengeType
 import com.habittracker.domain.model.User
 import com.habittracker.domain.repository.ChallengeRepository
@@ -109,7 +110,7 @@ class GetChallengeResultsUseCase @Inject constructor(
             val results = ChallengeResults(
                 challenge = challenge,
                 participants = sortedResults,
-                isCompleted = challenge.status.name == "COMPLETED" || challenge.endDate <= today,
+                isCompleted = challenge.status == ChallengeStatus.COMPLETED || challenge.status == ChallengeStatus.EXPIRED || challenge.endDate <= today,
                 winner = winner,
                 daysRemaining = daysRemaining,
                 totalDays = totalDays

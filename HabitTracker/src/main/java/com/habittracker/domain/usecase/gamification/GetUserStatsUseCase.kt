@@ -129,7 +129,7 @@ class GetUserStatsUseCase @Inject constructor(
         userId: String
     ): ChallengeStats {
         val activeChallenges = challenges.filter { it.status == ChallengeStatus.ACTIVE }
-        val completedChallenges = challenges.filter { it.status == ChallengeStatus.COMPLETED }
+        val completedChallenges = challenges.filter { it.status == ChallengeStatus.COMPLETED || it.status == ChallengeStatus.EXPIRED }
         val wonChallenges = completedChallenges.filter { it.winnerId == userId }
 
         return ChallengeStats(
