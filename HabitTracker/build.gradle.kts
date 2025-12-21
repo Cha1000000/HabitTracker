@@ -27,7 +27,7 @@ ksp {
 }
 
 // Единый источник versionName для использования и в defaultConfig, и в имени APK
-val appVersionName = "1.1.1"
+val appVersionName = "1.2.0"
 
 android {
     namespace = "com.habittracker"
