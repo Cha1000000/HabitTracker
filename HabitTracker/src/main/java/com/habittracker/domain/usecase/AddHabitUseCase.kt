@@ -1,8 +1,12 @@
 package com.habittracker.domain.usecase
 
 import com.habittracker.domain.model.Habit
+import com.habittracker.domain.model.HabitType
+import com.habittracker.domain.model.gamification.GamificationEvent
 import com.habittracker.domain.repository.FirestoreRepository
 import com.habittracker.domain.repository.HabitRepository
+import com.habittracker.domain.usecase.gamification.CheckAchievementsUseCase
+import com.habittracker.domain.usecase.gamification.UpdateUserPointsUseCase
 import javax.inject.Inject
 
 /**
@@ -11,8 +15,9 @@ import javax.inject.Inject
  * Сохраняет данные в Firestore для синхронизации и локально для офлайн-доступа.
  */
 class AddHabitUseCase @Inject constructor(
-    private val firestoreRepository: FirestoreRepository,
-    private val habitRepository: HabitRepository
+    private val habitRepository: HabitRepository,
+    private val updateUserPointsUseCase: UpdateUserPointsUseCase,
+    private val checkAchievementsUseCase: CheckAchievementsUseCase
 ) {
     /**
      * Выполняет основное действие use case.
@@ -20,19 +25,19 @@ class AddHabitUseCase @Inject constructor(
      */
     suspend operator fun invoke(habit: Habit) {
         android.util.Log.d("AddHabitUseCase", "📅 Saving habit '${habit.title}' with startDate=${habit.startDate}, endDate=${habit.endDate}")
-        try {
-            // Сначала сохраняем в Firestore для синхронизации
-            firestoreRepository.saveHabit(habit)
-            
-            // Затем сохраняем локально для офлайн-доступа
-            habitRepository.insertHabit(habit)
-            android.util.Log.d("AddHabitUseCase", "✅ Habit saved successfully")
-        } catch (e: Exception) {
-            // Если Firestore недоступен, сохраняем только локально
-            // В будущем можно добавить логику отложенной синхронизации
-            android.util.Log.w("AddHabitUseCase", "⚠️ Firestore save failed, saving locally only: ${e.message}")
-            habitRepository.insertHabit(habit)
-            throw e
+        
+        // Сохраняем через репозиторий (Local + Outbox)
+        habitRepository.insertHabit(habit)
+        android.util.Log.d("AddHabitUseCase", "✅ Habit saved successfully (Local + Outbox)")
+
+        // Начисление очков за создание групповой привычки
+        if (habit.type == HabitType.GROUP) {
+            try {
+                updateUserPointsUseCase(habit.createdBy, GamificationEvent.GroupHabitCreated)
+                checkAchievementsUseCase(habit.createdBy)
+            } catch (e: Exception) {
+                // Ignore gamification errors
+            }
         }
     }
 }

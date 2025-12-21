@@ -366,6 +366,7 @@ fun NotificationTypeIcon(
         NotificationType.PARTICIPANT_JOINED -> Icons.Default.Group to Color(0xFF9C27B0)
         NotificationType.FRIEND_JOINED -> Icons.Default.PersonAdd to Color(0xFF9C27B0)
         NotificationType.HABIT_REMINDER -> Icons.Default.Notifications to Color(0xFF607D8B)
+        NotificationType.ACHIEVEMENT_UNLOCKED -> Icons.Default.EmojiEvents to Color(0xFFFFD700)
     }
     
     val icon = iconData.first

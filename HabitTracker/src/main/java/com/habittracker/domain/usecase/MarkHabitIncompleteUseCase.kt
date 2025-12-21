@@ -58,41 +58,27 @@ class MarkHabitIncompleteUseCase @Inject constructor(
             updatedAt = today
         )
 
-        // 1) Локально в Room — всегда сначала
+        // 1) Локально в Room — всегда сначала (Repository handles Outbox internally)
         habitEntryRepository.markHabitIncomplete(habitId, userId, date)
 
-        // 2) Outbox UPSERT + форс-синк
-        val entityId = HabitEntryIds.make(habitId, userId, date)
-        val payloadJson = SyncPayloads.habitEntryToJson(habitEntry)
-
+        // 2) Экспедитим синхронизацию (форс-синк)
         try {
-            syncManager.enqueueUpsert(
-                entityType = "habit_entry",
-                entityId = entityId,
-                payloadJson = payloadJson,
-                updatedAt = today.atStartOfDayIn(TimeZone.currentSystemDefault()).toEpochMilliseconds()
-            )
+            syncWorkScheduler.scheduleOneTimeSync()
         } catch (e: Exception) {
-            // Не критично для UI, но логируем, чтобы не терять причину
-            Log.w("MarkHabitIncomplete", "enqueueUpsert failed: ${e.message}", e)
-        } finally {
-            try {
-                syncWorkScheduler.scheduleOneTimeSync()
-            } catch (e: Exception) {
-                Log.w("MarkHabitIncomplete", "scheduleOneTimeSync failed: ${e.message}", e)
+            Log.w("MarkHabitIncomplete", "scheduleOneTimeSync failed: ${e.message}", e)
+        }
+        
+        // Немедленный неблокирующий дренаж outbox для ускорения синка
+        backgroundTasksScope.launch {
+            try { syncManager.drainPending() } catch (e: Exception) {
+                Log.d("MarkHabitIncomplete", "drainPending failed (non-fatal): ${e.message}")
             }
-            // Немедленный неблокирующий дренаж outbox для ускорения синка
+        }
+        
+        // 3) Вычитаем очки, если привычка была выполнена
+        if (wasCompleted) {
             backgroundTasksScope.launch {
-                try { syncManager.drainPending() } catch (e: Exception) {
-                    Log.d("MarkHabitIncomplete", "drainPending failed (non-fatal): ${e.message}")
-                }
-            }
-            
-            // 3) Вычитаем очки, если привычка была выполнена
-            if (wasCompleted) {
-                backgroundTasksScope.launch {
-                    updateUserPointsUseCase(userId, GamificationEvent.HabitUncompleted)
-                }
+                updateUserPointsUseCase(userId, GamificationEvent.HabitUncompleted)
             }
         }
     }

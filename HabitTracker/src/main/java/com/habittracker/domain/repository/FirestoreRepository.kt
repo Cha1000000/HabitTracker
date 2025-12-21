@@ -20,40 +20,12 @@ interface FirestoreRepository {
     fun getUserHabits(userId: String): Flow<List<Habit>>
 
     /**
-     * Сохраняет привычку в Firestore.
-     *
-     * @param habit Привычка для сохранения
-     */
-    suspend fun saveHabit(habit: Habit)
-
-    /**
-     * Обновляет привычку в Firestore.
-     *
-     * @param habit Обновленная привычка
-     */
-    suspend fun updateHabit(habit: Habit)
-
-    /**
-     * Удаляет привычку из Firestore.
-     *
-     * @param habitId ID привычки
-     */
-    suspend fun deleteHabit(habitId: String)
-
-    /**
      * Получает привычку по ID из Firestore.
      *
      * @param habitId ID привычки
      * @return Привычка или null, если не найдена
      */
     suspend fun getHabitById(habitId: String): Habit?
-
-    /**
-     * Сохраняет запись о выполнении привычки в Firestore.
-     *
-     * @param habitEntry Запись о выполнении
-     */
-    suspend fun saveHabitEntry(habitEntry: HabitEntry)
 
     /**
      * Получает записи о выполнении привычки из Firestore.
@@ -82,7 +54,6 @@ interface FirestoreRepository {
 
     // Participant personal settings for reminders
     suspend fun getParticipantSettings(habitId: String, userId: String): HabitParticipantSettings?
-    suspend fun setParticipantSettings(settings: HabitParticipantSettings)
     
     /**
      * Получает все публичные привычки от всех пользователей.

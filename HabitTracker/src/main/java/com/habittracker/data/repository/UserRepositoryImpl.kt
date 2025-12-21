@@ -6,8 +6,10 @@ import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.SetOptions
 import com.habittracker.data.firestore.UserFirestoreConverter
 import com.habittracker.data.local.dao.UserDao
+import com.habittracker.data.sync.SyncManager
 import com.habittracker.domain.model.User
 import com.habittracker.domain.repository.UserRepository
+import com.habittracker.domain.util.SyncPayloads
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.cancel
@@ -26,6 +28,7 @@ import com.habittracker.data.local.mappers.toEntity as userToEntity
 @Singleton
 class UserRepositoryImpl @Inject constructor(
     private val userDao: UserDao,
+    private val syncManager: SyncManager,
     private val firestore: FirebaseFirestore
 ) : UserRepository {
     
@@ -37,39 +40,15 @@ class UserRepositoryImpl @Inject constructor(
         // Обновляем локальную БД
         userDao.updateUser(user.userToEntity())
         
-        // Синхронизируем с Firestore
-        try {
-            val now = System.currentTimeMillis()
-            val userDoc = firestore.collection("users").document(user.id)
-            
-            val payload = hashMapOf(
-                "id" to user.id,
-                "name" to user.name,
-                "email" to user.email,
-                "level" to user.level,
-                "points" to user.points,
-                "streak" to user.streak,
-                "longestStreak" to user.longestStreak,
-                "friendsCount" to user.friendsCount,
-                "createdAt" to user.createdAt,
-                "lastActiveAt" to now,
-                "timezone" to user.timezone,
-                "updatedAt" to now
-            )
-            
-            // Добавляем опциональные поля
-            user.avatarUrl?.let { payload["avatarUrl"] = it }
-            user.avatarThumbnailUrl?.let { payload["avatarThumbnailUrl"] = it }
-            user.fcmToken?.let { payload["fcmToken"] = it }
-            
-            // Используем merge для обновления только указанных полей
-            userDoc.set(payload, SetOptions.merge()).await()
-            
-            Log.d("UserRepository", "User updated in Firestore: ${user.id}, points=${user.points}, level=${user.level}")
-        } catch (e: Exception) {
-            Log.w("UserRepository", "Failed to sync user to Firestore (non-fatal): ${e.message}", e)
-            // Не прерываем выполнение - локальные данные уже обновлены
-        }
+        // Синхронизируем с Firestore через Outbox
+        val now = System.currentTimeMillis()
+        val json = SyncPayloads.userToJson(user, now)
+        syncManager.enqueueUpsert(
+            entityType = "user",
+            entityId = user.id,
+            payloadJson = json,
+            updatedAt = now
+        )
     }
     
     override suspend fun deleteUser(userId: String) {
@@ -102,7 +81,28 @@ class UserRepositoryImpl @Inject constructor(
     }
     
     override suspend fun updateUserLevel(userId: String, level: Int, points: Int) {
+        // Update local DAO
         userDao.updateUserPoints(userId, points, level)
+        
+        // Fetch updated user to sync full object
+        val updatedUser = userDao.getUserById(userId)?.userToDomain()
+        
+        if (updatedUser != null) {
+            val now = System.currentTimeMillis()
+            val json = SyncPayloads.userToJson(updatedUser, now)
+            try {
+                syncManager.enqueueUpsert(
+                    entityType = "user",
+                    entityId = userId,
+                    payloadJson = json,
+                    updatedAt = now
+                )
+            } catch (e: Exception) {
+                Log.e("UserRepository", "Failed to enqueue sync for updateUserLevel", e)
+            }
+        } else {
+            Log.w("UserRepository", "updateUserLevel: User $userId not found locally after update")
+        }
     }
 
     override suspend fun upsertUserRemoteAndLocal(user: User, fcmToken: String?) {
@@ -110,41 +110,26 @@ class UserRepositoryImpl @Inject constructor(
         userDao.insertUser(user.userToEntity())
 
         val now = System.currentTimeMillis()
-        val userDoc = firestore.collection("users").document(user.id)
-
-        val payload = hashMapOf(
-            "id" to user.id,
-            "name" to user.name,
-            "email" to user.email,
-            // nullable fields will be added below only if non-null
-            "level" to user.level,
-            "points" to user.points,
-            "streak" to user.streak,
-            "longestStreak" to user.longestStreak,
-            "friendsCount" to user.friendsCount,
-            "createdAt" to user.createdAt,
-            "lastActiveAt" to now,
-            "timezone" to user.timezone,
-            "updatedAt" to now
+        
+        // Use SyncManager for User data
+        val json = SyncPayloads.userToJson(user, now)
+        syncManager.enqueueUpsert(
+            entityType = "user",
+            entityId = user.id,
+            payloadJson = json,
+            updatedAt = now
         )
-        // Only include optional fields if present to avoid overwriting with null
-        user.avatarUrl?.let { payload["avatarUrl"] = it }
-        user.avatarThumbnailUrl?.let { payload["avatarThumbnailUrl"] = it }
 
-        try {
-            // merge=true для UPSERT
-            userDoc.set(payload, SetOptions.merge()).await()
-
-            if (!fcmToken.isNullOrBlank()) {
-                // обновляем массив токенов атомарно
-                userDoc.update(mapOf(
+        // Handle FCM Token separately (direct update for ArrayUnion)
+        if (!fcmToken.isNullOrBlank()) {
+            try {
+                firestore.collection("users").document(user.id).update(mapOf(
                     "fcmTokens" to FieldValue.arrayUnion(fcmToken),
                     "updatedAt" to now
                 )).await()
+            } catch (e: Exception) {
+                Log.w("UserRepository", "upsertUserRemoteAndLocal: fcmToken update failed (non-fatal): ${e.message}")
             }
-        } catch (e: Exception) {
-            Log.w("UserRepository", "upsertUserRemoteAndLocal failed (non-fatal): ${e.message}", e)
-            // не падаем; WorkManager/повтор можно добавить отдельно при необходимости
         }
     }
 
@@ -189,16 +174,32 @@ class UserRepositoryImpl @Inject constructor(
                 val id = doc.id
                 val avatarUrl = data["avatarUrl"] as? String
                 val avatarThumb = data["avatarThumbnailUrl"] as? String
+                
                 if (!avatarUrl.isNullOrBlank() && avatarThumb.isNullOrBlank()) {
                     try {
-                        // Remote update
-                        doc.reference.update(mapOf(
-                            "avatarThumbnailUrl" to avatarUrl,
-                            "updatedAt" to now
-                        )).await()
-                        // Local update
-                        userDao.updateUserAvatarThumbnail(id, avatarUrl)
-                        updated++
+                        // Convert to domain object to ensure consistent updates
+                        val user = UserFirestoreConverter.fromFirestore(data, id)
+                        if (user != null) {
+                            val updatedUser = user.copy(
+                                avatarThumbnailUrl = avatarUrl
+                                // we don't change other fields, but we must update 'updatedAt' for sync logic? 
+                                // Actually, User model doesn't store 'updatedAt' explicitly in domain usually? 
+                                // Repo handles it. But we need to update the local entity.
+                            )
+                            
+                            // Local update
+                            userDao.insertUser(updatedUser.userToEntity())
+                            
+                            // Enqueue Sync (Outbox)
+                            val json = SyncPayloads.userToJson(updatedUser, now)
+                            syncManager.enqueueUpsert(
+                                entityType = "user",
+                                entityId = id,
+                                payloadJson = json,
+                                updatedAt = now
+                            )
+                            updated++
+                        }
                     } catch (e: Exception) {
                         Log.d("UserRepository", "backfillAvatarThumbnails: skipping doc=${id}, reason=${e.message}")
                     }
@@ -215,10 +216,15 @@ class UserRepositoryImpl @Inject constructor(
         try {
             // Обновляем локально
             userDao.updateLastActive(userId, now)
-            // Обновляем в Firestore
-            firestore.collection("users").document(userId)
-                .update("lastActiveAt", now)
-                .await()
+            
+            // Обновляем в Firestore через Outbox
+            val json = "{\"lastActiveAt\": $now}"
+            syncManager.enqueueUpsert(
+                entityType = "user",
+                entityId = userId,
+                payloadJson = json,
+                updatedAt = now
+            )
         } catch (e: Exception) {
             Log.d("UserRepository", "updateLastActive failed: ${e.message}")
         }

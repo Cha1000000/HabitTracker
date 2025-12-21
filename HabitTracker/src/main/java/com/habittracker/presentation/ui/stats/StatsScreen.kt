@@ -1,5 +1,9 @@
 package com.habittracker.presentation.ui.stats
 
+import android.graphics.BitmapFactory
+import android.util.Base64
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -7,14 +11,19 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.BarChart
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.EmojiEvents
 import androidx.compose.material.icons.filled.Group
@@ -25,6 +34,7 @@ import androidx.compose.material.icons.filled.Whatshot
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -37,14 +47,23 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import coil.compose.AsyncImage
+import coil.request.CachePolicy
+import coil.request.ImageRequest
 import com.habittracker.R
 import com.habittracker.domain.model.gamification.ChallengeStats
 import com.habittracker.domain.model.gamification.HabitStats
@@ -128,6 +147,14 @@ fun StatsScreen(
                     ) {
                     item {
                         UserLevelCard(userStats.levelInfo)
+                    }
+                    
+                    item {
+                        ActivityChartCard(userStats.habitStats.last7DaysCompletions)
+                    }
+
+                    item {
+                        LeaderboardSection(uiState.leaderboard)
                     }
                     
                     item {
@@ -336,6 +363,79 @@ private fun TimeStatsCard(timeStats: TimeStats) {
 }
 
 @Composable
+private fun ActivityChartCard(last7Days: List<Pair<kotlinx.datetime.LocalDate, Int>>) {
+    val isDarkTheme = isSystemInDarkTheme()
+    val maxCompletions = last7Days.maxOfOrNull { it.second }?.coerceAtLeast(1) ?: 1
+
+    GlassmorphicCard(
+        modifier = Modifier.fillMaxWidth(),
+        isDarkTheme = isDarkTheme,
+        cornerRadius = 16.dp,
+        glassAlpha = if (isDarkTheme) 0.18f else 0.85f,
+        borderAlpha = if (isDarkTheme) 0.3f else 0.15f,
+        elevation = 2.dp
+    ) {
+        Column(
+            modifier = Modifier.padding(16.dp)
+        ) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                Icon(
+                    Icons.Default.BarChart,
+                    contentDescription = null,
+                    tint = if (isDarkTheme) Color(0xFF4DC273) else MaterialTheme.colorScheme.primary
+                )
+                Text(
+                    text = stringResource(R.string.stats_activity_title),
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold
+                )
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(120.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.Bottom
+            ) {
+                last7Days.forEach { (date, count) ->
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.Bottom,
+                        modifier = Modifier.fillMaxHeight()
+                    ) {
+                        val heightFraction = (count.toFloat() / maxCompletions).coerceIn(0.1f, 1f)
+                        
+                        Box(
+                            modifier = Modifier
+                                .width(24.dp)
+                                .fillMaxHeight(heightFraction)
+                                .clip(RoundedCornerShape(topStart = 4.dp, topEnd = 4.dp))
+                                .background(
+                                    if (isDarkTheme) Color(0xFF60A5FA) else MaterialTheme.colorScheme.primary
+                                )
+                        )
+                        
+                        Spacer(modifier = Modifier.height(4.dp))
+                        
+                        Text(
+                            text = date.dayOfWeek.name.take(3),
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
 private fun StatsCard(
     title: String,
     icon: ImageVector,
@@ -392,5 +492,207 @@ private fun StatsCard(
                 }
             }
         }
+    }
+}
+
+@Composable
+private fun LeaderboardSection(leaderboard: List<com.habittracker.domain.model.User>) {
+    val isDarkTheme = isSystemInDarkTheme()
+    
+    GlassmorphicCard(
+        modifier = Modifier.fillMaxWidth(),
+        isDarkTheme = isDarkTheme,
+        cornerRadius = 16.dp,
+        glassAlpha = if (isDarkTheme) 0.18f else 0.85f,
+        borderAlpha = if (isDarkTheme) 0.3f else 0.15f,
+        elevation = 2.dp
+    ) {
+        Column(
+            modifier = Modifier.padding(16.dp)
+        ) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                Icon(
+                    Icons.Default.EmojiEvents,
+                    contentDescription = null,
+                    tint = if (isDarkTheme) Color(0xFFFFD700) else MaterialTheme.colorScheme.primary
+                )
+                Text(
+                    text = stringResource(R.string.stats_leaderboard_title),
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold
+                )
+            }
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            if (leaderboard.isEmpty() || leaderboard.size < 2) {
+                Text(
+                    text = stringResource(R.string.leaderboard_empty),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp)
+                )
+            } else {
+                leaderboard.take(5).forEachIndexed { index, user ->
+                    LeaderboardItem(rank = index + 1, user = user)
+                    if (index < leaderboard.take(5).lastIndex) {
+                        HorizontalDivider(
+                            modifier = Modifier.padding(vertical = 8.dp),
+                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.1f)
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun LeaderboardItem(rank: Int, user: com.habittracker.domain.model.User) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.SpaceBetween
+    ) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier.weight(1f)
+        ) {
+            // Rank
+            Text(
+                text = "$rank",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold,
+                color = when (rank) {
+                    1 -> Color(0xFFFFD700) // Gold
+                    2 -> Color(0xFFC0C0C0) // Silver
+                    3 -> Color(0xFFCD7F32) // Bronze
+                    else -> MaterialTheme.colorScheme.onSurface
+                },
+                modifier = Modifier.width(24.dp),
+                textAlign = TextAlign.Center
+            )
+            
+            Spacer(modifier = Modifier.width(12.dp))
+            
+            // Avatar
+            AvatarImage(
+                data = user.avatarThumbnailUrl ?: user.avatarUrl,
+                contentDescription = user.name,
+                sizeDp = 40.dp,
+                placeholderColor = MaterialTheme.colorScheme.primaryContainer
+            )
+            
+            Spacer(modifier = Modifier.width(12.dp))
+            
+            // Name & Level
+            Column {
+                Text(
+                    text = user.name.ifBlank { "User" },
+                    style = MaterialTheme.typography.bodyMedium,
+                    fontWeight = FontWeight.SemiBold,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+                Text(
+                    text = stringResource(R.string.level_title, user.level),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+        }
+        
+        // Points
+        Text(
+            text = "${user.points}",
+            style = MaterialTheme.typography.titleMedium,
+            fontWeight = FontWeight.Bold,
+            color = MaterialTheme.colorScheme.primary
+        )
+    }
+}
+
+@Composable
+private fun AvatarImage(
+    data: String?,
+    contentDescription: String?,
+    sizeDp: androidx.compose.ui.unit.Dp,
+    placeholderColor: Color,
+    modifier: Modifier = Modifier
+) {
+    val displayData: Any? = data?.takeIf { it.isNotBlank() }
+
+    if (displayData != null) {
+        val isDataUrl = (displayData as? String)?.startsWith("data:image") == true
+        if (isDataUrl) {
+            val base64 = displayData.substringAfter(',')
+            val bytes = runCatching { Base64.decode(base64, Base64.DEFAULT) }.getOrNull()
+            val bmp = bytes?.let { BitmapFactory.decodeByteArray(it, 0, it.size) }
+            if (bmp != null) {
+                Image(
+                    bitmap = bmp.asImageBitmap(),
+                    contentDescription = contentDescription,
+                    modifier = modifier
+                        .size(sizeDp)
+                        .clip(CircleShape)
+                        .background(placeholderColor),
+                    contentScale = ContentScale.Crop
+                )
+            } else {
+                AsyncImage(
+                    model = ImageRequest.Builder(LocalContext.current)
+                        .data(displayData)
+                        .crossfade(true)
+                        .diskCachePolicy(CachePolicy.ENABLED)
+                        .memoryCachePolicy(CachePolicy.ENABLED)
+                        .build(),
+                    contentDescription = contentDescription,
+                    modifier = modifier
+                        .size(sizeDp)
+                        .clip(CircleShape)
+                        .background(placeholderColor),
+                    contentScale = ContentScale.Crop,
+                    placeholder = painterResource(id = R.drawable.ic_avatar_placeholder),
+                    error = painterResource(id = R.drawable.ic_avatar_placeholder)
+                )
+            }
+        } else {
+            AsyncImage(
+                model = ImageRequest.Builder(LocalContext.current)
+                    .data(displayData)
+                    .crossfade(true)
+                    .diskCachePolicy(CachePolicy.ENABLED)
+                    .memoryCachePolicy(CachePolicy.ENABLED)
+                    .build(),
+                contentDescription = contentDescription,
+                modifier = modifier
+                    .size(sizeDp)
+                    .clip(CircleShape)
+                    .background(placeholderColor),
+                contentScale = ContentScale.Crop,
+                placeholder = painterResource(id = R.drawable.ic_avatar_placeholder),
+                error = painterResource(id = R.drawable.ic_avatar_placeholder)
+            )
+        }
+    } else {
+        // Плейсхолдер
+        AsyncImage(
+            model = ImageRequest.Builder(LocalContext.current)
+                .data("")
+                .crossfade(true)
+                .build(),
+            contentDescription = contentDescription,
+            modifier = modifier
+                .size(sizeDp)
+                .clip(CircleShape)
+                .background(placeholderColor),
+            contentScale = ContentScale.Crop,
+            placeholder = painterResource(id = R.drawable.ic_avatar_placeholder),
+            error = painterResource(id = R.drawable.ic_avatar_placeholder)
+        )
     }
 }

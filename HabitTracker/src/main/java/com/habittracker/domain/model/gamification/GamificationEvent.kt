@@ -17,4 +17,6 @@ sealed class GamificationEvent {
 
     // Социальные события
     object NewFriendAdded : GamificationEvent()
+    object FriendInvited : GamificationEvent()
+    object GroupHabitCreated : GamificationEvent()
 }

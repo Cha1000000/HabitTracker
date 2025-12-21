@@ -5,8 +5,14 @@ import com.habittracker.domain.model.HabitEntry
 import com.habittracker.domain.model.HabitFrequency
 import com.habittracker.domain.model.HabitParticipantSettings
 import com.habittracker.domain.model.HabitType
+import com.habittracker.domain.model.User
+import com.habittracker.domain.model.gamification.GamificationEvent
 import com.habittracker.domain.repository.FirestoreRepository
 import com.habittracker.domain.repository.HabitRepository
+import com.habittracker.domain.repository.SocialRepository
+import com.habittracker.domain.repository.UserRepository
+import com.habittracker.domain.usecase.gamification.CheckAchievementsUseCase
+import com.habittracker.domain.usecase.gamification.UpdateUserPointsUseCase
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flowOf
@@ -19,12 +25,15 @@ import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
+import org.mockito.Mockito.mock
 
 @ExperimentalCoroutinesApi
 class SimpleAddHabitUseCaseTest {
 
     private lateinit var firestoreRepository: FakeFirestoreRepository
     private lateinit var habitRepository: FakeHabitRepository
+    private lateinit var updateUserPointsUseCase: FakeUpdateUserPointsUseCase
+    private lateinit var checkAchievementsUseCase: CheckAchievementsUseCase
     private lateinit var addHabitUseCase: AddHabitUseCase
 
     private val testHabit = Habit(
@@ -49,7 +58,9 @@ class SimpleAddHabitUseCaseTest {
     fun setUp() {
         firestoreRepository = FakeFirestoreRepository()
         habitRepository = FakeHabitRepository()
-        addHabitUseCase = AddHabitUseCase(firestoreRepository, habitRepository)
+        updateUserPointsUseCase = FakeUpdateUserPointsUseCase()
+        checkAchievementsUseCase = mock(CheckAchievementsUseCase::class.java)
+        addHabitUseCase = AddHabitUseCase(firestoreRepository, habitRepository, updateUserPointsUseCase, checkAchievementsUseCase)
     }
 
     @Test
@@ -81,6 +92,16 @@ class SimpleAddHabitUseCaseTest {
         assertTrue(firestoreRepository.saveHabitCalled)
         assertTrue(habitRepository.insertHabitCalled)
     }
+    
+    // Fake UpdateUserPointsUseCase
+    private class FakeUpdateUserPointsUseCase : UpdateUserPointsUseCase(
+        mock(UserRepository::class.java),
+        mock(SocialRepository::class.java)
+    ) {
+        override suspend fun invoke(userId: String, event: GamificationEvent): Result<Unit> {
+            return Result.success(Unit)
+        }
+    }
 
     // Fake implementations for testing
     private class FakeFirestoreRepository : FirestoreRepository {
@@ -96,18 +117,18 @@ class SimpleAddHabitUseCaseTest {
             }
         }
 
-        override fun getUserHabits(userId: String) = throw NotImplementedError()
-        override suspend fun updateHabit(habit: Habit) = throw NotImplementedError()
-        override suspend fun deleteHabit(habitId: String) = throw NotImplementedError()
-        override suspend fun getHabitById(habitId: String) = throw NotImplementedError()
-        override suspend fun saveHabitEntry(habitEntry: HabitEntry) = throw NotImplementedError()
-        override suspend fun getHabitEntry(habitId: String, userId: String, date: kotlinx.datetime.LocalDate) = throw NotImplementedError()
-        override fun getHabitEntries(habitId: String, userId: String) = throw NotImplementedError()
-        override suspend fun syncData() = throw NotImplementedError()
+        override fun getUserHabits(userId: String) = flowOf(emptyList<Habit>())
+        override suspend fun updateHabit(habit: Habit) {}
+        override suspend fun deleteHabit(habitId: String) {}
+        override suspend fun getHabitById(habitId: String): Habit? = null
+        override suspend fun saveHabitEntry(habitEntry: HabitEntry) {}
+        override suspend fun getHabitEntry(habitId: String, userId: String, date: kotlinx.datetime.LocalDate): HabitEntry? = null
+        override fun getHabitEntries(habitId: String, userId: String) = flowOf(emptyList<HabitEntry>())
+        override suspend fun syncData() {}
         override suspend fun getParticipantSettings(habitId: String, userId: String) = null
-        override suspend fun setParticipantSettings(settings: HabitParticipantSettings) = throw NotImplementedError()
+        override suspend fun setParticipantSettings(settings: HabitParticipantSettings) {}
         override fun getAllPublicHabits(excludeUserId: String?) = flowOf(emptyList<Habit>())
-        override suspend fun getHabitByInviteCode(inviteCode: String) = throw NotImplementedError()
+        override suspend fun getHabitByInviteCode(inviteCode: String): Habit? = null
     }
 
     private class FakeHabitRepository : HabitRepository {
@@ -121,7 +142,7 @@ class SimpleAddHabitUseCaseTest {
             habits = habits + habit
         }
 
-        override fun getHabitsByUserId(userId: String) = throw NotImplementedError()
+        override fun getHabitsByUserId(userId: String) = flowOf(emptyList<Habit>())
         override suspend fun getHabitById(habitId: String): Habit? {
             return habits.find { it.id == habitId }
         }
@@ -134,18 +155,18 @@ class SimpleAddHabitUseCaseTest {
             return flowOf(habits.find { it.id == habitId })
         }
 
-        override suspend fun updateHabit(habit: Habit) = throw NotImplementedError()
-        override suspend fun deleteHabit(habitId: String) = throw NotImplementedError()
-        override fun getAllHabits() = throw NotImplementedError()
-        override fun getPersonalHabits(userId: String) = throw NotImplementedError()
-        override fun getGroupHabits(userId: String) = throw NotImplementedError()
-        override suspend fun addParticipantToHabit(habitId: String, userId: String) = throw NotImplementedError()
-        override suspend fun removeParticipantFromHabit(habitId: String, userId: String) = throw NotImplementedError()
-        override suspend fun getHabitParticipants(habitId: String) = throw NotImplementedError()
-        override suspend fun searchHabits(userId: String, query: String) = throw NotImplementedError()
+        override suspend fun updateHabit(habit: Habit) {}
+        override suspend fun deleteHabit(habitId: String) {}
+        override fun getAllHabits() = flowOf(habits)
+        override fun getPersonalHabits(userId: String) = flowOf(emptyList<Habit>())
+        override fun getGroupHabits(userId: String) = flowOf(emptyList<Habit>())
+        override suspend fun addParticipantToHabit(habitId: String, userId: String) {}
+        override suspend fun removeParticipantFromHabit(habitId: String, userId: String) {}
+        override suspend fun getHabitParticipants(habitId: String) = emptyList<String>()
+        override suspend fun searchHabits(userId: String, query: String) = emptyList<Habit>()
         override fun getPublicHabits(): Flow<List<Habit>> = flowOf(emptyList())
         override suspend fun getHabitParticipantSettings(habitId: String, userId: String) = null
-        override suspend fun updateHabitParticipantSettings(settings: HabitParticipantSettings) = throw NotImplementedError()
+        override suspend fun updateHabitParticipantSettings(settings: HabitParticipantSettings) {}
         override fun observeHabitParticipantSettings(habitId: String, userId: String) = flowOf(null)
     }
 }

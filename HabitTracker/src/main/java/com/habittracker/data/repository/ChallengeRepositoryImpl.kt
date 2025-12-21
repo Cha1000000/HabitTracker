@@ -10,6 +10,7 @@ import com.habittracker.domain.model.Challenge
 import com.habittracker.domain.model.ChallengeRules
 import com.habittracker.domain.model.ChallengeType
 import com.habittracker.domain.repository.ChallengeRepository
+import com.habittracker.domain.util.SyncPayloads
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -50,104 +51,40 @@ class ChallengeRepositoryImpl @Inject constructor(
         Log.d(TAG, "insertChallenge: id=${challenge.id}, participants=${challenge.participants}")
         challengeDao.insertChallenge(challenge.challengeToEntity(updatedAtMillis = now))
         
-        // Прямая синхронизация в Firestore для немедленной доступности другим участникам
-        try {
-            val data = mapOf(
-                "id" to challenge.id,
-                "habitId" to challenge.habitId,
-                "title" to challenge.title,
-                "description" to challenge.description,
-                "createdBy" to challenge.createdBy,
-                "participants" to challenge.participants,
-                "acceptedParticipants" to challenge.acceptedParticipants,
-                "startDate" to challenge.startDate.toString(),
-                "endDate" to challenge.endDate.toString(),
-                "rules" to mapOf(
-                    "type" to challenge.rules.type.name,
-                    "targetValue" to challenge.rules.targetValue,
-                    "allowMissedDays" to challenge.rules.allowMissedDays,
-                    "requireConsecutive" to challenge.rules.requireConsecutive
-                ),
-                "reward" to challenge.reward,
-                "status" to challenge.status.name,
-                "winnerId" to challenge.winnerId,
-                "createdAt" to challenge.createdAt.toString(),
-                "updatedAt" to challenge.updatedAt.toString(),
-                "updatedAtMillis" to now
-            )
-            firestore.collection("challenges").document(challenge.id).set(data).await()
-            Log.d(TAG, "Challenge synced to Firestore: ${challenge.id}")
-        } catch (e: Exception) {
-            Log.e(TAG, "Failed to sync challenge to Firestore, using SyncManager fallback", e)
-            // Fallback: используем очередь синхронизации
-            val json = challenge.toFirestoreJson()
-            syncManager.enqueueUpsert(
-                entityType = "challenge",
-                entityId = challenge.id,
-                payloadJson = json,
-                updatedAt = now
-            )
-        }
+        // Use Outbox for reliable sync
+        val json = SyncPayloads.challengeToJson(challenge, now)
+        syncManager.enqueueUpsert(
+            entityType = "challenge",
+            entityId = challenge.id,
+            payloadJson = json,
+            updatedAt = now
+        )
     }
     
     override suspend fun updateChallenge(challenge: Challenge) {
         val now = System.currentTimeMillis()
         challengeDao.updateChallenge(challenge.challengeToEntity(updatedAtMillis = now))
         
-        // Прямая синхронизация в Firestore
-        try {
-            val data = mapOf(
-                "id" to challenge.id,
-                "habitId" to challenge.habitId,
-                "title" to challenge.title,
-                "description" to challenge.description,
-                "createdBy" to challenge.createdBy,
-                "participants" to challenge.participants,
-                "acceptedParticipants" to challenge.acceptedParticipants,
-                "startDate" to challenge.startDate.toString(),
-                "endDate" to challenge.endDate.toString(),
-                "rules" to mapOf(
-                    "type" to challenge.rules.type.name,
-                    "targetValue" to challenge.rules.targetValue,
-                    "allowMissedDays" to challenge.rules.allowMissedDays,
-                    "requireConsecutive" to challenge.rules.requireConsecutive
-                ),
-                "reward" to challenge.reward,
-                "status" to challenge.status.name,
-                "winnerId" to challenge.winnerId,
-                "createdAt" to challenge.createdAt.toString(),
-                "updatedAt" to challenge.updatedAt.toString(),
-                "updatedAtMillis" to now
-            )
-            firestore.collection("challenges").document(challenge.id).set(data).await()
-            Log.d(TAG, "Challenge updated in Firestore: ${challenge.id}")
-        } catch (e: Exception) {
-            Log.e(TAG, "Failed to update challenge in Firestore, using SyncManager fallback", e)
-            syncManager.enqueueUpsert(
-                entityType = "challenge",
-                entityId = challenge.id,
-                payloadJson = challenge.toFirestoreJson(),
-                updatedAt = now
-            )
-        }
+        // Use Outbox for reliable sync
+        val json = SyncPayloads.challengeToJson(challenge, now)
+        syncManager.enqueueUpsert(
+            entityType = "challenge",
+            entityId = challenge.id,
+            payloadJson = json,
+            updatedAt = now
+        )
     }
     
     override suspend fun deleteChallenge(challengeId: String) {
         val now = System.currentTimeMillis()
         challengeDao.deleteChallenge(challengeId)
         
-        // Прямое удаление из Firestore
-        try {
-            firestore.collection("challenges").document(challengeId).delete().await()
-            Log.d(TAG, "Challenge deleted from Firestore: $challengeId")
-        } catch (e: Exception) {
-            Log.e(TAG, "Failed to delete challenge from Firestore, using SyncManager fallback", e)
-            syncManager.enqueueDelete(
-                entityType = "challenge",
-                entityId = challengeId,
-                updatedAt = now
-            )
-        }
+        // Use Outbox for reliable sync
+        syncManager.enqueueDelete(
+            entityType = "challenge",
+            entityId = challengeId,
+            updatedAt = now
+        )
     }
     
     override suspend fun getChallengeById(challengeId: String): Challenge? {
@@ -193,7 +130,7 @@ class ChallengeRepositoryImpl @Inject constructor(
             syncManager.enqueueUpsert(
                 entityType = "challenge",
                 entityId = challengeId,
-                payloadJson = updatedChallenge.toFirestoreJson(),
+                payloadJson = SyncPayloads.challengeToJson(updatedChallenge, now),
                 updatedAt = now
             )
         }
@@ -211,34 +148,16 @@ class ChallengeRepositoryImpl @Inject constructor(
         // Обновляем локальную базу (participants, acceptedParticipants и updatedAtMillis)
         challengeDao.updateChallengeParticipantsAndAccepted(challengeId, updatedParticipants, updatedAcceptedParticipants, now)
         
-        // Обновляем Firestore напрямую для немедленной синхронизации
-        try {
-            firestore.collection("challenges")
-                .document(challengeId)
-                .update(
-                    mapOf(
-                        "participants" to updatedParticipants,
-                        "acceptedParticipants" to updatedAcceptedParticipants,
-                        "updatedAt" to kotlinx.datetime.Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault()).date.toString(),
-                        "updatedAtMillis" to now
-                    )
-                )
-                .await()
-            Log.d(TAG, "User $userId left challenge $challengeId successfully")
-        } catch (e: Exception) {
-            Log.e(TAG, "Error updating Firestore on leave challenge: ${e.message}", e)
-            // Fallback to sync manager
-            val updatedChallenge = challenge.copy(
-                participants = updatedParticipants,
-                acceptedParticipants = updatedAcceptedParticipants
-            )
-            syncManager.enqueueUpsert(
-                entityType = "challenge",
-                entityId = challengeId,
-                payloadJson = updatedChallenge.toFirestoreJson(),
-                updatedAt = now
-            )
-        }
+        val updatedChallenge = challenge.copy(
+            participants = updatedParticipants,
+            acceptedParticipants = updatedAcceptedParticipants
+        )
+        syncManager.enqueueUpsert(
+            entityType = "challenge",
+            entityId = challengeId,
+            payloadJson = SyncPayloads.challengeToJson(updatedChallenge, now),
+            updatedAt = now
+        )
     }
     
     override suspend fun getChallengeParticipants(challengeId: String): List<String> {
@@ -255,7 +174,7 @@ class ChallengeRepositoryImpl @Inject constructor(
         syncManager.enqueueUpsert(
             entityType = "challenge",
             entityId = challengeId,
-            payloadJson = updatedChallenge.toFirestoreJson(),
+            payloadJson = SyncPayloads.challengeToJson(updatedChallenge, now),
             updatedAt = now
         )
     }
@@ -279,38 +198,9 @@ class ChallengeRepositoryImpl @Inject constructor(
         syncManager.enqueueUpsert(
             entityType = "challenge",
             entityId = challengeId,
-            payloadJson = updatedChallenge.toFirestoreJson(),
+            payloadJson = SyncPayloads.challengeToJson(updatedChallenge, now),
             updatedAt = now
         )
-    }
-    
-    private fun Challenge.toFirestoreJson(): String {
-        return buildJsonObject {
-            put("id", JsonPrimitive(id))
-            put("habitId", JsonPrimitive(habitId))
-            put("title", JsonPrimitive(title))
-            put("description", JsonPrimitive(description))
-            put("createdBy", JsonPrimitive(createdBy))
-            put("participants", buildJsonArray {
-                participants.forEach { add(JsonPrimitive(it)) }
-            })
-            put("acceptedParticipants", buildJsonArray {
-                acceptedParticipants.forEach { add(JsonPrimitive(it)) }
-            })
-            put("startDate", JsonPrimitive(startDate.toString()))
-            put("endDate", JsonPrimitive(endDate.toString()))
-            put("rules", buildJsonObject {
-                put("type", JsonPrimitive(rules.type.name))
-                put("targetValue", JsonPrimitive(rules.targetValue))
-                put("allowMissedDays", JsonPrimitive(rules.allowMissedDays))
-                put("requireConsecutive", JsonPrimitive(rules.requireConsecutive))
-            })
-            put("reward", JsonPrimitive(reward))
-            put("status", JsonPrimitive(status.name))
-            put("winnerId", if (winnerId != null) JsonPrimitive(winnerId) else kotlinx.serialization.json.JsonNull)
-            put("createdAt", JsonPrimitive(createdAt.toString()))
-            put("updatedAt", JsonPrimitive(updatedAt.toString()))
-        }.toString()
     }
 
     override fun observeChallengesForUser(userId: String): Flow<List<Challenge>> = callbackFlow {

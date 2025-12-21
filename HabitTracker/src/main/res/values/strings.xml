@@ -290,6 +290,9 @@
     <string name="stats_time_consistency">Оценка постоянства</string>
     <string name="stats_time_average">Среднее время</string>
     <string name="stats_time_best_hour">Лучший час</string>
+    <string name="stats_activity_title">Активность за 7 дней</string>
+    <string name="stats_leaderboard_title">Рейтинг друзей</string>
+    <string name="leaderboard_empty">У вас пока нет друзей для соревнования</string>
     <string name="cd_more">Еще</string>
     <string name="wants_to_add_you">Хочет добавить вас в друзья</string>
     <string name="request_sent">Запрос отправлен</string>

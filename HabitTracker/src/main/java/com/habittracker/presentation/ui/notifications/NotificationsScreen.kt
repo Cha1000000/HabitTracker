@@ -234,6 +234,9 @@ fun NotificationsScreen(
                                                     navController.navigate(Screen.Challenges.route)
                                                 }
                                             }
+                                            "ACHIEVEMENT_UNLOCKED" -> {
+                                                navController.navigate(Screen.Achievements.route)
+                                            }
                                             else -> {
                                                 // Навигация к деталям групповой привычки
                                                 navController.navigate(Screen.GroupHabitDetail.createRoute(notification.habitId))

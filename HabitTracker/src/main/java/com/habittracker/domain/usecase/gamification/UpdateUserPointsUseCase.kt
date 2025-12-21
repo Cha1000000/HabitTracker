@@ -29,6 +29,8 @@ open class UpdateUserPointsUseCase @Inject constructor(
                 is GamificationEvent.ChallengeJoined -> GamificationConstants.POINTS_CHALLENGE_PARTICIPATION
                 is GamificationEvent.ChallengeWon -> GamificationConstants.POINTS_CHALLENGE_VICTORY
                 is GamificationEvent.NewFriendAdded -> GamificationConstants.POINTS_NEW_FRIEND
+                is GamificationEvent.FriendInvited -> GamificationConstants.POINTS_FRIEND_INVITE
+                is GamificationEvent.GroupHabitCreated -> GamificationConstants.POINTS_GROUP_HABIT_CREATION
                 is GamificationEvent.PerfectDay -> GamificationConstants.POINTS_PERFECT_DAY
                 is GamificationEvent.StreakBonus -> when (event.days) {
                     3 -> GamificationConstants.POINTS_STREAK_3_DAYS

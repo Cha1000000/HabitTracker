@@ -44,12 +44,6 @@ abstract class RepositoryModule {
 
     @Binds
     @Singleton
-    abstract fun bindFriendshipRepository(
-        friendshipRepositoryImpl: FriendshipRepositoryImpl
-    ): FriendshipRepository
-
-    @Binds
-    @Singleton
     abstract fun bindParticipantSettingsRepository(
         participantSettingsRepositoryImpl: ParticipantSettingsRepositoryImpl
     ): ParticipantSettingsRepository

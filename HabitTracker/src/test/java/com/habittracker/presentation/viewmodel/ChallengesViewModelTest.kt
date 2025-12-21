@@ -13,10 +13,14 @@ import com.habittracker.domain.repository.AuthRepository
 import com.habittracker.domain.repository.ChallengeRepository
 import com.habittracker.domain.repository.FirestoreRepository
 import com.habittracker.domain.repository.HabitRepository
+import com.habittracker.domain.repository.SocialRepository
+import com.habittracker.domain.repository.UserRepository
 import com.habittracker.domain.usecase.GetCurrentUserUseCase
 import com.habittracker.domain.usecase.challenge.CloseExpiredChallengesUseCase
 import com.habittracker.domain.usecase.challenge.JoinChallengeUseCase
 import com.habittracker.domain.usecase.challenge.LeaveChallengeUseCase
+import com.habittracker.domain.usecase.gamification.CheckAchievementsUseCase
+import com.habittracker.domain.usecase.gamification.UpdateUserPointsUseCase
 import com.habittracker.presentation.state.ChallengeTab
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
@@ -170,7 +174,9 @@ class ChallengesViewModelTest {
         val closeExpiredChallengesUseCase = CloseExpiredChallengesUseCase(
             authRepository = authRepository,
             challengeRepository = actualRepository,
-            socialRepository = mock()
+            socialRepository = mock(),
+            updateUserPointsUseCase = UpdateUserPointsUseCase(mock<UserRepository>(), mock<SocialRepository>()),
+            checkAchievementsUseCase = mock<CheckAchievementsUseCase>()
         )
         
         whenever(getCurrentUserUseCase.invoke()).thenReturn(flowOf(currentUser))

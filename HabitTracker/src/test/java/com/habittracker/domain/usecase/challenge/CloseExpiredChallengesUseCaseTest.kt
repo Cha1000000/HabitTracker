@@ -8,9 +8,13 @@ import com.habittracker.domain.model.User
 import com.habittracker.domain.model.FriendRequest
 import com.habittracker.domain.model.Friendship
 import com.habittracker.domain.model.HabitInvitation
+import com.habittracker.domain.model.gamification.GamificationEvent
 import com.habittracker.domain.repository.AuthRepository
 import com.habittracker.domain.repository.ChallengeRepository
 import com.habittracker.domain.repository.SocialRepository
+import com.habittracker.domain.repository.UserRepository
+import com.habittracker.domain.usecase.gamification.CheckAchievementsUseCase
+import com.habittracker.domain.usecase.gamification.UpdateUserPointsUseCase
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -27,6 +31,7 @@ import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import org.mockito.Mockito.mock
 import java.util.UUID
 
 class CloseExpiredChallengesUseCaseTest {
@@ -40,6 +45,16 @@ class CloseExpiredChallengesUseCaseTest {
         override suspend fun register(email: String, password: String) = MutableStateFlow(Result.failure<Unit>(Exception("not used")))
         override suspend fun signInWithGoogle() = MutableStateFlow(Result.failure<android.content.Intent?>(Exception("not used")))
         override suspend fun signOut() = MutableStateFlow(Result.success(Unit))
+    }
+    
+    // Fake UpdateUserPointsUseCase
+    private class FakeUpdateUserPointsUseCase : UpdateUserPointsUseCase(
+        mock(UserRepository::class.java),
+        mock(SocialRepository::class.java)
+    ) {
+        override suspend fun invoke(userId: String, event: GamificationEvent): Result<Unit> {
+            return Result.success(Unit)
+        }
     }
 
     private class FakeChallengeRepository : ChallengeRepository {
@@ -302,7 +317,9 @@ class CloseExpiredChallengesUseCaseTest {
         repo.completedDaysFromFirestore["h1" to "creator"] = 0
         repo.completedDaysFromFirestore["h1" to "u2"] = 0
 
-        val useCase = CloseExpiredChallengesUseCase(auth, repo, social)
+        val updateUserPointsUseCase = FakeUpdateUserPointsUseCase()
+        val checkAchievementsUseCase = mock(CheckAchievementsUseCase::class.java)
+        val useCase = CloseExpiredChallengesUseCase(auth, repo, social, updateUserPointsUseCase, checkAchievementsUseCase)
         val result = useCase()
 
         assertTrue(result.isSuccess)
@@ -331,7 +348,9 @@ class CloseExpiredChallengesUseCaseTest {
         repo.completedDaysFromFirestore["h1" to "creator"] = 2
         repo.completedDaysFromFirestore["h1" to "u2"] = 5
 
-        val useCase = CloseExpiredChallengesUseCase(auth, repo, social)
+        val updateUserPointsUseCase = FakeUpdateUserPointsUseCase()
+        val checkAchievementsUseCase = mock(CheckAchievementsUseCase::class.java)
+        val useCase = CloseExpiredChallengesUseCase(auth, repo, social, updateUserPointsUseCase, checkAchievementsUseCase)
         val result = useCase()
 
         assertTrue(result.isSuccess)
@@ -377,7 +396,9 @@ class CloseExpiredChallengesUseCaseTest {
 
         repo.seed(listOf(ch))
 
-        val useCase = CloseExpiredChallengesUseCase(auth, repo, social)
+        val updateUserPointsUseCase = FakeUpdateUserPointsUseCase()
+        val checkAchievementsUseCase = mock(CheckAchievementsUseCase::class.java)
+        val useCase = CloseExpiredChallengesUseCase(auth, repo, social, updateUserPointsUseCase, checkAchievementsUseCase)
         val result = useCase()
 
         assertTrue(result.isSuccess)
@@ -405,7 +426,9 @@ class CloseExpiredChallengesUseCaseTest {
         repo.completedDaysFromFirestore["h1" to "u2"] = 5
         repo.completedDaysFromFirestore["h1" to "u3"] = 9
 
-        val useCase = CloseExpiredChallengesUseCase(auth, repo, social)
+        val updateUserPointsUseCase = FakeUpdateUserPointsUseCase()
+        val checkAchievementsUseCase = mock(CheckAchievementsUseCase::class.java)
+        val useCase = CloseExpiredChallengesUseCase(auth, repo, social, updateUserPointsUseCase, checkAchievementsUseCase)
         val result = useCase()
 
         assertTrue(result.isSuccess)
@@ -430,7 +453,9 @@ class CloseExpiredChallengesUseCaseTest {
         repo.completedDaysFromFirestore["h1" to "a"] = 5
         repo.completedDaysFromFirestore["h1" to "b"] = 5
 
-        val useCase = CloseExpiredChallengesUseCase(auth, repo, social)
+        val updateUserPointsUseCase = FakeUpdateUserPointsUseCase()
+        val checkAchievementsUseCase = mock(CheckAchievementsUseCase::class.java)
+        val useCase = CloseExpiredChallengesUseCase(auth, repo, social, updateUserPointsUseCase, checkAchievementsUseCase)
         val result = useCase()
 
         assertTrue(result.isSuccess)
@@ -454,7 +479,9 @@ class CloseExpiredChallengesUseCaseTest {
         repo.streakForUserInChallenge["h1" to "creator"] = 3
         repo.streakFromFirestore["h1" to "u2"] = 4
 
-        val useCase = CloseExpiredChallengesUseCase(auth, repo, social)
+        val updateUserPointsUseCase = FakeUpdateUserPointsUseCase()
+        val checkAchievementsUseCase = mock(CheckAchievementsUseCase::class.java)
+        val useCase = CloseExpiredChallengesUseCase(auth, repo, social, updateUserPointsUseCase, checkAchievementsUseCase)
         val result = useCase()
 
         assertTrue(result.isSuccess)

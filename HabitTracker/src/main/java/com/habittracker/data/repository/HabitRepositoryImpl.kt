@@ -4,15 +4,25 @@ import com.habittracker.data.local.dao.HabitDao
 import com.habittracker.data.local.dao.HabitParticipantSettingsDao
 import com.habittracker.data.local.mappers.toDomain
 import com.habittracker.data.local.mappers.toEntity
+import com.habittracker.data.sync.SyncManager
 import com.habittracker.domain.model.Habit
 import com.habittracker.domain.model.HabitParticipantSettings
 import com.habittracker.domain.repository.AuthRepository
 import com.habittracker.domain.repository.FirestoreRepository
 import com.habittracker.domain.repository.HabitRepository
+import com.habittracker.domain.util.HabitEntryIds
+import com.habittracker.domain.util.SyncPayloads
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.onStart
+import kotlinx.coroutines.launch
 import kotlinx.datetime.Clock
+import kotlinx.datetime.TimeZone
+import kotlinx.datetime.atStartOfDayIn
+import kotlinx.datetime.toLocalDateTime
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -21,19 +31,64 @@ class HabitRepositoryImpl @Inject constructor(
     private val habitDao: HabitDao,
     private val habitParticipantSettingsDao: HabitParticipantSettingsDao,
     private val firestoreRepository: FirestoreRepository,
-    private val authRepository: AuthRepository
+    private val authRepository: AuthRepository,
+    private val syncManager: SyncManager,
+    private val applicationScope: CoroutineScope
 ) : HabitRepository {
     
+    private var syncJob: Job? = null
+    private var currentSyncUserId: String? = null
+
+    private fun startObservingRemoteHabits(userId: String) {
+        if (currentSyncUserId == userId && syncJob?.isActive == true) return
+        
+        syncJob?.cancel()
+        currentSyncUserId = userId
+        syncJob = applicationScope.launch {
+            firestoreRepository.getUserHabits(userId).collect { remoteHabits ->
+                habitDao.insertHabits(remoteHabits.map { it.toEntity() })
+            }
+        }
+    }
+
     override suspend fun insertHabit(habit: Habit) {
+        // 1. Local insert
         habitDao.insertHabit(habit.toEntity())
+        
+        // 2. Outbox enqueue
+        val payload = SyncPayloads.habitToJson(habit)
+        syncManager.enqueueUpsert(
+            entityType = "habit",
+            entityId = habit.id,
+            payloadJson = payload,
+            updatedAt = Clock.System.now().toEpochMilliseconds()
+        )
     }
     
     override suspend fun updateHabit(habit: Habit) {
+        // 1. Local update
         habitDao.insertHabit(habit.toEntity())
+        
+        // 2. Outbox enqueue
+        val payload = SyncPayloads.habitToJson(habit)
+        syncManager.enqueueUpsert(
+            entityType = "habit",
+            entityId = habit.id,
+            payloadJson = payload,
+            updatedAt = Clock.System.now().toEpochMilliseconds()
+        )
     }
     
     override suspend fun deleteHabit(habitId: String) {
+        // 1. Local delete
         habitDao.deleteHabitById(habitId)
+        
+        // 2. Outbox enqueue
+        syncManager.enqueueDelete(
+            entityType = "habit",
+            entityId = habitId,
+            updatedAt = Clock.System.now().toEpochMilliseconds()
+        )
     }
     
     override suspend fun getHabitById(habitId: String): Habit? {
@@ -57,21 +112,21 @@ class HabitRepositoryImpl @Inject constructor(
     }
     
     override fun getHabitsByUserId(userId: String): Flow<List<Habit>> {
-        return habitDao.getUserHabits(userId).map { entities ->
-            entities.map { it.toDomain() }
-        }
+        return habitDao.getUserHabits(userId)
+            .map { entities -> entities.map { it.toDomain() } }
+            .onStart { startObservingRemoteHabits(userId) }
     }
     
     override fun getPersonalHabits(userId: String): Flow<List<Habit>> {
-        return habitDao.getUserPersonalHabits(userId).map { entities ->
-            entities.map { it.toDomain() }
-        }
+        return habitDao.getUserPersonalHabits(userId)
+            .map { entities -> entities.map { it.toDomain() } }
+            .onStart { startObservingRemoteHabits(userId) }
     }
     
     override fun getGroupHabits(userId: String): Flow<List<Habit>> {
-        return habitDao.getUserGroupHabits(userId).map { entities ->
-            entities.map { it.toDomain() }
-        }
+        return habitDao.getUserGroupHabits(userId)
+            .map { entities -> entities.map { it.toDomain() } }
+            .onStart { startObservingRemoteHabits(userId) }
     }
     
     override suspend fun addParticipantToHabit(habitId: String, userId: String) {
@@ -80,7 +135,19 @@ class HabitRepositoryImpl @Inject constructor(
             val participants = habit.participants.toMutableList()
             if (!participants.contains(userId)) {
                 participants.add(userId)
-                habitDao.updateHabitParticipants(habitId, participants, Clock.System.now().toEpochMilliseconds())
+                val updatedAt = Clock.System.now().toEpochMilliseconds()
+                habitDao.updateHabitParticipants(habitId, participants, updatedAt)
+                
+                // Outbox update (partial)
+                val updatedHabit = habit.toDomain().copy(participants = participants, updatedAt = kotlinx.datetime.Instant.fromEpochMilliseconds(updatedAt).toLocalDateTime(TimeZone.currentSystemDefault()).date)
+                // We can either enqueue full upsert or partial. SyncPayloads has habitPartialUpdateToJson but we can use full upsert for simplicity with conflict resolution
+                val payload = SyncPayloads.habitToJson(updatedHabit)
+                 syncManager.enqueueUpsert(
+                    entityType = "habit",
+                    entityId = habitId,
+                    payloadJson = payload,
+                    updatedAt = updatedAt
+                )
             }
         }
     }
@@ -91,7 +158,18 @@ class HabitRepositoryImpl @Inject constructor(
             val participants = habit.participants.toMutableList()
             if (participants.contains(userId)) {
                 participants.remove(userId)
-                habitDao.updateHabitParticipants(habitId, participants, Clock.System.now().toEpochMilliseconds())
+                val updatedAt = Clock.System.now().toEpochMilliseconds()
+                habitDao.updateHabitParticipants(habitId, participants, updatedAt)
+                
+                 // Outbox update
+                val updatedHabit = habit.toDomain().copy(participants = participants, updatedAt = kotlinx.datetime.Instant.fromEpochMilliseconds(updatedAt).toLocalDateTime(TimeZone.currentSystemDefault()).date)
+                val payload = SyncPayloads.habitToJson(updatedHabit)
+                 syncManager.enqueueUpsert(
+                    entityType = "habit",
+                    entityId = habitId,
+                    payloadJson = payload,
+                    updatedAt = updatedAt
+                )
             }
         }
     }
@@ -120,7 +198,20 @@ class HabitRepositoryImpl @Inject constructor(
     }
     
     override suspend fun updateHabitParticipantSettings(settings: HabitParticipantSettings) {
-        habitParticipantSettingsDao.upsert(settings.toEntity())
+        val now = Clock.System.now().toEpochMilliseconds()
+        val updatedSettings = settings.copy(updatedAt = now)
+        habitParticipantSettingsDao.upsert(updatedSettings.toEntity())
+        
+        // Sync via Outbox
+        // EntityId format for routing: "habitId:userId"
+        val entityId = "${updatedSettings.habitId}:${updatedSettings.userId}"
+        val payload = SyncPayloads.habitParticipantSettingsToJson(updatedSettings)
+        syncManager.enqueueUpsert(
+            entityType = "habit_participant_settings",
+            entityId = entityId,
+            payloadJson = payload,
+            updatedAt = now
+        )
     }
     
     override fun observeHabitParticipantSettings(habitId: String, userId: String): Flow<HabitParticipantSettings?> {

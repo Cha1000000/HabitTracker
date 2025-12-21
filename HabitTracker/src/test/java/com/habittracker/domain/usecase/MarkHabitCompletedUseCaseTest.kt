@@ -21,6 +21,8 @@ import com.habittracker.domain.repository.HabitRepository
 import com.habittracker.domain.repository.SocialRepository
 import com.habittracker.domain.repository.UserRepository
 import com.habittracker.domain.usecase.challenge.UpdateChallengeProgressUseCase
+import com.habittracker.domain.usecase.gamification.CalculatePointsUseCase
+import com.habittracker.domain.usecase.gamification.CheckAchievementsUseCase
 import com.habittracker.domain.usecase.gamification.UpdateUserPointsUseCase
 import com.habittracker.domain.usecase.notification.SendGroupHabitPushNotificationUseCase
 import kotlinx.coroutines.CoroutineScope
@@ -59,6 +61,8 @@ class MarkHabitCompletedUseCaseTest {
     private lateinit var syncManager: SyncManager
     private lateinit var syncWorkScheduler: SyncWorkScheduler
     private lateinit var updateChallengeProgressUseCase: UpdateChallengeProgressUseCase
+    private lateinit var calculatePointsUseCase: CalculatePointsUseCase
+    private lateinit var checkAchievementsUseCase: CheckAchievementsUseCase
 
     private val testHabitId = "habit1"
     private val testUserId = "user1"
@@ -82,12 +86,16 @@ class MarkHabitCompletedUseCaseTest {
         syncManager = mock()
         syncWorkScheduler = mock()
         updateChallengeProgressUseCase = mock()
+        calculatePointsUseCase = mock()
+        checkAchievementsUseCase = mock()
     }
 
     private fun setupUseCase(scope: CoroutineScope) {
         markHabitCompletedUseCase = MarkHabitCompletedUseCase(
             habitEntryRepository = habitEntryRepository,
             updateUserPointsUseCase = updateUserPointsUseCase,
+            calculatePointsUseCase = calculatePointsUseCase,
+            checkAchievementsUseCase = checkAchievementsUseCase,
             sendGroupHabitPushNotificationUseCase = sendGroupHabitPushNotificationUseCase,
             updateChallengeProgressUseCase = updateChallengeProgressUseCase,
             coroutineScope = scope,

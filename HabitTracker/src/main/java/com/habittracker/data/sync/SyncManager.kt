@@ -207,6 +207,17 @@ class SyncManager @Inject constructor(
         "habit_entry" -> "habit_entries" to entityId
         "habit_invitation" -> "habit_invitations" to entityId
         "challenge" -> "challenges" to entityId
+        "habit_participant_settings" -> {
+            // entityId expected format: "habitId:userId"
+            val parts = entityId.split(":")
+            if (parts.size == 2) {
+                "habits/${parts[0]}/participants/${parts[1]}/meta" to "settings"
+            } else {
+                // Fallback or error logging
+                Log.e("SyncManager", "Invalid entityId format for habit_participant_settings: $entityId")
+                "invalid_path" to entityId
+            }
+        }
         else -> entityType + "s" to entityId // на всякий случай
     }
 

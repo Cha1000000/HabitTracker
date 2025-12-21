@@ -7,11 +7,14 @@ import com.habittracker.domain.model.HabitEntry
 import com.habittracker.domain.model.gamification.GamificationEvent
 import com.habittracker.domain.repository.HabitEntryRepository
 import com.habittracker.domain.usecase.challenge.UpdateChallengeProgressUseCase
+import com.habittracker.domain.usecase.gamification.CalculatePointsUseCase
+import com.habittracker.domain.usecase.gamification.CheckAchievementsUseCase
 import com.habittracker.domain.usecase.gamification.UpdateUserPointsUseCase
 import com.habittracker.domain.usecase.notification.SendGroupHabitPushNotificationUseCase
 import com.habittracker.domain.util.HabitEntryIds
 import com.habittracker.domain.util.SyncPayloads
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.datetime.Clock
 import kotlinx.datetime.LocalDate
@@ -27,6 +30,8 @@ import javax.inject.Inject
 class MarkHabitCompletedUseCase @Inject constructor(
     private val habitEntryRepository: HabitEntryRepository,
     private val updateUserPointsUseCase: UpdateUserPointsUseCase,
+    private val calculatePointsUseCase: CalculatePointsUseCase,
+    private val checkAchievementsUseCase: CheckAchievementsUseCase,
     private val sendGroupHabitPushNotificationUseCase: SendGroupHabitPushNotificationUseCase,
     private val updateChallengeProgressUseCase: UpdateChallengeProgressUseCase,
     private val syncManager: SyncManager,
@@ -70,42 +75,39 @@ class MarkHabitCompletedUseCase @Inject constructor(
             updatedAt = today
         )
 
-        // 1) Локально в Room — всегда сначала
+        // 1) Локально в Room + Outbox (Repository handles both)
         habitEntryRepository.markHabitCompleted(habitId, userId, date, note)
 
-        // 2) Outbox UPSERT + форс-синк (ошибки не ломают локальный UX)
-        val entityId = HabitEntryIds.make(habitId, userId, date)
-        val payloadJson = SyncPayloads.habitEntryToJson(entry)
+        // 2) Экспедитим синхронизацию (форс-синк)
         try {
-            syncManager.enqueueUpsert(
-                entityType = "habit_entry",
-                entityId = entityId,
-                payloadJson = payloadJson,
-                updatedAt = today.atStartOfDayIn(TimeZone.currentSystemDefault()).toEpochMilliseconds()
-            )
+            syncWorkScheduler.scheduleOneTimeSync()
         } catch (e: Exception) {
-            // Игнорируем критично для UI, но логируем для диагностики: запись останется локально, воркер позже повторит
-            Log.w("MarkHabitCompleted", "enqueueUpsert failed: ${e.message}", e)
-        } finally {
-            // Экспедитим синхронизацию
-            try {
-                syncWorkScheduler.scheduleOneTimeSync()
-            } catch (e: Exception) {
-                Log.w("MarkHabitCompleted", "scheduleOneTimeSync failed: ${e.message}", e)
-            }
+            Log.w("MarkHabitCompleted", "scheduleOneTimeSync failed: ${e.message}", e)
+        }
 
-            // 3) Немедленный неблокирующий дренаж outbox для ускорения синка
-            backgroundTasksScope.launch {
-                try { syncManager.drainPending() } catch (e: Exception) {
-                    Log.d("MarkHabitCompleted", "drainPending failed (non-fatal): ${e.message}")
-                }
+        // 3) Немедленный неблокирующий дренаж outbox для ускорения синка
+        backgroundTasksScope.launch {
+            try { syncManager.drainPending() } catch (e: Exception) {
+                Log.d("MarkHabitCompleted", "drainPending failed (non-fatal): ${e.message}")
             }
+        }
 
-            // 4) Асинхронные побочные эффекты (очки, уведомления, челленджи)
+        // 4) Асинхронные побочные эффекты (очки, уведомления, челленджи)
             // Начисляем очки только если привычка НЕ была выполнена ранее
             backgroundTasksScope.launch {
                 if (!wasAlreadyCompleted) {
                     updateUserPointsUseCase(userId, GamificationEvent.HabitCompleted)
+                    
+                    // Проверяем серию и начисляем бонус
+                    try {
+                        val entries = habitEntryRepository.getEntriesForUserAndHabit(userId, habitId).first()
+                        val streak = calculatePointsUseCase.calculateCurrentStreak(habitId, entries, date)
+                        if (streak == 3 || streak == 7 || streak == 30) {
+                            updateUserPointsUseCase(userId, GamificationEvent.StreakBonus(streak))
+                        }
+                    } catch (e: Exception) {
+                        Log.w("MarkHabitCompleted", "Streak bonus calculation failed: ${e.message}", e)
+                    }
                 }
                 sendGroupHabitPushNotificationUseCase.invoke(habitId, userId)
                 
@@ -115,8 +117,14 @@ class MarkHabitCompletedUseCase @Inject constructor(
                 } catch (e: Exception) {
                     Log.w("MarkHabitCompleted", "updateChallengeProgress failed: ${e.message}", e)
                 }
+
+                // Проверяем достижения
+                try {
+                    checkAchievementsUseCase(userId)
+                } catch (e: Exception) {
+                    Log.w("MarkHabitCompleted", "checkAchievements failed: ${e.message}", e)
+                }
             }
-        }
     }
 }
 

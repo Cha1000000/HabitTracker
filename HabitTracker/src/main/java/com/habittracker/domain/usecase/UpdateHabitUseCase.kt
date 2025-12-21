@@ -11,17 +11,9 @@ import javax.inject.Inject
  * Обновляет данные в Firestore для синхронизации и локально для офлайн-доступа.
  */
 class UpdateHabitUseCase @Inject constructor(
-    private val firestoreRepository: FirestoreRepository,
     private val habitRepository: HabitRepository
 ) {
     suspend operator fun invoke(habit: Habit) {
-        try {
-            firestoreRepository.updateHabit(habit)
-            habitRepository.updateHabit(habit)
-        } catch (e: Exception) {
-            Log.w("UpdateHabitUseCase", "Firestore update failed: ${e.message}")
-            habitRepository.updateHabit(habit)
-            throw e
-        }
+        habitRepository.updateHabit(habit)
     }
 }

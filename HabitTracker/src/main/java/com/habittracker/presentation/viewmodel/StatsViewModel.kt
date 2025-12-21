@@ -5,16 +5,19 @@ import androidx.lifecycle.viewModelScope
 import com.habittracker.domain.repository.AuthRepository
 import com.habittracker.domain.usecase.gamification.GetUserStatsUseCase
 import com.habittracker.presentation.state.StatsUiState
+import com.habittracker.domain.usecase.gamification.GetLeaderboardUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 @HiltViewModel
 class StatsViewModel @Inject constructor(
     private val getUserStatsUseCase: GetUserStatsUseCase,
+    private val getLeaderboardUseCase: GetLeaderboardUseCase,
     private val authRepository: AuthRepository
 ) : ViewModel() {
 
@@ -30,9 +33,20 @@ class StatsViewModel @Inject constructor(
             _uiState.value = _uiState.value.copy(isLoading = true)
             
             try {
-                authRepository.getCurrentUser().collect { currentUser ->
+                authRepository.getCurrentUser().collectLatest { currentUser ->
                     if (currentUser != null) {
+                        // Загружаем статистику пользователя
                         val userStats = getUserStatsUseCase.getUserStats(currentUser.id)
+                        
+                        // Загружаем лидерборд (подписываемся на Flow)
+                        launch {
+                            getLeaderboardUseCase(currentUser.id).collect { leaderboard ->
+                                _uiState.value = _uiState.value.copy(
+                                    leaderboard = leaderboard
+                                )
+                            }
+                        }
+
                         _uiState.value = _uiState.value.copy(
                             isLoading = false,
                             userStats = userStats,

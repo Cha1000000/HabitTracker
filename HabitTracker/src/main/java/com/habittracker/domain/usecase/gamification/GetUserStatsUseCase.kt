@@ -117,8 +117,22 @@ class GetUserStatsUseCase @Inject constructor(
             completionsThisYear = thisYearEntries.size,
             averageCompletionRate = calculateAverageCompletionRate(activeHabits, entries, today),
             mostCompletedHabit = findMostCompletedHabit(habits, completedEntries),
-            perfectDays = calculatePerfectDays(activeHabits, entries, today)
+            perfectDays = calculatePerfectDays(activeHabits, entries, today),
+            last7DaysCompletions = calculateLast7DaysCompletions(completedEntries, today)
         )
+    }
+
+    /**
+     * Рассчитать количество выполненных привычек за последние 7 дней для графика
+     */
+    private fun calculateLast7DaysCompletions(
+        completedEntries: List<HabitEntry>,
+        today: LocalDate
+    ): List<Pair<LocalDate, Int>> {
+        val last7Days = (0..6).map { today.minus(it, DateTimeUnit.DAY) }.reversed()
+        return last7Days.map { date ->
+            date to completedEntries.count { it.date == date }
+        }
     }
 
     /**

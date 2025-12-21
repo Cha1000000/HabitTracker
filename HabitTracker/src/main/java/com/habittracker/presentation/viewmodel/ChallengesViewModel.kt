@@ -245,7 +245,6 @@ class ChallengesViewModel @Inject constructor(
                     }
 
                     val updatedHabit = habit.copy(participants = habit.participants + userId)
-                    firestoreRepository.updateHabit(updatedHabit)
                     habitRepository.updateHabit(updatedHabit)
                 }
 
@@ -254,7 +253,6 @@ class ChallengesViewModel @Inject constructor(
                 } catch (e: Exception) {
                     if (previousHabit != null) {
                         runCatching {
-                            firestoreRepository.updateHabit(previousHabit)
                             habitRepository.updateHabit(previousHabit)
                         }.onFailure { rollbackError ->
                             Log.w(TAG, "Rollback failed for habitId=${previousHabit.id}", rollbackError)

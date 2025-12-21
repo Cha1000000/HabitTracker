@@ -13,11 +13,17 @@ import kotlinx.coroutines.flow.map
 import kotlinx.datetime.Clock
 import javax.inject.Inject
 import javax.inject.Singleton
+import com.habittracker.data.sync.SyncManager
+import com.habittracker.domain.util.SyncPayloads
+import kotlinx.datetime.Instant
+import kotlinx.datetime.TimeZone
+import kotlinx.datetime.atStartOfDayIn
 
 @Singleton
 class AchievementRepositoryImpl @Inject constructor(
     private val achievementDao: AchievementDao,
-    private val userAchievementDao: UserAchievementDao
+    private val userAchievementDao: UserAchievementDao,
+    private val syncManager: SyncManager
 ) : AchievementRepository {
 
     override fun getAllAchievements(): Flow<List<Achievement>> {
@@ -55,46 +61,76 @@ class AchievementRepositoryImpl @Inject constructor(
     }
 
     override suspend fun unlockAchievement(userId: String, achievementId: String, progress: Int) {
+        val now = Clock.System.now()
         val existing = userAchievementDao.getUserAchievement(userId, achievementId)
-        if (existing != null) {
-            userAchievementDao.updateUserAchievement(
-                existing.copy(
-                    progress = progress,
-                    isUnlocked = true,
-                    unlockedAt = Clock.System.now().toEpochMilliseconds()
-                )
+        val updatedAchievement = if (existing != null) {
+            existing.copy(
+                progress = progress,
+                isUnlocked = true,
+                unlockedAt = now.toEpochMilliseconds()
             )
         } else {
-            userAchievementDao.insertUserAchievement(
-                UserAchievementEntity(
-                    userId = userId,
-                    achievementId = achievementId,
-                    progress = progress,
-                    isUnlocked = true,
-                    unlockedAt = Clock.System.now().toEpochMilliseconds(),
-                    createdAt = Clock.System.now().toEpochMilliseconds()
-                )
+            UserAchievementEntity(
+                userId = userId,
+                achievementId = achievementId,
+                progress = progress,
+                isUnlocked = true,
+                unlockedAt = now.toEpochMilliseconds(),
+                createdAt = now.toEpochMilliseconds()
             )
         }
+
+        if (existing != null) {
+            userAchievementDao.updateUserAchievement(updatedAchievement)
+        } else {
+            userAchievementDao.insertUserAchievement(updatedAchievement)
+        }
+
+        // Sync with Firestore
+        enqueueSync(updatedAchievement.toDomain())
     }
 
     override suspend fun updateAchievementProgress(userId: String, achievementId: String, progress: Int) {
+        val now = Clock.System.now()
         val existing = userAchievementDao.getUserAchievement(userId, achievementId)
-        if (existing != null) {
-            userAchievementDao.updateUserAchievement(
-                existing.copy(progress = progress)
-            )
+        val updatedAchievement = if (existing != null) {
+            existing.copy(progress = progress)
         } else {
-            userAchievementDao.insertUserAchievement(
-                UserAchievementEntity(
-                    userId = userId,
-                    achievementId = achievementId,
-                    progress = progress,
-                    isUnlocked = false,
-                    unlockedAt = null,
-                    createdAt = Clock.System.now().toEpochMilliseconds()
-                )
+            UserAchievementEntity(
+                userId = userId,
+                achievementId = achievementId,
+                progress = progress,
+                isUnlocked = false,
+                unlockedAt = null,
+                createdAt = now.toEpochMilliseconds()
             )
+        }
+
+        if (existing != null) {
+            userAchievementDao.updateUserAchievement(updatedAchievement)
+        } else {
+            userAchievementDao.insertUserAchievement(updatedAchievement)
+        }
+
+        // Sync with Firestore
+        enqueueSync(updatedAchievement.toDomain())
+    }
+
+    private suspend fun enqueueSync(userAchievement: UserAchievement) {
+        try {
+            val now = Clock.System.now().toEpochMilliseconds()
+            val payload = SyncPayloads.userAchievementToJson(userAchievement, now)
+            val docId = "${userAchievement.userId}_${userAchievement.achievementId}"
+            
+            syncManager.enqueueUpsert(
+                entityType = "user_achievement",
+                entityId = docId,
+                payloadJson = payload,
+                updatedAt = now
+            )
+        } catch (e: Exception) {
+            // Log error but don't crash, local data is already saved
+            android.util.Log.e("AchievementRepo", "Failed to enqueue sync", e)
         }
     }
 

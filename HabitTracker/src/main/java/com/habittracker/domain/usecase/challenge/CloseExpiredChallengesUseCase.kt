@@ -3,9 +3,12 @@ package com.habittracker.domain.usecase.challenge
 import com.habittracker.domain.model.Challenge
 import com.habittracker.domain.model.ChallengeStatus
 import com.habittracker.domain.model.ChallengeType
+import com.habittracker.domain.model.gamification.GamificationEvent
 import com.habittracker.domain.repository.AuthRepository
 import com.habittracker.domain.repository.ChallengeRepository
 import com.habittracker.domain.repository.SocialRepository
+import com.habittracker.domain.usecase.gamification.CheckAchievementsUseCase
+import com.habittracker.domain.usecase.gamification.UpdateUserPointsUseCase
 import kotlinx.coroutines.flow.first
 import kotlinx.datetime.Clock
 import kotlinx.datetime.TimeZone
@@ -17,7 +20,9 @@ import kotlin.math.min
 class CloseExpiredChallengesUseCase @Inject constructor(
     private val authRepository: AuthRepository,
     private val challengeRepository: ChallengeRepository,
-    private val socialRepository: SocialRepository
+    private val socialRepository: SocialRepository,
+    private val updateUserPointsUseCase: UpdateUserPointsUseCase,
+    private val checkAchievementsUseCase: CheckAchievementsUseCase
 ) {
     suspend operator fun invoke(): Result<Int> {
         return try {
@@ -63,6 +68,17 @@ class CloseExpiredChallengesUseCase @Inject constructor(
             updatedAt = today
         )
         challengeRepository.updateChallenge(updated)
+        
+        // Award points to the winner
+        updateUserPointsUseCase(winner, GamificationEvent.ChallengeWon)
+        
+        // Check achievements for the winner
+        try {
+            checkAchievementsUseCase(winner)
+        } catch (e: Exception) {
+            // Ignore achievement check errors
+        }
+        
         notifyCompleted(updated, participantIds, winner)
     }
 

@@ -6,9 +6,12 @@ import com.habittracker.data.local.dao.HabitEntryDao
 import com.habittracker.data.model.FirebaseHabitEntry
 import com.habittracker.data.model.FirebaseHabitEntry.Companion.toDomain
 import com.habittracker.data.local.mappers.toDomain
+import com.habittracker.data.sync.SyncManager
 import com.habittracker.domain.model.HabitEntry
 import com.habittracker.domain.model.HabitEntryWithUser
 import com.habittracker.domain.repository.HabitEntryRepository
+import com.habittracker.domain.util.HabitEntryIds
+import com.habittracker.domain.util.SyncPayloads
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.cancel
@@ -21,6 +24,7 @@ import kotlinx.coroutines.launch
 import kotlinx.datetime.Clock
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.TimeZone
+import kotlinx.datetime.atStartOfDayIn
 import kotlinx.datetime.toLocalDateTime
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -30,15 +34,36 @@ import com.habittracker.data.local.mappers.toEntity as habitEntryToEntity
 @Singleton
 class HabitEntryRepositoryImpl @Inject constructor(
     private val habitEntryDao: HabitEntryDao,
-    private val firestore: FirebaseFirestore
+    private val firestore: FirebaseFirestore,
+    private val syncManager: SyncManager
 ) : HabitEntryRepository {
 
     override suspend fun insertEntry(entry: HabitEntry) {
         habitEntryDao.insertEntry(entry.habitEntryToEntity())
+        enqueueSync(entry)
     }
 
     override suspend fun updateEntry(entry: HabitEntry) {
         habitEntryDao.updateEntry(entry.habitEntryToEntity())
+        enqueueSync(entry)
+    }
+    
+    private suspend fun enqueueSync(entry: HabitEntry) {
+        try {
+            val id = HabitEntryIds.make(entry.habitId, entry.userId, entry.date)
+            val payload = SyncPayloads.habitEntryToJson(entry)
+            // Используем текущее время для updatedAt, так как у entry точность только до дня
+            val updatedAt = Clock.System.now().toEpochMilliseconds()
+            
+            syncManager.enqueueUpsert(
+                entityType = "habit_entry",
+                entityId = id,
+                payloadJson = payload,
+                updatedAt = updatedAt
+            )
+        } catch (e: Exception) {
+            Log.e("HabitEntryRepo", "Failed to enqueue sync for entry", e)
+        }
     }
 
     override fun getEntryFlow(habitId: String, userId: String, date: LocalDate): Flow<HabitEntry?> {

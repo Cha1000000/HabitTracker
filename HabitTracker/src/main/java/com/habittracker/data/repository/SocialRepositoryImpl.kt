@@ -265,17 +265,22 @@ class SocialRepositoryImpl @Inject constructor(
     }
 
     override suspend fun updateFriendsCount(userId: String, count: Int) {
-        try {
-            firestore.collection("users").document(userId)
-                .update("friendsCount", count)
-                .await()
-        } catch (e: Exception) {
-            // Обновляем локально
-            Log.w("SocialRepository", "updateFriendsCount remote update failed for user=$userId: ${e.message}", e)
-            val user = userDao.getUserById(userId)
-            user?.let {
-                userDao.updateUser(it.copy(friendsCount = count))
-            }
+        val user = userDao.getUserById(userId)
+        if (user != null) {
+            val updatedUser = user.copy(friendsCount = count)
+            userDao.updateUser(updatedUser)
+            
+            // Enqueue sync via Outbox
+            val now = System.currentTimeMillis()
+            val payload = SyncPayloads.userToJson(updatedUser.toDomain(), now)
+            syncManager.enqueueUpsert(
+                entityType = "user",
+                entityId = userId,
+                payloadJson = payload,
+                updatedAt = now
+            )
+        } else {
+            Log.w("SocialRepository", "updateFriendsCount: User $userId not found locally")
         }
     }
 
@@ -1285,20 +1290,9 @@ class SocialRepositoryImpl @Inject constructor(
             }
 
             // Добавляем пользователя к участникам привычки локально
+            // HabitRepositoryImpl handles this via Local + Outbox sync
             habitRepository.addParticipantToHabit(invitation.habitId, invitation.toUserId)
-            try {
-                firestore.collection("habits")
-                    .document(invitation.habitId)
-                    .update(
-                        mapOf(
-                            "participants" to FieldValue.arrayUnion(invitation.toUserId),
-                            "updatedAt" to System.currentTimeMillis()
-                        )
-                    )
-                    .await()
-            } catch (e: Exception) {
-                Log.d("SocialRepository", "acceptHabitInvitation: remote habit update failed (non-fatal): ${e.message}")
-            }
+            
             // Отправляем FCM уведомление создателю привычки
             val acceptedUserName = try {
                 getUserById(invitation.toUserId)?.name ?: invitation.toUserId
