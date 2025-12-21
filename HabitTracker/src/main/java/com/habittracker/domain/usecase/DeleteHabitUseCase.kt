@@ -5,10 +5,7 @@ import com.habittracker.data.sync.SyncManager
 import com.habittracker.data.sync.SyncWorkScheduler
 import com.habittracker.domain.model.Habit
 import com.habittracker.domain.model.HabitType
-import com.habittracker.domain.repository.FirestoreRepository
 import com.habittracker.domain.repository.HabitRepository
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.launch
 import kotlinx.datetime.Clock
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toLocalDateTime

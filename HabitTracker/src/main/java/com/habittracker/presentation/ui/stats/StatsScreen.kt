@@ -154,7 +154,11 @@ fun StatsScreen(
                     }
 
                     item {
-                        LeaderboardSection(uiState.leaderboard)
+                        LeaderboardSection(
+                            leaderboardEntries = uiState.leaderboardEntries,
+                            leaderboardType = uiState.leaderboardType,
+                            onToggleType = { viewModel.toggleLeaderboardType() }
+                        )
                     }
                     
                     item {
@@ -496,7 +500,11 @@ private fun StatsCard(
 }
 
 @Composable
-private fun LeaderboardSection(leaderboard: List<com.habittracker.domain.model.User>) {
+private fun LeaderboardSection(
+    leaderboardEntries: List<com.habittracker.domain.usecase.gamification.LeaderboardEntry>,
+    leaderboardType: com.habittracker.domain.usecase.gamification.LeaderboardType,
+    onToggleType: () -> Unit
+) {
     val isDarkTheme = isSystemInDarkTheme()
     
     GlassmorphicCard(
@@ -511,24 +519,46 @@ private fun LeaderboardSection(leaderboard: List<com.habittracker.domain.model.U
             modifier = Modifier.padding(16.dp)
         ) {
             Row(
+                modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                horizontalArrangement = Arrangement.SpaceBetween
             ) {
-                Icon(
-                    Icons.Default.EmojiEvents,
-                    contentDescription = null,
-                    tint = if (isDarkTheme) Color(0xFFFFD700) else MaterialTheme.colorScheme.primary
-                )
-                Text(
-                    text = stringResource(R.string.stats_leaderboard_title),
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Icon(
+                        Icons.Default.EmojiEvents,
+                        contentDescription = null,
+                        tint = if (isDarkTheme) Color(0xFFFFD700) else MaterialTheme.colorScheme.primary
+                    )
+                    Text(
+                        text = stringResource(R.string.stats_leaderboard_title),
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+                
+                // Кнопка переключения типа лидерборда
+                androidx.compose.material3.FilterChip(
+                    selected = leaderboardType == com.habittracker.domain.usecase.gamification.LeaderboardType.WEEKLY,
+                    onClick = onToggleType,
+                    label = {
+                        Text(
+                            text = if (leaderboardType == com.habittracker.domain.usecase.gamification.LeaderboardType.WEEKLY) 
+                                stringResource(R.string.leaderboard_weekly) 
+                            else 
+                                stringResource(R.string.leaderboard_all_time),
+                            style = MaterialTheme.typography.labelSmall
+                        )
+                    },
+                    modifier = Modifier.height(28.dp)
                 )
             }
 
             Spacer(modifier = Modifier.height(12.dp))
 
-            if (leaderboard.isEmpty() || leaderboard.size < 2) {
+            if (leaderboardEntries.isEmpty() || leaderboardEntries.size < 2) {
                 Text(
                     text = stringResource(R.string.leaderboard_empty),
                     style = MaterialTheme.typography.bodyMedium,
@@ -537,15 +567,95 @@ private fun LeaderboardSection(leaderboard: List<com.habittracker.domain.model.U
                     modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp)
                 )
             } else {
-                leaderboard.take(5).forEachIndexed { index, user ->
-                    LeaderboardItem(rank = index + 1, user = user)
-                    if (index < leaderboard.take(5).lastIndex) {
+                leaderboardEntries.take(5).forEachIndexed { index, entry ->
+                    LeaderboardItemEnhanced(
+                        entry = entry,
+                        isWeekly = leaderboardType == com.habittracker.domain.usecase.gamification.LeaderboardType.WEEKLY
+                    )
+                    if (index < leaderboardEntries.take(5).lastIndex) {
                         HorizontalDivider(
                             modifier = Modifier.padding(vertical = 8.dp),
                             color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.1f)
                         )
                     }
                 }
+            }
+        }
+    }
+}
+
+@Composable
+private fun LeaderboardItemEnhanced(
+    entry: com.habittracker.domain.usecase.gamification.LeaderboardEntry,
+    isWeekly: Boolean
+) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.SpaceBetween
+    ) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier.weight(1f)
+        ) {
+            // Rank
+            Text(
+                text = "${entry.rank}",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold,
+                color = when (entry.rank) {
+                    1 -> Color(0xFFFFD700) // Gold
+                    2 -> Color(0xFFC0C0C0) // Silver
+                    3 -> Color(0xFFCD7F32) // Bronze
+                    else -> MaterialTheme.colorScheme.onSurface
+                },
+                modifier = Modifier.width(24.dp),
+                textAlign = TextAlign.Center
+            )
+            
+            Spacer(modifier = Modifier.width(12.dp))
+            
+            // Avatar
+            AvatarImage(
+                data = entry.user.avatarThumbnailUrl ?: entry.user.avatarUrl,
+                contentDescription = entry.user.name,
+                sizeDp = 40.dp,
+                placeholderColor = MaterialTheme.colorScheme.primaryContainer
+            )
+            
+            Spacer(modifier = Modifier.width(12.dp))
+            
+            // Name & Level
+            Column {
+                Text(
+                    text = entry.user.name.ifBlank { "User" },
+                    style = MaterialTheme.typography.bodyMedium,
+                    fontWeight = FontWeight.SemiBold,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+                Text(
+                    text = stringResource(R.string.level_title, entry.user.level),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+        }
+        
+        // Score
+        Column(horizontalAlignment = Alignment.End) {
+            Text(
+                text = "${entry.score}",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.primary
+            )
+            if (isWeekly) {
+                Text(
+                    text = stringResource(R.string.leaderboard_completions),
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
             }
         }
     }

@@ -293,6 +293,10 @@
     <string name="stats_activity_title">Активность за 7 дней</string>
     <string name="stats_leaderboard_title">Рейтинг друзей</string>
     <string name="leaderboard_empty">У вас пока нет друзей для соревнования</string>
+    <string name="leaderboard_weekly">За неделю</string>
+    <string name="leaderboard_all_time">Все время</string>
+    <string name="leaderboard_completions">выполнений</string>
+    <string name="leaderboard_habit_title">Рейтинг участников</string>
     <string name="cd_more">Еще</string>
     <string name="wants_to_add_you">Хочет добавить вас в друзья</string>
     <string name="request_sent">Запрос отправлен</string>
@@ -731,6 +735,8 @@
     
     <!-- Achievement Status -->
     <string name="achievement_unlocked">Разблокировано</string>
+    <string name="achievement_unlocked_title">Достижение разблокировано!</string>
+    <string name="points_label">очков</string>
     <string name="achievement_locked">Заблокировано</string>
     <string name="achievement_progress">Прогресс</string>
     <string name="achievement_reward">+%1$d очков</string>

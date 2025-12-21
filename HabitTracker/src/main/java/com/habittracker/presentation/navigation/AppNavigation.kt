@@ -1,6 +1,15 @@
 package com.habittracker.presentation.navigation
 
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Modifier
+import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavHostController
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
@@ -11,6 +20,9 @@ import com.habittracker.presentation.ui.ProfileScreen
 import com.habittracker.presentation.ui.achievements.AchievementsScreen
 import com.habittracker.presentation.ui.auth.LoginScreen
 import com.habittracker.presentation.ui.auth.RegisterScreen
+import com.habittracker.presentation.ui.components.AchievementEventManager
+import com.habittracker.presentation.ui.components.AchievementToastData
+import com.habittracker.presentation.ui.components.AchievementUnlockedToast
 import com.habittracker.presentation.ui.debug.FCMTestScreen
 import com.habittracker.presentation.ui.discover.PublicHabitsScreen
 import com.habittracker.presentation.ui.habits.AddEditHabitScreen
@@ -23,6 +35,7 @@ import com.habittracker.presentation.ui.stats.StatsScreen
 import com.habittracker.presentation.ui.challenges.ChallengeDetailScreen
 import com.habittracker.presentation.ui.challenges.ChallengesScreen
 import com.habittracker.presentation.ui.challenges.CreateChallengeScreen
+import kotlinx.coroutines.flow.collectLatest
 
 /**
  * Запечатанный класс для определения маршрутов навигации.
@@ -67,14 +80,27 @@ sealed class Screen(val route: String) {
  */
 @Composable
 fun AppNavHost(
-    onNavControllerReady: (NavHostController) -> Unit = {}
+    onNavControllerReady: (NavHostController) -> Unit = {},
+    achievementEventManager: AchievementEventManager? = null
 ) {
     val navController = rememberNavController()
-    androidx.compose.runtime.LaunchedEffect(Unit) {
+    LaunchedEffect(Unit) {
         onNavControllerReady(navController)
     }
-    // Start with splash screen
-    NavHost(navController = navController, startDestination = Screen.Splash.route) {
+    
+    // Состояние для отображения toast о достижении
+    var achievementToast by remember { mutableStateOf<AchievementToastData?>(null) }
+    
+    // Подписываемся на события разблокировки достижений
+    LaunchedEffect(achievementEventManager) {
+        achievementEventManager?.achievementUnlocked?.collectLatest { achievement ->
+            achievementToast = achievement
+        }
+    }
+    
+    Box(modifier = Modifier.fillMaxSize()) {
+        // Start with splash screen
+        NavHost(navController = navController, startDestination = Screen.Splash.route) {
         composable(route = Screen.Splash.route) {
             SplashScreen(navController = navController)
         }
@@ -241,5 +267,12 @@ fun AppNavHost(
                 onNavigateBack = { navController.popBackStack() }
             )
         }
+    }
+        
+        // Глобальный toast для разблокировки достижений
+        AchievementUnlockedToast(
+            achievement = achievementToast,
+            onDismiss = { achievementToast = null }
+        )
     }
 }

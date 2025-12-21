@@ -5,7 +5,6 @@ import com.habittracker.domain.model.HabitEntry
 import com.habittracker.domain.model.HabitFrequency
 import com.habittracker.domain.model.HabitParticipantSettings
 import com.habittracker.domain.model.HabitType
-import com.habittracker.domain.model.User
 import com.habittracker.domain.model.gamification.GamificationEvent
 import com.habittracker.domain.repository.FirestoreRepository
 import com.habittracker.domain.repository.HabitRepository

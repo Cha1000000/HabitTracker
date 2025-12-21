@@ -9,6 +9,8 @@ import com.habittracker.domain.repository.SocialRepository
 import com.habittracker.domain.repository.UserRepository
 import com.habittracker.domain.usecase.notification.NotificationType
 import com.habittracker.data.local.entity.GroupHabitNotificationEntity
+import com.habittracker.presentation.ui.components.AchievementEventManager
+import com.habittracker.presentation.ui.components.AchievementToastData
 import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.datetime.Clock
 import java.util.UUID
@@ -23,7 +25,8 @@ class CheckAchievementsUseCase @Inject constructor(
     private val getUserStatsUseCase: GetUserStatsUseCase,
     private val userRepository: UserRepository,
     private val socialRepository: SocialRepository,
-    private val groupHabitNotificationRepository: GroupHabitNotificationRepository
+    private val groupHabitNotificationRepository: GroupHabitNotificationRepository,
+    private val achievementEventManager: AchievementEventManager
 ) {
 
     /**
@@ -85,7 +88,22 @@ class CheckAchievementsUseCase @Inject constructor(
             
             Log.d("CheckAchievements", "Achievement unlocked: ${user.name} - ${achievement.title}")
             
-            // 1. Сохраняем in-app уведомление
+            // 1. Отправляем событие для показа анимированного toast
+            try {
+                achievementEventManager.emitAchievementUnlocked(
+                    AchievementToastData(
+                        id = achievement.id,
+                        title = achievement.title,
+                        description = achievement.description,
+                        icon = achievement.icon,
+                        pointsReward = achievement.pointsReward
+                    )
+                )
+            } catch (e: Exception) {
+                Log.w("CheckAchievements", "Failed to emit toast event", e)
+            }
+            
+            // 2. Сохраняем in-app уведомление
             val notification = GroupHabitNotificationEntity(
                 id = UUID.randomUUID().toString(),
                 userId = user.id,
@@ -100,7 +118,7 @@ class CheckAchievementsUseCase @Inject constructor(
             )
             groupHabitNotificationRepository.saveNotification(notification)
 
-            // 2. Отправляем push-уведомление, если есть FCM токен
+            // 3. Отправляем push-уведомление, если есть FCM токен
             user.fcmToken?.takeIf { it.isNotBlank() }?.let { token ->
                 val data = mapOf(
                     "type" to "achievement_unlocked",

@@ -40,6 +40,8 @@ class MainActivity : ComponentActivity() {
     lateinit var socialRepository: SocialRepository
     @Inject
     lateinit var userRepository: UserRepository
+    @Inject
+    lateinit var achievementEventManager: com.habittracker.presentation.ui.components.AchievementEventManager
 
     private val authViewModel: AuthViewModel by viewModels()
     private var socialSyncJob: Job? = null
@@ -65,7 +67,8 @@ class MainActivity : ComponentActivity() {
                         navController = controller
                         // Обработка стартового интента из уведомления
                         handleIntentForNavigation(intent)
-                    }
+                    },
+                    achievementEventManager = achievementEventManager
                 )
             }
         }

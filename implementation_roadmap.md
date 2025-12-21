@@ -151,8 +151,8 @@ presentation/viewmodel/StatsViewModel.kt
 **Задачи:**
 - [x] Создать `LeaderboardSection` в `StatsScreen`
 - [x] Отображение рейтинга друзей по очкам (`GetLeaderboardUseCase`)
-- [ ] Еженедельный рейтинг (опционально, не реализовано)
-- [ ] Рейтинг по конкретной привычке для групповых (опционально, не реализовано)
+- [x] Еженедельный рейтинг (`LeaderboardType.WEEKLY` с переключателем в UI)
+- [x] Рейтинг по конкретной привычке для групповых (`getHabitLeaderboard`)
 
 **Файлы для создания/изменения:**
 ```
@@ -164,7 +164,7 @@ domain/usecase/gamification/GetLeaderboardUseCase.kt (если нет)
 **Задачи:**
 - [x] Локальное уведомление при разблокировке достижения (сохраняется в `GroupHabitNotificationRepository`)
 - [x] Push-уведомление пользователю о достижении (через FCM)
-- [ ] In-app toast/snackbar с анимацией (опционально, не реализовано)
+- [x] In-app toast/snackbar с анимацией (`AchievementUnlockedToast` + `AchievementEventManager`)
 
 ---
 

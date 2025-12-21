@@ -4,9 +4,11 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.habittracker.domain.repository.AuthRepository
 import com.habittracker.domain.usecase.gamification.GetUserStatsUseCase
-import com.habittracker.presentation.state.StatsUiState
 import com.habittracker.domain.usecase.gamification.GetLeaderboardUseCase
+import com.habittracker.domain.usecase.gamification.LeaderboardType
+import com.habittracker.presentation.state.StatsUiState
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -23,6 +25,9 @@ class StatsViewModel @Inject constructor(
 
     private val _uiState = MutableStateFlow(StatsUiState())
     val uiState: StateFlow<StatsUiState> = _uiState.asStateFlow()
+    
+    private var leaderboardJob: Job? = null
+    private var currentUserId: String? = null
 
     init {
         loadUserStats()
@@ -35,17 +40,13 @@ class StatsViewModel @Inject constructor(
             try {
                 authRepository.getCurrentUser().collectLatest { currentUser ->
                     if (currentUser != null) {
+                        currentUserId = currentUser.id
+                        
                         // Загружаем статистику пользователя
                         val userStats = getUserStatsUseCase.getUserStats(currentUser.id)
                         
-                        // Загружаем лидерборд (подписываемся на Flow)
-                        launch {
-                            getLeaderboardUseCase(currentUser.id).collect { leaderboard ->
-                                _uiState.value = _uiState.value.copy(
-                                    leaderboard = leaderboard
-                                )
-                            }
-                        }
+                        // Загружаем лидерборд с текущим типом
+                        loadLeaderboard(currentUser.id, _uiState.value.leaderboardType)
 
                         _uiState.value = _uiState.value.copy(
                             isLoading = false,
@@ -66,6 +67,30 @@ class StatsViewModel @Inject constructor(
                 )
             }
         }
+    }
+    
+    private fun loadLeaderboard(userId: String, type: LeaderboardType) {
+        leaderboardJob?.cancel()
+        leaderboardJob = viewModelScope.launch {
+            getLeaderboardUseCase.invoke(userId, type).collect { entries ->
+                _uiState.value = _uiState.value.copy(
+                    leaderboardEntries = entries,
+                    leaderboard = entries.map { it.user }
+                )
+            }
+        }
+    }
+    
+    /**
+     * Переключает тип лидерборда между ALL_TIME и WEEKLY
+     */
+    fun toggleLeaderboardType() {
+        val newType = when (_uiState.value.leaderboardType) {
+            LeaderboardType.ALL_TIME -> LeaderboardType.WEEKLY
+            LeaderboardType.WEEKLY -> LeaderboardType.ALL_TIME
+        }
+        _uiState.value = _uiState.value.copy(leaderboardType = newType)
+        currentUserId?.let { loadLeaderboard(it, newType) }
     }
 
     fun refresh() {
