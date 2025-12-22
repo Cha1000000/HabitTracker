@@ -4,6 +4,7 @@ import com.habittracker.domain.model.Habit
 import com.habittracker.domain.model.HabitEntry
 import com.habittracker.domain.model.HabitInvitation
 import com.habittracker.domain.model.User
+import com.habittracker.domain.usecase.gamification.LeaderboardEntry
 
 /**
  * UI состояние для экрана детальной информации о групповой привычке
@@ -21,6 +22,7 @@ data class GroupHabitDetailUiState(
     val groupStreak: Int = 0,
     val isCompletedToday: Boolean = false,
     val isMarkingCompletion: Boolean = false,
+    val participantLeaderboard: List<LeaderboardEntry> = emptyList(),
     val error: String? = null,
     val successMessage: String? = null
 )

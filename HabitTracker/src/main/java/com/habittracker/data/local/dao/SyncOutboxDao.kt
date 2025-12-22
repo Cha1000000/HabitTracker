@@ -29,4 +29,7 @@ interface SyncOutboxDao {
 
     @Query("SELECT COUNT(*) FROM sync_outbox WHERE entityType = :entityType AND entityId = :entityId AND state IN ('PENDING', 'IN_PROGRESS')")
     suspend fun hasPendingOperation(entityType: String, entityId: String): Int
+
+    @Query("SELECT COUNT(*) > 0 FROM sync_outbox WHERE entityType = :entityType AND entityId = :entityId AND state IN ('PENDING', 'IN_PROGRESS')")
+    suspend fun hasPendingForEntity(entityType: String, entityId: String): Boolean
 }

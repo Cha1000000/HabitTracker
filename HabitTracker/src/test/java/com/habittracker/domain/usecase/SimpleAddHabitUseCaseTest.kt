@@ -1,12 +1,10 @@
 package com.habittracker.domain.usecase
 
 import com.habittracker.domain.model.Habit
-import com.habittracker.domain.model.HabitEntry
 import com.habittracker.domain.model.HabitFrequency
 import com.habittracker.domain.model.HabitParticipantSettings
 import com.habittracker.domain.model.HabitType
 import com.habittracker.domain.model.gamification.GamificationEvent
-import com.habittracker.domain.repository.FirestoreRepository
 import com.habittracker.domain.repository.HabitRepository
 import com.habittracker.domain.repository.SocialRepository
 import com.habittracker.domain.repository.UserRepository
@@ -20,7 +18,6 @@ import kotlinx.datetime.Clock
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toLocalDateTime
 import org.junit.Assert.assertEquals
-import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
@@ -29,7 +26,6 @@ import org.mockito.Mockito.mock
 @ExperimentalCoroutinesApi
 class SimpleAddHabitUseCaseTest {
 
-    private lateinit var firestoreRepository: FakeFirestoreRepository
     private lateinit var habitRepository: FakeHabitRepository
     private lateinit var updateUserPointsUseCase: FakeUpdateUserPointsUseCase
     private lateinit var checkAchievementsUseCase: CheckAchievementsUseCase
@@ -55,41 +51,44 @@ class SimpleAddHabitUseCaseTest {
 
     @Before
     fun setUp() {
-        firestoreRepository = FakeFirestoreRepository()
         habitRepository = FakeHabitRepository()
         updateUserPointsUseCase = FakeUpdateUserPointsUseCase()
         checkAchievementsUseCase = mock(CheckAchievementsUseCase::class.java)
-        addHabitUseCase = AddHabitUseCase(firestoreRepository, habitRepository, updateUserPointsUseCase, checkAchievementsUseCase)
+        addHabitUseCase = AddHabitUseCase(habitRepository, updateUserPointsUseCase, checkAchievementsUseCase)
     }
 
     @Test
-    fun `invoke should save habit to both repositories when Firestore succeeds`() = runTest {
+    fun `invoke should save habit to repository`() = runTest {
         // Act
         addHabitUseCase(testHabit)
 
         // Assert
-        assertTrue(firestoreRepository.saveHabitCalled)
         assertTrue(habitRepository.insertHabitCalled)
-        assertEquals(testHabit, firestoreRepository.savedHabit)
         assertEquals(testHabit, habitRepository.insertedHabit)
     }
 
     @Test
-    fun `invoke should save habit locally when Firestore fails`() = runTest {
+    fun `invoke should award points for group habit creation`() = runTest {
         // Arrange
-        firestoreRepository.shouldThrowException = true
+        val groupHabit = testHabit.copy(type = HabitType.GROUP)
 
-        // Act & Assert
-        try {
-            addHabitUseCase(testHabit)
-        } catch (e: Exception) {
-            // Exception should be propagated
-            assertNotNull(e)
-        }
+        // Act
+        addHabitUseCase(groupHabit)
 
-        // Verify both repositories were called
-        assertTrue(firestoreRepository.saveHabitCalled)
+        // Assert
         assertTrue(habitRepository.insertHabitCalled)
+        assertTrue(updateUserPointsUseCase.invokeCalled)
+        assertEquals(GamificationEvent.GroupHabitCreated, updateUserPointsUseCase.lastEvent)
+    }
+
+    @Test
+    fun `invoke should not award points for personal habit creation`() = runTest {
+        // Act
+        addHabitUseCase(testHabit)
+
+        // Assert
+        assertTrue(habitRepository.insertHabitCalled)
+        assertTrue(!updateUserPointsUseCase.invokeCalled)
     }
     
     // Fake UpdateUserPointsUseCase
@@ -97,37 +96,14 @@ class SimpleAddHabitUseCaseTest {
         mock(UserRepository::class.java),
         mock(SocialRepository::class.java)
     ) {
+        var invokeCalled = false
+        var lastEvent: GamificationEvent? = null
+        
         override suspend fun invoke(userId: String, event: GamificationEvent): Result<Unit> {
+            invokeCalled = true
+            lastEvent = event
             return Result.success(Unit)
         }
-    }
-
-    // Fake implementations for testing
-    private class FakeFirestoreRepository : FirestoreRepository {
-        var saveHabitCalled = false
-        var savedHabit: Habit? = null
-        var shouldThrowException = false
-
-        override suspend fun saveHabit(habit: Habit) {
-            saveHabitCalled = true
-            savedHabit = habit
-            if (shouldThrowException) {
-                throw RuntimeException("Firestore error")
-            }
-        }
-
-        override fun getUserHabits(userId: String) = flowOf(emptyList<Habit>())
-        override suspend fun updateHabit(habit: Habit) {}
-        override suspend fun deleteHabit(habitId: String) {}
-        override suspend fun getHabitById(habitId: String): Habit? = null
-        override suspend fun saveHabitEntry(habitEntry: HabitEntry) {}
-        override suspend fun getHabitEntry(habitId: String, userId: String, date: kotlinx.datetime.LocalDate): HabitEntry? = null
-        override fun getHabitEntries(habitId: String, userId: String) = flowOf(emptyList<HabitEntry>())
-        override suspend fun syncData() {}
-        override suspend fun getParticipantSettings(habitId: String, userId: String) = null
-        override suspend fun setParticipantSettings(settings: HabitParticipantSettings) {}
-        override fun getAllPublicHabits(excludeUserId: String?) = flowOf(emptyList<Habit>())
-        override suspend fun getHabitByInviteCode(inviteCode: String): Habit? = null
     }
 
     private class FakeHabitRepository : HabitRepository {

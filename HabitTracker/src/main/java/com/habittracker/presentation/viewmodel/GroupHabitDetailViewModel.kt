@@ -51,7 +51,8 @@ class GroupHabitDetailViewModel @Inject constructor(
     private val getHabitInvitationsUseCase: GetHabitInvitationsUseCase,
     private val generateHabitInviteCodeUseCase: GenerateHabitInviteCodeUseCase,
     private val updateHabitUseCase: UpdateHabitUseCase,
-    private val deleteHabitUseCase: DeleteHabitUseCase
+    private val deleteHabitUseCase: DeleteHabitUseCase,
+    private val getLeaderboardUseCase: com.habittracker.domain.usecase.gamification.GetLeaderboardUseCase
 ) : AndroidViewModel(application) {
 
     private val _uiState = MutableStateFlow(GroupHabitDetailUiState())
@@ -63,6 +64,7 @@ class GroupHabitDetailViewModel @Inject constructor(
     // Job для отслеживания подписок на Flow
     private var entriesCollectionJob: Job? = null
     private var invitationsCollectionJob: Job? = null
+    private var leaderboardJob: Job? = null
 
     /**
      * Загрузка детальной информации о привычке
@@ -71,6 +73,7 @@ class GroupHabitDetailViewModel @Inject constructor(
         // Отменяем предыдущие подписки
         entriesCollectionJob?.cancel()
         invitationsCollectionJob?.cancel()
+        leaderboardJob?.cancel()
         
         viewModelScope.launch {
             try {
@@ -132,6 +135,8 @@ class GroupHabitDetailViewModel @Inject constructor(
                 // Подписываемся на изменения записей о выполнении привычки
                 if (habit.isGroupHabit()) {
                     collectHabitEntries(habitId, participants.map { it.id })
+                    // Загружаем лидерборд участников
+                    loadParticipantLeaderboard(habitId)
                 }
 
                 // Загружаем приглашения (только для владельца)
@@ -195,6 +200,22 @@ class GroupHabitDetailViewModel @Inject constructor(
                             isCompletedToday = isCompletedToday
                         )
                     }
+                }
+        }
+    }
+
+    /**
+     * Загрузка лидерборда участников привычки
+     */
+    private fun loadParticipantLeaderboard(habitId: String) {
+        leaderboardJob?.cancel()
+        leaderboardJob = viewModelScope.launch {
+            getLeaderboardUseCase.getHabitLeaderboard(habitId)
+                .catch { e ->
+                    Log.e("GroupHabitDetailVM", "Error loading leaderboard", e)
+                }
+                .collect { leaderboard ->
+                    _uiState.update { it.copy(participantLeaderboard = leaderboard) }
                 }
         }
     }

@@ -46,7 +46,27 @@ class HabitRepositoryImpl @Inject constructor(
         currentSyncUserId = userId
         syncJob = applicationScope.launch {
             firestoreRepository.getUserHabits(userId).collect { remoteHabits ->
-                habitDao.insertHabits(remoteHabits.map { it.toEntity() })
+                // Для каждой привычки проверяем, не новее ли локальная версия
+                for (remoteHabit in remoteHabits) {
+                    val localHabit = habitDao.getHabitById(remoteHabit.id)
+                    if (localHabit == null) {
+                        // Локальной версии нет — вставляем
+                        habitDao.insertHabit(remoteHabit.toEntity())
+                    } else {
+                        // Сравниваем updatedAt: вставляем только если remote новее или равен
+                        val remoteUpdatedAt = remoteHabit.updatedAt.atStartOfDayIn(TimeZone.currentSystemDefault())
+                        val localUpdatedAt = localHabit.updatedAt.atStartOfDayIn(TimeZone.currentSystemDefault())
+                        if (remoteUpdatedAt >= localUpdatedAt) {
+                            // Дополнительно проверяем, нет ли pending операций в Outbox для этой привычки
+                            val hasPendingSync = syncManager.hasPendingOperations("habit", remoteHabit.id)
+                            if (!hasPendingSync) {
+                                habitDao.insertHabit(remoteHabit.toEntity())
+                            }
+                            // Если есть pending — не перезаписываем, ждём пока Outbox синхронизирует
+                        }
+                        // Если local новее — не перезаписываем
+                    }
+                }
             }
         }
     }

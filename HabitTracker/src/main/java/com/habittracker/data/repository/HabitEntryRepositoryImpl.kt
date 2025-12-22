@@ -97,7 +97,22 @@ class HabitEntryRepositoryImpl @Inject constructor(
                         }
                     } ?: emptyList()
                     scope.launch {
-                        try { habitEntryDao.insertEntries(list.map { it.habitEntryToEntity() }) } catch (e: Exception) {
+                        try {
+                            val filtered = mutableListOf<HabitEntry>()
+                            for (entry in list) {
+                                val entityId = HabitEntryIds.make(entry.habitId, entry.userId, entry.date)
+                                val hasPending = try {
+                                    syncManager.hasPendingOperations("habit_entry", entityId)
+                                } catch (e: Exception) {
+                                    Log.w("HabitEntryRepo", "hasPendingOperations failed (habit_entry id=$entityId): ${e.message}")
+                                    false
+                                }
+                                if (!hasPending) filtered.add(entry)
+                            }
+                            if (filtered.isNotEmpty()) {
+                                habitEntryDao.insertEntries(filtered.map { it.habitEntryToEntity() })
+                            }
+                        } catch (e: Exception) {
                             Log.w("HabitEntryRepo", "Insert entries failed: ${e.message}", e)
                         }
                     }
@@ -135,7 +150,22 @@ class HabitEntryRepositoryImpl @Inject constructor(
                         }
                     } ?: emptyList()
                     scope.launch {
-                        try { habitEntryDao.insertEntries(list.map { it.habitEntryToEntity() }) } catch (e: Exception) {
+                        try {
+                            val filtered = mutableListOf<HabitEntry>()
+                            for (entry in list) {
+                                val entityId = HabitEntryIds.make(entry.habitId, entry.userId, entry.date)
+                                val hasPending = try {
+                                    syncManager.hasPendingOperations("habit_entry", entityId)
+                                } catch (e: Exception) {
+                                    Log.w("HabitEntryRepo", "hasPendingOperations failed (habit_entry id=$entityId): ${e.message}")
+                                    false
+                                }
+                                if (!hasPending) filtered.add(entry)
+                            }
+                            if (filtered.isNotEmpty()) {
+                                habitEntryDao.insertEntries(filtered.map { it.habitEntryToEntity() })
+                            }
+                        } catch (e: Exception) {
                             Log.w("HabitEntryRepo", "Insert entries failed: ${e.message}", e)
                         }
                     }
@@ -174,7 +204,22 @@ class HabitEntryRepositoryImpl @Inject constructor(
                         }
                     } ?: emptyList()
                     scope.launch {
-                        try { habitEntryDao.insertEntries(list.map { it.habitEntryToEntity() }) } catch (e: Exception) {
+                        try {
+                            val filtered = mutableListOf<HabitEntry>()
+                            for (entry in list) {
+                                val entityId = HabitEntryIds.make(entry.habitId, entry.userId, entry.date)
+                                val hasPending = try {
+                                    syncManager.hasPendingOperations("habit_entry", entityId)
+                                } catch (e: Exception) {
+                                    Log.w("HabitEntryRepo", "hasPendingOperations failed (habit_entry id=$entityId): ${e.message}")
+                                    false
+                                }
+                                if (!hasPending) filtered.add(entry)
+                            }
+                            if (filtered.isNotEmpty()) {
+                                habitEntryDao.insertEntries(filtered.map { it.habitEntryToEntity() })
+                            }
+                        } catch (e: Exception) {
                             Log.w("HabitEntryRepo", "Insert entries failed: ${e.message}", e)
                         }
                     }

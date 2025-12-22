@@ -8,10 +8,10 @@ import com.habittracker.domain.model.GroupHabitNotificationModel
 import com.habittracker.domain.repository.GroupHabitNotificationRepository
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.tasks.await
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -33,6 +33,8 @@ class GroupHabitNotificationRepositoryImpl @Inject constructor(
     
     // Хранилище активных listeners для предотвращения дублирования
     private val activeListeners = mutableMapOf<String, com.google.firebase.firestore.ListenerRegistration>()
+
+    private val syncScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     
     override suspend fun saveNotification(notification: GroupHabitNotificationEntity) {
         try {
@@ -80,29 +82,55 @@ class GroupHabitNotificationRepositoryImpl @Inject constructor(
                     return@addSnapshotListener
                 }
                 
-                snapshot?.documents?.forEach { doc ->
-                    try {
-                        val notification = GroupHabitNotificationEntity(
-                            id = doc.getString("id") ?: return@forEach,
-                            userId = doc.getString("userId") ?: return@forEach,
-                            habitId = doc.getString("habitId") ?: "",
-                            type = doc.getString("type") ?: "",
-                            participantId = doc.getString("participantId") ?: "",
-                            participantName = doc.getString("participantName") ?: "",
-                            habitTitle = doc.getString("habitTitle") ?: "",
-                            message = doc.getString("message") ?: "",
-                            isRead = doc.getBoolean("isRead") ?: false,
-                            readAt = doc.getLong("readAt"),
-                            createdAt = doc.getLong("createdAt") ?: System.currentTimeMillis()
-                        )
-                        
-                        // Сохраняем в локальную БД асинхронно
-                        CoroutineScope(Dispatchers.IO).launch {
-                            groupHabitNotificationDao.insertNotification(notification)
-                            Log.d(TAG, "Notification synced from Firestore: ${notification.id}")
+                val docs = snapshot?.documents ?: emptyList()
+                if (docs.isEmpty()) return@addSnapshotListener
+
+                syncScope.launch {
+                    docs.forEach { doc ->
+                        try {
+                            val remote = GroupHabitNotificationEntity(
+                                id = doc.getString("id") ?: return@forEach,
+                                userId = doc.getString("userId") ?: return@forEach,
+                                habitId = doc.getString("habitId") ?: "",
+                                type = doc.getString("type") ?: "",
+                                participantId = doc.getString("participantId") ?: "",
+                                participantName = doc.getString("participantName") ?: "",
+                                habitTitle = doc.getString("habitTitle") ?: "",
+                                message = doc.getString("message") ?: "",
+                                isRead = doc.getBoolean("isRead") ?: false,
+                                readAt = doc.getLong("readAt"),
+                                createdAt = doc.getLong("createdAt") ?: System.currentTimeMillis()
+                            )
+
+                            val hasPending = try {
+                                syncManager.hasPendingOperations("group_habit_notification", remote.id)
+                            } catch (e: Exception) {
+                                Log.w(TAG, "hasPendingOperations failed for id=${remote.id}: ${e.message}")
+                                false
+                            }
+                            if (hasPending) return@forEach
+
+                            val local = try {
+                                groupHabitNotificationDao.getNotificationById(remote.id)
+                            } catch (e: Exception) {
+                                Log.w(TAG, "Local getNotificationById failed for id=${remote.id}: ${e.message}")
+                                null
+                            }
+
+                            val merged = if (local != null) {
+                                val localReadAt = local.readAt ?: 0L
+                                val remoteReadAt = remote.readAt ?: 0L
+                                when {
+                                    local.isRead && (!remote.isRead || remoteReadAt < localReadAt) -> local
+                                    else -> remote
+                                }
+                            } else remote
+
+                            groupHabitNotificationDao.insertNotification(merged)
+                            Log.d(TAG, "Notification synced from Firestore: ${remote.id}")
+                        } catch (e: Exception) {
+                            Log.e(TAG, "Error parsing notification from Firestore", e)
                         }
-                    } catch (e: Exception) {
-                        Log.e(TAG, "Error parsing notification from Firestore", e)
                     }
                 }
             }

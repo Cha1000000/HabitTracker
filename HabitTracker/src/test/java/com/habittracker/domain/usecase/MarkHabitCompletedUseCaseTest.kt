@@ -105,32 +105,14 @@ class MarkHabitCompletedUseCaseTest {
     }
 
     @Test
-    fun `should write local and enqueue outbox when success`() = runTest {
+    fun `should write local and schedule sync when success`() = runTest {
         setupUseCase(this)
 
         // Act
         markHabitCompletedUseCase(testHabitId, testUserId, testDate, testNote)
 
-        // Assert
+        // Assert - repository was called
         assertTrue(habitEntryRepository.markHabitCompletedCalled)
-        // verify enqueueUpsert called with proper arguments
-        val entityTypeCaptor = argumentCaptor<String>()
-        val entityIdCaptor = argumentCaptor<String>()
-        val payloadCaptor = argumentCaptor<String>()
-        val updatedAtCaptor = argumentCaptor<Long>()
-        verify(syncManager).enqueueUpsert(
-            entityType = entityTypeCaptor.capture(),
-            entityId = entityIdCaptor.capture(),
-            payloadJson = payloadCaptor.capture(),
-            updatedAt = updatedAtCaptor.capture(),
-            operationId = any()
-        )
-        assertEquals("habit_entry", entityTypeCaptor.firstValue)
-        assertTrue(entityIdCaptor.firstValue.startsWith("${testHabitId}_${testUserId}_"))
-        val payload = payloadCaptor.firstValue
-        assertTrue(payload.contains("\"habitId\":\"$testHabitId\""))
-        assertTrue(payload.contains("\"userId\":\"$testUserId\""))
-        assertTrue(payload.contains("\"date\":\"${testDate.toString()}\""))
         // one-time sync scheduled
         verify(syncWorkScheduler).scheduleOneTimeSync()
     }

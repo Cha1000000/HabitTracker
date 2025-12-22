@@ -99,6 +99,11 @@ class SyncManager @Inject constructor(
         )
     }
 
+    // Проверяет, есть ли pending операции для конкретной сущности
+    suspend fun hasPendingOperations(entityType: String, entityId: String): Boolean = withContext(Dispatchers.IO) {
+        outboxDao.hasPendingForEntity(entityType, entityId)
+    }
+
     // Дренаж очереди: вызывать WorkManager'ом периодически и вручную при старте/онбординге
     suspend fun drainPending(maxBatch: Int = 50) = withContext(Dispatchers.IO) {
         val batch = outboxDao.getByState("PENDING", maxBatch)

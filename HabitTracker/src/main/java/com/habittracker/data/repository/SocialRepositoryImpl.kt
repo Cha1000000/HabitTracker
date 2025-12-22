@@ -9,6 +9,7 @@ import com.habittracker.data.local.dao.FriendshipDao
 import com.habittracker.data.local.dao.HabitInvitationDao
 import com.habittracker.data.local.dao.SyncOutboxDao
 import com.habittracker.data.local.dao.UserDao
+import com.habittracker.data.local.entity.UserEntity
 import com.habittracker.data.local.mappers.toDomain
 import com.habittracker.data.local.mappers.toEntity
 import com.habittracker.data.remote.mappers.toDomain
@@ -77,6 +78,20 @@ class SocialRepositoryImpl @Inject constructor(
 
     // Repository-level scope for fire-and-forget background tasks (safe: singleton)
     private val repoScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+
+    private suspend fun upsertLocalUser(entity: UserEntity) {
+        val existing = try {
+            userDao.getUserById(entity.id)
+        } catch (e: Exception) {
+            Log.w("SocialRepository", "upsertLocalUser: getUserById failed for id=${entity.id}: ${e.message}")
+            null
+        }
+        if (existing == null) {
+            userDao.insertUser(entity)
+        } else {
+            userDao.updateUser(entity)
+        }
+    }
 
     // Helper to mask sensitive token values in logs
     private fun maskToken(token: String?): String {
@@ -195,8 +210,16 @@ class SocialRepositoryImpl @Inject constructor(
                 // Обновляем локальный кэш с актуальными данными
                 user?.let {
                     try {
-                        userDao.insertUser(it.toEntity())
-                        Log.d("SocialRepository", "✅ Local cache updated for user $userId")
+                        val hasPending = try {
+                            syncManager.hasPendingOperations("user", it.id)
+                        } catch (e: Exception) {
+                            Log.w("SocialRepository", "getUserByIdFromFirestore: hasPendingOperations failed for userId=${it.id}: ${e.message}")
+                            false
+                        }
+                        if (!hasPending) {
+                            upsertLocalUser(it.toEntity())
+                            Log.d("SocialRepository", "✅ Local cache updated for user $userId")
+                        }
                     } catch (e: Exception) {
                         Log.w("SocialRepository", "Failed to update local cache for user $userId", e)
                     }
@@ -413,13 +436,13 @@ class SocialRepositoryImpl @Inject constructor(
                 val toUser = getUserById(friendRequest.toUserId)
                 
                 if (fromUser != null) {
-                    userDao.insertUser(fromUser.toEntity())
+                    upsertLocalUser(fromUser.toEntity())
                 } else {
                     Log.w("SocialRepository", "acceptFriendRequest: fromUser not found for id=${friendRequest.fromUserId}")
                 }
                 
                 if (toUser != null) {
-                    userDao.insertUser(toUser.toEntity())
+                    upsertLocalUser(toUser.toEntity())
                 } else {
                     Log.w("SocialRepository", "acceptFriendRequest: toUser not found for id=${friendRequest.toUserId}")
                 }
@@ -585,11 +608,19 @@ class SocialRepositoryImpl @Inject constructor(
                                 val remote = doc.toObject(FriendRequestRemote::class.java)
                                 val fr = remote?.toDomain(doc.id)
                                 if (fr != null) {
-                                    friendRequestDao.insertFriendRequest(fr.toEntity())
+                                    val hasPending = try {
+                                        syncManager.hasPendingOperations("friend_request", fr.id)
+                                    } catch (e: Exception) {
+                                        Log.w("SocialRepository", "Incoming FR hasPendingOperations failed (id=${fr.id}): ${e.message}")
+                                        false
+                                    }
+                                    if (!hasPending) {
+                                        friendRequestDao.insertFriendRequest(fr.toEntity())
+                                    }
                                     // Prefetch users to avoid UI dropping item due to null users
                                     try {
-                                        getUserById(fr.fromUserId)?.let { userDao.insertUser(it.toEntity()) }
-                                        getUserById(fr.toUserId)?.let { userDao.insertUser(it.toEntity()) }
+                                        getUserById(fr.fromUserId)?.let { upsertLocalUser(it.toEntity()) }
+                                        getUserById(fr.toUserId)?.let { upsertLocalUser(it.toEntity()) }
                                     } catch (e: Exception) {
                                         Log.d("SocialRepository", "Incoming FR prefetch users failed (non-fatal): ${e.message}")
                                     }
@@ -601,7 +632,15 @@ class SocialRepositoryImpl @Inject constructor(
                         // Reconcile: удаляем локальные PENDING входящие, которых нет в снапшоте
                         try {
                             val local = friendRequestDao.getIncomingFriendRequests(userId).first()
-                            val toDelete = local.filter { it.id !in remoteIds }
+                            val toDelete = local.filter { entity ->
+                                if (entity.id in remoteIds) return@filter false
+                                val hasPending = try {
+                                    syncOutboxDao.hasPendingForEntity("friend_request", entity.id)
+                                } catch (_: Exception) {
+                                    false
+                                }
+                                !hasPending
+                            }
                             if (toDelete.isNotEmpty()) {
                                 Log.d("SocialRepository", "Incoming FR reconcile: deleting ${toDelete.size} stale records")
                                 toDelete.forEach { fr -> friendRequestDao.deleteFriendRequestById(fr.id) }
@@ -657,11 +696,19 @@ class SocialRepositoryImpl @Inject constructor(
                                 val remote = doc.toObject(FriendRequestRemote::class.java)
                                 val fr = remote?.toDomain(doc.id)
                                 if (fr != null) {
-                                    friendRequestDao.insertFriendRequest(fr.toEntity())
+                                    val hasPending = try {
+                                        syncManager.hasPendingOperations("friend_request", fr.id)
+                                    } catch (e: Exception) {
+                                        Log.w("SocialRepository", "Outgoing FR hasPendingOperations failed (id=${fr.id}): ${e.message}")
+                                        false
+                                    }
+                                    if (!hasPending) {
+                                        friendRequestDao.insertFriendRequest(fr.toEntity())
+                                    }
                                     // Prefetch users to avoid UI dropping item due to null users
                                     try {
-                                        getUserById(fr.fromUserId)?.let { userDao.insertUser(it.toEntity()) }
-                                        getUserById(fr.toUserId)?.let { userDao.insertUser(it.toEntity()) }
+                                        getUserById(fr.fromUserId)?.let { upsertLocalUser(it.toEntity()) }
+                                        getUserById(fr.toUserId)?.let { upsertLocalUser(it.toEntity()) }
                                     } catch (e: Exception) {
                                         Log.d("SocialRepository", "Outgoing FR prefetch users failed (non-fatal): ${e.message}")
                                     }
@@ -673,7 +720,15 @@ class SocialRepositoryImpl @Inject constructor(
                         // Reconcile: удаляем локальные PENDING исходящие, которых нет в снапшоте
                         try {
                             val local = friendRequestDao.getOutgoingFriendRequests(userId).first()
-                            val toDelete = local.filter { it.id !in remoteIds }
+                            val toDelete = local.filter { entity ->
+                                if (entity.id in remoteIds) return@filter false
+                                val hasPending = try {
+                                    syncOutboxDao.hasPendingForEntity("friend_request", entity.id)
+                                } catch (_: Exception) {
+                                    false
+                                }
+                                !hasPending
+                            }
                             if (toDelete.isNotEmpty()) {
                                 Log.d("SocialRepository", "Outgoing FR reconcile: deleting ${toDelete.size} stale records")
                                 toDelete.forEach { fr -> friendRequestDao.deleteFriendRequestById(fr.id) }
@@ -892,7 +947,7 @@ class SocialRepositoryImpl @Inject constructor(
                                 try {
                                     val u1 = getUserById(userId1)
                                     if (u1 != null) {
-                                        userDao.insertUser(u1.toEntity())
+                                        upsertLocalUser(u1.toEntity())
                                     }
                                 } catch (e: Exception) {
                                     Log.d("SocialRepository", "Prefetch user failed (userId1=$userId1): ${e.message}")
@@ -900,7 +955,7 @@ class SocialRepositoryImpl @Inject constructor(
                                 try {
                                     val u2 = getUserById(userId2)
                                     if (u2 != null) {
-                                        userDao.insertUser(u2.toEntity())
+                                        upsertLocalUser(u2.toEntity())
                                     }
                                 } catch (e: Exception) {
                                     Log.d("SocialRepository", "Prefetch user failed (userId2=$userId2): ${e.message}")
@@ -924,7 +979,15 @@ class SocialRepositoryImpl @Inject constructor(
                                     blockedAt = blockedAt?.let { Instant.fromEpochMilliseconds(it).toLocalDateTime(TimeZone.currentSystemDefault()) },
                                     updatedAt = Instant.fromEpochMilliseconds(updatedAt).toLocalDateTime(TimeZone.currentSystemDefault()).date
                                 )
-                                friendshipDao.insertFriendship(fs.toEntity())
+                                val key = if (userId1 < userId2) "${userId1}_${userId2}" else "${userId2}_${userId1}"
+                                val hasPending = try {
+                                    syncOutboxDao.hasPendingForEntity("friendship", key)
+                                } catch (_: Exception) {
+                                    false
+                                }
+                                if (!hasPending) {
+                                    friendshipDao.insertFriendship(fs.toEntity())
+                                }
                             } catch (e: Exception) {
                                 Log.w("SocialRepository", "Friends listener1 mapping error: ${e.message}")
                             }
@@ -957,7 +1020,7 @@ class SocialRepositoryImpl @Inject constructor(
                                 try {
                                     val u1 = getUserById(userId1)
                                     if (u1 != null) {
-                                        userDao.insertUser(u1.toEntity())
+                                        upsertLocalUser(u1.toEntity())
                                     }
                                 } catch (e: Exception) {
                                     Log.d("SocialRepository", "Friends listener2 prefetch user failed (userId1=$userId1): ${e.message}")
@@ -965,7 +1028,7 @@ class SocialRepositoryImpl @Inject constructor(
                                 try {
                                     val u2 = getUserById(userId2)
                                     if (u2 != null) {
-                                        userDao.insertUser(u2.toEntity())
+                                        upsertLocalUser(u2.toEntity())
                                     }
                                 } catch (e: Exception) {
                                     Log.d("SocialRepository", "Friends listener2 prefetch user failed (userId2=$userId2): ${e.message}")
@@ -989,7 +1052,15 @@ class SocialRepositoryImpl @Inject constructor(
                                     blockedAt = blockedAt?.let { Instant.fromEpochMilliseconds(it).toLocalDateTime(TimeZone.currentSystemDefault()) },
                                     updatedAt = Instant.fromEpochMilliseconds(updatedAt).toLocalDateTime(TimeZone.currentSystemDefault()).date
                                 )
-                                friendshipDao.insertFriendship(fs.toEntity())
+                                val key = if (userId1 < userId2) "${userId1}_${userId2}" else "${userId2}_${userId1}"
+                                val hasPending = try {
+                                    syncOutboxDao.hasPendingForEntity("friendship", key)
+                                } catch (_: Exception) {
+                                    false
+                                }
+                                if (!hasPending) {
+                                    friendshipDao.insertFriendship(fs.toEntity())
+                                }
                             } catch (e: Exception) {
                                 Log.w("SocialRepository", "Friends listener2 mapping error: ${e.message}")
                             }
@@ -1492,12 +1563,31 @@ class SocialRepositoryImpl @Inject constructor(
                     // Апсертим локально для консистентности (и для счётчиков)
                     scope.launch {
                         try {
-                            habitInvitationDao.insertAll(list.map { it.toEntity() })
+                            val filtered = mutableListOf<com.habittracker.data.local.entity.HabitInvitationEntity>()
+                            for (inv in list) {
+                                val hasPending = try {
+                                    syncManager.hasPendingOperations("habit_invitation", inv.id)
+                                } catch (_: Exception) {
+                                    false
+                                }
+                                if (!hasPending) filtered.add(inv.toEntity())
+                            }
+                            if (filtered.isNotEmpty()) {
+                                habitInvitationDao.insertAll(filtered)
+                            }
                             android.util.Log.d("SocialRepository", "[getIncomingHabitInvitations] upsert=${list.size}")
                             // Reconcile: удаляем локальные PENDING входящие, которых нет в снапшоте
                             try {
                                 val local = habitInvitationDao.getIncomingInvitations(userId).first()
-                                val toDelete = local.filter { it.id !in remoteIds }
+                                val toDelete = local.filter { entity ->
+                                    if (entity.id in remoteIds) return@filter false
+                                    val hasPending = try {
+                                        syncOutboxDao.hasPendingForEntity("habit_invitation", entity.id)
+                                    } catch (_: Exception) {
+                                        false
+                                    }
+                                    !hasPending
+                                }
                                 if (toDelete.isNotEmpty()) {
                                     android.util.Log.d("SocialRepository", "[getIncomingHabitInvitations] reconcile delete=${toDelete.size}")
                                     toDelete.forEach { inv -> habitInvitationDao.deleteById(inv.id) }
@@ -1551,12 +1641,31 @@ class SocialRepositoryImpl @Inject constructor(
 
                     scope.launch {
                         try {
-                            habitInvitationDao.insertAll(list.map { it.toEntity() })
+                            val filtered = mutableListOf<com.habittracker.data.local.entity.HabitInvitationEntity>()
+                            for (inv in list) {
+                                val hasPending = try {
+                                    syncManager.hasPendingOperations("habit_invitation", inv.id)
+                                } catch (_: Exception) {
+                                    false
+                                }
+                                if (!hasPending) filtered.add(inv.toEntity())
+                            }
+                            if (filtered.isNotEmpty()) {
+                                habitInvitationDao.insertAll(filtered)
+                            }
                             Log.d("SocialRepository", "[getOutgoingHabitInvitations] upsert=${list.size}")
                             // Reconcile: удаляем локальные PENDING исходящие, которых нет в снапшоте
                             try {
                                 val local = habitInvitationDao.getOutgoingInvitations(userId).first()
-                                val toDelete = local.filter { it.id !in remoteIds }
+                                val toDelete = local.filter { entity ->
+                                    if (entity.id in remoteIds) return@filter false
+                                    val hasPending = try {
+                                        syncOutboxDao.hasPendingForEntity("habit_invitation", entity.id)
+                                    } catch (_: Exception) {
+                                        false
+                                    }
+                                    !hasPending
+                                }
                                 if (toDelete.isNotEmpty()) {
                                     Log.d("SocialRepository", "[getOutgoingHabitInvitations] reconcile delete=${toDelete.size}")
                                     toDelete.forEach { inv -> habitInvitationDao.deleteById(inv.id) }
@@ -1602,7 +1711,18 @@ class SocialRepositoryImpl @Inject constructor(
 
                     scope.launch {
                         try {
-                            habitInvitationDao.insertAll(list.map { it.toEntity() })
+                            val filtered = mutableListOf<com.habittracker.data.local.entity.HabitInvitationEntity>()
+                            for (inv in list) {
+                                val hasPending = try {
+                                    syncManager.hasPendingOperations("habit_invitation", inv.id)
+                                } catch (_: Exception) {
+                                    false
+                                }
+                                if (!hasPending) filtered.add(inv.toEntity())
+                            }
+                            if (filtered.isNotEmpty()) {
+                                habitInvitationDao.insertAll(filtered)
+                            }
                         } catch (e: Exception) {
                             Log.w("SocialRepository", "[observeHabitInvitationsByHabit] insertAll failed: ${e.message}", e)
                         }

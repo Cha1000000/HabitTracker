@@ -400,20 +400,19 @@ private fun ActivityChartCard(last7Days: List<Pair<kotlinx.datetime.LocalDate, I
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(120.dp),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.Bottom
+            Column(
+                modifier = Modifier.fillMaxWidth()
             ) {
-                last7Days.forEach { (date, count) ->
-                    Column(
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                        verticalArrangement = Arrangement.Bottom,
-                        modifier = Modifier.fillMaxHeight()
-                    ) {
-                        val heightFraction = (count.toFloat() / maxCompletions).coerceIn(0.1f, 1f)
+                // Столбики диаграммы
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(100.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.Bottom
+                ) {
+                    last7Days.forEach { (_, count) ->
+                        val heightFraction = if (count == 0) 0.05f else (count.toFloat() / maxCompletions).coerceIn(0.1f, 1f)
                         
                         Box(
                             modifier = Modifier
@@ -424,13 +423,33 @@ private fun ActivityChartCard(last7Days: List<Pair<kotlinx.datetime.LocalDate, I
                                     if (isDarkTheme) Color(0xFF60A5FA) else MaterialTheme.colorScheme.primary
                                 )
                         )
-                        
-                        Spacer(modifier = Modifier.height(4.dp))
-                        
+                    }
+                }
+                
+                Spacer(modifier = Modifier.height(8.dp))
+                
+                // Названия дней недели
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    last7Days.forEach { (date, _) ->
+                        val dayName = when (date.dayOfWeek) {
+                            kotlinx.datetime.DayOfWeek.MONDAY -> stringResource(R.string.weekday_mon)
+                            kotlinx.datetime.DayOfWeek.TUESDAY -> stringResource(R.string.weekday_tue)
+                            kotlinx.datetime.DayOfWeek.WEDNESDAY -> stringResource(R.string.weekday_wed)
+                            kotlinx.datetime.DayOfWeek.THURSDAY -> stringResource(R.string.weekday_thu)
+                            kotlinx.datetime.DayOfWeek.FRIDAY -> stringResource(R.string.weekday_fri)
+                            kotlinx.datetime.DayOfWeek.SATURDAY -> stringResource(R.string.weekday_sat)
+                            kotlinx.datetime.DayOfWeek.SUNDAY -> stringResource(R.string.weekday_sun)
+                            else -> ""
+                        }
                         Text(
-                            text = date.dayOfWeek.name.take(3),
+                            text = dayName,
                             style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.width(24.dp),
+                            textAlign = androidx.compose.ui.text.style.TextAlign.Center
                         )
                     }
                 }

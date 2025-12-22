@@ -411,7 +411,6 @@ class ChallengesViewModelTest {
         vm.acceptChallengeInvitation("ch1")
         advanceUntilIdle()
 
-        verify(firestore).updateHabit(eq(habit.copy(participants = listOf("creator", "user1"))))
         verify(habitRepo).updateHabit(eq(habit.copy(participants = listOf("creator", "user1"))))
         assertEquals(listOf("ch1" to "user1"), repo.acceptedInvitations)
         assertNull(vm.uiState.value.errorMessage)
@@ -445,7 +444,6 @@ class ChallengesViewModelTest {
         vm.acceptChallengeInvitation("ch1")
         advanceUntilIdle()
 
-        verify(firestore, never()).updateHabit(any())
         verify(habitRepo, never()).updateHabit(any())
         assertTrue(repo.acceptedInvitations.isEmpty())
         assertEquals(

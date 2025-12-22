@@ -6,6 +6,7 @@ import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.SetOptions
 import com.habittracker.data.firestore.UserFirestoreConverter
 import com.habittracker.data.local.dao.UserDao
+import com.habittracker.data.local.entity.UserEntity
 import com.habittracker.data.sync.SyncManager
 import com.habittracker.domain.model.User
 import com.habittracker.domain.repository.UserRepository
@@ -31,6 +32,15 @@ class UserRepositoryImpl @Inject constructor(
     private val syncManager: SyncManager,
     private val firestore: FirebaseFirestore
 ) : UserRepository {
+    
+    private suspend fun upsertLocal(entity: UserEntity) {
+        val existing = userDao.getUserById(entity.id)
+        if (existing == null) {
+            userDao.insertUser(entity)
+        } else {
+            userDao.updateUser(entity)
+        }
+    }
     
     override suspend fun insertUser(user: User) {
         userDao.insertUser(user.userToEntity())
@@ -107,7 +117,7 @@ class UserRepositoryImpl @Inject constructor(
 
     override suspend fun upsertUserRemoteAndLocal(user: User, fcmToken: String?) {
         // Room-first: чтобы UI мгновенно получил пользователя
-        userDao.insertUser(user.userToEntity())
+        upsertLocal(user.userToEntity())
 
         val now = System.currentTimeMillis()
         
@@ -144,7 +154,17 @@ class UserRepositoryImpl @Inject constructor(
                 val remote = if (data != null) UserFirestoreConverter.fromFirestore(data, snapshot.id) else null
                 if (remote != null) {
                     scope.launch {
-                        try { userDao.insertUser(remote.userToEntity()) } catch (e: Exception) {
+                        try {
+                            val hasPending = try {
+                                syncManager.hasPendingOperations("user", remote.id)
+                            } catch (e: Exception) {
+                                Log.w("UserRepository", "observeUser: hasPendingOperations failed (userId=${remote.id}): ${e.message}")
+                                false
+                            }
+                            if (!hasPending) {
+                                upsertLocal(remote.userToEntity())
+                            }
+                        } catch (e: Exception) {
                             Log.d("UserRepository", "observeUser: local insert failed (non-fatal): ${e.message}")
                         }
                     }

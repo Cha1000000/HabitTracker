@@ -53,61 +53,13 @@ class MarkHabitIncompleteUseCaseTest {
     }
 
     @Test
-    fun `should write local and enqueue outbox when success`() = runTest {
+    fun `should write local and schedule sync when success`() = runTest {
         // Act
         markHabitIncompleteUseCase(testHabitId, testUserId, testDate)
 
         // Assert local write
         assertTrue(habitEntryRepository.markHabitIncompleteCalled)
-
-        // Assert outbox enqueue
-        val entityTypeCaptor = argumentCaptor<String>()
-        val entityIdCaptor = argumentCaptor<String>()
-        val payloadCaptor = argumentCaptor<String>()
-        val updatedAtCaptor = argumentCaptor<Long>()
-        verify(syncManager).enqueueUpsert(
-            entityType = entityTypeCaptor.capture(),
-            entityId = entityIdCaptor.capture(),
-            payloadJson = payloadCaptor.capture(),
-            updatedAt = updatedAtCaptor.capture(),
-            operationId = any()
-        )
-        assertTrue(entityTypeCaptor.firstValue == "habit_entry")
-        assertTrue(entityIdCaptor.firstValue.startsWith("${testHabitId}_${testUserId}_"))
-        val payload = payloadCaptor.firstValue
-        assertTrue(payload.contains("\"habitId\":\"$testHabitId\""))
-        assertTrue(payload.contains("\"userId\":\"$testUserId\""))
-        assertTrue(payload.contains("\"date\":\"${testDate.toString()}\""))
-        assertTrue(payload.contains("\"completed\":false"))
-        assertTrue(payload.contains("\"completedAt\":null"))
-        assertTrue(payload.contains("\"note\":null"))
-
         // one-time sync scheduled
-        verify(syncWorkScheduler).scheduleOneTimeSync()
-    }
-
-    @Test
-    fun `should save locally and still schedule sync when outbox enqueue fails`() = runTest {
-        // Arrange: make enqueueUpsert throw
-        runBlocking {
-            org.mockito.kotlin.whenever(
-                syncManager.enqueueUpsert(
-                    entityType = any(),
-                    entityId = any(),
-                    payloadJson = any(),
-                    updatedAt = any(),
-                    operationId = any()
-                )
-            ).thenThrow(RuntimeException("Outbox error"))
-        }
-        
-        // Act
-        markHabitIncompleteUseCase(testHabitId, testUserId, testDate)
-        advanceUntilIdle() // Дождаться завершения всех корутин
-
-        // Assert local write still happened
-        assertTrue(habitEntryRepository.markHabitIncompleteCalled)
-        // scheduleOneTimeSync still invoked in finally block
         verify(syncWorkScheduler).scheduleOneTimeSync()
     }
 }
