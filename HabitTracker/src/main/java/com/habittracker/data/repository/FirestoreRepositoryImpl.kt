@@ -20,6 +20,7 @@ import kotlinx.datetime.Clock
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.LocalDate.Companion.parse
 import kotlinx.datetime.TimeZone
+import kotlinx.datetime.atStartOfDayIn
 import kotlinx.datetime.toLocalDateTime
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -101,6 +102,17 @@ class FirestoreRepositoryImpl @Inject constructor(
             val inviteCode = data["inviteCode"] as? String
             val isActive: Boolean = (data["isActive"] as? Boolean) ?: true
 
+            val updatedAtMillis = (data["updatedAtMillis"] as? Number)?.toLong()
+                ?: run {
+                    // Fallback: если millis нет, используем LocalDate updatedAt в начале дня
+                    val fallback = (data["updatedAt"] as? String)?.let { runCatching { parse(it) }.getOrNull() }
+                    (fallback ?: Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault()).date)
+                        .atStartOfDayIn(TimeZone.currentSystemDefault())
+                        .toEpochMilliseconds()
+                }
+
+            val deletedAtMillis = (data["deletedAtMillis"] as? Number)?.toLong()
+
             // timestamps - теперь LocalDate
             val createdAt = (data["createdAt"] as? String)?.let {
                 try {
@@ -162,6 +174,8 @@ class FirestoreRepositoryImpl @Inject constructor(
                 isActive = isActive,
                 createdAt = createdAt,
                 updatedAt = updatedAt,
+                updatedAtMillis = updatedAtMillis,
+                deletedAtMillis = deletedAtMillis,
                 startDate = startDate,
                 endDate = endDate
             )
@@ -178,7 +192,6 @@ class FirestoreRepositoryImpl @Inject constructor(
         // Берем все документы и фильтруем на клиенте. При желании можно добавить whereEqualTo("active", true),
         // но поле может называться по-разному ("active"/"isActive") на старых данных, поэтому безопаснее без фильтра.
         val listener = firestore.collection(HABITS_COLLECTION)
-            .whereEqualTo("isActive", true)
             .addSnapshotListener { snapshot, error ->
                 if (error != null) {
                     Log.e(TAG, "❌ [getUserHabits] Error getting habits for user: $userId", error)
@@ -193,9 +206,9 @@ class FirestoreRepositoryImpl @Inject constructor(
                 val habits = snapshot?.documents?.mapNotNull { doc ->
                     parseHabitSafely(doc)
                 }?.filter { habit ->
-                    // Клиентская фильтрация: активные привычки пользователя (создал сам или участник)
-                    habit.isActive && (habit.createdBy == userId || habit.participants.contains(userId))
-                }?.sortedByDescending { it.createdAt } ?: emptyList()
+                    // Клиентская фильтрация: привычки пользователя (создал сам или участник)
+                    (habit.createdBy == userId || habit.participants.contains(userId))
+                }?.sortedByDescending { it.updatedAtMillis } ?: emptyList()
 
                 Log.d(TAG, "✅ [getUserHabits] Sending ${habits.size} habits to Flow for user: $userId")
                 habits.forEach { habit ->

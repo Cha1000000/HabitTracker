@@ -7,6 +7,7 @@ import com.habittracker.data.model.FirebaseHabitEntry
 import com.habittracker.data.model.FirebaseHabitEntry.Companion.toDomain
 import com.habittracker.data.local.mappers.toDomain
 import com.habittracker.data.sync.SyncManager
+import com.habittracker.data.sync.SyncWorkScheduler
 import com.habittracker.domain.model.HabitEntry
 import com.habittracker.domain.model.HabitEntryWithUser
 import com.habittracker.domain.repository.HabitEntryRepository
@@ -14,6 +15,7 @@ import com.habittracker.domain.util.HabitEntryIds
 import com.habittracker.domain.util.SyncPayloads
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
@@ -35,8 +37,20 @@ import com.habittracker.data.local.mappers.toEntity as habitEntryToEntity
 class HabitEntryRepositoryImpl @Inject constructor(
     private val habitEntryDao: HabitEntryDao,
     private val firestore: FirebaseFirestore,
-    private val syncManager: SyncManager
+    private val syncManager: SyncManager,
+    private val syncWorkScheduler: SyncWorkScheduler
 ) : HabitEntryRepository {
+
+    private val repoScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+
+    private fun kickSync() {
+        try { syncWorkScheduler.scheduleOneTimeSync() } catch (_: Exception) {
+        }
+        repoScope.launch {
+            try { syncManager.drainPending(maxBatch = 10) } catch (_: Exception) {
+            }
+        }
+    }
 
     override suspend fun insertEntry(entry: HabitEntry) {
         habitEntryDao.insertEntry(entry.habitEntryToEntity())
@@ -61,6 +75,8 @@ class HabitEntryRepositoryImpl @Inject constructor(
                 payloadJson = payload,
                 updatedAt = updatedAt
             )
+
+            kickSync()
         } catch (e: Exception) {
             Log.e("HabitEntryRepo", "Failed to enqueue sync for entry", e)
         }

@@ -5,6 +5,7 @@ import com.habittracker.data.local.dao.HabitParticipantSettingsDao
 import com.habittracker.data.local.mappers.toDomain
 import com.habittracker.data.local.mappers.toEntity
 import com.habittracker.data.sync.SyncManager
+import com.habittracker.data.sync.SyncWorkScheduler
 import com.habittracker.domain.model.Habit
 import com.habittracker.domain.model.HabitParticipantSettings
 import com.habittracker.domain.repository.AuthRepository
@@ -33,6 +34,7 @@ class HabitRepositoryImpl @Inject constructor(
     private val firestoreRepository: FirestoreRepository,
     private val authRepository: AuthRepository,
     private val syncManager: SyncManager,
+    private val syncWorkScheduler: SyncWorkScheduler,
     private val applicationScope: CoroutineScope
 ) : HabitRepository {
     
@@ -53,16 +55,13 @@ class HabitRepositoryImpl @Inject constructor(
                         // Локальной версии нет — вставляем
                         habitDao.insertHabit(remoteHabit.toEntity())
                     } else {
-                        // Сравниваем updatedAt: вставляем только если remote новее или равен
-                        val remoteUpdatedAt = remoteHabit.updatedAt.atStartOfDayIn(TimeZone.currentSystemDefault())
-                        val localUpdatedAt = localHabit.updatedAt.atStartOfDayIn(TimeZone.currentSystemDefault())
-                        if (remoteUpdatedAt >= localUpdatedAt) {
+                        // LWW: сравниваем updatedAtMillis (fallback уже нормализован на уровне парсинга)
+                        if (remoteHabit.updatedAtMillis >= localHabit.updatedAtMillis) {
                             // Дополнительно проверяем, нет ли pending операций в Outbox для этой привычки
                             val hasPendingSync = syncManager.hasPendingOperations("habit", remoteHabit.id)
                             if (!hasPendingSync) {
                                 habitDao.insertHabit(remoteHabit.toEntity())
                             }
-                            // Если есть pending — не перезаписываем, ждём пока Outbox синхронизирует
                         }
                         // Если local новее — не перезаписываем
                     }
@@ -72,43 +71,77 @@ class HabitRepositoryImpl @Inject constructor(
     }
 
     override suspend fun insertHabit(habit: Habit) {
+        val now = Clock.System.now().toEpochMilliseconds()
+        val updated = habit.copy(
+            updatedAtMillis = now,
+            updatedAt = kotlinx.datetime.Instant.fromEpochMilliseconds(now)
+                .toLocalDateTime(TimeZone.currentSystemDefault()).date,
+            deletedAtMillis = null
+        )
         // 1. Local insert
-        habitDao.insertHabit(habit.toEntity())
-        
+        habitDao.insertHabit(updated.toEntity())
         // 2. Outbox enqueue
-        val payload = SyncPayloads.habitToJson(habit)
+        val payload = SyncPayloads.habitToJson(updated)
         syncManager.enqueueUpsert(
             entityType = "habit",
             entityId = habit.id,
             payloadJson = payload,
-            updatedAt = Clock.System.now().toEpochMilliseconds()
+            updatedAt = now
         )
+
+        // 3. Expedite sync (like other write flows)
+        try { syncWorkScheduler.scheduleOneTimeSync() } catch (_: Exception) {
+        }
+        applicationScope.launch {
+            try { syncManager.drainPending(maxBatch = 10) } catch (_: Exception) {
+            }
+        }
     }
     
     override suspend fun updateHabit(habit: Habit) {
+        val now = Clock.System.now().toEpochMilliseconds()
+        val updated = habit.copy(
+            updatedAtMillis = now,
+            updatedAt = kotlinx.datetime.Instant.fromEpochMilliseconds(now)
+                .toLocalDateTime(TimeZone.currentSystemDefault()).date
+        )
         // 1. Local update
-        habitDao.insertHabit(habit.toEntity())
-        
+        habitDao.insertHabit(updated.toEntity())
         // 2. Outbox enqueue
-        val payload = SyncPayloads.habitToJson(habit)
+        val payload = SyncPayloads.habitToJson(updated)
         syncManager.enqueueUpsert(
             entityType = "habit",
             entityId = habit.id,
             payloadJson = payload,
-            updatedAt = Clock.System.now().toEpochMilliseconds()
+            updatedAt = now
         )
+
+        // 3. Expedite sync (otherwise edits may stay local until next periodic sync)
+        try { syncWorkScheduler.scheduleOneTimeSync() } catch (_: Exception) {
+        }
+        applicationScope.launch {
+            try { syncManager.drainPending(maxBatch = 10) } catch (_: Exception) {
+            }
+        }
     }
     
     override suspend fun deleteHabit(habitId: String) {
-        // 1. Local delete
-        habitDao.deleteHabitById(habitId)
-        
-        // 2. Outbox enqueue
+        val now = Clock.System.now().toEpochMilliseconds()
+        // 1. Local soft delete (tombstone)
+        habitDao.softDeleteHabitById(habitId, deletedAtMillis = now, updatedAtMillis = now)
+        // 2. Outbox enqueue (remote будет soft-delete через SyncManager.pushDelete)
         syncManager.enqueueDelete(
             entityType = "habit",
             entityId = habitId,
-            updatedAt = Clock.System.now().toEpochMilliseconds()
+            updatedAt = now
         )
+
+        try { syncWorkScheduler.scheduleOneTimeSync() } catch (_: Exception) {
+        }
+        applicationScope.launch {
+            try { syncManager.drainPending(maxBatch = 10) } catch (_: Exception) {
+            }
+        }
     }
     
     override suspend fun getHabitById(habitId: String): Habit? {
@@ -159,7 +192,12 @@ class HabitRepositoryImpl @Inject constructor(
                 habitDao.updateHabitParticipants(habitId, participants, updatedAt)
                 
                 // Outbox update (partial)
-                val updatedHabit = habit.toDomain().copy(participants = participants, updatedAt = kotlinx.datetime.Instant.fromEpochMilliseconds(updatedAt).toLocalDateTime(TimeZone.currentSystemDefault()).date)
+                val updatedHabit = habit.toDomain().copy(
+                    participants = participants,
+                    updatedAtMillis = updatedAt,
+                    updatedAt = kotlinx.datetime.Instant.fromEpochMilliseconds(updatedAt)
+                        .toLocalDateTime(TimeZone.currentSystemDefault()).date
+                )
                 // We can either enqueue full upsert or partial. SyncPayloads has habitPartialUpdateToJson but we can use full upsert for simplicity with conflict resolution
                 val payload = SyncPayloads.habitToJson(updatedHabit)
                  syncManager.enqueueUpsert(
@@ -182,7 +220,12 @@ class HabitRepositoryImpl @Inject constructor(
                 habitDao.updateHabitParticipants(habitId, participants, updatedAt)
                 
                  // Outbox update
-                val updatedHabit = habit.toDomain().copy(participants = participants, updatedAt = kotlinx.datetime.Instant.fromEpochMilliseconds(updatedAt).toLocalDateTime(TimeZone.currentSystemDefault()).date)
+                val updatedHabit = habit.toDomain().copy(
+                    participants = participants,
+                    updatedAtMillis = updatedAt,
+                    updatedAt = kotlinx.datetime.Instant.fromEpochMilliseconds(updatedAt)
+                        .toLocalDateTime(TimeZone.currentSystemDefault()).date
+                )
                 val payload = SyncPayloads.habitToJson(updatedHabit)
                  syncManager.enqueueUpsert(
                     entityType = "habit",

@@ -6,6 +6,7 @@ import com.habittracker.data.local.dao.ChallengeDao
 import com.habittracker.data.local.dao.HabitEntryDao
 import com.habittracker.data.local.entity.ChallengeEntity
 import com.habittracker.data.sync.SyncManager
+import com.habittracker.data.sync.SyncWorkScheduler
 import com.habittracker.domain.model.Challenge
 import com.habittracker.domain.model.ChallengeRules
 import com.habittracker.domain.model.ChallengeType
@@ -23,14 +24,9 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
 import kotlinx.datetime.LocalDate
-import kotlinx.datetime.TimeZone
 import kotlinx.datetime.minus
-import kotlinx.datetime.toLocalDateTime
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
-import kotlinx.serialization.json.JsonPrimitive
-import kotlinx.serialization.json.buildJsonArray
-import kotlinx.serialization.json.buildJsonObject
 import javax.inject.Inject
 import javax.inject.Singleton
 import com.habittracker.data.local.mappers.toDomain as challengeToDomain
@@ -41,10 +37,20 @@ class ChallengeRepositoryImpl @Inject constructor(
     private val challengeDao: ChallengeDao,
     private val habitEntryDao: HabitEntryDao,
     private val syncManager: SyncManager,
+    private val syncWorkScheduler: SyncWorkScheduler,
     private val firestore: FirebaseFirestore
 ) : ChallengeRepository {
 
     private val repoScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+
+    private fun kickSync() {
+        try { syncWorkScheduler.scheduleOneTimeSync() } catch (_: Exception) {
+        }
+        repoScope.launch {
+            try { syncManager.drainPending(maxBatch = 10) } catch (_: Exception) {
+            }
+        }
+    }
     
     override suspend fun insertChallenge(challenge: Challenge) {
         val now = System.currentTimeMillis()
@@ -59,6 +65,8 @@ class ChallengeRepositoryImpl @Inject constructor(
             payloadJson = json,
             updatedAt = now
         )
+
+        kickSync()
     }
     
     override suspend fun updateChallenge(challenge: Challenge) {
@@ -73,11 +81,12 @@ class ChallengeRepositoryImpl @Inject constructor(
             payloadJson = json,
             updatedAt = now
         )
+        kickSync()
     }
     
     override suspend fun deleteChallenge(challengeId: String) {
         val now = System.currentTimeMillis()
-        challengeDao.deleteChallenge(challengeId)
+        challengeDao.softDeleteChallengeById(challengeId, deletedAtMillis = now, updatedAtMillis = now)
         
         // Use Outbox for reliable sync
         syncManager.enqueueDelete(
@@ -85,10 +94,12 @@ class ChallengeRepositoryImpl @Inject constructor(
             entityId = challengeId,
             updatedAt = now
         )
+
+        kickSync()
     }
     
     override suspend fun getChallengeById(challengeId: String): Challenge? {
-        return challengeDao.getChallengeById(challengeId)?.challengeToDomain()
+        return challengeDao.getActiveChallengeById(challengeId)?.challengeToDomain()
     }
     
     override fun getAllChallenges(): Flow<List<Challenge>> {
@@ -133,6 +144,8 @@ class ChallengeRepositoryImpl @Inject constructor(
                 payloadJson = SyncPayloads.challengeToJson(updatedChallenge, now),
                 updatedAt = now
             )
+
+            kickSync()
         }
     }
     
@@ -158,6 +171,8 @@ class ChallengeRepositoryImpl @Inject constructor(
             payloadJson = SyncPayloads.challengeToJson(updatedChallenge, now),
             updatedAt = now
         )
+
+        kickSync()
     }
     
     override suspend fun getChallengeParticipants(challengeId: String): List<String> {
@@ -177,6 +192,7 @@ class ChallengeRepositoryImpl @Inject constructor(
             payloadJson = SyncPayloads.challengeToJson(updatedChallenge, now),
             updatedAt = now
         )
+        kickSync()
     }
     
     override suspend fun getChallengeLeaderboard(challengeId: String): List<Pair<String, Int>> {
@@ -201,6 +217,7 @@ class ChallengeRepositoryImpl @Inject constructor(
             payloadJson = SyncPayloads.challengeToJson(updatedChallenge, now),
             updatedAt = now
         )
+        kickSync()
     }
 
     override fun observeChallengesForUser(userId: String): Flow<List<Challenge>> = callbackFlow {
@@ -238,8 +255,17 @@ class ChallengeRepositoryImpl @Inject constructor(
                     for (localChallenge in localChallenges) {
                         if (localChallenge.createdBy != userId && 
                             !remoteParticipantChallengeIds.contains(localChallenge.id)) {
-                            Log.d(TAG, "Removing challenge ${localChallenge.id} - user no longer participant")
-                            challengeDao.deleteChallenge(localChallenge.id)
+                            val hasPending = try {
+                                syncManager.hasPendingOperations("challenge", localChallenge.id)
+                            } catch (e: Exception) {
+                                Log.w(TAG, "Pending check failed for challenge=${localChallenge.id}: ${e.message}")
+                                false
+                            }
+                            if (!hasPending) {
+                                Log.d(TAG, "Removing challenge ${localChallenge.id} - user no longer participant")
+                                val now = System.currentTimeMillis()
+                                challengeDao.softDeleteChallengeById(localChallenge.id, deletedAtMillis = now, updatedAtMillis = now)
+                            }
                         }
                     }
                     
@@ -247,6 +273,13 @@ class ChallengeRepositoryImpl @Inject constructor(
                         try {
                             val remoteChallenge = doc.toChallengeEntity()
                             if (remoteChallenge != null) {
+                                val hasPending = try {
+                                    syncManager.hasPendingOperations("challenge", remoteChallenge.id)
+                                } catch (e: Exception) {
+                                    Log.w(TAG, "Pending check failed for challenge=${remoteChallenge.id}: ${e.message}")
+                                    false
+                                }
+                                if (hasPending) continue
                                 // LWW: проверяем updatedAtMillis
                                 val local = challengeDao.getChallengeById(remoteChallenge.id)
                                 if (local == null || remoteChallenge.updatedAtMillis >= local.updatedAtMillis) {
@@ -278,6 +311,13 @@ class ChallengeRepositoryImpl @Inject constructor(
                         try {
                             val remoteChallenge = doc.toChallengeEntity()
                             if (remoteChallenge != null) {
+                                val hasPending = try {
+                                    syncManager.hasPendingOperations("challenge", remoteChallenge.id)
+                                } catch (e: Exception) {
+                                    Log.w(TAG, "Pending check failed for challenge=${remoteChallenge.id}: ${e.message}")
+                                    false
+                                }
+                                if (hasPending) continue
                                 val local = challengeDao.getChallengeById(remoteChallenge.id)
                                 if (local == null || remoteChallenge.updatedAtMillis >= local.updatedAtMillis) {
                                     challengeDao.insertChallenge(remoteChallenge)
@@ -302,6 +342,7 @@ class ChallengeRepositoryImpl @Inject constructor(
         return try {
             val data = this.data ?: return null
             val rulesMap = data["rules"] as? Map<*, *>
+            val deletedAtMillis = (data["deletedAtMillis"] as? Number)?.toLong()
             
             ChallengeEntity(
                 id = this.id,
@@ -326,7 +367,8 @@ class ChallengeRepositoryImpl @Inject constructor(
                 winnerId = data["winnerId"] as? String,
                 createdAt = LocalDate.parse(data["createdAt"] as? String ?: data["startDate"] as String),
                 updatedAt = LocalDate.parse(data["updatedAt"] as? String ?: data["startDate"] as String),
-                updatedAtMillis = (data["updatedAtMillis"] as? Number)?.toLong() ?: System.currentTimeMillis()
+                updatedAtMillis = (data["updatedAtMillis"] as? Number)?.toLong() ?: System.currentTimeMillis(),
+                deletedAtMillis = deletedAtMillis
             )
         } catch (e: Exception) {
             Log.e(TAG, "Error converting Firestore doc to ChallengeEntity: ${this.id}", e)

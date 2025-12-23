@@ -50,7 +50,7 @@ object SyncPayloads {
             val hasReminder = habit.reminderTime != null
             put("reminderEnabled", hasReminder)
             if (hasReminder) {
-                val rt = habit.reminderTime!!
+                val rt = habit.reminderTime
                 put("reminderTime", mapOf("hour" to rt.hour, "minute" to rt.minute))
             }
             if (habit.reminderDays.isNotEmpty()) {
@@ -59,17 +59,16 @@ object SyncPayloads {
             
             put("targetValue", habit.targetValue)
             put("unit", habit.unit)
-            
             put("createdBy", habit.createdBy)
             put("participants", habit.participants)
             put("maxParticipants", habit.maxParticipants)
             put("inviteCode", habit.inviteCode)
             put("public", habit.isPublic)
             put("isActive", habit.isActive)
-            
             put("createdAt", habit.createdAt.toString())
             put("updatedAt", habit.updatedAt.toString())
-            
+            put("updatedAtMillis", habit.updatedAtMillis)
+            habit.deletedAtMillis?.let { put("deletedAtMillis", it) }
             habit.startDate?.let { put("startDate", it.toString()) }
             habit.endDate?.let { put("endDate", it.toString()) }
         }
@@ -210,10 +209,10 @@ object SyncPayloads {
             "achievementId" to ua.achievementId,
             "progress" to ua.progress,
             "isUnlocked" to ua.isUnlocked,
-            "unlockedAt" to ua.unlockedAt?.toString(),
-            "createdAt" to ua.createdAt.toString(),
+            "unlockedAtMillis" to ua.unlockedAt?.toEpochMilliseconds(),
+            "createdAtMillis" to ua.createdAt.toEpochMilliseconds(),
             "tier" to ua.tier,
-            "updatedAt" to Instant.fromEpochMilliseconds(updatedAtMillis).toString()
+            "updatedAtMillis" to updatedAtMillis
         )
     )
 

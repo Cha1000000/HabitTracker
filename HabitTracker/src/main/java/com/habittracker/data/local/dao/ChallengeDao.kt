@@ -16,28 +16,31 @@ interface ChallengeDao {
     @Update
     suspend fun updateChallenge(challenge: ChallengeEntity)
 
-    @Query("DELETE FROM challenges WHERE id = :challengeId")
-    suspend fun deleteChallenge(challengeId: String)
+    @Query("UPDATE challenges SET deletedAtMillis = :deletedAtMillis, updatedAtMillis = :updatedAtMillis WHERE id = :challengeId")
+    suspend fun softDeleteChallengeById(challengeId: String, deletedAtMillis: Long, updatedAtMillis: Long)
 
     @Query("SELECT * FROM challenges WHERE id = :challengeId")
     suspend fun getChallengeById(challengeId: String): ChallengeEntity?
 
-    @Query("SELECT * FROM challenges ORDER BY endDate DESC")
+    @Query("SELECT * FROM challenges WHERE id = :challengeId AND deletedAtMillis IS NULL")
+    suspend fun getActiveChallengeById(challengeId: String): ChallengeEntity?
+
+    @Query("SELECT * FROM challenges WHERE deletedAtMillis IS NULL ORDER BY endDate DESC")
     fun getAllChallenges(): Flow<List<ChallengeEntity>>
 
-    @Query("SELECT * FROM challenges WHERE habitId = :habitId")
+    @Query("SELECT * FROM challenges WHERE deletedAtMillis IS NULL AND habitId = :habitId")
     fun getChallengesForHabit(habitId: String): Flow<List<ChallengeEntity>>
 
-    @Query("SELECT * FROM challenges WHERE participants LIKE '%' || :userId || '%' ORDER BY endDate DESC")
+    @Query("SELECT * FROM challenges WHERE deletedAtMillis IS NULL AND participants LIKE '%' || :userId || '%' ORDER BY endDate DESC")
     fun getUserChallenges(userId: String): Flow<List<ChallengeEntity>>
     
-    @Query("SELECT * FROM challenges WHERE participants LIKE '%' || :userId || '%' ORDER BY endDate DESC")
+    @Query("SELECT * FROM challenges WHERE deletedAtMillis IS NULL AND participants LIKE '%' || :userId || '%' ORDER BY endDate DESC")
     suspend fun getUserChallengesSync(userId: String): List<ChallengeEntity>
 
-    @Query("SELECT * FROM challenges WHERE status = :status ORDER BY endDate DESC")
+    @Query("SELECT * FROM challenges WHERE deletedAtMillis IS NULL AND status = :status ORDER BY endDate DESC")
     fun getChallengesByStatus(status: String): Flow<List<ChallengeEntity>>
 
-    @Query("SELECT * FROM challenges WHERE status IN (:statuses) ORDER BY endDate DESC")
+    @Query("SELECT * FROM challenges WHERE deletedAtMillis IS NULL AND status IN (:statuses) ORDER BY endDate DESC")
     fun getChallengesByStatuses(statuses: List<String>): Flow<List<ChallengeEntity>>
 
     @Query("UPDATE challenges SET participants = :participants WHERE id = :challengeId")

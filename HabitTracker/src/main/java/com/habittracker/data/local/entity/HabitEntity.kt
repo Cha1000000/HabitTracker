@@ -30,6 +30,8 @@ data class HabitEntity(
     val isActive: Boolean,
     val createdAt: LocalDate,
     val updatedAt: LocalDate,
+    val updatedAtMillis: Long = System.currentTimeMillis(),
+    val deletedAtMillis: Long? = null,
     val startDate: LocalDate? = null,
     val endDate: LocalDate? = null
 )

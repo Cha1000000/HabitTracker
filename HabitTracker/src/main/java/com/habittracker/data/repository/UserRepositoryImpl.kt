@@ -1,18 +1,18 @@
 package com.habittracker.data.repository
 
 import android.util.Log
-import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.FirebaseFirestore
-import com.google.firebase.firestore.SetOptions
 import com.habittracker.data.firestore.UserFirestoreConverter
 import com.habittracker.data.local.dao.UserDao
 import com.habittracker.data.local.entity.UserEntity
 import com.habittracker.data.sync.SyncManager
+import com.habittracker.data.sync.SyncWorkScheduler
 import com.habittracker.domain.model.User
 import com.habittracker.domain.repository.UserRepository
 import com.habittracker.domain.util.SyncPayloads
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
@@ -30,8 +30,20 @@ import com.habittracker.data.local.mappers.toEntity as userToEntity
 class UserRepositoryImpl @Inject constructor(
     private val userDao: UserDao,
     private val syncManager: SyncManager,
+    private val syncWorkScheduler: SyncWorkScheduler,
     private val firestore: FirebaseFirestore
 ) : UserRepository {
+
+    private val repoScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+
+    private fun kickSync() {
+        try { syncWorkScheduler.scheduleOneTimeSync() } catch (_: Exception) {
+        }
+        repoScope.launch {
+            try { syncManager.drainPending(maxBatch = 10) } catch (_: Exception) {
+            }
+        }
+    }
     
     private suspend fun upsertLocal(entity: UserEntity) {
         val existing = userDao.getUserById(entity.id)
@@ -59,6 +71,8 @@ class UserRepositoryImpl @Inject constructor(
             payloadJson = json,
             updatedAt = now
         )
+
+        kickSync()
     }
     
     override suspend fun deleteUser(userId: String) {
@@ -107,6 +121,7 @@ class UserRepositoryImpl @Inject constructor(
                     payloadJson = json,
                     updatedAt = now
                 )
+                kickSync()
             } catch (e: Exception) {
                 Log.e("UserRepository", "Failed to enqueue sync for updateUserLevel", e)
             }
@@ -130,17 +145,32 @@ class UserRepositoryImpl @Inject constructor(
             updatedAt = now
         )
 
-        // Handle FCM Token separately (direct update for ArrayUnion)
+        // Handle FCM Token separately (Outbox ARRAY_UNION)
         if (!fcmToken.isNullOrBlank()) {
             try {
-                firestore.collection("users").document(user.id).update(mapOf(
-                    "fcmTokens" to FieldValue.arrayUnion(fcmToken),
-                    "updatedAt" to now
-                )).await()
+                syncManager.enqueueArrayUnion(
+                    entityType = "user",
+                    entityId = user.id,
+                    fieldPath = "fcmTokens",
+                    values = listOf(fcmToken),
+                    updatedAt = now
+                )
+                val tokenPayload = org.json.JSONObject()
+                    .put("fcmToken", fcmToken)
+                    .put("updatedAt", now)
+                    .toString()
+                syncManager.enqueueUpsert(
+                    entityType = "user",
+                    entityId = user.id,
+                    payloadJson = tokenPayload,
+                    updatedAt = now
+                )
             } catch (e: Exception) {
                 Log.w("UserRepository", "upsertUserRemoteAndLocal: fcmToken update failed (non-fatal): ${e.message}")
             }
         }
+
+        kickSync()
     }
 
     override fun observeUser(userId: String): Flow<User?> = callbackFlow {
@@ -225,6 +255,8 @@ class UserRepositoryImpl @Inject constructor(
                     }
                 }
             }
+
+            if (updated > 0) kickSync()
             Result.success(updated)
         } catch (e: Exception) {
             Result.failure(e)
@@ -245,6 +277,8 @@ class UserRepositoryImpl @Inject constructor(
                 payloadJson = json,
                 updatedAt = now
             )
+
+            kickSync()
         } catch (e: Exception) {
             Log.d("UserRepository", "updateLastActive failed: ${e.message}")
         }

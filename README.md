@@ -68,7 +68,7 @@ HabitTracker — мобильное приложение для Android, кот�
 
 Статус модулей:
 - Челленджи: реализовано (core-функциональность + уведомления).
-- Геймификация (очки, уровни, достижения): в разработке.
+- Геймификация (очки, уровни, достижения): реализованы базовые достижения (UserAchievements) с синхронизацией.
 
 ## Скриншоты
 Скриншоты будут добавлены позже.
@@ -125,12 +125,29 @@ com.habittracker/
 
 Ключевые решения:
 - Room-first + Outbox: все операции сначала в локальную БД, затем — фоновая синхронизация с Firestore.
-- Оптимистичные апдейты в UI, last-write-wins стратегия конфликтов.
+- Оптимистичные апдейты в UI, last-write-wins стратегия конфликтов по `updatedAtMillis`.
+- Soft-delete для `habit`/`challenge`: удаление доставляется через tombstones (`deletedAtMillis`), а не hard delete.
+- Multi-device FCM: `users.fcmTokens[]` обновляется атомарно через outbox ARRAY_UNION/ARRAY_REMOVE.
 - Разрешения на уведомления (Android 13+) запрашиваются корректно и контекстно.
 
 ## Документация в репозитории
 - `sync_architecture.md` — актуальный принцип синхронизации Room ↔ Firestore (Outbox, pending-guards, merge/LWW ограничения)
 - `sync_gaps.md` — текущие риски/гепы синхронизации и план закрытия
+
+## Синхронизация (коротко)
+- **Запись (Room-first)**: UI всегда читает из Room. При create/update/delete репозиторий обновляет Room и кладёт операцию в outbox.
+- **Доставка в Firestore**: `SyncWorker` вызывает `SyncManager.drainPending()`. Для пользовательских действий дополнительно делается экспедит: `scheduleOneTimeSync()` + неблокирующий `drainPending()`.
+- **Realtime (Firestore → Room)**: слушатели по ключевым коллекциям мержат данные в Room с pending-guard и LWW по `updatedAtMillis`.
+
+Где смотреть логи:
+- `SyncWorker`: старт/завершение дренажа.
+- `SyncManager`: enqueue / pushUpsert / pushDelete / retry.
+
+Быстрый smoke-check:
+1. Переименовать групповую привычку → проверить `habits/{id}.title` в Firestore.
+2. Переименовать челлендж → проверить `challenges/{id}.title`.
+3. Отметить выполнение → проверить запись в `habit_entries`.
+4. Разблокировать достижение → проверить `user_achievements`.
 
 ## Быстрый старт
 Требования:

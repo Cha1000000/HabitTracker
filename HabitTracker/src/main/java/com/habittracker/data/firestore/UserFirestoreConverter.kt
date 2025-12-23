@@ -10,7 +10,7 @@ import kotlinx.datetime.atStartOfDayIn
 import kotlinx.datetime.toLocalDateTime
 
 /**
- * Профессиональный Firestore-конвертер для User модели.
+ * Firestore-конвертер для User модели.
  * 
  * Обеспечивает:
  * - Типобезопасную сериализацию/десериализацию
@@ -46,8 +46,6 @@ object UserFirestoreConverter {
         // Backward compatibility: сохраняем старое поле, но избегаем пустой строки
         user.fcmToken?.takeIf { it.isNotBlank() }?.let { token ->
             base["fcmToken"] = token
-            // Новый формат: массив токенов
-            base["fcmTokens"] = listOf(token)
         }
         return base
     }

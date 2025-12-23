@@ -30,6 +30,8 @@ data class Habit(
     val isActive: Boolean = true,
     val createdAt: LocalDate = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault()).date,
     val updatedAt: LocalDate = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault()).date,
+    val updatedAtMillis: Long = Clock.System.now().toEpochMilliseconds(),
+    val deletedAtMillis: Long? = null,
     val startDate: LocalDate? = null, // дата начала привычки (null = с момента создания)
     val endDate: LocalDate? = null // дата окончания привычки (null = бессрочно)
 )

@@ -25,5 +25,6 @@ data class ChallengeEntity(
     val winnerId: String?,
     val createdAt: LocalDate,
     val updatedAt: LocalDate,
-    val updatedAtMillis: Long = System.currentTimeMillis() // For LWW sync
+    val updatedAtMillis: Long = System.currentTimeMillis(), // For LWW sync
+    val deletedAtMillis: Long? = null
 )

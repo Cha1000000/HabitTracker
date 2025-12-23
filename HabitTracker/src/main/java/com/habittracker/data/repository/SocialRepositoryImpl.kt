@@ -246,9 +246,14 @@ class SocialRepositoryImpl @Inject constructor(
                     .get().await()
                 tokensQuery.documents.forEach { doc ->
                     if (doc.id != userId) {
-                        firestore.collection("users").document(doc.id)
-                            .update("fcmTokens", FieldValue.arrayRemove(token))
-                            .await()
+                        val now = System.currentTimeMillis()
+                        syncManager.enqueueArrayRemove(
+                            entityType = "user",
+                            entityId = doc.id,
+                            fieldPath = "fcmTokens",
+                            values = listOf(token),
+                            updatedAt = now
+                        )
                     }
                 }
 
@@ -258,25 +263,34 @@ class SocialRepositoryImpl @Inject constructor(
                     .get().await()
                 legacyQuery.documents.forEach { doc ->
                     if (doc.id != userId) {
-                        firestore.collection("users").document(doc.id)
-                            .update("fcmToken", FieldValue.delete())
-                            .await()
+                        // Legacy cleanup intentionally omitted: field deletes require FieldValue.delete().
+                        // The app uses fcmTokens[] as source of truth for multi-device.
                     }
                 }
             } catch (e: Exception) {
-                // Не критично: в худшем случае токен временно будет подвязан к двум аккаунтам
+                // Не критично: в худшем случае токен временно будет подвязан к двум аккаунтами
                 Log.w("SocialRepository", "updateUserFcmToken cleanup (remove token from other users) failed: ${e.message}", e)
             }
 
             // 2) Добавляем токен текущему пользователю (массив + legacy)
-            firestore.collection("users").document(userId)
-                .update(
-                    mapOf(
-                        "fcmTokens" to FieldValue.arrayUnion(token),
-                        "fcmToken" to token
-                    )
-                )
-                .await()
+            val now = System.currentTimeMillis()
+            syncManager.enqueueArrayUnion(
+                entityType = "user",
+                entityId = userId,
+                fieldPath = "fcmTokens",
+                values = listOf(token),
+                updatedAt = now
+            )
+            val payload = org.json.JSONObject()
+                .put("fcmToken", token)
+                .put("updatedAt", now)
+                .toString()
+            syncManager.enqueueUpsert(
+                entityType = "user",
+                entityId = userId,
+                payloadJson = payload,
+                updatedAt = now
+            )
         } catch (e: Exception) {
             // Обновляем локально (сохраним единственный токен в legacy поле)
             Log.w("SocialRepository", "updateUserFcmToken remote update failed for user=$userId: ${e.message}", e)

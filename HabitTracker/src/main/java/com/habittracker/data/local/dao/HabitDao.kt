@@ -31,99 +31,99 @@ interface HabitDao {
     @Query("SELECT * FROM habits WHERE id = :habitId")
     fun getHabitByIdFlow(habitId: String): Flow<HabitEntity?>
 
-    @Query("SELECT * FROM habits WHERE inviteCode = :inviteCode AND isActive = 1")
+    @Query("SELECT * FROM habits WHERE inviteCode = :inviteCode AND isActive = 1 AND deletedAtMillis IS NULL")
     suspend fun getHabitByInviteCode(inviteCode: String): HabitEntity?
 
-    @Query("SELECT * FROM habits WHERE isActive = 1 ORDER BY createdAt DESC")
+    @Query("SELECT * FROM habits WHERE isActive = 1 AND deletedAtMillis IS NULL ORDER BY createdAt DESC")
     fun getActiveHabits(): Flow<List<HabitEntity>>
 
     @Query("""
         SELECT * FROM habits 
-        WHERE isActive = 1 AND (createdBy = :userId OR participants LIKE '%' || :userId || '%')
+        WHERE isActive = 1 AND deletedAtMillis IS NULL AND (createdBy = :userId OR participants LIKE '%' || :userId || '%')
         ORDER BY createdAt DESC
     """)
     fun getUserHabits(userId: String): Flow<List<HabitEntity>>
 
-    @Query("SELECT * FROM habits ORDER BY createdAt DESC")
+    @Query("SELECT * FROM habits WHERE deletedAtMillis IS NULL ORDER BY createdAt DESC")
     fun getAllHabits(): Flow<List<HabitEntity>>
 
     @Query("""
         SELECT * FROM habits 
-        WHERE isActive = 1 AND type = :type AND (createdBy = :userId OR participants LIKE '%' || :userId || '%')
+        WHERE isActive = 1 AND deletedAtMillis IS NULL AND type = :type AND (createdBy = :userId OR participants LIKE '%' || :userId || '%')
         ORDER BY createdAt DESC
     """)
     fun getUserHabitsByType(userId: String, type: HabitType): Flow<List<HabitEntity>>
 
     @Query("""
         SELECT * FROM habits 
-        WHERE isActive = 1 AND type = 'GROUP' AND (createdBy = :userId OR participants LIKE '%' || :userId || '%')
-        ORDER BY updatedAt DESC
+        WHERE isActive = 1 AND deletedAtMillis IS NULL AND type = 'GROUP' AND (createdBy = :userId OR participants LIKE '%' || :userId || '%')
+        ORDER BY updatedAtMillis DESC
     """)
     fun getUserGroupHabits(userId: String): Flow<List<HabitEntity>>
 
     @Query("""
         SELECT * FROM habits 
-        WHERE isActive = 1 AND type = 'PERSONAL' AND createdBy = :userId
+        WHERE isActive = 1 AND deletedAtMillis IS NULL AND type = 'PERSONAL' AND createdBy = :userId
         ORDER BY createdAt DESC
     """)
     fun getUserPersonalHabits(userId: String): Flow<List<HabitEntity>>
 
     @Query("""
         SELECT * FROM habits 
-        WHERE isActive = 1 AND reminderEnabled = 1 AND (createdBy = :userId OR participants LIKE '%' || :userId || '%')
+        WHERE isActive = 1 AND deletedAtMillis IS NULL AND reminderEnabled = 1 AND (createdBy = :userId OR participants LIKE '%' || :userId || '%')
         ORDER BY reminderTime ASC
     """)
     suspend fun getHabitsWithReminders(userId: String): List<HabitEntity>
 
-    @Query("SELECT * FROM habits WHERE createdBy = :userId ORDER BY createdAt DESC")
+    @Query("SELECT * FROM habits WHERE deletedAtMillis IS NULL AND createdBy = :userId ORDER BY createdAt DESC")
     fun getHabitsCreatedByUser(userId: String): Flow<List<HabitEntity>>
 
-    @Query("UPDATE habits SET isActive = :isActive, updatedAt = :updatedAt WHERE id = :habitId")
-    suspend fun updateHabitActiveStatus(habitId: String, isActive: Boolean, updatedAt: Long)
+    @Query("UPDATE habits SET isActive = :isActive, updatedAtMillis = :updatedAtMillis WHERE id = :habitId")
+    suspend fun updateHabitActiveStatus(habitId: String, isActive: Boolean, updatedAtMillis: Long)
 
-    @Query("UPDATE habits SET participants = :participants, updatedAt = :updatedAt WHERE id = :habitId")
-    suspend fun updateHabitParticipants(habitId: String, participants: List<String>, updatedAt: Long)
+    @Query("UPDATE habits SET participants = :participants, updatedAtMillis = :updatedAtMillis WHERE id = :habitId")
+    suspend fun updateHabitParticipants(habitId: String, participants: List<String>, updatedAtMillis: Long)
 
     @Query("""
         UPDATE habits 
-        SET reminderEnabled = :enabled, reminderTime = :time, updatedAt = :updatedAt 
+        SET reminderEnabled = :enabled, reminderTime = :time, updatedAtMillis = :updatedAtMillis 
         WHERE id = :habitId
     """)
     suspend fun updateHabitReminder(
         habitId: String,
         enabled: Boolean,
         time: LocalTime?,
-        updatedAt: Long
+        updatedAtMillis: Long
     )
 
-    @Query("DELETE FROM habits WHERE id = :habitId")
-    suspend fun deleteHabitById(habitId: String)
+    @Query("UPDATE habits SET isActive = 0, deletedAtMillis = :deletedAtMillis, updatedAtMillis = :updatedAtMillis WHERE id = :habitId")
+    suspend fun softDeleteHabitById(habitId: String, deletedAtMillis: Long, updatedAtMillis: Long)
 
     // Поиск и фильтрация
     @Query("""
         SELECT * FROM habits 
-        WHERE isActive = 1 AND (createdBy = :userId OR participants LIKE '%' || :userId || '%')
+        WHERE isActive = 1 AND deletedAtMillis IS NULL AND (createdBy = :userId OR participants LIKE '%' || :userId || '%')
         AND (title LIKE '%' || :query || '%' OR description LIKE '%' || :query || '%')
         ORDER BY createdAt DESC
     """)
     fun searchUserHabits(userId: String, query: String): Flow<List<HabitEntity>>
 
     // Статистические запросы
-    @Query("SELECT COUNT(*) FROM habits WHERE isActive = 1")
+    @Query("SELECT COUNT(*) FROM habits WHERE isActive = 1 AND deletedAtMillis IS NULL")
     suspend fun getActiveHabitsCount(): Int
 
-    @Query("SELECT COUNT(*) FROM habits WHERE isActive = 1 AND createdBy = :userId")
+    @Query("SELECT COUNT(*) FROM habits WHERE isActive = 1 AND deletedAtMillis IS NULL AND createdBy = :userId")
     suspend fun getUserHabitsCount(userId: String): Int
 
     @Query("""
         SELECT COUNT(*) FROM habits 
-        WHERE isActive = 1 AND type = 'GROUP' AND (createdBy = :userId OR participants LIKE '%' || :userId || '%')
+        WHERE isActive = 1 AND deletedAtMillis IS NULL AND type = 'GROUP' AND (createdBy = :userId OR participants LIKE '%' || :userId || '%')
     """)
     suspend fun getUserGroupHabitsCount(userId: String): Int
 
     @Query("""
         SELECT * FROM habits 
-        WHERE isActive = 1 AND type = 'GROUP' 
+        WHERE isActive = 1 AND deletedAtMillis IS NULL AND type = 'GROUP' 
         ORDER BY LENGTH(participants) DESC 
         LIMIT :limit
     """)

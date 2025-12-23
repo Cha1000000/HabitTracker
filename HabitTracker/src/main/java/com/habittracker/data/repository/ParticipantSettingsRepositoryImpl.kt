@@ -25,6 +25,17 @@ class ParticipantSettingsRepositoryImpl @Inject constructor(
 
     override suspend fun get(habitId: String, userId: String): HabitParticipantSettings? {
         val local = dao.get(habitId, userId)?.toDomain()
+
+        val entityId = "$habitId:$userId"
+        val hasPending = try {
+            syncManager.hasPendingOperations("habit_participant_settings", entityId)
+        } catch (e: Exception) {
+            Log.d("ParticipantSettingsRepo", "get() hasPendingOperations failed for $entityId: ${e.message}")
+            false
+        }
+        if (hasPending) {
+            return local
+        }
         // Всегда пытаемся получить удалённые настройки
         val remote = try { firestoreRepository.getParticipantSettings(habitId, userId) } catch (e: Exception) {
             Log.d("ParticipantSettingsRepo", "get() remote fetch failed for habit=$habitId user=$userId: ${e.message}")

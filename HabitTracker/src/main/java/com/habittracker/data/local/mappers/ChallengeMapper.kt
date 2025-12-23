@@ -42,5 +42,6 @@ fun Challenge.toEntity(updatedAtMillis: Long = System.currentTimeMillis()): Chal
     winnerId = winnerId,
     createdAt = createdAt,
     updatedAt = updatedAt,
-    updatedAtMillis = updatedAtMillis
+    updatedAtMillis = updatedAtMillis,
+    deletedAtMillis = null
 )
