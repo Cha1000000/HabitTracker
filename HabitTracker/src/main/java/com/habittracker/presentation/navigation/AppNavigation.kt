@@ -35,6 +35,7 @@ import com.habittracker.presentation.ui.stats.StatsScreen
 import com.habittracker.presentation.ui.challenges.ChallengeDetailScreen
 import com.habittracker.presentation.ui.challenges.ChallengesScreen
 import com.habittracker.presentation.ui.challenges.CreateChallengeScreen
+import com.habittracker.presentation.ui.settings.NotificationSettingsScreen
 import kotlinx.coroutines.flow.collectLatest
 
 /**
@@ -43,7 +44,10 @@ import kotlinx.coroutines.flow.collectLatest
  */
 sealed class Screen(val route: String) {
     object Splash : Screen("splash_screen")
-    object Habits : Screen("habits_screen")
+    object Habits : Screen("habits_screen?inviteCode={inviteCode}") {
+        fun createRoute(inviteCode: String? = null) = 
+            if (inviteCode != null) "habits_screen?inviteCode=$inviteCode" else "habits_screen"
+    }
     object AddEditHabit : Screen("add_edit_habit_screen")
     object Login : Screen("login_screen")
     object Register : Screen("register_screen")
@@ -70,6 +74,8 @@ sealed class Screen(val route: String) {
     object ChallengeDetail : Screen("challenge_detail_screen/{challengeId}") {
         fun createRoute(challengeId: String) = "challenge_detail_screen/$challengeId"
     }
+    // Settings
+    object NotificationSettings : Screen("notification_settings_screen")
     // Debug screens (только для debug сборки)
     object FCMTest : Screen("fcm_test_screen")
 }
@@ -105,8 +111,17 @@ fun AppNavHost(
             SplashScreen(navController = navController)
         }
         
-        composable(route = Screen.Habits.route) {
-            HabitsScreen(navController = navController)
+        composable(
+            route = Screen.Habits.route,
+            arguments = listOf(
+                navArgument("inviteCode") {
+                    nullable = true
+                    defaultValue = null
+                }
+            )
+        ) { backStackEntry ->
+            val inviteCode = backStackEntry.arguments?.getString("inviteCode")
+            HabitsScreen(navController = navController, inviteCode = inviteCode)
         }
 
         composable(
@@ -266,6 +281,10 @@ fun AppNavHost(
                 challengeId = challengeId,
                 onNavigateBack = { navController.popBackStack() }
             )
+        }
+        
+        composable(route = Screen.NotificationSettings.route) {
+            NotificationSettingsScreen(navController = navController)
         }
     }
         

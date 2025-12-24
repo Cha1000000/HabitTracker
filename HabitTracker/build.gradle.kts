@@ -27,7 +27,7 @@ ksp {
 }
 
 // Единый источник versionName для использования и в defaultConfig, и в имени APK
-val appVersionName = "1.2.0"
+val appVersionName = "1.2.1"
 
 android {
     namespace = "com.habittracker"
@@ -275,6 +275,9 @@ dependencies {
     
     // FlowLayout from Accompanist
     implementation(libs.accompanist.flowlayout)
+    
+    // Konfetti (Confetti animations)
+    implementation(libs.konfetti.compose)
     // Compose Material (M2) for pull-refresh APIs
     implementation(libs.androidx.material)
 

@@ -1,12 +1,22 @@
 package com.habittracker.data.local.entity
 
 import androidx.room.Entity
+import androidx.room.Index
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.LocalDateTime
 
 @Entity(
     tableName = "habit_entries",
-    primaryKeys = ["habitId", "userId", "date"]
+    primaryKeys = ["habitId", "userId", "date"],
+    indices = [
+        Index(value = ["habitId"]),
+        Index(value = ["userId"]),
+        Index(value = ["date"]),
+        Index(value = ["completed"]),
+        Index(value = ["habitId", "date"]),
+        Index(value = ["userId", "date"]),
+        Index(value = ["habitId", "userId"])
+    ]
 )
 data class HabitEntryEntity(
     val habitId: String,

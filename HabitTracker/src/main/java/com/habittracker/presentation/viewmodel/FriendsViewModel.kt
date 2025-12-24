@@ -8,6 +8,7 @@ import androidx.lifecycle.viewModelScope
 import com.habittracker.domain.model.User
 import com.habittracker.domain.repository.AuthRepository
 import com.habittracker.domain.repository.SocialRepository
+import com.habittracker.domain.usecase.habit.LeaveSharedHabitsWithFriendUseCase
 import com.habittracker.presentation.state.FriendsUiState
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -34,7 +35,8 @@ import javax.inject.Inject
 @HiltViewModel
 class FriendsViewModel @Inject constructor(
     private val socialRepository: SocialRepository,
-    private val authRepository: AuthRepository
+    private val authRepository: AuthRepository,
+    private val leaveSharedHabitsWithFriendUseCase: LeaveSharedHabitsWithFriendUseCase
 ) : ViewModel() {
 
     // Текущий пользователь ID
@@ -236,12 +238,22 @@ class FriendsViewModel @Inject constructor(
         viewModelScope.launch {
             _removingIds.value = _removingIds.value + friendId
             try {
+                // Сначала выходим из совместных привычек (если выбрана опция)
+                if (leaveGroupHabits) {
+                    leaveSharedHabitsWithFriendUseCase(_currentUserId.value, friendId).fold(
+                        onSuccess = { leftCount ->
+                            Log.d(TAG, "Left $leftCount shared habits with friend $friendId")
+                        },
+                        onFailure = { error ->
+                            Log.w(TAG, "Failed to leave some shared habits: ${error.message}")
+                        }
+                    )
+                }
+                
+                // Затем удаляем друга
                 socialRepository.removeFriend(_currentUserId.value, friendId).fold(
                     onSuccess = {
-                        // Опциональный выход из совместных привычек: будет реализовано в Этапе D
-                        if (leaveGroupHabits) {
-                            Log.d(TAG, "Bulk leave from shared habits not yet implemented")
-                        }
+                        Log.d(TAG, "Friend $friendId removed successfully")
                     },
                     onFailure = { error ->
                         Log.e(TAG, "Failed to remove friend with options", error)

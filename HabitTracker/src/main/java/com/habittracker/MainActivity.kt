@@ -158,9 +158,32 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun handleIntentForNavigation(intent: android.content.Intent) {
+        // Обработка deep links (habittracker://invite?code=XXX или https://habittracker.app/invite/XXX)
+        val deepLinkUri = intent.data
+        if (deepLinkUri != null) {
+            val inviteCode = when {
+                // habittracker://invite?code=XXXXXX
+                deepLinkUri.scheme == "habittracker" && deepLinkUri.host == "invite" -> {
+                    deepLinkUri.getQueryParameter("code")
+                }
+                // https://habittracker.app/invite/XXXXXX
+                deepLinkUri.host == "habittracker.app" && deepLinkUri.path?.startsWith("/invite/") == true -> {
+                    deepLinkUri.path?.removePrefix("/invite/")
+                }
+                else -> null
+            }
+            
+            if (!inviteCode.isNullOrBlank()) {
+                Log.d("MainActivity", "[deep-link] Invite code detected: $inviteCode")
+                intent.putExtra("navigate_to", "join_by_code")
+                intent.putExtra("invite_code", inviteCode)
+            }
+        }
+        
         val navigateTo = intent.getStringExtra("navigate_to")
         val habitId = intent.getStringExtra("habit_id") ?: intent.getStringExtra("habitId")
         val challengeId = intent.getStringExtra("challenge_id") ?: intent.getStringExtra("challengeId")
+        val inviteCode = intent.getStringExtra("invite_code")
 
         val route: String? = when (navigateTo) {
             "friends" -> Screen.Friends.route
@@ -171,6 +194,7 @@ class MainActivity : ComponentActivity() {
             "group_habit_detail" -> habitId?.let { Screen.GroupHabitDetail.createRoute(it) } ?: Screen.Habits.route
             "challenge_detail" -> challengeId?.let { Screen.ChallengeDetail.createRoute(it) } ?: Screen.Challenges.route
             "habits" -> Screen.Habits.route
+            "join_by_code" -> inviteCode?.let { Screen.Habits.route + "?inviteCode=$it" } ?: Screen.Habits.route
             null -> {
                 if (habitId != null) Screen.Habits.route else null
             }

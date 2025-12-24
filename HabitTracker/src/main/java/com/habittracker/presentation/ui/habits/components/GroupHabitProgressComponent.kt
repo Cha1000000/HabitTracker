@@ -1,16 +1,23 @@
 package com.habittracker.presentation.ui.habits.components
 
+import android.graphics.BitmapFactory
+import android.util.Base64
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
@@ -27,11 +34,16 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import coil.compose.AsyncImage
+import coil.request.ImageRequest
 import com.habittracker.R
 import com.habittracker.domain.model.Habit
 import com.habittracker.domain.model.HabitFrequency
@@ -50,7 +62,8 @@ data class ParticipantProgress(
     val userName: String,
     val isCompletedToday: Boolean,
     val currentStreak: Int,
-    val completionRate: Float // процент выполнения за последние 7 дней (0.0 - 1.0)
+    val completionRate: Float, // процент выполнения за последние 7 дней (0.0 - 1.0)
+    val avatarUrl: String? = null // URL аватарки участника
 )
 
 /**
@@ -103,7 +116,8 @@ fun GroupHabitProgressComponent(
         
         // Список участников с их статусом
         LazyRow(
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            contentPadding = PaddingValues(end = 4.dp) // Добавляем padding для индикатора выполнения
         ) {
             items(participantsProgress) { participant ->
                 ParticipantStatusItem(
@@ -116,41 +130,104 @@ fun GroupHabitProgressComponent(
 }
 
 /**
- * Компонент для отображения статуса отдельного участника
+ * Компонент для отображения статуса отдельного участника с аватаркой
  */
 @Composable
 private fun ParticipantStatusItem(
     participant: ParticipantProgress,
     modifier: Modifier = Modifier
 ) {
+    val successColor = Color(0xFF4CAF50)
+    val borderColor = if (participant.isCompletedToday) successColor else Color.Transparent
+    
     Box(
-        modifier = modifier
-            .clip(CircleShape)
-            .background(
-                if (participant.isCompletedToday) {
-                    Color(0xFF4CAF50)
-                } else {
-                    MaterialTheme.colorScheme.surfaceVariant
-                }
-            ),
+        modifier = modifier,
         contentAlignment = Alignment.Center
     ) {
+        // Аватарка или плейсхолдер
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .clip(CircleShape)
+                .border(
+                    width = if (participant.isCompletedToday) 2.dp else 0.dp,
+                    color = borderColor,
+                    shape = CircleShape
+                )
+                .background(MaterialTheme.colorScheme.surfaceVariant),
+            contentAlignment = Alignment.Center
+        ) {
+            val avatarUrl = participant.avatarUrl
+            if (!avatarUrl.isNullOrBlank()) {
+                val isDataUrl = avatarUrl.startsWith("data:image")
+                if (isDataUrl) {
+                    val base64 = avatarUrl.substringAfter(',')
+                    val bytes = runCatching { Base64.decode(base64, Base64.DEFAULT) }.getOrNull()
+                    val bmp = bytes?.let { BitmapFactory.decodeByteArray(it, 0, it.size) }
+                    if (bmp != null) {
+                        Image(
+                            bitmap = bmp.asImageBitmap(),
+                            contentDescription = participant.userName,
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .clip(CircleShape),
+                            contentScale = ContentScale.Crop
+                        )
+                    } else {
+                        ParticipantPlaceholder(participant.userName)
+                    }
+                } else {
+                    AsyncImage(
+                        model = ImageRequest.Builder(LocalContext.current)
+                            .data(avatarUrl)
+                            .crossfade(true)
+                            .build(),
+                        contentDescription = participant.userName,
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .clip(CircleShape),
+                        contentScale = ContentScale.Crop
+                    )
+                }
+            } else {
+                ParticipantPlaceholder(participant.userName)
+            }
+        }
+        
+        // Индикатор выполнения (галочка в углу)
         if (participant.isCompletedToday) {
-            Icon(
-                imageVector = Icons.Default.Check,
-                contentDescription = stringResource(R.string.completed_today),
-                tint = Color.White,
-                modifier = Modifier.size(20.dp)
-            )
-        } else {
-            Icon(
-                imageVector = Icons.Default.Person,
-                contentDescription = participant.userName,
-                tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.size(20.dp)
-            )
+            Box(
+                modifier = Modifier
+                    .align(Alignment.BottomEnd)
+                    .offset(x = 2.dp, y = 2.dp)
+                    .size(14.dp)
+                    .clip(CircleShape)
+                    .background(successColor),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Check,
+                    contentDescription = stringResource(R.string.completed_today),
+                    tint = Color.White,
+                    modifier = Modifier.size(10.dp)
+                )
+            }
         }
     }
+}
+
+/**
+ * Плейсхолдер для участника без аватарки (первая буква имени)
+ */
+@Composable
+private fun ParticipantPlaceholder(userName: String) {
+    val initial = userName.firstOrNull()?.uppercaseChar() ?: '?'
+    Text(
+        text = initial.toString(),
+        style = MaterialTheme.typography.labelMedium,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+        fontWeight = FontWeight.Bold
+    )
 }
 
 /**

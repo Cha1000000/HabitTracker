@@ -51,7 +51,7 @@ enum class HabitFrequency {
 }
 
 // Extension functions для работы с привычками
-fun Habit.isGroupHabit(): Boolean = type == HabitType.GROUP
+fun Habit.isGroupHabit(): Boolean = type == HabitType.GROUP || participants.isNotEmpty()
 
 fun Habit.getParticipantsCount(): Int = if (isGroupHabit()) participants.size else 1
 

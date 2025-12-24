@@ -244,11 +244,13 @@ fun EmojiPickerDialog(
 
 /**
  * Обертка для диалога ввода кода с инъекцией зависимостей
+ * @param initialCode предзаполненный код (например, из deep link)
  */
 @Composable
 fun JoinByCodeDialog(
     onDismiss: () -> Unit,
-    onJoin: (String) -> Unit
+    onJoin: (String) -> Unit,
+    initialCode: String? = null
 ) {
     val context = LocalContext.current
     val habitRepository = remember {
@@ -260,7 +262,8 @@ fun JoinByCodeDialog(
     JoinByCodeDialogContent(
         onDismiss = onDismiss,
         onJoin = onJoin,
-        habitRepository = habitRepository
+        habitRepository = habitRepository,
+        initialCode = initialCode
     )
 }
 
@@ -290,9 +293,10 @@ interface UserRepositoryEntryPoint {
 private fun JoinByCodeDialogContent(
     onDismiss: () -> Unit,
     onJoin: (String) -> Unit,
-    habitRepository: HabitRepository
+    habitRepository: HabitRepository,
+    initialCode: String? = null
 ) {
-    var code by remember { mutableStateOf("") }
+    var code by remember { mutableStateOf(initialCode ?: "") }
     var isError by remember { mutableStateOf(false) }
     var isSearching by remember { mutableStateOf(false) }
     var foundHabit by remember { mutableStateOf<com.habittracker.domain.model.Habit?>(null) }

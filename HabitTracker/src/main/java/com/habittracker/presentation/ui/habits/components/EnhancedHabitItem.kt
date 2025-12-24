@@ -59,6 +59,7 @@ import com.habittracker.domain.model.Habit
 import com.habittracker.domain.model.HabitFrequency
 import com.habittracker.domain.model.HabitType
 import com.habittracker.domain.model.isGroupHabit
+import com.habittracker.presentation.ui.components.AnimatedCheckmark
 import com.habittracker.presentation.viewmodel.HabitWithCompletion
 import kotlinx.datetime.Clock
 import kotlinx.datetime.LocalTime
@@ -238,10 +239,11 @@ fun EnhancedHabitItem(
                             if (habitWithCompletion.isLoading) {
                                 CircularProgressIndicator(modifier = Modifier.size(24.dp), strokeWidth = 2.dp)
                             } else {
-                                Icon(
-                                    imageVector = Icons.Default.Check,
-                                    contentDescription = if (habitWithCompletion.isCompletedToday) stringResource(R.string.habits_unmark_complete) else stringResource(R.string.habits_mark_complete),
-                                    tint = if (habitWithCompletion.isCompletedToday) successColor else Color.Gray
+                                AnimatedCheckmark(
+                                    isChecked = habitWithCompletion.isCompletedToday,
+                                    size = 28.dp,
+                                    color = successColor,
+                                    strokeWidth = 2.dp
                                 )
                             }
                         }

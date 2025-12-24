@@ -170,27 +170,28 @@ domain/usecase/gamification/GetLeaderboardUseCase.kt (если нет)
 
 ## 🔄 ЭТАП C: Закрытие пробелов синхронизации
 
-### C.1 Realtime-слушатели для Habits (1 день)
-**Текущее состояние**: Нет realtime-слушателей Firestore → Room для привычек.
+### C.1 Realtime-слушатели для Habits (1 день) ✅
+**Текущее состояние**: Реализовано (Firestore → Room + pending-guard + LWW по `updatedAtMillis`).
 
 **Задачи:**
-- [ ] Добавить callbackFlow слушатель в `HabitRepositoryImpl`:
+- [x] Добавить realtime-слушатель Firestore → Room (источник: `FirestoreRepositoryImpl.getUserHabits()`; merge в Room: `HabitRepositoryImpl.startObservingRemoteHabits()`)
   - По `createdBy == currentUserId`
   - По `participants contains currentUserId`
-- [ ] Merge входящих данных в Room с учётом `updatedAt` (LWW)
-- [ ] Обработка soft-delete (`deletedAt`)
+- [x] Merge входящих данных в Room с учётом LWW по `updatedAtMillis`
+- [x] Обработка soft-delete (tombstones через `deletedAtMillis`/`isActive`)
 
 **Файлы для изменения:**
 ```
 data/repository/HabitRepositoryImpl.kt
 ```
 
-### C.2 Outbox для Habits (0.5 дня)
+### C.2 Outbox для Habits (0.5 дня) ✅
 **Задачи:**
-- [ ] Добавить Outbox-операции:
-  - UPSERT_HABIT
-  - DELETE_HABIT (soft-delete)
-- [ ] Интегрировать в `addHabit()`, `updateHabit()`, `deleteHabit()`
+- [x] Добавить Outbox-операции:
+  - UPSERT (entityType=`habit`)
+  - DELETE (soft-delete через tombstone)
+- [x] Интегрировать в `insertHabit()`, `updateHabit()`, `deleteHabit()`
+- [x] KickSync после enqueue (экспедит синка, чтобы не ждать периодического воркера)
 
 **Файлы для изменения:**
 ```
@@ -198,32 +199,35 @@ data/repository/HabitRepositoryImpl.kt
 data/sync/SyncManager.kt
 ```
 
-### C.3 Realtime + Outbox для Challenges (0.5 дня)
+### C.3 Realtime + Outbox для Challenges (0.5 дня) ✅
 **Задачи:**
-- [ ] Добавить realtime-слушатель для коллекции `challenges`
-- [ ] Добавить Outbox-операции для челленджей
-- [ ] Merge с LWW стратегией
+- [x] Добавить realtime-слушатель для коллекции `challenges` (`ChallengeRepositoryImpl.observeChallengesForUser()`)
+- [x] Добавить Outbox-операции для челленджей (entityType=`challenge`, UPSERT/DELETE)
+- [x] Merge с LWW стратегией по `updatedAtMillis` + pending-guard
+- [x] Soft-delete (tombstones через `deletedAtMillis`/`isActive`)
+- [x] KickSync после enqueue
 
 **Файлы для изменения:**
 ```
 data/repository/ChallengeRepositoryImpl.kt
 ```
 
-### C.4 Realtime + Outbox для Achievements (0.5 дня)
+### C.4 Realtime + Outbox для Achievements (0.5 дня) ✅
 **Задачи:**
-- [ ] Добавить realtime-слушатель для `user_achievements`
-- [ ] Outbox для разблокировки достижений
+- [x] Добавить realtime-слушатель для `user_achievements` (guarded merge + LWW по `updatedAtMillis`)
+- [x] Outbox для прогресса/разблокировки достижений (entityType=`user_achievement`, UPSERT)
+- [x] KickSync после enqueue
 
 **Файлы для изменения:**
 ```
 data/repository/AchievementRepositoryImpl.kt
 ```
 
-### C.5 Стандартизация Idempotency и LWW (0.5 дня)
+### C.5 Стандартизация Idempotency и LWW (0.5 дня) (частично)
 **Задачи:**
-- [ ] Добавить `opId` (UUID) для всех Outbox-операций
-- [ ] Проверка `lastOpId` перед применением операции
-- [ ] Стандартизировать `updatedAt` во всех сущностях
+- [x] Добавить `opId` (UUID) для Outbox-операций (поле `operationId` на уровне outbox)
+- [ ] Проверка `lastOpId` перед применением операции (не реализовано — требует хранения `lastOpId` в документе Firestore)
+- [ ] Стандартизировать `updatedAtMillis` во всех сущностях (частично: Habits/Challenges/UserAchievements; остальные — по мере необходимости)
 
 **Файлы для изменения:**
 ```
@@ -231,48 +235,48 @@ data/sync/SyncManager.kt
 data/local/entity/*.kt (добавить updatedAt где нет)
 ```
 
-### C.6 Soft-delete везде (0.5 дня)
+### C.6 Soft-delete везде (0.5 дня) (частично)
 **Задачи:**
-- [ ] Добавить поле `deletedAt` в сущности где отсутствует
-- [ ] Обновить mappers для обработки soft-delete
-- [ ] Фильтрация удалённых записей в DAO запросах
+- [x] Soft-delete/tombstones реализованы для `habit` и `challenge`
+- [ ] Добавить `deletedAtMillis` в остальные сущности, где это важно
+- [ ] Обновить mappers/DAO (фильтрацию) для остальных сущностей, где будет включён soft-delete
 
 ---
 
 ## ✨ ЭТАП D: UI/UX полировка и прочее
 
-### D.1 Анимации (0.5 дня)
+### D.1 Анимации (0.5 дня) (частично)
 **Задачи:**
-- [ ] Confetti-анимация при отметке выполнения привычки
-- [ ] Анимация checkmark
-- [ ] Анимация при разблокировке достижения
+- [ ] Confetti-анимация при отметке выполнения привычки (в коде есть флаг, но нет UI-компонента)
+- [ ] Анимация checkmark (сейчас просто смена цвета/иконки)
+- [x] Анимация при разблокировке достижения (`AchievementUnlockedToast` с slide/scale анимацией)
 
-### D.2 Улучшение списка привычек (0.5 дня)
+### D.2 Улучшение списка привычек (0.5 дня) (частично)
 **Задачи:**
-- [ ] Показ аватарок участников на карточке групповой привычки
-- [ ] Индикаторы прогресса группы
-- [ ] Swipe-действия (удалить, редактировать)
-- [ ] Массовый выход из совместных привычек при удалении друга
+- [ ] Показ аватарок участников на карточке групповой привычки (сейчас только иконка группы)
+- [x] Индикаторы прогресса группы (`GroupHabitProgressComponent`)
+- [x] Swipe-действия (удалить - `SwipeToDismissBox`)
+- [ ] Массовый выход из совместных привычек при удалении друга (заглушка в `FriendsViewModel`)
 
 **TODO для закрытия:**
 - `FriendsViewModel.kt:228` — `// TODO: trigger bulk leave from shared habits with this friend`
 
 ### D.3 Deep links для приглашений (0.5 дня)
 **Задачи:**
-- [ ] Настроить deep links для invite-code привычек
-- [ ] Обработка deep links в `MainActivity`
+- [ ] Настроить deep links для invite-code привычек (в Manifest нет `intent-filter` для URL схем)
+- [x] Обработка навигации из Push-уведомлений (в `MainActivity` есть `handleIntentForNavigation`)
 
-### D.4 Push-уведомления о активности друзей (0.5 дня)
+### D.4 Push-уведомления о активности друзей (0.5 дня) ✅
 **Задачи:**
 - [x] Уведомление когда друг выполнил привычку в группе
 - [x] Уведомление о новом челлендже от друга
-- [ ] Настройки уведомлений (вкл/выкл по типам)
+- [ ] Настройки уведомлений (вкл/выкл по типам) - пока нет экрана настроек
 
-### D.5 Оптимизация производительности (0.5 дня)
+### D.5 Оптимизация производительности (0.5 дня) (частично)
 **Задачи:**
-- [ ] Проверка recomposition в Compose
+- [x] Проверка recomposition в Compose (используются `key`, `recomposeKey`)
 - [ ] Оптимизация запросов к БД
-- [ ] Кэширование изображений (Coil)
+- [x] Кэширование изображений (Coil используется с `AsyncImage`)
 
 ---
 
@@ -291,10 +295,10 @@ data/local/entity/*.kt (добавить updatedAt где нет)
 ## ✅ Критерии готовности
 
 - [x] Все экраны челленджей доступны и функциональны
-- [ ] Очки начисляются автоматически при выполнении привычек
-- [ ] Достижения разблокируются автоматически
-- [ ] Данные синхронизируются между устройствами в реальном времени
-- [ ] Приложение работает в офлайн-режиме
+- [x] Очки начисляются автоматически при выполнении привычек
+- [x] Достижения разблокируются автоматически
+- [x] Данные синхронизируются между устройствами в реальном времени
+- [x] Приложение работает в офлайн-режиме
 - [ ] UI отполирован, анимации работают
 
 ---

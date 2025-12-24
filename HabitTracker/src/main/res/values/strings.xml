@@ -740,5 +740,24 @@
     <string name="achievement_locked">Заблокировано</string>
     <string name="achievement_progress">Прогресс</string>
     <string name="achievement_reward">+%1$d очков</string>
+    
+    <!-- Notification Settings Screen -->
+    <string name="notification_settings_title">Настройки уведомлений</string>
+    <string name="notification_section_habits">Напоминания о привычках</string>
+    <string name="notification_habit_reminders">Напоминания</string>
+    <string name="notification_habit_reminders_desc">Получать напоминания о выполнении привычек</string>
+    <string name="notification_section_social">Социальные уведомления</string>
+    <string name="notification_friend_activity">Активность друзей</string>
+    <string name="notification_friend_activity_desc">Запросы дружбы и приглашения</string>
+    <string name="notification_group_habits">Групповые привычки</string>
+    <string name="notification_group_habits_desc">Обновления в совместных привычках</string>
+    <string name="notification_challenges">Челленджи</string>
+    <string name="notification_challenges_desc">Приглашения и обновления челленджей</string>
+    <string name="notification_section_achievements">Достижения</string>
+    <string name="notification_achievements">Новые достижения</string>
+    <string name="notification_achievements_desc">Уведомления о разблокированных достижениях</string>
+    <string name="notification_section_quiet_hours">Режим \"Не беспокоить\"</string>
+    <string name="notification_quiet_hours">Тихие часы</string>
+    <string name="notification_quiet_hours_desc">Не беспокоить с %1$d:00 до %2$d:00</string>
 
 </resources>

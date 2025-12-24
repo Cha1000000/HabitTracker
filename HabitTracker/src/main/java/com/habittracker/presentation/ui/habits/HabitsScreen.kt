@@ -99,6 +99,7 @@ import com.habittracker.presentation.ui.habits.components.TahoeDockBar
 import com.habittracker.presentation.ui.habits.components.TahoeDockDivider
 import com.habittracker.presentation.ui.habits.components.TahoeDockItem
 import com.habittracker.presentation.ui.habits.components.TahoeGradientBackground
+import com.habittracker.presentation.ui.components.ConfettiOverlay
 import com.habittracker.presentation.ui.notifications.NotificationBadge
 import com.habittracker.presentation.viewmodel.ChallengesViewModel
 import com.habittracker.presentation.viewmodel.FriendsViewModel
@@ -116,6 +117,7 @@ import kotlin.math.abs
 @Composable
 fun HabitsScreen(
     navController: NavController,
+    inviteCode: String? = null,
     viewModel: HabitsViewModel = hiltViewModel(),
     notificationsViewModel: NotificationsViewModel = hiltViewModel(),
     friendsViewModel: FriendsViewModel = hiltViewModel(),
@@ -133,6 +135,19 @@ fun HabitsScreen(
     val challengeInvitationsBadgeCount = challengesUiState.pendingInvitations.size
     var isRefreshing by remember { mutableStateOf(false) }
     var recomposeKey by remember { mutableIntStateOf(0) }
+    
+    // Состояние диалога присоединения по коду
+    var showCodeDialog by remember { mutableStateOf(false) }
+    var prefilledInviteCode by remember { mutableStateOf<String?>(null) }
+    
+    // Автоматическое открытие диалога при наличии inviteCode из deep link
+    // Проверяем что это реальный код, а не placeholder из навигации
+    LaunchedEffect(inviteCode) {
+        if (!inviteCode.isNullOrBlank() && inviteCode != "{inviteCode}") {
+            prefilledInviteCode = inviteCode
+            showCodeDialog = true
+        }
+    }
     
     // Данные для селектора дат
     val selectedDate = uiState.selectedDate ?: Clock.System.now()
@@ -274,8 +289,6 @@ fun HabitsScreen(
         floatingActionButton = {
             // Показываем FAB только для сегодняшнего дня и будущих дат
             if (selectedDate >= today) {
-                var showCodeDialog by remember { mutableStateOf(false) }
-                
                 ExpandableFAB(
                     onCreateHabit = { 
                         // Передаём выбранную дату как параметр при создании привычки
@@ -286,20 +299,26 @@ fun HabitsScreen(
                         navController.navigate(Screen.PublicHabits.route) 
                     },
                     onJoinByCode = { 
+                        prefilledInviteCode = null
                         showCodeDialog = true 
                     }
                 )
-                
-                // Диалог ввода кода
-                if (showCodeDialog) {
-                    JoinByCodeDialog(
-                        onDismiss = { showCodeDialog = false },
-                        onJoin = { code ->
-                            showCodeDialog = false
-                            viewModel.joinByInviteCode(code)
-                        }
-                    )
-                }
+            }
+            
+            // Диалог ввода кода (вынесен из FAB для поддержки deep links)
+            if (showCodeDialog) {
+                JoinByCodeDialog(
+                    initialCode = prefilledInviteCode,
+                    onDismiss = { 
+                        showCodeDialog = false
+                        prefilledInviteCode = null
+                    },
+                    onJoin = { code ->
+                        showCodeDialog = false
+                        prefilledInviteCode = null
+                        viewModel.joinByInviteCode(code)
+                    }
+                )
             }
         },
         bottomBar = {
@@ -551,6 +570,12 @@ fun HabitsScreen(
             }
         }
         }
+        
+        // Конфетти оверлей при выполнении привычки
+        ConfettiOverlay(
+            showConfetti = uiState.showConfetti,
+            onConfettiComplete = { viewModel.hideConfetti() }
+        )
     }
 }
 

@@ -1,13 +1,26 @@
 package com.habittracker.data.local.entity
 
 import androidx.room.Entity
+import androidx.room.Index
 import androidx.room.PrimaryKey
 import com.habittracker.domain.model.HabitFrequency
 import com.habittracker.domain.model.HabitType
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.LocalTime
 
-@Entity(tableName = "habits")
+@Entity(
+    tableName = "habits",
+    indices = [
+        Index(value = ["createdBy"]),
+        Index(value = ["type"]),
+        Index(value = ["isActive"]),
+        Index(value = ["startDate"]),
+        Index(value = ["endDate"]),
+        Index(value = ["inviteCode"], unique = true),
+        Index(value = ["createdBy", "isActive"]),
+        Index(value = ["type", "isActive"])
+    ]
+)
 data class HabitEntity(
     @PrimaryKey
     val id: String,

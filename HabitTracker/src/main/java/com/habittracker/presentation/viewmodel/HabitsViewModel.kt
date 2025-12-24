@@ -6,6 +6,7 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.habittracker.R
 import com.habittracker.domain.model.Habit
+import com.habittracker.domain.model.isGroupHabit
 import com.habittracker.domain.repository.AuthRepository
 import com.habittracker.domain.repository.UserRepository
 import com.habittracker.domain.usecase.DeleteHabitUseCase
@@ -16,6 +17,7 @@ import com.habittracker.domain.usecase.GetWeekCompletionDataUseCase
 import com.habittracker.domain.usecase.MarkHabitCompletedUseCase
 import com.habittracker.domain.usecase.MarkHabitIncompleteUseCase
 import com.habittracker.domain.usecase.ScheduleHabitReminderUseCase
+import com.habittracker.domain.usecase.habit.GetGroupHabitProgressUseCase
 import com.habittracker.domain.usecase.habit.JoinHabitByCodeUseCase
 import com.habittracker.presentation.state.HabitsUiState
 import com.habittracker.presentation.ui.habits.components.ParticipantProgress
@@ -32,6 +34,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.map
@@ -70,6 +73,7 @@ class HabitsViewModel @Inject constructor(
     private val scheduleHabitReminderUseCase: ScheduleHabitReminderUseCase,
     private val joinHabitByCodeUseCase: JoinHabitByCodeUseCase,
     private val getWeekCompletionDataUseCase: GetWeekCompletionDataUseCase,
+    private val getGroupHabitProgressUseCase: GetGroupHabitProgressUseCase,
     application: Application
 ) : AndroidViewModel(application) {
 
@@ -82,6 +86,9 @@ class HabitsViewModel @Inject constructor(
     
     // Prevent parallel collection of habits flow
     private var habitsJob: Job? = null
+    
+    // Job для подписки на прогресс групповых привычек
+    private var groupProgressJobs: MutableMap<String, Job> = mutableMapOf()
     
     // Pending deletion state for UNDO support
     private var pendingDeletion: PendingDeletion? = null
@@ -368,10 +375,36 @@ class HabitsViewModel @Inject constructor(
                                     Log.d(TAG, "getHabitCompletionStatusUseCase failed for habit=${habit.id}: ${e.message}")
                                     false
                                 }
+                                
+                                // Загружаем прогресс участников для групповых привычек
+                                val participantsProgress = if (habit.isGroupHabit()) {
+                                    try {
+                                        val groupProgress = getGroupHabitProgressUseCase(habit.id, date).firstOrNull()
+                                        groupProgress?.participants?.map { p ->
+                                            ParticipantProgress(
+                                                userId = p.user.id,
+                                                userName = p.user.name,
+                                                isCompletedToday = p.completedToday,
+                                                currentStreak = p.currentStreak,
+                                                completionRate = p.completionRate,
+                                                avatarUrl = p.user.avatarUrl
+                                            )
+                                        } ?: emptyList()
+                                    } catch (e: CancellationException) {
+                                        throw e
+                                    } catch (e: Exception) {
+                                        Log.d(TAG, "getGroupHabitProgressUseCase failed for habit=${habit.id}: ${e.message}")
+                                        emptyList()
+                                    }
+                                } else {
+                                    emptyList()
+                                }
+                                
                                 HabitWithCompletion(
                                     habit = habit,
                                     isCompletedToday = isCompleted,
-                                    isLoading = false
+                                    isLoading = false,
+                                    participantsProgress = participantsProgress
                                 )
                             }
                         }.awaitAll()
@@ -398,6 +431,9 @@ class HabitsViewModel @Inject constructor(
                     maxFutureDate = state.maxFutureDate
                 )
                 Log.d(TAG, "✅ [habits][ui] list updated (${state.habitsWithCompletion.size})")
+                
+                // Подписываемся на реактивные обновления прогресса групповых привычек
+                subscribeToGroupHabitsProgress(state.habitsWithCompletion)
             }
             .catch { e ->
                 Log.e(TAG, "❌ [habits][error] ${e.message}", e)
@@ -413,6 +449,74 @@ class HabitsViewModel @Inject constructor(
                 Log.d(TAG, "🛑 [loadHabitsForDate] Subscription completed normally")
             } else {
                 Log.d(TAG, "🛑 [loadHabitsForDate] Subscription cancelled/failed: ${cause.message}")
+            }
+        }
+    }
+    
+    // Текущая дата для которой загружен прогресс групповых привычек
+    private var lastGroupProgressDate: LocalDate? = null
+    
+    /**
+     * Подписывается на реактивные обновления прогресса групповых привычек
+     */
+    private fun subscribeToGroupHabitsProgress(habits: List<HabitWithCompletion>) {
+        val groupHabits = habits.filter { it.habit.isGroupHabit() }
+        val currentHabitIds = groupHabits.map { it.habit.id }.toSet()
+        val selectedDate = _uiState.value.selectedDate ?: today
+        
+        // Если дата изменилась, отменяем все подписки и создаём новые
+        val dateChanged = lastGroupProgressDate != selectedDate
+        if (dateChanged) {
+            groupProgressJobs.values.forEach { it.cancel() }
+            groupProgressJobs.clear()
+            lastGroupProgressDate = selectedDate
+        }
+        
+        // Отменяем подписки для привычек, которых больше нет в списке
+        groupProgressJobs.keys.toList().forEach { habitId ->
+            if (habitId !in currentHabitIds) {
+                groupProgressJobs[habitId]?.cancel()
+                groupProgressJobs.remove(habitId)
+            }
+        }
+        
+        // Создаём подписки для новых групповых привычек
+        groupHabits.forEach { habitWithCompletion ->
+            val habitId = habitWithCompletion.habit.id
+            
+            // Пропускаем, если уже есть активная подписка
+            if (groupProgressJobs[habitId]?.isActive == true) return@forEach
+            
+            groupProgressJobs[habitId] = viewModelScope.launch {
+                getGroupHabitProgressUseCase(habitId, selectedDate)
+                    .catch { e ->
+                        Log.d(TAG, "Group progress subscription error for habit=$habitId: ${e.message}")
+                    }
+                    .collect { groupProgress ->
+                        if (groupProgress != null) {
+                            val participantsProgress = groupProgress.participants.map { p ->
+                                ParticipantProgress(
+                                    userId = p.user.id,
+                                    userName = p.user.name,
+                                    isCompletedToday = p.completedToday,
+                                    currentStreak = p.currentStreak,
+                                    completionRate = p.completionRate,
+                                    avatarUrl = p.user.avatarUrl
+                                )
+                            }
+                            
+                            // Обновляем только participantsProgress для этой привычки
+                            _uiState.value = _uiState.value.copy(
+                                habitsWithCompletion = _uiState.value.habitsWithCompletion.map { hwc ->
+                                    if (hwc.habit.id == habitId) {
+                                        hwc.copy(participantsProgress = participantsProgress)
+                                    } else {
+                                        hwc
+                                    }
+                                }
+                            )
+                        }
+                    }
             }
         }
     }
@@ -464,6 +568,9 @@ class HabitsViewModel @Inject constructor(
                 // Обновляем финальное состояние
                 updateHabitCompletionStatus(habitId, true, isLoading = false)
                 
+                // Показываем конфетти при успешном выполнении
+                _uiState.value = _uiState.value.copy(showConfetti = true)
+                
                 // Инвалидируем кеш для недели с изменённой датой и перезагружаем данные
                 val weekStart = getStartOfWeek(selectedDate)
                 loadWeekCompletionData(currentUserId, weekStart, forceReload = true)
@@ -473,6 +580,13 @@ class HabitsViewModel @Inject constructor(
                 _uiState.value = _uiState.value.copy(error = getApplication<Application>().getString(R.string.error_mark_habit, e.localizedMessage ?: ""))
             }
         }
+    }
+    
+    /**
+     * Скрывает конфетти после завершения анимации
+     */
+    fun hideConfetti() {
+        _uiState.value = _uiState.value.copy(showConfetti = false)
     }
     
     /**
