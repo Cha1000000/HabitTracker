@@ -30,7 +30,9 @@ import com.habittracker.domain.usecase.GetWeekCompletionDataUseCase
 import com.habittracker.domain.usecase.MarkHabitCompletedUseCase
 import com.habittracker.domain.usecase.MarkHabitIncompleteUseCase
 import com.habittracker.domain.usecase.ScheduleHabitReminderUseCase
+import com.habittracker.domain.usecase.habit.GetGroupHabitProgressUseCase
 import com.habittracker.domain.usecase.habit.JoinHabitByCodeUseCase
+import com.habittracker.domain.usecase.habit.LeaveSharedHabitsWithFriendUseCase
 import com.habittracker.presentation.viewmodel.FriendsViewModel
 import com.habittracker.presentation.viewmodel.HabitsViewModel
 import com.habittracker.presentation.viewmodel.NotificationsViewModel
@@ -62,6 +64,8 @@ class HabitsScreenTest {
     private lateinit var ensureMySettingsForHabitUseCase: EnsureMySettingsForHabitUseCase
     private lateinit var scheduleHabitReminderUseCase: ScheduleHabitReminderUseCase
     private lateinit var getWeekCompletionDataUseCase: GetWeekCompletionDataUseCase
+    private lateinit var getGroupHabitProgressUseCase: GetGroupHabitProgressUseCase
+    private lateinit var leaveSharedHabitsWithFriendUseCase: LeaveSharedHabitsWithFriendUseCase
 
     private lateinit var notificationsViewModel: NotificationsViewModel
     private lateinit var friendsViewModel: FriendsViewModel
@@ -113,6 +117,8 @@ class HabitsScreenTest {
         scheduleHabitReminderUseCase = mockk(relaxed = true)
         getWeekCompletionDataUseCase = mockk(relaxed = true)
         coEvery { getWeekCompletionDataUseCase.invoke(any(), any()) } returns emptyMap()
+        getGroupHabitProgressUseCase = mockk(relaxed = true)
+        leaveSharedHabitsWithFriendUseCase = mockk(relaxed = true)
         val joinHabitByCodeUseCase = mockk<JoinHabitByCodeUseCase>(relaxed = true)
 
         // --- Real VMs constructed with mocks ---
@@ -128,6 +134,7 @@ class HabitsScreenTest {
             scheduleHabitReminderUseCase = scheduleHabitReminderUseCase,
             joinHabitByCodeUseCase = joinHabitByCodeUseCase,
             getWeekCompletionDataUseCase = getWeekCompletionDataUseCase,
+            getGroupHabitProgressUseCase = getGroupHabitProgressUseCase,
             application = composeRule.activity.application
         )
 
@@ -165,7 +172,11 @@ class HabitsScreenTest {
             )
         )
 
-        friendsViewModel = FriendsViewModel(socialRepository, authRepoForFriends)
+        friendsViewModel = FriendsViewModel(
+            socialRepository = socialRepository,
+            authRepository = authRepoForFriends,
+            leaveSharedHabitsWithFriendUseCase = leaveSharedHabitsWithFriendUseCase
+        )
 
         // Set content with our VMs
         composeRule.setContent {
