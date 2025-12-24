@@ -23,6 +23,7 @@ import com.habittracker.domain.repository.UserRepository
 import com.habittracker.presentation.navigation.AppNavHost
 import com.habittracker.presentation.navigation.Screen
 import com.habittracker.presentation.ui.theme.HabitTrackerTheme
+import com.habittracker.presentation.util.SoundManager
 import com.habittracker.presentation.viewmodel.AuthState
 import com.habittracker.presentation.viewmodel.AuthViewModel
 import dagger.hilt.android.AndroidEntryPoint
@@ -50,6 +51,8 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
+        SoundManager.preload(applicationContext)
         // Устанавливаем системный SplashScreen как можно раньше
         val splash = installSplashScreen()
         // Не задерживаем систему — сразу продолжаем рендер

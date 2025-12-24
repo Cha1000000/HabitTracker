@@ -47,6 +47,7 @@ import androidx.compose.ui.graphics.Outline
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
@@ -60,6 +61,7 @@ import com.habittracker.domain.model.HabitFrequency
 import com.habittracker.domain.model.HabitType
 import com.habittracker.domain.model.isGroupHabit
 import com.habittracker.presentation.ui.components.AnimatedCheckmark
+import com.habittracker.presentation.util.SoundManager
 import com.habittracker.presentation.viewmodel.HabitWithCompletion
 import kotlinx.datetime.Clock
 import kotlinx.datetime.LocalTime
@@ -83,6 +85,7 @@ fun EnhancedHabitItem(
     val habit = habitWithCompletion.habit
     var showMenu by remember { mutableStateOf(false) }
     val haptic = LocalHapticFeedback.current
+    val context = LocalContext.current
 
     val isDone = habitWithCompletion.isCompletedToday
     val successColor = Color(0xFF4CAF50)
@@ -235,7 +238,16 @@ fun EnhancedHabitItem(
                                 }
                             }
                         }
-                        IconButton(onClick = onToggleCompletion, enabled = !habitWithCompletion.isLoading) {
+                        IconButton(
+                            onClick = {
+                                // Воспроизводим звук только при отметке как выполненной
+                                if (!habitWithCompletion.isCompletedToday) {
+                                    SoundManager.playSuccessSound(context)
+                                }
+                                onToggleCompletion()
+                            },
+                            enabled = !habitWithCompletion.isLoading
+                        ) {
                             if (habitWithCompletion.isLoading) {
                                 CircularProgressIndicator(modifier = Modifier.size(24.dp), strokeWidth = 2.dp)
                             } else {
