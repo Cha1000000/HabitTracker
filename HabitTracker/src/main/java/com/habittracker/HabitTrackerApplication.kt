@@ -8,6 +8,7 @@ import com.google.firebase.appcheck.FirebaseAppCheck
 import com.habittracker.data.service.AppStateManager
 import com.habittracker.data.sync.ChallengeExpirationWorkScheduler
 import com.habittracker.data.sync.SyncWorkScheduler
+import com.habittracker.data.local.seed.AchievementSeeder
 import com.habittracker.domain.usecase.notification.ManageFCMTokenUseCase
 import dagger.hilt.android.HiltAndroidApp
 import kotlinx.coroutines.CoroutineScope
@@ -37,6 +38,9 @@ class HabitTrackerApplication : Application(), Configuration.Provider {
     @Inject
     lateinit var appStateManager: AppStateManager
     
+    @Inject
+    lateinit var achievementSeeder: AchievementSeeder
+    
     // Application-level scope for non-blocking init tasks
     private val applicationScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
     
@@ -55,6 +59,17 @@ class HabitTrackerApplication : Application(), Configuration.Provider {
             manageFCMTokenUseCase.initializeFCMToken().onFailure { e ->
                 if (BuildConfig.DEBUG) {
                     Log.d("HabitTrackerApp", "FCM init skipped/failed: ${e.message}")
+                }
+            }
+        }
+        
+        // Seed achievements on first launch
+        applicationScope.launch {
+            try {
+                achievementSeeder.seedIfNeeded()
+            } catch (e: Exception) {
+                if (BuildConfig.DEBUG) {
+                    Log.d("HabitTrackerApp", "Achievement seeding failed: ${e.message}")
                 }
             }
         }

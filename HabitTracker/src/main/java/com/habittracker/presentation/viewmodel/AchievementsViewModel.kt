@@ -24,7 +24,8 @@ class AchievementsViewModel @Inject constructor(
     val uiState: StateFlow<AchievementsUiState> = _uiState.asStateFlow()
 
     init {
-        loadAllAchievements()
+        // Загружаем первую категорию (HABITS) при открытии экрана
+        loadAchievementsByCategory(AchievementCategory.HABITS)
     }
 
     fun loadAllAchievements() {
@@ -46,12 +47,17 @@ class AchievementsViewModel @Inject constructor(
                 }
 
                 getAchievementsUseCase.execute(currentUser.id, category).collect { achievements ->
+                    val sorted = achievements.sortedWith(
+                        compareByDescending<com.habittracker.domain.model.AchievementWithProgress> { it.isUnlocked }
+                            .thenByDescending { it.progress }
+                            .thenBy { it.achievement.title.lowercase() }
+                    )
                     val unlockedCount = achievements.count { it.isUnlocked }
                     val totalCount = achievements.size
                     
                     _uiState.value = _uiState.value.copy(
                         isLoading = false,
-                        achievements = achievements,
+                        achievements = sorted,
                         unlockedCount = unlockedCount,
                         totalCount = totalCount,
                         selectedCategory = category,

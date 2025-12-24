@@ -722,23 +722,23 @@
     <string name="achievements_progress">%1$d из %2$d разблокировано</string>
     <string name="achievements_loading">Загрузка достижений…</string>
     <string name="achievements_error">Ошибка загрузки</string>
-    <string name="achievements_empty">Достижений пока нет</string>
-    <string name="achievements_empty_description">Начните создавать привычки, чтобы разблокировать достижения</string>
-    
-    <!-- Achievement Categories -->
+    <string name="achievements_empty">Нет достижений</string>
+    <string name="achievements_empty_description">Пока здесь пусто. Выполняйте привычки, участвуйте в челленджах и добавляйте друзей, чтобы открыть достижения!</string>
     <string name="achievements_habits">Привычки</string>
     <string name="achievements_streaks">Серии</string>
-    <string name="achievements_social">Социальное</string>
-    <string name="achievements_challenges">Вызовы</string>
-    <string name="achievements_milestones">Рубежи</string>
+    <string name="achievements_social">Социальные</string>
+    <string name="achievements_challenges">Челленджи</string>
+    <string name="achievements_milestones">Вехи</string>
     <string name="achievements_special">Особые</string>
+    <string name="achievements_near_to_unlock">Близко к получению</string>
     
-    <!-- Achievement Status -->
     <string name="achievement_unlocked">Разблокировано</string>
-    <string name="achievement_unlocked_title">Достижение разблокировано!</string>
-    <string name="points_label">очков</string>
     <string name="achievement_locked">Заблокировано</string>
     <string name="achievement_progress">Прогресс</string>
+    
+    <!-- Achievement Status -->
+    <string name="achievement_unlocked_title">Достижение разблокировано!</string>
+    <string name="points_label">очков</string>
     <string name="achievement_reward">+%1$d очков</string>
     
     <!-- Notification Settings Screen -->

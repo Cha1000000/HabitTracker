@@ -75,6 +75,15 @@ fun AchievementsScreen(
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     var selectedTabIndex by remember { mutableIntStateOf(0) }
     val isDarkTheme = isSystemInDarkTheme()
+    val nearToUnlock = uiState.achievements
+        .asSequence()
+        .filter { !it.isUnlocked }
+        .filter { it.progress > 0f && it.progress < 1f }
+        .sortedByDescending { it.progress }
+        .take(3)
+        .toList()
+    val nearIds = nearToUnlock.map { it.achievement.id }.toSet()
+    val remainingAchievements = uiState.achievements.filterNot { nearIds.contains(it.achievement.id) }
     
     val categories = listOf(
         AchievementCategory.HABITS to stringResource(R.string.achievements_habits),
@@ -257,7 +266,24 @@ fun AchievementsScreen(
                         contentPadding = PaddingValues(16.dp),
                         verticalArrangement = Arrangement.spacedBy(12.dp)
                     ) {
-                        items(uiState.achievements) { achievement ->
+                        if (nearToUnlock.isNotEmpty()) {
+                            item {
+                                Text(
+                                    text = stringResource(R.string.achievements_near_to_unlock),
+                                    style = MaterialTheme.typography.titleMedium,
+                                    fontWeight = FontWeight.Bold,
+                                    color = MaterialTheme.colorScheme.onBackground
+                                )
+                            }
+                            items(nearToUnlock) { achievement ->
+                                AchievementCard(
+                                    achievement = achievement,
+                                    modifier = Modifier.fillMaxWidth()
+                                )
+                            }
+                        }
+
+                        items(remainingAchievements) { achievement ->
                             AchievementCard(
                                 achievement = achievement,
                                 modifier = Modifier.fillMaxWidth()
