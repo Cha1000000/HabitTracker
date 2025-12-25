@@ -7,7 +7,9 @@ import com.habittracker.data.firestore.UserFirestoreConverter
 import com.habittracker.data.local.dao.FriendRequestDao
 import com.habittracker.data.local.dao.FriendshipDao
 import com.habittracker.data.local.dao.HabitInvitationDao
+import com.habittracker.data.local.dao.SyncOutboxDao
 import com.habittracker.data.local.dao.UserDao
+import com.habittracker.data.local.entity.UserEntity
 import com.habittracker.data.local.mappers.toDomain
 import com.habittracker.data.local.mappers.toEntity
 import com.habittracker.data.remote.mappers.toDomain
@@ -70,11 +72,26 @@ class SocialRepositoryImpl @Inject constructor(
     private val habitRepository: HabitRepository,
     private val syncManager: SyncManager,
     private val syncWorkScheduler: SyncWorkScheduler,
-    private val notificationRepository: GroupHabitNotificationRepository
+    private val notificationRepository: GroupHabitNotificationRepository,
+    private val syncOutboxDao: SyncOutboxDao
 ) : SocialRepository {
 
     // Repository-level scope for fire-and-forget background tasks (safe: singleton)
     private val repoScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+
+    private suspend fun upsertLocalUser(entity: UserEntity) {
+        val existing = try {
+            userDao.getUserById(entity.id)
+        } catch (e: Exception) {
+            Log.w("SocialRepository", "upsertLocalUser: getUserById failed for id=${entity.id}: ${e.message}")
+            null
+        }
+        if (existing == null) {
+            userDao.insertUser(entity)
+        } else {
+            userDao.updateUser(entity)
+        }
+    }
 
     // Helper to mask sensitive token values in logs
     private fun maskToken(token: String?): String {
@@ -82,59 +99,77 @@ class SocialRepositoryImpl @Inject constructor(
         return if (token.length > 8) "${token.take(4)}****${token.takeLast(4)}" else "****"
     }
 
+    // Helper to parse timestamp from Firestore (supports both Number and ISO 8601 String)
+    private fun parseTimestamp(value: Any?, fallback: Long = System.currentTimeMillis()): Long {
+        return when (value) {
+            is Number -> value.toLong()
+            is String -> try {
+                // Try parsing as ISO 8601 LocalDateTime (e.g., "2025-12-16T11:05:03")
+                kotlinx.datetime.LocalDateTime.parse(value)
+                    .toInstant(TimeZone.currentSystemDefault())
+                    .toEpochMilliseconds()
+            } catch (e: Exception) {
+                try {
+                    // Try parsing as ISO 8601 LocalDate (e.g., "2025-12-16")
+                    kotlinx.datetime.LocalDate.parse(value)
+                        .atStartOfDayIn(TimeZone.currentSystemDefault())
+                        .toEpochMilliseconds()
+                } catch (e2: Exception) {
+                    fallback
+                }
+            }
+            else -> fallback
+        }
+    }
+
     override suspend fun searchUsers(query: String, currentUserId: String): List<User> {
+        val queryLower = query.lowercase()
+        
+        // Получаем список ID друзей для исключения из результатов
+        val friendIds = try {
+            friendshipDao.getFriendIdsForUser(currentUserId)
+        } catch (e: Exception) {
+            emptyList()
+        }
+        
         return try {
             Log.d("SocialRepository", "🔍 Searching users: query='$query', currentUserId='$currentUserId'")
             
-            // Поиск в Firestore по имени и email
-            val nameResults = firestore.collection("users")
-                .whereGreaterThanOrEqualTo("name", query)
-                .whereLessThanOrEqualTo("name", query + "\uf8ff")
-                .limit(20)
-                .get()
+            // Загружаем всех пользователей и фильтруем локально
+            // (Firestore не поддерживает поиск подстроки в середине строки)
+            val allUsersSnapshot = firestore.collection("users")
+                .limit(200)
+                .get(com.google.firebase.firestore.Source.SERVER)
                 .await()
-            
-            Log.d("SocialRepository", "📝 Name results: ${nameResults.documents.size} documents")
 
-            val emailResults = firestore.collection("users")
-                .whereGreaterThanOrEqualTo("email", query)
-                .whereLessThanOrEqualTo("email", query + "\uf8ff")
-                .limit(20)
-                .get()
-                .await()
-                
-            Log.d("SocialRepository", "📧 Email results: ${emailResults.documents.size} documents")
-
-            val allResults = (nameResults.documents + emailResults.documents)
-                .distinctBy { it.id }
+            val allResults = allUsersSnapshot.documents
                 .mapNotNull { doc ->
                     try {
-                        Log.d("SocialRepository", "🔄 Processing document: id=${doc.id}")
-                        // Используем профессиональный конвертер вместо стандартной десериализации
-                        val user = UserFirestoreConverter.fromFirestore(doc.data ?: emptyMap(), doc.id)
-                        if (user != null) {
-                            Log.d("SocialRepository", "✅ Successfully converted user: id=${user.id}, name=${user.name}, email=${user.email}")
-                        } else {
-                            Log.w("SocialRepository", "⚠️ UserFirestoreConverter returned null for document: id=${doc.id}")
-                        }
-                        user
+                        UserFirestoreConverter.fromFirestore(doc.data ?: emptyMap(), doc.id)
                     } catch (e: Exception) {
-                        Log.e("SocialRepository", "❌ Error mapping user document: ${e.message}")
                         null
                     }
                 }
-                .filter { it.id != currentUserId } // Исключаем текущего пользователя
+                .filter { user ->
+                    user.id != currentUserId &&
+                    user.id !in friendIds &&
+                    (user.name.lowercase().contains(queryLower) || user.email.lowercase().contains(queryLower))
+                }
+                .take(20)
         
-            Log.d("SocialRepository", "🎯 Before filtering: ${allResults.size + (if (allResults.any { it.id == currentUserId }) 1 else 0)} users")
-            Log.d("SocialRepository", "🎯 After filtering (excluding currentUserId=$currentUserId): ${allResults.size} users")
+            Log.d("SocialRepository", "🎯 After filtering: ${allResults.size} users")
             allResults
         } catch (e: Exception) {
             Log.e("SocialRepository", "💥 Firestore search failed: ${e.message}")
             
             // Fallback на локальный поиск
-            val localResults = userDao.searchUsers("%$query%")
+            val localResults = userDao.searchUsers("%$queryLower%")
                 .map { it.toDomain() }
-                .filter { it.id != currentUserId }
+                .filter { user ->
+                    user.id != currentUserId &&
+                    user.id !in friendIds &&
+                    (user.name.lowercase().contains(queryLower) || user.email.lowercase().contains(queryLower))
+                }
                 
             Log.d("SocialRepository", "🗄️ Fallback local results: ${localResults.size} users")
             localResults
@@ -168,19 +203,28 @@ class SocialRepositoryImpl @Inject constructor(
             val doc = firestore.collection("users").document(userId).get().await()
             if (doc.exists()) {
                 val data = doc.data ?: emptyMap()
-                Log.d("SocialRepository", "📋 Firestore data for $userId: fcmToken=${data["fcmToken"]?.toString()?.take(20)}...")
+                val hasToken = !(data["fcmToken"] as? String).isNullOrBlank()
+                Log.d("SocialRepository", "📋 Firestore data for $userId: fcmToken=${if (hasToken) "EXISTS" else "EMPTY"}")
                 
                 val user = UserFirestoreConverter.fromFirestore(data, doc.id)
                 // Обновляем локальный кэш с актуальными данными
                 user?.let {
                     try {
-                        userDao.insertUser(it.toEntity())
-                        Log.d("SocialRepository", "✅ Local cache updated for user $userId")
+                        val hasPending = try {
+                            syncManager.hasPendingOperations("user", it.id)
+                        } catch (e: Exception) {
+                            Log.w("SocialRepository", "getUserByIdFromFirestore: hasPendingOperations failed for userId=${it.id}: ${e.message}")
+                            false
+                        }
+                        if (!hasPending) {
+                            upsertLocalUser(it.toEntity())
+                            Log.d("SocialRepository", "✅ Local cache updated for user $userId")
+                        }
                     } catch (e: Exception) {
                         Log.w("SocialRepository", "Failed to update local cache for user $userId", e)
                     }
                 }
-                Log.d("SocialRepository", "✅ User fetched: ${user?.name}, fcmToken: ${user?.fcmToken?.take(8)}...${user?.fcmToken?.takeLast(4)}")
+                Log.d("SocialRepository", "✅ User fetched: ${user?.name}")
                 user
             } else {
                 Log.w("SocialRepository", "❌ User not found in Firestore: $userId")
@@ -202,9 +246,14 @@ class SocialRepositoryImpl @Inject constructor(
                     .get().await()
                 tokensQuery.documents.forEach { doc ->
                     if (doc.id != userId) {
-                        firestore.collection("users").document(doc.id)
-                            .update("fcmTokens", FieldValue.arrayRemove(token))
-                            .await()
+                        val now = System.currentTimeMillis()
+                        syncManager.enqueueArrayRemove(
+                            entityType = "user",
+                            entityId = doc.id,
+                            fieldPath = "fcmTokens",
+                            values = listOf(token),
+                            updatedAt = now
+                        )
                     }
                 }
 
@@ -214,25 +263,34 @@ class SocialRepositoryImpl @Inject constructor(
                     .get().await()
                 legacyQuery.documents.forEach { doc ->
                     if (doc.id != userId) {
-                        firestore.collection("users").document(doc.id)
-                            .update("fcmToken", FieldValue.delete())
-                            .await()
+                        // Legacy cleanup intentionally omitted: field deletes require FieldValue.delete().
+                        // The app uses fcmTokens[] as source of truth for multi-device.
                     }
                 }
             } catch (e: Exception) {
-                // Не критично: в худшем случае токен временно будет подвязан к двум аккаунтам
+                // Не критично: в худшем случае токен временно будет подвязан к двум аккаунтами
                 Log.w("SocialRepository", "updateUserFcmToken cleanup (remove token from other users) failed: ${e.message}", e)
             }
 
             // 2) Добавляем токен текущему пользователю (массив + legacy)
-            firestore.collection("users").document(userId)
-                .update(
-                    mapOf(
-                        "fcmTokens" to FieldValue.arrayUnion(token),
-                        "fcmToken" to token
-                    )
-                )
-                .await()
+            val now = System.currentTimeMillis()
+            syncManager.enqueueArrayUnion(
+                entityType = "user",
+                entityId = userId,
+                fieldPath = "fcmTokens",
+                values = listOf(token),
+                updatedAt = now
+            )
+            val payload = org.json.JSONObject()
+                .put("fcmToken", token)
+                .put("updatedAt", now)
+                .toString()
+            syncManager.enqueueUpsert(
+                entityType = "user",
+                entityId = userId,
+                payloadJson = payload,
+                updatedAt = now
+            )
         } catch (e: Exception) {
             // Обновляем локально (сохраним единственный токен в legacy поле)
             Log.w("SocialRepository", "updateUserFcmToken remote update failed for user=$userId: ${e.message}", e)
@@ -244,17 +302,22 @@ class SocialRepositoryImpl @Inject constructor(
     }
 
     override suspend fun updateFriendsCount(userId: String, count: Int) {
-        try {
-            firestore.collection("users").document(userId)
-                .update("friendsCount", count)
-                .await()
-        } catch (e: Exception) {
-            // Обновляем локально
-            Log.w("SocialRepository", "updateFriendsCount remote update failed for user=$userId: ${e.message}", e)
-            val user = userDao.getUserById(userId)
-            user?.let {
-                userDao.updateUser(it.copy(friendsCount = count))
-            }
+        val user = userDao.getUserById(userId)
+        if (user != null) {
+            val updatedUser = user.copy(friendsCount = count)
+            userDao.updateUser(updatedUser)
+            
+            // Enqueue sync via Outbox
+            val now = System.currentTimeMillis()
+            val payload = SyncPayloads.userToJson(updatedUser.toDomain(), now)
+            syncManager.enqueueUpsert(
+                entityType = "user",
+                entityId = userId,
+                payloadJson = payload,
+                updatedAt = now
+            )
+        } else {
+            Log.w("SocialRepository", "updateFriendsCount: User $userId not found locally")
         }
     }
 
@@ -383,18 +446,22 @@ class SocialRepositoryImpl @Inject constructor(
             
             // Важно: сначала сохраняем пользователей, чтобы избежать FOREIGN KEY constraint
             try {
-                val fromUser = searchUsers("", "").find { it.id == friendRequest.fromUserId }
-                val toUser = searchUsers("", "").find { it.id == friendRequest.toUserId }
+                val fromUser = getUserById(friendRequest.fromUserId)
+                val toUser = getUserById(friendRequest.toUserId)
                 
                 if (fromUser != null) {
-                    userDao.insertUser(fromUser.toEntity())
+                    upsertLocalUser(fromUser.toEntity())
+                } else {
+                    Log.w("SocialRepository", "acceptFriendRequest: fromUser not found for id=${friendRequest.fromUserId}")
                 }
                 
                 if (toUser != null) {
-                    userDao.insertUser(toUser.toEntity())
+                    upsertLocalUser(toUser.toEntity())
+                } else {
+                    Log.w("SocialRepository", "acceptFriendRequest: toUser not found for id=${friendRequest.toUserId}")
                 }
             } catch (e: Exception) {
-                Log.d("SocialRepository", "acceptFriendRequest: optional user upsert failed (non-fatal): ${e.message}")
+                Log.w("SocialRepository", "acceptFriendRequest: user upsert failed: ${e.message}", e)
             }
             
             friendshipDao.insertFriendship(friendship.toEntity())
@@ -555,11 +622,19 @@ class SocialRepositoryImpl @Inject constructor(
                                 val remote = doc.toObject(FriendRequestRemote::class.java)
                                 val fr = remote?.toDomain(doc.id)
                                 if (fr != null) {
-                                    friendRequestDao.insertFriendRequest(fr.toEntity())
+                                    val hasPending = try {
+                                        syncManager.hasPendingOperations("friend_request", fr.id)
+                                    } catch (e: Exception) {
+                                        Log.w("SocialRepository", "Incoming FR hasPendingOperations failed (id=${fr.id}): ${e.message}")
+                                        false
+                                    }
+                                    if (!hasPending) {
+                                        friendRequestDao.insertFriendRequest(fr.toEntity())
+                                    }
                                     // Prefetch users to avoid UI dropping item due to null users
                                     try {
-                                        getUserById(fr.fromUserId)?.let { userDao.insertUser(it.toEntity()) }
-                                        getUserById(fr.toUserId)?.let { userDao.insertUser(it.toEntity()) }
+                                        getUserById(fr.fromUserId)?.let { upsertLocalUser(it.toEntity()) }
+                                        getUserById(fr.toUserId)?.let { upsertLocalUser(it.toEntity()) }
                                     } catch (e: Exception) {
                                         Log.d("SocialRepository", "Incoming FR prefetch users failed (non-fatal): ${e.message}")
                                     }
@@ -571,7 +646,15 @@ class SocialRepositoryImpl @Inject constructor(
                         // Reconcile: удаляем локальные PENDING входящие, которых нет в снапшоте
                         try {
                             val local = friendRequestDao.getIncomingFriendRequests(userId).first()
-                            val toDelete = local.filter { it.id !in remoteIds }
+                            val toDelete = local.filter { entity ->
+                                if (entity.id in remoteIds) return@filter false
+                                val hasPending = try {
+                                    syncOutboxDao.hasPendingForEntity("friend_request", entity.id)
+                                } catch (_: Exception) {
+                                    false
+                                }
+                                !hasPending
+                            }
                             if (toDelete.isNotEmpty()) {
                                 Log.d("SocialRepository", "Incoming FR reconcile: deleting ${toDelete.size} stale records")
                                 toDelete.forEach { fr -> friendRequestDao.deleteFriendRequestById(fr.id) }
@@ -627,11 +710,19 @@ class SocialRepositoryImpl @Inject constructor(
                                 val remote = doc.toObject(FriendRequestRemote::class.java)
                                 val fr = remote?.toDomain(doc.id)
                                 if (fr != null) {
-                                    friendRequestDao.insertFriendRequest(fr.toEntity())
+                                    val hasPending = try {
+                                        syncManager.hasPendingOperations("friend_request", fr.id)
+                                    } catch (e: Exception) {
+                                        Log.w("SocialRepository", "Outgoing FR hasPendingOperations failed (id=${fr.id}): ${e.message}")
+                                        false
+                                    }
+                                    if (!hasPending) {
+                                        friendRequestDao.insertFriendRequest(fr.toEntity())
+                                    }
                                     // Prefetch users to avoid UI dropping item due to null users
                                     try {
-                                        getUserById(fr.fromUserId)?.let { userDao.insertUser(it.toEntity()) }
-                                        getUserById(fr.toUserId)?.let { userDao.insertUser(it.toEntity()) }
+                                        getUserById(fr.fromUserId)?.let { upsertLocalUser(it.toEntity()) }
+                                        getUserById(fr.toUserId)?.let { upsertLocalUser(it.toEntity()) }
                                     } catch (e: Exception) {
                                         Log.d("SocialRepository", "Outgoing FR prefetch users failed (non-fatal): ${e.message}")
                                     }
@@ -643,7 +734,15 @@ class SocialRepositoryImpl @Inject constructor(
                         // Reconcile: удаляем локальные PENDING исходящие, которых нет в снапшоте
                         try {
                             val local = friendRequestDao.getOutgoingFriendRequests(userId).first()
-                            val toDelete = local.filter { it.id !in remoteIds }
+                            val toDelete = local.filter { entity ->
+                                if (entity.id in remoteIds) return@filter false
+                                val hasPending = try {
+                                    syncOutboxDao.hasPendingForEntity("friend_request", entity.id)
+                                } catch (_: Exception) {
+                                    false
+                                }
+                                !hasPending
+                            }
                             if (toDelete.isNotEmpty()) {
                                 Log.d("SocialRepository", "Outgoing FR reconcile: deleting ${toDelete.size} stale records")
                                 toDelete.forEach { fr -> friendRequestDao.deleteFriendRequestById(fr.id) }
@@ -818,32 +917,34 @@ class SocialRepositoryImpl @Inject constructor(
             // Накопление ключей из обоих слушателей для reconcile
             var lastKeys1: Set<String> = emptySet()
             var lastKeys2: Set<String> = emptySet()
+            var listener1Received = false
+            var listener2Received = false
             suspend fun reconcileFriends() {
+                // Ждём пока оба listener'а получат хотя бы один snapshot
+                if (!listener1Received || !listener2Received) return
                 val combined = (lastKeys1 + lastKeys2).toSet()
                 try {
                     val local = friendshipDao.getFriendsForUser(userId).first()
                     val toDelete = local.filter { entity ->
                         val key = "${entity.userId1}_${entity.userId2}"
-                        key !in combined
+                        if (key in combined) return@filter false
+                        // Не удаляем, если есть pending операция синхронизации
+                        val hasPending = syncOutboxDao.hasPendingOperation("friendship", key) > 0
+                        !hasPending
                     }
-                    if (toDelete.isNotEmpty()) {
-                        Log.d("SocialRepository", "Friends reconcile: deleting ${toDelete.size} stale friendships for user=$userId")
-                        toDelete.forEach { entity ->
-                            friendshipDao.deleteFriendshipBetweenUsers(entity.userId1, entity.userId2)
-                        }
+                    toDelete.forEach { entity ->
+                        friendshipDao.deleteFriendshipBetweenUsers(entity.userId1, entity.userId2)
                     }
-                } catch (e: Exception) {
-                    Log.w("SocialRepository", "Friends reconcile failed for user=$userId: ${e.message}", e)
-                }
+                } catch (_: Exception) { }
             }
             // Два слушателя: userId как userId1 и как userId2
             val reg1 = firestore.collection("friendships")
                 .whereEqualTo("userId1", userId)
                 .addSnapshotListener { snapshot, error ->
-                    if (error != null) { Log.w("SocialRepository", "Friends listener1 error: ${error.message}", error); return@addSnapshotListener }
+                    if (error != null) return@addSnapshotListener
                     val docs = snapshot?.documents ?: emptyList()
-                    Log.d("SocialRepository", "Friends listener1: userId1=$userId, docs=${docs.size}")
                     scope.launch {
+                        listener1Received = true
                         // Текущий набор ключей из этого снапшота
                         lastKeys1 = docs.mapNotNull { d ->
                             val data = d.data ?: return@mapNotNull null
@@ -860,7 +961,7 @@ class SocialRepositoryImpl @Inject constructor(
                                 try {
                                     val u1 = getUserById(userId1)
                                     if (u1 != null) {
-                                        userDao.insertUser(u1.toEntity())
+                                        upsertLocalUser(u1.toEntity())
                                     }
                                 } catch (e: Exception) {
                                     Log.d("SocialRepository", "Prefetch user failed (userId1=$userId1): ${e.message}")
@@ -868,18 +969,18 @@ class SocialRepositoryImpl @Inject constructor(
                                 try {
                                     val u2 = getUserById(userId2)
                                     if (u2 != null) {
-                                        userDao.insertUser(u2.toEntity())
+                                        upsertLocalUser(u2.toEntity())
                                     }
                                 } catch (e: Exception) {
                                     Log.d("SocialRepository", "Prefetch user failed (userId2=$userId2): ${e.message}")
                                 }
                                 val status = (data["status"] as? String)?.let { runCatching { FriendshipStatus.valueOf(it.uppercase()) }.getOrNull() } ?: FriendshipStatus.PENDING
                                 val requestedBy = data["requestedBy"] as? String ?: userId1
-                                val requestedAt = (data["requestedAt"] as? Number)?.toLong() ?: System.currentTimeMillis()
-                                val acceptedAt = (data["acceptedAt"] as? Number)?.toLong()
+                                val requestedAt = parseTimestamp(data["requestedAt"])
+                                val acceptedAt = data["acceptedAt"]?.let { parseTimestamp(it) }
                                 val blockedBy = data["blockedBy"] as? String
-                                val blockedAt = (data["blockedAt"] as? Number)?.toLong()
-                                val updatedAt = (data["updatedAt"] as? Number)?.toLong() ?: requestedAt
+                                val blockedAt = data["blockedAt"]?.let { parseTimestamp(it) }
+                                val updatedAt = parseTimestamp(data["updatedAt"], requestedAt)
 
                                 val fs = Friendship(
                                     userId1 = userId1,
@@ -892,9 +993,17 @@ class SocialRepositoryImpl @Inject constructor(
                                     blockedAt = blockedAt?.let { Instant.fromEpochMilliseconds(it).toLocalDateTime(TimeZone.currentSystemDefault()) },
                                     updatedAt = Instant.fromEpochMilliseconds(updatedAt).toLocalDateTime(TimeZone.currentSystemDefault()).date
                                 )
-                                friendshipDao.insertFriendship(fs.toEntity())
+                                val key = if (userId1 < userId2) "${userId1}_${userId2}" else "${userId2}_${userId1}"
+                                val hasPending = try {
+                                    syncOutboxDao.hasPendingForEntity("friendship", key)
+                                } catch (_: Exception) {
+                                    false
+                                }
+                                if (!hasPending) {
+                                    friendshipDao.insertFriendship(fs.toEntity())
+                                }
                             } catch (e: Exception) {
-                                Log.w("SocialRepository", "Friends listener1 mapping error for doc=${doc.id}: ${e.message}", e)
+                                Log.w("SocialRepository", "Friends listener1 mapping error: ${e.message}")
                             }
                         }
                         // Reconcile после обработки снапшота
@@ -905,10 +1014,10 @@ class SocialRepositoryImpl @Inject constructor(
             val reg2 = firestore.collection("friendships")
                 .whereEqualTo("userId2", userId)
                 .addSnapshotListener { snapshot, error ->
-                    if (error != null) { Log.w("SocialRepository", "Friends listener2 error: ${error.message}", error); return@addSnapshotListener }
+                    if (error != null) return@addSnapshotListener
                     val docs = snapshot?.documents ?: emptyList()
-                    Log.d("SocialRepository", "Friends listener2: userId2=$userId, docs=${docs.size}")
                     scope.launch {
+                        listener2Received = true
                         // Текущий набор ключей из этого снапшота
                         lastKeys2 = docs.mapNotNull { d ->
                             val data = d.data ?: return@mapNotNull null
@@ -925,7 +1034,7 @@ class SocialRepositoryImpl @Inject constructor(
                                 try {
                                     val u1 = getUserById(userId1)
                                     if (u1 != null) {
-                                        userDao.insertUser(u1.toEntity())
+                                        upsertLocalUser(u1.toEntity())
                                     }
                                 } catch (e: Exception) {
                                     Log.d("SocialRepository", "Friends listener2 prefetch user failed (userId1=$userId1): ${e.message}")
@@ -933,18 +1042,18 @@ class SocialRepositoryImpl @Inject constructor(
                                 try {
                                     val u2 = getUserById(userId2)
                                     if (u2 != null) {
-                                        userDao.insertUser(u2.toEntity())
+                                        upsertLocalUser(u2.toEntity())
                                     }
                                 } catch (e: Exception) {
                                     Log.d("SocialRepository", "Friends listener2 prefetch user failed (userId2=$userId2): ${e.message}")
                                 }
                                 val status = (data["status"] as? String)?.let { runCatching { FriendshipStatus.valueOf(it.uppercase()) }.getOrNull() } ?: FriendshipStatus.PENDING
                                 val requestedBy = data["requestedBy"] as? String ?: userId1
-                                val requestedAt = (data["requestedAt"] as? Number)?.toLong() ?: System.currentTimeMillis()
-                                val acceptedAt = (data["acceptedAt"] as? Number)?.toLong()
+                                val requestedAt = parseTimestamp(data["requestedAt"])
+                                val acceptedAt = data["acceptedAt"]?.let { parseTimestamp(it) }
                                 val blockedBy = data["blockedBy"] as? String
-                                val blockedAt = (data["blockedAt"] as? Number)?.toLong()
-                                val updatedAt = (data["updatedAt"] as? Number)?.toLong() ?: requestedAt
+                                val blockedAt = data["blockedAt"]?.let { parseTimestamp(it) }
+                                val updatedAt = parseTimestamp(data["updatedAt"], requestedAt)
 
                                 val fs = Friendship(
                                     userId1 = userId1,
@@ -957,9 +1066,17 @@ class SocialRepositoryImpl @Inject constructor(
                                     blockedAt = blockedAt?.let { Instant.fromEpochMilliseconds(it).toLocalDateTime(TimeZone.currentSystemDefault()) },
                                     updatedAt = Instant.fromEpochMilliseconds(updatedAt).toLocalDateTime(TimeZone.currentSystemDefault()).date
                                 )
-                                friendshipDao.insertFriendship(fs.toEntity())
+                                val key = if (userId1 < userId2) "${userId1}_${userId2}" else "${userId2}_${userId1}"
+                                val hasPending = try {
+                                    syncOutboxDao.hasPendingForEntity("friendship", key)
+                                } catch (_: Exception) {
+                                    false
+                                }
+                                if (!hasPending) {
+                                    friendshipDao.insertFriendship(fs.toEntity())
+                                }
                             } catch (e: Exception) {
-                                Log.w("SocialRepository", "Friends listener2 mapping error for doc=${doc.id}: ${e.message}", e)
+                                Log.w("SocialRepository", "Friends listener2 mapping error: ${e.message}")
                             }
                         }
                         // Reconcile после обработки снапшота
@@ -972,11 +1089,19 @@ class SocialRepositoryImpl @Inject constructor(
                     val list = friendshipEntities.mapNotNull { friendshipEntity ->
                         val friendship = friendshipEntity.toDomain()
                         try {
-                            val user1 = runBlocking { getUserById(friendship.userId1) }
-                            val user2 = runBlocking { getUserById(friendship.userId2) }
-                            if (user1 != null && user2 != null) FriendshipWithUsers(friendship, user1, user2) else null
+                            // Используем Firestore для получения актуальных данных (включая lastActiveAt)
+                            val friendId = if (friendship.userId1 == userId) friendship.userId2 else friendship.userId1
+                            val currentUser = runBlocking { getUserById(userId) }
+                            val friendUser = runBlocking { getUserByIdFromFirestore(friendId) }
+                            if (currentUser != null && friendUser != null) {
+                                // Сохраняем порядок user1/user2 как в friendship
+                                if (friendship.userId1 == userId) {
+                                    FriendshipWithUsers(friendship, currentUser, friendUser)
+                                } else {
+                                    FriendshipWithUsers(friendship, friendUser, currentUser)
+                                }
+                            } else null
                         } catch (e: Exception) {
-                            Log.d("SocialRepository", "Map FriendshipWithUsers failed (non-fatal): ${e.message}")
                             null
                         }
                     }.filter { it.friendship.status == FriendshipStatus.ACCEPTED }
@@ -1250,20 +1375,9 @@ class SocialRepositoryImpl @Inject constructor(
             }
 
             // Добавляем пользователя к участникам привычки локально
+            // HabitRepositoryImpl handles this via Local + Outbox sync
             habitRepository.addParticipantToHabit(invitation.habitId, invitation.toUserId)
-            try {
-                firestore.collection("habits")
-                    .document(invitation.habitId)
-                    .update(
-                        mapOf(
-                            "participants" to FieldValue.arrayUnion(invitation.toUserId),
-                            "updatedAt" to System.currentTimeMillis()
-                        )
-                    )
-                    .await()
-            } catch (e: Exception) {
-                Log.d("SocialRepository", "acceptHabitInvitation: remote habit update failed (non-fatal): ${e.message}")
-            }
+            
             // Отправляем FCM уведомление создателю привычки
             val acceptedUserName = try {
                 getUserById(invitation.toUserId)?.name ?: invitation.toUserId
@@ -1463,12 +1577,31 @@ class SocialRepositoryImpl @Inject constructor(
                     // Апсертим локально для консистентности (и для счётчиков)
                     scope.launch {
                         try {
-                            habitInvitationDao.insertAll(list.map { it.toEntity() })
+                            val filtered = mutableListOf<com.habittracker.data.local.entity.HabitInvitationEntity>()
+                            for (inv in list) {
+                                val hasPending = try {
+                                    syncManager.hasPendingOperations("habit_invitation", inv.id)
+                                } catch (_: Exception) {
+                                    false
+                                }
+                                if (!hasPending) filtered.add(inv.toEntity())
+                            }
+                            if (filtered.isNotEmpty()) {
+                                habitInvitationDao.insertAll(filtered)
+                            }
                             android.util.Log.d("SocialRepository", "[getIncomingHabitInvitations] upsert=${list.size}")
                             // Reconcile: удаляем локальные PENDING входящие, которых нет в снапшоте
                             try {
                                 val local = habitInvitationDao.getIncomingInvitations(userId).first()
-                                val toDelete = local.filter { it.id !in remoteIds }
+                                val toDelete = local.filter { entity ->
+                                    if (entity.id in remoteIds) return@filter false
+                                    val hasPending = try {
+                                        syncOutboxDao.hasPendingForEntity("habit_invitation", entity.id)
+                                    } catch (_: Exception) {
+                                        false
+                                    }
+                                    !hasPending
+                                }
                                 if (toDelete.isNotEmpty()) {
                                     android.util.Log.d("SocialRepository", "[getIncomingHabitInvitations] reconcile delete=${toDelete.size}")
                                     toDelete.forEach { inv -> habitInvitationDao.deleteById(inv.id) }
@@ -1522,12 +1655,31 @@ class SocialRepositoryImpl @Inject constructor(
 
                     scope.launch {
                         try {
-                            habitInvitationDao.insertAll(list.map { it.toEntity() })
+                            val filtered = mutableListOf<com.habittracker.data.local.entity.HabitInvitationEntity>()
+                            for (inv in list) {
+                                val hasPending = try {
+                                    syncManager.hasPendingOperations("habit_invitation", inv.id)
+                                } catch (_: Exception) {
+                                    false
+                                }
+                                if (!hasPending) filtered.add(inv.toEntity())
+                            }
+                            if (filtered.isNotEmpty()) {
+                                habitInvitationDao.insertAll(filtered)
+                            }
                             Log.d("SocialRepository", "[getOutgoingHabitInvitations] upsert=${list.size}")
                             // Reconcile: удаляем локальные PENDING исходящие, которых нет в снапшоте
                             try {
                                 val local = habitInvitationDao.getOutgoingInvitations(userId).first()
-                                val toDelete = local.filter { it.id !in remoteIds }
+                                val toDelete = local.filter { entity ->
+                                    if (entity.id in remoteIds) return@filter false
+                                    val hasPending = try {
+                                        syncOutboxDao.hasPendingForEntity("habit_invitation", entity.id)
+                                    } catch (_: Exception) {
+                                        false
+                                    }
+                                    !hasPending
+                                }
                                 if (toDelete.isNotEmpty()) {
                                     Log.d("SocialRepository", "[getOutgoingHabitInvitations] reconcile delete=${toDelete.size}")
                                     toDelete.forEach { inv -> habitInvitationDao.deleteById(inv.id) }
@@ -1573,7 +1725,18 @@ class SocialRepositoryImpl @Inject constructor(
 
                     scope.launch {
                         try {
-                            habitInvitationDao.insertAll(list.map { it.toEntity() })
+                            val filtered = mutableListOf<com.habittracker.data.local.entity.HabitInvitationEntity>()
+                            for (inv in list) {
+                                val hasPending = try {
+                                    syncManager.hasPendingOperations("habit_invitation", inv.id)
+                                } catch (_: Exception) {
+                                    false
+                                }
+                                if (!hasPending) filtered.add(inv.toEntity())
+                            }
+                            if (filtered.isNotEmpty()) {
+                                habitInvitationDao.insertAll(filtered)
+                            }
                         } catch (e: Exception) {
                             Log.w("SocialRepository", "[observeHabitInvitationsByHabit] insertAll failed: ${e.message}", e)
                         }
@@ -1864,7 +2027,7 @@ class SocialRepositoryImpl @Inject constructor(
         }
     }
 
-    override suspend fun sendChallengeInvitationNotification(toUserId: String, fromUserName: String, challengeTitle: String, habitTitle: String) {
+    override suspend fun sendChallengeInvitationNotification(toUserId: String, fromUserName: String, challengeId: String, challengeTitle: String, habitTitle: String) {
         try {
             val userDoc = firestore.collection("users").document(toUserId).get().await()
             val tokensFromArray = (userDoc.get("fcmTokens") as? List<*>)?.mapNotNull { it as? String } ?: emptyList()
@@ -1887,6 +2050,8 @@ class SocialRepositoryImpl @Inject constructor(
                 body = "$fromUserName приглашает вас к участию в челлендже '$challengeTitle' по привычке '$habitTitle'",
                 data = mapOf(
                     "type" to "challenge_invitation",
+                    "challengeId" to challengeId,
+                    "challenge_id" to challengeId,
                     "challengeTitle" to challengeTitle,
                     "habitTitle" to habitTitle,
                     "recipientUserId" to toUserId
@@ -1906,7 +2071,7 @@ class SocialRepositoryImpl @Inject constructor(
         }
     }
     
-    override suspend fun sendChallengeJoinedNotification(toUserId: String, joinedUserName: String, challengeTitle: String) {
+    override suspend fun sendChallengeJoinedNotification(toUserId: String, joinedUserName: String, challengeId: String, challengeTitle: String) {
         try {
             val userDoc = firestore.collection("users").document(toUserId).get().await()
             val tokensFromArray = (userDoc.get("fcmTokens") as? List<*>)?.mapNotNull { it as? String } ?: emptyList()
@@ -1929,6 +2094,8 @@ class SocialRepositoryImpl @Inject constructor(
                 body = "$joinedUserName присоединился к челленджу '$challengeTitle'",
                 data = mapOf(
                     "type" to "challenge_joined",
+                    "challengeId" to challengeId,
+                    "challenge_id" to challengeId,
                     "challengeTitle" to challengeTitle,
                     "recipientUserId" to toUserId
                 )
@@ -1947,7 +2114,7 @@ class SocialRepositoryImpl @Inject constructor(
         }
     }
     
-    override suspend fun sendChallengeLeftNotification(toUserId: String, leftUserName: String, challengeTitle: String) {
+    override suspend fun sendChallengeLeftNotification(toUserId: String, leftUserName: String, challengeId: String, challengeTitle: String) {
         try {
             val userDoc = firestore.collection("users").document(toUserId).get().await()
             val tokensFromArray = (userDoc.get("fcmTokens") as? List<*>)?.mapNotNull { it as? String } ?: emptyList()
@@ -1970,6 +2137,8 @@ class SocialRepositoryImpl @Inject constructor(
                 body = "$leftUserName покинул челлендж '$challengeTitle'",
                 data = mapOf(
                     "type" to "challenge_left",
+                    "challengeId" to challengeId,
+                    "challenge_id" to challengeId,
                     "challengeTitle" to challengeTitle,
                     "recipientUserId" to toUserId
                 )
@@ -1988,7 +2157,7 @@ class SocialRepositoryImpl @Inject constructor(
         }
     }
     
-    override suspend fun sendChallengeCompletedNotification(toUserId: String, challengeTitle: String, message: String, isWinner: Boolean) {
+    override suspend fun sendChallengeCompletedNotification(toUserId: String, challengeId: String, challengeTitle: String, message: String, isWinner: Boolean) {
         try {
             val userDoc = firestore.collection("users").document(toUserId).get().await()
             val tokensFromArray = (userDoc.get("fcmTokens") as? List<*>)?.mapNotNull { it as? String } ?: emptyList()
@@ -2012,6 +2181,8 @@ class SocialRepositoryImpl @Inject constructor(
                 body = message,
                 data = mapOf(
                     "type" to "challenge_completed",
+                    "challengeId" to challengeId,
+                    "challenge_id" to challengeId,
                     "challengeTitle" to challengeTitle,
                     "isWinner" to isWinner.toString(),
                     "recipientUserId" to toUserId
@@ -2031,7 +2202,7 @@ class SocialRepositoryImpl @Inject constructor(
         }
     }
     
-    override suspend fun sendChallengeCancelledNotification(toUserId: String, challengeTitle: String, reason: String) {
+    override suspend fun sendChallengeCancelledNotification(toUserId: String, challengeId: String, challengeTitle: String, reason: String) {
         try {
             val userDoc = firestore.collection("users").document(toUserId).get().await()
             val tokensFromArray = (userDoc.get("fcmTokens") as? List<*>)?.mapNotNull { it as? String } ?: emptyList()
@@ -2054,6 +2225,8 @@ class SocialRepositoryImpl @Inject constructor(
                 body = "Челлендж '$challengeTitle' был отменен. $reason",
                 data = mapOf(
                     "type" to "challenge_cancelled",
+                    "challengeId" to challengeId,
+                    "challenge_id" to challengeId,
                     "challengeTitle" to challengeTitle,
                     "reason" to reason,
                     "recipientUserId" to toUserId

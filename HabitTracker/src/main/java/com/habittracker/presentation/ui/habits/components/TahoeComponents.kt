@@ -67,6 +67,7 @@ import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.TextFieldColors
 import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.runtime.Composable
@@ -252,6 +253,9 @@ fun GlassmorphicDialog(
     } else {
         GlassBlack10
     }
+    
+    // Цвет текста: белый для тёмной темы, чёрный для светлой
+    val contentColor = if (isDarkTheme) Color.White else Color.Black
 
     Dialog(onDismissRequest = onDismissRequest) {
         AnimatedVisibility(
@@ -274,24 +278,26 @@ fun GlassmorphicDialog(
                     .border(1.dp, borderColor, RoundedCornerShape(cornerRadius))
                     .padding(20.dp)
             ) {
-                Column(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalAlignment = Alignment.Start
-                ) {
-                    if (title != null) {
-                        title()
-                        Spacer(modifier = Modifier.height(16.dp))
-                    }
+                CompositionLocalProvider(LocalContentColor provides contentColor) {
+                    Column(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalAlignment = Alignment.Start
+                    ) {
+                        if (title != null) {
+                            title()
+                            Spacer(modifier = Modifier.height(16.dp))
+                        }
 
-                    content()
+                        content()
 
-                    if (actions != null) {
-                        Spacer(modifier = Modifier.height(16.dp))
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.End,
-                            content = actions
-                        )
+                        if (actions != null) {
+                            Spacer(modifier = Modifier.height(16.dp))
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.End,
+                                content = actions
+                            )
+                        }
                     }
                 }
             }

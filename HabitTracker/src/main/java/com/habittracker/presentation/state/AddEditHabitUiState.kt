@@ -14,7 +14,7 @@ data class AddEditHabitUiState(
     val habitId: String? = null,
     val title: String = "",
     val description: String = "",
-    val icon: String = "",
+    val icon: String = "🛎",
     val color: Int = 0xFF2196F3.toInt(), // Цвет привычки как Int
     val type: HabitType = HabitType.PERSONAL,
 

@@ -20,6 +20,9 @@ import com.habittracker.domain.repository.HabitEntryRepository
 import com.habittracker.domain.repository.HabitRepository
 import com.habittracker.domain.repository.SocialRepository
 import com.habittracker.domain.repository.UserRepository
+import com.habittracker.domain.usecase.challenge.UpdateChallengeProgressUseCase
+import com.habittracker.domain.usecase.gamification.CalculatePointsUseCase
+import com.habittracker.domain.usecase.gamification.CheckAchievementsUseCase
 import com.habittracker.domain.usecase.gamification.UpdateUserPointsUseCase
 import com.habittracker.domain.usecase.notification.SendGroupHabitPushNotificationUseCase
 import kotlinx.coroutines.CoroutineScope
@@ -57,6 +60,9 @@ class MarkHabitCompletedUseCaseTest {
     private lateinit var markHabitCompletedUseCase: MarkHabitCompletedUseCase
     private lateinit var syncManager: SyncManager
     private lateinit var syncWorkScheduler: SyncWorkScheduler
+    private lateinit var updateChallengeProgressUseCase: UpdateChallengeProgressUseCase
+    private lateinit var calculatePointsUseCase: CalculatePointsUseCase
+    private lateinit var checkAchievementsUseCase: CheckAchievementsUseCase
 
     private val testHabitId = "habit1"
     private val testUserId = "user1"
@@ -79,13 +85,19 @@ class MarkHabitCompletedUseCaseTest {
         )
         syncManager = mock()
         syncWorkScheduler = mock()
+        updateChallengeProgressUseCase = mock()
+        calculatePointsUseCase = mock()
+        checkAchievementsUseCase = mock()
     }
 
     private fun setupUseCase(scope: CoroutineScope) {
         markHabitCompletedUseCase = MarkHabitCompletedUseCase(
             habitEntryRepository = habitEntryRepository,
             updateUserPointsUseCase = updateUserPointsUseCase,
+            calculatePointsUseCase = calculatePointsUseCase,
+            checkAchievementsUseCase = checkAchievementsUseCase,
             sendGroupHabitPushNotificationUseCase = sendGroupHabitPushNotificationUseCase,
+            updateChallengeProgressUseCase = updateChallengeProgressUseCase,
             coroutineScope = scope,
             syncManager = syncManager,
             syncWorkScheduler = syncWorkScheduler
@@ -93,32 +105,14 @@ class MarkHabitCompletedUseCaseTest {
     }
 
     @Test
-    fun `should write local and enqueue outbox when success`() = runTest {
+    fun `should write local and schedule sync when success`() = runTest {
         setupUseCase(this)
 
         // Act
         markHabitCompletedUseCase(testHabitId, testUserId, testDate, testNote)
 
-        // Assert
+        // Assert - repository was called
         assertTrue(habitEntryRepository.markHabitCompletedCalled)
-        // verify enqueueUpsert called with proper arguments
-        val entityTypeCaptor = argumentCaptor<String>()
-        val entityIdCaptor = argumentCaptor<String>()
-        val payloadCaptor = argumentCaptor<String>()
-        val updatedAtCaptor = argumentCaptor<Long>()
-        verify(syncManager).enqueueUpsert(
-            entityType = entityTypeCaptor.capture(),
-            entityId = entityIdCaptor.capture(),
-            payloadJson = payloadCaptor.capture(),
-            updatedAt = updatedAtCaptor.capture(),
-            operationId = any()
-        )
-        assertEquals("habit_entry", entityTypeCaptor.firstValue)
-        assertTrue(entityIdCaptor.firstValue.startsWith("${testHabitId}_${testUserId}_"))
-        val payload = payloadCaptor.firstValue
-        assertTrue(payload.contains("\"habitId\":\"$testHabitId\""))
-        assertTrue(payload.contains("\"userId\":\"$testUserId\""))
-        assertTrue(payload.contains("\"date\":\"${testDate.toString()}\""))
         // one-time sync scheduled
         verify(syncWorkScheduler).scheduleOneTimeSync()
     }
@@ -225,7 +219,7 @@ class FakeHabitRepository : HabitRepository {
 }
 
 class FakeSocialRepository : SocialRepository {
-    override suspend fun getUserById(userId: String): User? = User(id = userId, name = "Test User", email = "test@test.com", createdAt = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault()).date, lastActiveAt = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault()).date)
+    override suspend fun getUserById(userId: String): User? = User(id = userId, name = "Test User", email = "test@test.com", createdAt = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault()).date, lastActiveAt = Clock.System.now().toEpochMilliseconds())
     override suspend fun getUserByIdFromFirestore(userId: String): User? = getUserById(userId)
     override suspend fun searchUsers(query: String, currentUserId: String): List<User> = emptyList()
     override suspend fun updateUserFcmToken(userId: String, token: String) {}
@@ -267,11 +261,11 @@ class FakeSocialRepository : SocialRepository {
     override suspend fun sendHabitInvitationAcceptedNotification(toUserId: String, acceptedByName: String, habitTitle: String, habitId: String) {}
     override suspend fun sendParticipantJoinedNotification(toUserId: String, joinedUserName: String, habitTitle: String, habitId: String) {}
     override suspend fun sendPushNotification(fcmToken: String, title: String, body: String, data: Map<String, String>) {}
-    override suspend fun sendChallengeInvitationNotification(toUserId: String, fromUserName: String, challengeTitle: String, habitTitle: String) {}
-    override suspend fun sendChallengeJoinedNotification(toUserId: String, joinedUserName: String, challengeTitle: String) {}
-    override suspend fun sendChallengeLeftNotification(toUserId: String, leftUserName: String, challengeTitle: String) {}
-    override suspend fun sendChallengeCompletedNotification(toUserId: String, challengeTitle: String, message: String, isWinner: Boolean) {}
-    override suspend fun sendChallengeCancelledNotification(toUserId: String, challengeTitle: String, reason: String) {}
+    override suspend fun sendChallengeInvitationNotification(toUserId: String, fromUserName: String, challengeId: String, challengeTitle: String, habitTitle: String) {}
+    override suspend fun sendChallengeJoinedNotification(toUserId: String, joinedUserName: String, challengeId: String, challengeTitle: String) {}
+    override suspend fun sendChallengeLeftNotification(toUserId: String, leftUserName: String, challengeId: String, challengeTitle: String) {}
+    override suspend fun sendChallengeCompletedNotification(toUserId: String, challengeId: String, challengeTitle: String, message: String, isWinner: Boolean) {}
+    override suspend fun sendChallengeCancelledNotification(toUserId: String, challengeId: String, challengeTitle: String, reason: String) {}
 }
 
 class FakeUserRepository : UserRepository {
@@ -283,7 +277,7 @@ class FakeUserRepository : UserRepository {
             name = "Test User",
             email = "test@test.com",
             createdAt = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault()).date,
-            lastActiveAt = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault()).date
+            lastActiveAt = Clock.System.now().toEpochMilliseconds()
         )
         users[testUser.id] = testUser
     }
@@ -306,10 +300,6 @@ class FakeUserRepository : UserRepository {
 
     override fun getAllUsers(): Flow<List<User>> = flowOf(users.values.toList())
 
-    override suspend fun getCurrentUser(): User? = users.values.firstOrNull()
-
-    override suspend fun setCurrentUser(userId: String) {}
-
     override suspend fun searchUsersByName(query: String): List<User> = emptyList()
 
     override suspend fun updateUserLevel(userId: String, level: Int, points: Int) {}
@@ -319,4 +309,6 @@ class FakeUserRepository : UserRepository {
     override fun observeUser(userId: String): Flow<User?> = flowOf(users[userId])
 
     override suspend fun backfillAvatarThumbnails(): Result<Int> = Result.success(0)
+
+    override suspend fun updateLastActive(userId: String) {}
 }

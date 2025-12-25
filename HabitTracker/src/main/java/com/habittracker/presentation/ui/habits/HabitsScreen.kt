@@ -3,6 +3,7 @@ package com.habittracker.presentation.ui.habits
 import android.util.Log
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -17,14 +18,15 @@ import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.ExperimentalMaterialApi
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.TrendingUp
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.EmojiEvents
+import androidx.compose.material.icons.filled.Flag
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.People
-import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.pullrefresh.pullRefresh
 import androidx.compose.material.pullrefresh.rememberPullRefreshState
 import androidx.compose.material3.CircularProgressIndicator
@@ -76,7 +78,9 @@ import com.habittracker.domain.model.HabitFrequency
 import com.habittracker.domain.model.HabitType
 import com.habittracker.domain.model.isGroupHabit
 import com.habittracker.presentation.navigation.Screen
+import com.habittracker.presentation.ui.components.ConfettiOverlay
 import com.habittracker.presentation.ui.components.GradientPullRefreshIndicator
+import com.habittracker.presentation.ui.components.UserAvatar
 import com.habittracker.presentation.ui.habits.components.ConfirmDialog
 import com.habittracker.presentation.ui.habits.components.EnhancedHabitItem
 import com.habittracker.presentation.ui.habits.components.ExpandableFAB
@@ -89,6 +93,7 @@ import com.habittracker.presentation.ui.habits.components.TahoeDockDivider
 import com.habittracker.presentation.ui.habits.components.TahoeDockItem
 import com.habittracker.presentation.ui.habits.components.TahoeGradientBackground
 import com.habittracker.presentation.ui.notifications.NotificationBadge
+import com.habittracker.presentation.viewmodel.ChallengesViewModel
 import com.habittracker.presentation.viewmodel.FriendsViewModel
 import com.habittracker.presentation.viewmodel.HabitWithCompletion
 import com.habittracker.presentation.viewmodel.HabitsViewModel
@@ -104,9 +109,11 @@ import kotlin.math.abs
 @Composable
 fun HabitsScreen(
     navController: NavController,
+    inviteCode: String? = null,
     viewModel: HabitsViewModel = hiltViewModel(),
     notificationsViewModel: NotificationsViewModel = hiltViewModel(),
-    friendsViewModel: FriendsViewModel = hiltViewModel()
+    friendsViewModel: FriendsViewModel = hiltViewModel(),
+    challengesViewModel: ChallengesViewModel = hiltViewModel()
 ) {
     val context = LocalContext.current
     val uiState by viewModel.uiState.collectAsState()
@@ -116,8 +123,23 @@ fun HabitsScreen(
     val badgeCount by notificationsViewModel.badgeCount.collectAsState()
     val friendsUiState by friendsViewModel.uiState.collectAsState()
     val friendRequestsBadgeCount = friendsUiState.incomingRequests.size
+    val challengesUiState by challengesViewModel.uiState.collectAsState()
+    val challengeInvitationsBadgeCount = challengesUiState.pendingInvitations.size
     var isRefreshing by remember { mutableStateOf(false) }
     var recomposeKey by remember { mutableIntStateOf(0) }
+    
+    // Состояние диалога присоединения по коду
+    var showCodeDialog by remember { mutableStateOf(false) }
+    var prefilledInviteCode by remember { mutableStateOf<String?>(null) }
+    
+    // Автоматическое открытие диалога при наличии inviteCode из deep link
+    // Проверяем что это реальный код, а не placeholder из навигации
+    LaunchedEffect(inviteCode) {
+        if (!inviteCode.isNullOrBlank() && inviteCode != "{inviteCode}") {
+            prefilledInviteCode = inviteCode
+            showCodeDialog = true
+        }
+    }
     
     // Данные для селектора дат
     val selectedDate = uiState.selectedDate ?: Clock.System.now()
@@ -185,7 +207,7 @@ fun HabitsScreen(
                         scrolledContainerColor = Color.Transparent
                     ),
                 actions = {
-                    // Оставляем только колокольчик уведомлений
+                    // Уведомления
                     Box {
                         IconButton(onClick = {
                             navController.navigate(Screen.Notifications.route)
@@ -202,14 +224,30 @@ fun HabitsScreen(
                                 .offset(x = (-8).dp, y = 6.dp)
                         )
                     }
+                    // Профиль
+                    IconButton(onClick = {
+                        navController.navigate(Screen.Profile.route)
+                    }) {
+                        val avatarUrl = uiState.currentUserAvatarUrl
+
+                        UserAvatar(
+                            data = avatarUrl,
+                            name = null,
+                            size = 42.dp,
+                            modifier = Modifier.border(
+                                width = 2.dp,
+                                color = MaterialTheme.colorScheme.primary,
+                                shape = CircleShape
+                            ),
+                            contentDescription = stringResource(R.string.cd_profile)
+                        )
+                    }
                 }
             )
         },
         floatingActionButton = {
             // Показываем FAB только для сегодняшнего дня и будущих дат
             if (selectedDate >= today) {
-                var showCodeDialog by remember { mutableStateOf(false) }
-                
                 ExpandableFAB(
                     onCreateHabit = { 
                         // Передаём выбранную дату как параметр при создании привычки
@@ -220,20 +258,26 @@ fun HabitsScreen(
                         navController.navigate(Screen.PublicHabits.route) 
                     },
                     onJoinByCode = { 
+                        prefilledInviteCode = null
                         showCodeDialog = true 
                     }
                 )
-                
-                // Диалог ввода кода
-                if (showCodeDialog) {
-                    JoinByCodeDialog(
-                        onDismiss = { showCodeDialog = false },
-                        onJoin = { code ->
-                            showCodeDialog = false
-                            viewModel.joinByInviteCode(code)
-                        }
-                    )
-                }
+            }
+            
+            // Диалог ввода кода (вынесен из FAB для поддержки deep links)
+            if (showCodeDialog) {
+                JoinByCodeDialog(
+                    initialCode = prefilledInviteCode,
+                    onDismiss = { 
+                        showCodeDialog = false
+                        prefilledInviteCode = null
+                    },
+                    onJoin = { code ->
+                        showCodeDialog = false
+                        prefilledInviteCode = null
+                        viewModel.joinByInviteCode(code)
+                    }
+                )
             }
         },
         bottomBar = {
@@ -260,22 +304,23 @@ fun HabitsScreen(
 
                 TahoeDockDivider()
                 
+                // Челленджи
+                TahoeDockItem(
+                    icon = Icons.Default.Flag,
+                    label = stringResource(R.string.cd_challenges),
+                    badge = challengeInvitationsBadgeCount,
+                    onClick = { navController.navigate(Screen.Challenges.route) },
+                    selected = false
+                )
+
+                TahoeDockDivider()
+                
                 // Друзья
                 TahoeDockItem(
                     icon = Icons.Default.People,
                     label = stringResource(R.string.cd_friends),
                     badge = friendRequestsBadgeCount,
                     onClick = { navController.navigate(Screen.Friends.route) },
-                    selected = false
-                )
-
-                TahoeDockDivider()
-                
-                // Профиль
-                TahoeDockItem(
-                    icon = Icons.Default.Person,
-                    label = stringResource(R.string.cd_profile),
-                    onClick = { navController.navigate(Screen.Profile.route) },
                     selected = false
                 )
             }
@@ -484,6 +529,12 @@ fun HabitsScreen(
             }
         }
         }
+        
+        // Конфетти оверлей при выполнении привычки
+        ConfettiOverlay(
+            showConfetti = uiState.showConfetti,
+            onConfettiComplete = { viewModel.hideConfetti() }
+        )
     }
 }
 

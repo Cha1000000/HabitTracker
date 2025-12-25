@@ -1,11 +1,16 @@
 package com.habittracker.domain.usecase.social
 
 import com.habittracker.domain.model.FriendRequest
+import com.habittracker.domain.model.gamification.GamificationEvent
 import com.habittracker.domain.repository.SocialRepository
+import com.habittracker.domain.usecase.gamification.CheckAchievementsUseCase
+import com.habittracker.domain.usecase.gamification.UpdateUserPointsUseCase
 import javax.inject.Inject
 
 class SendFriendRequestUseCase @Inject constructor(
-    private val socialRepository: SocialRepository
+    private val socialRepository: SocialRepository,
+    private val updateUserPointsUseCase: UpdateUserPointsUseCase,
+    private val checkAchievementsUseCase: CheckAchievementsUseCase
 ) {
     suspend operator fun invoke(
         fromUserId: String,
@@ -26,9 +31,15 @@ class SendFriendRequestUseCase @Inject constructor(
             // Отправляем запрос
             val result = socialRepository.sendFriendRequest(fromUserId, toUserId, message)
             
-            // Если успешно, отправляем уведомление
+            // Если успешно, отправляем уведомление и начисляем очки
             if (result.isSuccess) {
                 try {
+                    // Award points for inviting a friend
+                    updateUserPointsUseCase(fromUserId, GamificationEvent.FriendInvited)
+
+                    // Check achievements
+                    checkAchievementsUseCase(fromUserId)
+
                     val fromUser = socialRepository.getUserById(fromUserId)
                     fromUser?.let { user ->
                         socialRepository.sendFriendRequestNotification(toUserId, user.name)

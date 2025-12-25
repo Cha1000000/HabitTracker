@@ -71,11 +71,11 @@ interface SocialRepository {
     suspend fun sendParticipantJoinedNotification(toUserId: String, joinedUserName: String, habitTitle: String, habitId: String)
     
     // Challenge notifications
-    suspend fun sendChallengeInvitationNotification(toUserId: String, fromUserName: String, challengeTitle: String, habitTitle: String)
-    suspend fun sendChallengeJoinedNotification(toUserId: String, joinedUserName: String, challengeTitle: String)
-    suspend fun sendChallengeLeftNotification(toUserId: String, leftUserName: String, challengeTitle: String)
-    suspend fun sendChallengeCompletedNotification(toUserId: String, challengeTitle: String, message: String, isWinner: Boolean)
-    suspend fun sendChallengeCancelledNotification(toUserId: String, challengeTitle: String, reason: String)
+    suspend fun sendChallengeInvitationNotification(toUserId: String, fromUserName: String, challengeId: String, challengeTitle: String, habitTitle: String)
+    suspend fun sendChallengeJoinedNotification(toUserId: String, joinedUserName: String, challengeId: String, challengeTitle: String)
+    suspend fun sendChallengeLeftNotification(toUserId: String, leftUserName: String, challengeId: String, challengeTitle: String)
+    suspend fun sendChallengeCompletedNotification(toUserId: String, challengeId: String, challengeTitle: String, message: String, isWinner: Boolean)
+    suspend fun sendChallengeCancelledNotification(toUserId: String, challengeId: String, challengeTitle: String, reason: String)
     
     suspend fun sendPushNotification(fcmToken: String, title: String, body: String, data: Map<String, String> = emptyMap())
 }

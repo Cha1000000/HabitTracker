@@ -91,6 +91,7 @@ import com.habittracker.domain.model.HabitFrequency
 import com.habittracker.domain.model.HabitInvitation
 import com.habittracker.domain.model.User
 import com.habittracker.presentation.ui.components.SectionCard
+import com.habittracker.presentation.ui.components.UserAvatar
 import com.habittracker.presentation.ui.habits.components.GlassmorphicDialog
 import com.habittracker.presentation.ui.habits.components.GradientProgressBar
 import com.habittracker.presentation.ui.habits.components.TahoeGradientBackground
@@ -237,6 +238,16 @@ fun GroupHabitDetailScreen(
                             },
                             modifier = Modifier.fillMaxWidth()
                         )
+                    }
+                    
+                    // Рейтинг участников (лидерборд)
+                    if (uiState.participantLeaderboard.isNotEmpty()) {
+                        item {
+                            ParticipantLeaderboardSection(
+                                leaderboard = uiState.participantLeaderboard,
+                                modifier = Modifier.fillMaxWidth()
+                            )
+                        }
                     }
 
                     // Управление приглашениями (только для владельца)
@@ -658,20 +669,12 @@ private fun ParticipantListItem(
         ),
         leadingContent = {
             // Аватар участника
-            Box(
-                modifier = Modifier
-                    .size(40.dp)
-                    .clip(CircleShape)
-                    .background(MaterialTheme.colorScheme.surfaceVariant),
-                contentAlignment = Alignment.Center
-            ) {
-                Text(
-                    text = participant.name.take(2).uppercase(),
-                    style = MaterialTheme.typography.labelLarge,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    fontWeight = FontWeight.Medium
-                )
-            }
+            UserAvatar(
+                avatarThumbnailUrl = participant.avatarThumbnailUrl,
+                avatarUrl = participant.avatarUrl,
+                name = participant.name,
+                size = 40.dp
+            )
         },
         headlineContent = {
             Row(
@@ -977,20 +980,12 @@ private fun ActivityItem(
         verticalAlignment = Alignment.CenterVertically
     ) {
         // Аватар
-        Box(
-            modifier = Modifier
-                .size(32.dp)
-                .clip(CircleShape)
-                .background(MaterialTheme.colorScheme.primary),
-            contentAlignment = Alignment.Center
-        ) {
-            Text(
-                text = participant.name.firstOrNull()?.uppercase() ?: "?",
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onPrimary,
-                fontWeight = FontWeight.Bold
-            )
-        }
+        UserAvatar(
+            avatarThumbnailUrl = participant.avatarThumbnailUrl,
+            avatarUrl = participant.avatarUrl,
+            name = participant.name,
+            size = 32.dp
+        )
         
         Spacer(modifier = Modifier.width(12.dp))
         
@@ -1103,6 +1098,101 @@ private fun LeaveGroupSection(
             text = stringResource(R.string.leave_group),
             style = MaterialTheme.typography.labelLarge
         )
+    }
+}
+
+/**
+ * Секция рейтинга участников привычки
+ */
+@Composable
+private fun ParticipantLeaderboardSection(
+    leaderboard: List<com.habittracker.domain.usecase.gamification.LeaderboardEntry>,
+    modifier: Modifier = Modifier
+) {
+    SectionCard(
+        modifier = modifier,
+        title = stringResource(R.string.leaderboard_habit_title),
+        outlined = false
+    ) {
+        Column(
+            verticalArrangement = Arrangement.spacedBy(4.dp)
+        ) {
+            leaderboard.forEachIndexed { index, entry ->
+                LeaderboardParticipantItem(entry = entry)
+                if (index < leaderboard.lastIndex) {
+                    HorizontalDivider(
+                        modifier = Modifier.padding(vertical = 8.dp),
+                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.1f)
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun LeaderboardParticipantItem(
+    entry: com.habittracker.domain.usecase.gamification.LeaderboardEntry
+) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.SpaceBetween
+    ) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier.weight(1f)
+        ) {
+            // Ранг
+            Text(
+                text = "${entry.rank}",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold,
+                color = when (entry.rank) {
+                    1 -> Color(0xFFFFD700) // Gold
+                    2 -> Color(0xFFC0C0C0) // Silver
+                    3 -> Color(0xFFCD7F32) // Bronze
+                    else -> MaterialTheme.colorScheme.onSurface
+                },
+                modifier = Modifier.width(24.dp)
+            )
+            
+            Spacer(modifier = Modifier.width(12.dp))
+            
+            // Аватар
+            UserAvatar(
+                avatarThumbnailUrl = entry.user.avatarThumbnailUrl,
+                avatarUrl = entry.user.avatarUrl,
+                name = entry.user.name,
+                size = 36.dp
+            )
+            
+            Spacer(modifier = Modifier.width(12.dp))
+            
+            // Имя
+            Text(
+                text = entry.user.name.ifBlank { "User" },
+                style = MaterialTheme.typography.bodyMedium,
+                fontWeight = FontWeight.SemiBold,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+        }
+        
+        // Статистика
+        Column(horizontalAlignment = Alignment.End) {
+            Text(
+                text = "${entry.weeklyCompletions}",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.primary
+            )
+            Text(
+                text = stringResource(R.string.leaderboard_completions),
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
     }
 }
 

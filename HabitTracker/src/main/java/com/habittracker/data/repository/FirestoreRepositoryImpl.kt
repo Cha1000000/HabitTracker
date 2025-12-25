@@ -2,7 +2,6 @@ package com.habittracker.data.repository
 
 import android.util.Log
 import com.google.firebase.firestore.DocumentSnapshot
-import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.Query
 import com.habittracker.data.model.FirebaseHabitEntry
@@ -11,6 +10,7 @@ import com.habittracker.domain.model.Habit
 import com.habittracker.domain.model.HabitEntry
 import com.habittracker.domain.model.HabitParticipantSettings
 import com.habittracker.domain.repository.FirestoreRepository
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
@@ -20,6 +20,7 @@ import kotlinx.datetime.Clock
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.LocalDate.Companion.parse
 import kotlinx.datetime.TimeZone
+import kotlinx.datetime.atStartOfDayIn
 import kotlinx.datetime.toLocalDateTime
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -101,6 +102,17 @@ class FirestoreRepositoryImpl @Inject constructor(
             val inviteCode = data["inviteCode"] as? String
             val isActive: Boolean = (data["isActive"] as? Boolean) ?: true
 
+            val updatedAtMillis = (data["updatedAtMillis"] as? Number)?.toLong()
+                ?: run {
+                    // Fallback: если millis нет, используем LocalDate updatedAt в начале дня
+                    val fallback = (data["updatedAt"] as? String)?.let { runCatching { parse(it) }.getOrNull() }
+                    (fallback ?: Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault()).date)
+                        .atStartOfDayIn(TimeZone.currentSystemDefault())
+                        .toEpochMilliseconds()
+                }
+
+            val deletedAtMillis = (data["deletedAtMillis"] as? Number)?.toLong()
+
             // timestamps - теперь LocalDate
             val createdAt = (data["createdAt"] as? String)?.let {
                 try {
@@ -162,6 +174,8 @@ class FirestoreRepositoryImpl @Inject constructor(
                 isActive = isActive,
                 createdAt = createdAt,
                 updatedAt = updatedAt,
+                updatedAtMillis = updatedAtMillis,
+                deletedAtMillis = deletedAtMillis,
                 startDate = startDate,
                 endDate = endDate
             )
@@ -178,7 +192,6 @@ class FirestoreRepositoryImpl @Inject constructor(
         // Берем все документы и фильтруем на клиенте. При желании можно добавить whereEqualTo("active", true),
         // но поле может называться по-разному ("active"/"isActive") на старых данных, поэтому безопаснее без фильтра.
         val listener = firestore.collection(HABITS_COLLECTION)
-            .whereEqualTo("isActive", true)
             .addSnapshotListener { snapshot, error ->
                 if (error != null) {
                     Log.e(TAG, "❌ [getUserHabits] Error getting habits for user: $userId", error)
@@ -193,9 +206,9 @@ class FirestoreRepositoryImpl @Inject constructor(
                 val habits = snapshot?.documents?.mapNotNull { doc ->
                     parseHabitSafely(doc)
                 }?.filter { habit ->
-                    // Клиентская фильтрация: активные привычки пользователя (создал сам или участник)
-                    habit.isActive && (habit.createdBy == userId || habit.participants.contains(userId))
-                }?.sortedByDescending { it.createdAt } ?: emptyList()
+                    // Клиентская фильтрация: привычки пользователя (создал сам или участник)
+                    (habit.createdBy == userId || habit.participants.contains(userId))
+                }?.sortedByDescending { it.updatedAtMillis } ?: emptyList()
 
                 Log.d(TAG, "✅ [getUserHabits] Sending ${habits.size} habits to Flow for user: $userId")
                 habits.forEach { habit ->
@@ -210,139 +223,6 @@ class FirestoreRepositoryImpl @Inject constructor(
         }
     }
 
-    override suspend fun saveHabit(habit: Habit) {
-        try {
-            Log.d(TAG, "💾 [saveHabit] Saving habit: ${habit.id}")
-            Log.d(TAG, "💾 [saveHabit] Habit details: title='${habit.title}', participants=${habit.participants}, isActive=${habit.isActive}")
-            Log.d(TAG, "⏰ [saveHabit] reminderTime=${habit.reminderTime}, reminderEnabled(computed)=${habit.reminderTime != null}")
-            Log.d(TAG, "📅 [saveHabit] Dates: startDate=${habit.startDate}, endDate=${habit.endDate}")
-            val payload = buildMap {
-                // Простые поля
-                put("id", habit.id)
-                put("title", habit.title)
-                put("description", habit.description)
-                put("icon", habit.icon)
-                put("color", habit.color)
-                put("type", habit.type.name)
-                put("frequency", habit.frequency.name)
-                // Напоминания
-                val hasReminder = habit.reminderTime != null
-                put("reminderEnabled", hasReminder)
-                if (hasReminder) {
-                    val rt = habit.reminderTime
-                    put("reminderTime", mapOf("hour" to rt.hour, "minute" to rt.minute))
-                }
-                // Target
-                put("targetValue", habit.targetValue)
-                put("unit", habit.unit)
-                // Дни недели напоминаний
-                if (habit.reminderDays.isNotEmpty()) {
-                    put("reminderDays", habit.reminderDays.map { it.value })
-                }
-                // Социальные
-                put("createdBy", habit.createdBy)
-                put("participants", habit.participants)
-                put("maxParticipants", habit.maxParticipants)
-                put("inviteCode", habit.inviteCode)
-                put("public", habit.isPublic)
-                put("isActive", habit.isActive)
-                // Метки времени
-                put("createdAt", habit.createdAt.toString())
-                put("updatedAt", habit.updatedAt.toString())
-                // Даты начала и окончания
-                habit.startDate?.let { put("startDate", it.toString()) }
-                habit.endDate?.let { put("endDate", it.toString()) }
-            }
-            firestore.collection(HABITS_COLLECTION)
-                .document(habit.id)
-                .set(payload)
-                .await()
-            Log.d(TAG, "✅ [saveHabit] Habit saved successfully: ${habit.id}")
-        } catch (e: Exception) {
-            Log.e(TAG, "❌ [saveHabit] Error saving habit: ${habit.id}", e)
-            throw e
-        }
-    }
-
-    override suspend fun updateHabit(habit: Habit) {
-        try {
-            Log.d(TAG, "🛠️ [updateHabit] Updating habit: ${habit.id}")
-            Log.d(TAG, "⏰ [updateHabit] incoming reminderTime=${habit.reminderTime}, reminderEnabled(computed)=${habit.reminderTime != null}")
-            val payload = mutableMapOf<String, Any>().apply {
-                put("title", habit.title)
-                put("description", habit.description)
-                put("icon", habit.icon)
-                put("color", habit.color)
-                put("type", habit.type.name)
-                put("frequency", habit.frequency.name)
-                val hasReminder = habit.reminderTime != null
-                put("reminderEnabled", hasReminder)
-                if (hasReminder) {
-                    val rt = habit.reminderTime
-                    put("reminderTime", mapOf("hour" to rt.hour, "minute" to rt.minute))
-                } else {
-                    put("reminderTime", FieldValue.delete())
-                }
-                if (habit.reminderDays.isNotEmpty()) {
-                    put("reminderDays", habit.reminderDays.map { it.value })
-                } else {
-                    put("reminderDays", FieldValue.delete())
-                }
-                put("targetValue", habit.targetValue)
-                put("unit", habit.unit)
-                // Important guard: don't clear participants if UI didn't load them yet
-                if (habit.participants.isNotEmpty()) {
-                    put("participants", habit.participants)
-                }
-                put("maxParticipants", habit.maxParticipants)
-                if (habit.inviteCode != null) {
-                    put("inviteCode", habit.inviteCode)
-                } else {
-                    put("inviteCode", FieldValue.delete())
-                }
-                put("public", habit.isPublic)
-                put("isActive", habit.isActive)
-                put("updatedAt", habit.updatedAt)
-                // Даты начала и окончания
-                if (habit.startDate != null) {
-                    put("startDate", habit.startDate.toString())
-                } else {
-                    put("startDate", FieldValue.delete())
-                }
-                if (habit.endDate != null) {
-                    put("endDate", habit.endDate.toString())
-                } else {
-                    put("endDate", FieldValue.delete())
-                }
-            }
-            firestore.collection(HABITS_COLLECTION)
-                .document(habit.id)
-                .update(payload as Map<String, Any>)
-                .await()
-            Log.d(TAG, "✅ [updateHabit] Habit updated successfully: ${habit.id}")
-        } catch (e: Exception) {
-            Log.e(TAG, "❌ [updateHabit] Error updating habit: ${habit.id}", e)
-            throw e
-        }
-    }
-
-    override suspend fun deleteHabit(habitId: String) {
-        try {
-            Log.d(TAG, "🗑️ [deleteHabit] Deleting habit document from Firestore: $habitId")
-            
-            // ПОЛНОЕ удаление документа из Firestore (hard delete)
-            // Это эквивалентно "Delete document" в консоли Firebase
-            firestore.collection(HABITS_COLLECTION)
-                .document(habitId)
-                .delete()
-                .await()
-            
-            Log.d(TAG, "✅ [deleteHabit] Habit document deleted successfully: $habitId")
-        } catch (e: Exception) {
-            Log.e(TAG, "❌ [deleteHabit] Error deleting habit: $habitId", e)
-            throw e
-        }
-    }
 
     override suspend fun getHabitById(habitId: String): Habit? {
         return try {
@@ -365,21 +245,6 @@ class FirestoreRepositoryImpl @Inject constructor(
         }
     }
 
-    override suspend fun saveHabitEntry(habitEntry: HabitEntry) {
-        try {
-            Log.d(TAG, "Saving habit entry: ${habitEntry.habitId} for ${habitEntry.date}")
-            val entryId = "${habitEntry.habitId}_${habitEntry.userId}_${habitEntry.date}"
-            val firebaseEntry = FirebaseHabitEntry.fromDomain(habitEntry)
-            firestore.collection(HABIT_ENTRIES_COLLECTION)
-                .document(entryId)
-                .set(firebaseEntry)
-                .await()
-            Log.d(TAG, "Habit entry saved successfully: $entryId")
-        } catch (e: Exception) {
-            Log.e(TAG, "Error saving habit entry", e)
-            throw e
-        }
-    }
 
     override fun getHabitEntries(habitId: String, userId: String): Flow<List<HabitEntry>> = callbackFlow {
         Log.d(TAG, "Getting habit entries for habit: $habitId, user: $userId")
@@ -426,6 +291,9 @@ class FirestoreRepositoryImpl @Inject constructor(
                 Log.d(TAG, "Habit entry not found: $entryId")
                 null
             }
+        } catch (e: CancellationException) {
+            Log.d(TAG, "getHabitEntry cancelled: habit=$habitId user=$userId date=$date")
+            throw e
         } catch (e: Exception) {
             Log.e(TAG, "Error getting habit entry", e)
             throw e
@@ -476,57 +344,15 @@ class FirestoreRepositoryImpl @Inject constructor(
                 timeZone = timeZone,
                 updatedAt = updatedAt
             )
+        } catch (e: CancellationException) {
+            Log.d(TAG, "getParticipantSettings cancelled: habit=$habitId user=$userId")
+            null
         } catch (e: Exception) {
             Log.e(TAG, "Error getParticipantSettings: habit=$habitId user=$userId", e)
             null
         }
     }
 
-    override suspend fun setParticipantSettings(settings: HabitParticipantSettings) {
-        try {
-            // Если включено, но время null — пробуем подтянуть дефолт из документа привычки
-            var finalTime = settings.reminderTime
-            if (settings.reminderEnabled && finalTime == null) {
-                try {
-                    val habitDoc = firestore.collection(HABITS_COLLECTION).document(settings.habitId).get().await()
-                    val rt = habitDoc.get("reminderTime") as? Map<*, *>
-                    if (rt != null) {
-                        val hour = (rt["hour"] as? Number)?.toInt()
-                        val minute = (rt["minute"] as? Number)?.toInt()
-                        if (hour != null && minute != null) {
-                            finalTime = kotlinx.datetime.LocalTime(hour, minute)
-                        }
-                    }
-                } catch (e: Exception) {
-                    Log.w(TAG, "Fallback to habit.reminderTime failed: ${e.message}")
-                }
-            }
-
-            val payload = mutableMapOf<String, Any>().apply {
-                put("reminderEnabled", settings.reminderEnabled)
-                if (finalTime != null && settings.reminderEnabled) {
-                    put("reminderTime", mapOf("hour" to finalTime.hour, "minute" to finalTime.minute))
-                } else {
-                    put("reminderTime", FieldValue.delete())
-                }
-                if (settings.reminderDays.isNotEmpty()) {
-                    put("reminderDays", settings.reminderDays.map { it.value })
-                } else {
-                    put("reminderDays", FieldValue.delete())
-                }
-                put("notificationsMuted", settings.notificationsMuted)
-                settings.timeZone?.let { put("timeZone", it) } ?: put("timeZone", FieldValue.delete())
-                put("updatedAt", settings.updatedAt)
-            }
-            participantSettingsDoc(settings.habitId, settings.userId)
-                .set(payload as Map<String, Any>, com.google.firebase.firestore.SetOptions.merge())
-                .await()
-            Log.d(TAG, "setParticipantSettings OK: ${settings.habitId}/${settings.userId}, time=$finalTime, enabled=${settings.reminderEnabled}")
-        } catch (e: Exception) {
-            Log.e(TAG, "Error setParticipantSettings: ${settings.habitId}/${settings.userId}", e)
-            throw e
-        }
-    }
     // endregion
     
     override fun getAllPublicHabits(excludeUserId: String?): Flow<List<Habit>> = callbackFlow {

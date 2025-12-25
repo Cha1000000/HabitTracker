@@ -3,6 +3,7 @@ package com.habittracker.domain.usecase
 import android.util.Log
 import com.habittracker.domain.model.Habit
 import com.habittracker.domain.model.isActiveOnDate
+import com.habittracker.domain.model.isActiveOnDayOfWeek
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 import kotlinx.datetime.LocalDate
@@ -11,6 +12,7 @@ import javax.inject.Inject
 /**
  * Use case для получения списка привычек, активных на конкретную дату.
  * Фильтрует привычки по их датам начала и окончания, учитывая персональные даты участников.
+ * Также фильтрует по дню недели в соответствии с частотой привычки.
  */
 class GetHabitsForDateUseCase @Inject constructor(
     private val getHabitsUseCase: GetHabitsUseCase
@@ -28,12 +30,23 @@ class GetHabitsForDateUseCase @Inject constructor(
                 val createdDate = habit.createdAt
                 
                 // Базовая проверка активности привычки на дату
-                val isActive = habit.isActiveOnDate(date, createdDate)
+                val isActiveByDate = habit.isActiveOnDate(date, createdDate)
+                
+                // Проверка активности по дню недели с учётом частоты
+                val isActiveByDayOfWeek = habit.isActiveOnDayOfWeek(date.dayOfWeek)
+                
+                // Привычка активна только если выполнены оба условия
+                val isActive = isActiveByDate && isActiveByDayOfWeek
                 
                 // Логируем для отладки
                 if (habit.startDate != null && habit.startDate > date) {
                     Log.d("GetHabitsForDateUseCase",
                         "📅 Habit '${habit.title}' has future startDate=${habit.startDate}, currentDate=$date, isActive=$isActive")
+                }
+                
+                if (!isActiveByDayOfWeek) {
+                    Log.d("GetHabitsForDateUseCase",
+                        "📆 Habit '${habit.title}' is not active on ${date.dayOfWeek} (frequency=${habit.frequency})")
                 }
                 
                 isActive

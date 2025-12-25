@@ -1,15 +1,15 @@
 package com.habittracker.domain.usecase.gamification
 
+import com.habittracker.domain.model.Challenge
 import com.habittracker.domain.model.Habit
 import com.habittracker.domain.model.HabitEntry
 import com.habittracker.domain.model.HabitFrequency
-import com.habittracker.domain.model.Challenge
 import kotlinx.datetime.Clock
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.TimeZone
-import kotlinx.datetime.toLocalDateTime
 import kotlinx.datetime.todayIn
-import kotlinx.datetime.Instant
+import kotlinx.datetime.DateTimeUnit
+import kotlinx.datetime.minus
 import javax.inject.Inject
 
 /**
@@ -83,6 +83,32 @@ class CalculatePointsUseCase @Inject constructor() {
         }
         
         return points
+    }
+
+    /**
+     * Рассчитать текущую серию для привычки
+     */
+    fun calculateCurrentStreak(
+        habitId: String,
+        entries: List<HabitEntry>,
+        today: LocalDate
+    ): Int {
+        val habitEntries = entries.filter { it.habitId == habitId }
+            .sortedByDescending { it.date }
+
+        var streak = 0
+        var currentDate = today
+
+        for (entry in habitEntries) {
+            if (entry.date == currentDate && entry.completed) {
+                streak++
+                currentDate = currentDate.minus(1, DateTimeUnit.DAY)
+            } else if (entry.date < currentDate) {
+                break
+            }
+        }
+
+        return streak
     }
 
     /**

@@ -1,13 +1,17 @@
 package com.habittracker.presentation.ui.habits.components
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -16,7 +20,6 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
-import androidx.compose.material.icons.filled.Person
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
@@ -37,6 +40,7 @@ import com.habittracker.domain.model.Habit
 import com.habittracker.domain.model.HabitFrequency
 import com.habittracker.domain.model.HabitType
 import com.habittracker.domain.model.isGroupHabit
+import com.habittracker.presentation.ui.components.UserAvatar
 import kotlinx.datetime.Clock
 import kotlinx.datetime.LocalTime
 import kotlinx.datetime.TimeZone
@@ -50,7 +54,8 @@ data class ParticipantProgress(
     val userName: String,
     val isCompletedToday: Boolean,
     val currentStreak: Int,
-    val completionRate: Float // процент выполнения за последние 7 дней (0.0 - 1.0)
+    val completionRate: Float, // процент выполнения за последние 7 дней (0.0 - 1.0)
+    val avatarUrl: String? = null // URL аватарки участника
 )
 
 /**
@@ -103,11 +108,13 @@ fun GroupHabitProgressComponent(
         
         // Список участников с их статусом
         LazyRow(
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            contentPadding = PaddingValues(end = 4.dp) // Добавляем padding для индикатора выполнения
         ) {
             items(participantsProgress) { participant ->
                 ParticipantStatusItem(
                     participant = participant,
+                    size = 40.dp,
                     modifier = Modifier.size(40.dp)
                 )
             }
@@ -116,39 +123,54 @@ fun GroupHabitProgressComponent(
 }
 
 /**
- * Компонент для отображения статуса отдельного участника
+ * Компонент для отображения статуса отдельного участника с аватаркой
  */
 @Composable
 private fun ParticipantStatusItem(
     participant: ParticipantProgress,
+    size: androidx.compose.ui.unit.Dp,
     modifier: Modifier = Modifier
 ) {
+    val successColor = Color(0xFF4CAF50)
+    val borderColor = if (participant.isCompletedToday) successColor else Color.Transparent
+    
     Box(
-        modifier = modifier
-            .clip(CircleShape)
-            .background(
-                if (participant.isCompletedToday) {
-                    Color(0xFF4CAF50)
-                } else {
-                    MaterialTheme.colorScheme.surfaceVariant
-                }
-            ),
+        modifier = modifier,
         contentAlignment = Alignment.Center
     ) {
+        // Аватарка или плейсхолдер
+        UserAvatar(
+            data = participant.avatarUrl,
+            name = participant.userName,
+            size = size,
+            modifier = Modifier
+                .fillMaxSize()
+                .clip(CircleShape)
+                .border(
+                    width = if (participant.isCompletedToday) 2.dp else 0.dp,
+                    color = borderColor,
+                    shape = CircleShape
+                ),
+        )
+        
+        // Индикатор выполнения (галочка в углу)
         if (participant.isCompletedToday) {
-            Icon(
-                imageVector = Icons.Default.Check,
-                contentDescription = stringResource(R.string.completed_today),
-                tint = Color.White,
-                modifier = Modifier.size(20.dp)
-            )
-        } else {
-            Icon(
-                imageVector = Icons.Default.Person,
-                contentDescription = participant.userName,
-                tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.size(20.dp)
-            )
+            Box(
+                modifier = Modifier
+                    .align(Alignment.BottomEnd)
+                    .offset(x = 2.dp, y = 2.dp)
+                    .size(14.dp)
+                    .clip(CircleShape)
+                    .background(successColor),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Check,
+                    contentDescription = stringResource(R.string.completed_today),
+                    tint = Color.White,
+                    modifier = Modifier.size(10.dp)
+                )
+            }
         }
     }
 }
@@ -212,6 +234,7 @@ private fun ParticipantDetailRow(
         ) {
             ParticipantStatusItem(
                 participant = participant,
+                size = 24.dp,
                 modifier = Modifier.size(24.dp)
             )
             Spacer(modifier = Modifier.width(8.dp))

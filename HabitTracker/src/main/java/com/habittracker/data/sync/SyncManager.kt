@@ -1,6 +1,7 @@
 package com.habittracker.data.sync
 
 import android.util.Log
+import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.FirebaseFirestore
 import com.habittracker.data.local.dao.SyncOutboxDao
 import com.habittracker.data.local.entity.SyncOutboxEntity
@@ -13,6 +14,7 @@ import org.json.JSONObject
 import java.util.UUID
 import javax.inject.Inject
 import javax.inject.Singleton
+import kotlin.coroutines.resume
 import kotlin.coroutines.resumeWithException
 
 /**
@@ -42,6 +44,54 @@ class SyncManager @Inject constructor(
                 entityId = entityId,
                 opType = "UPSERT",
                 payloadJson = payloadJson,
+                updatedAt = updatedAt
+            )
+        )
+    }
+
+    suspend fun enqueueArrayUnion(
+        entityType: String,
+        entityId: String,
+        fieldPath: String,
+        values: List<String>,
+        updatedAt: Long,
+        operationId: String = UUID.randomUUID().toString()
+    ) = withContext(Dispatchers.IO) {
+        val payload = JSONObject()
+            .put("fieldPath", fieldPath)
+            .put("values", JSONArray(values))
+            .toString()
+        outboxDao.insert(
+            SyncOutboxEntity(
+                operationId = operationId,
+                entityType = entityType,
+                entityId = entityId,
+                opType = "ARRAY_UNION",
+                payloadJson = payload,
+                updatedAt = updatedAt
+            )
+        )
+    }
+
+    suspend fun enqueueArrayRemove(
+        entityType: String,
+        entityId: String,
+        fieldPath: String,
+        values: List<String>,
+        updatedAt: Long,
+        operationId: String = UUID.randomUUID().toString()
+    ) = withContext(Dispatchers.IO) {
+        val payload = JSONObject()
+            .put("fieldPath", fieldPath)
+            .put("values", JSONArray(values))
+            .toString()
+        outboxDao.insert(
+            SyncOutboxEntity(
+                operationId = operationId,
+                entityType = entityType,
+                entityId = entityId,
+                opType = "ARRAY_REMOVE",
+                payloadJson = payload,
                 updatedAt = updatedAt
             )
         )
@@ -98,6 +148,11 @@ class SyncManager @Inject constructor(
         )
     }
 
+    // Проверяет, есть ли pending операции для конкретной сущности
+    suspend fun hasPendingOperations(entityType: String, entityId: String): Boolean = withContext(Dispatchers.IO) {
+        outboxDao.hasPendingForEntity(entityType, entityId)
+    }
+
     // Дренаж очереди: вызывать WorkManager'ом периодически и вручную при старте/онбординге
     suspend fun drainPending(maxBatch: Int = 50) = withContext(Dispatchers.IO) {
         val batch = outboxDao.getByState("PENDING", maxBatch)
@@ -129,6 +184,8 @@ class SyncManager @Inject constructor(
                 when (item.opType) {
                     "UPSERT" -> pushUpsert(item)
                     "DELETE" -> pushDelete(item)
+                    "ARRAY_UNION" -> pushArrayUpdate(item, isUnion = true)
+                    "ARRAY_REMOVE" -> pushArrayUpdate(item, isUnion = false)
                 }
                 outboxDao.deleteById(item.id)
                 Log.d("SyncManager", "[drainPending] done id=${item.id}")
@@ -191,11 +248,55 @@ class SyncManager @Inject constructor(
     private suspend fun pushDelete(item: SyncOutboxEntity) {
         val (collection, docId) = route(item.entityType, item.entityId)
         Log.d("SyncManager", "[pushDelete] ${item.entityType} -> $collection/$docId")
+        when (item.entityType) {
+            "habit", "challenge" -> {
+                val updates = mapOf(
+                    "isActive" to false,
+                    "deletedAtMillis" to item.updatedAt,
+                    "updatedAtMillis" to item.updatedAt
+                )
+                firestore.collection(collection)
+                    .document(docId)
+                    .set(updates, com.google.firebase.firestore.SetOptions.merge())
+                    .awaitUnit()
+            }
+            else -> {
+                firestore.collection(collection)
+                    .document(docId)
+                    .delete()
+                    .awaitUnit()
+            }
+        }
+        Log.d("SyncManager", "[pushDelete] DONE ${item.entityType} -> $collection/$docId")
+    }
+
+    private suspend fun pushArrayUpdate(item: SyncOutboxEntity, isUnion: Boolean) {
+        val (collection, docId) = route(item.entityType, item.entityId)
+        val payloadObj = JSONObject(item.payloadJson)
+        val fieldPath = payloadObj.getString("fieldPath")
+        val valuesArr = payloadObj.optJSONArray("values") ?: JSONArray()
+        val values = mutableListOf<String>()
+        for (i in 0 until valuesArr.length()) {
+            val v = valuesArr.optString(i)
+            if (v.isNotBlank()) values.add(v)
+        }
+        if (values.isEmpty()) return
+
+        val op = if (isUnion) {
+            FieldValue.arrayUnion(*values.toTypedArray())
+        } else {
+            FieldValue.arrayRemove(*values.toTypedArray())
+        }
+
         firestore.collection(collection)
             .document(docId)
-            .delete()
+            .update(
+                mapOf(
+                    fieldPath to op,
+                    "updatedAtMillis" to item.updatedAt
+                )
+            )
             .awaitUnit()
-        Log.d("SyncManager", "[pushDelete] DONE ${item.entityType} -> $collection/$docId")
     }
 
     private fun route(entityType: String, entityId: String): Pair<String, String> = when (entityType) {
@@ -205,6 +306,19 @@ class SyncManager @Inject constructor(
         "habit" -> "habits" to entityId
         "habit_entry" -> "habit_entries" to entityId
         "habit_invitation" -> "habit_invitations" to entityId
+        "challenge" -> "challenges" to entityId
+        "user_achievement" -> "user_achievements" to entityId
+        "habit_participant_settings" -> {
+            // entityId expected format: "habitId:userId"
+            val parts = entityId.split(":")
+            if (parts.size == 2) {
+                "habits/${parts[0]}/participants/${parts[1]}/meta" to "settings"
+            } else {
+                // Fallback or error logging
+                Log.e("SyncManager", "Invalid entityId format for habit_participant_settings: $entityId")
+                "invalid_path" to entityId
+            }
+        }
         else -> entityType + "s" to entityId // на всякий случай
     }
 
@@ -262,15 +376,15 @@ private suspend fun <T> suspendCancellableAwait(task: com.google.android.gms.tas
         task.addOnCompleteListener { t ->
             if (t.isSuccessful) {
                 @Suppress("UNCHECKED_CAST")
-                cont.resume(t.result as T) {}
+                cont.resume(t.result as T)
             } else {
                 cont.resumeWithException(t.exception ?: RuntimeException("Task failed"))
             }
         }
-        cont.invokeOnCancellation { task.tryCancel() }
+        cont.invokeOnCancellation { tryCancel() }
     }
 }
 
-private fun com.google.android.gms.tasks.Task<*>.tryCancel() {
+private fun tryCancel() {
     // Ничего, просто для совместимости
 }

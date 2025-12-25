@@ -3,6 +3,7 @@ package com.habittracker.domain.usecase.challenge
 import com.habittracker.domain.model.Challenge
 import com.habittracker.domain.model.ChallengeStatus
 import com.habittracker.domain.model.ChallengeType
+import com.habittracker.domain.model.isCompleted
 import com.habittracker.domain.repository.ChallengeRepository
 import com.habittracker.domain.repository.HabitEntryRepository
 import com.habittracker.domain.repository.SocialRepository
@@ -71,20 +72,36 @@ class UpdateChallengeProgressUseCase @Inject constructor(
             if (resultsResult.isFailure) return
             
             val results = resultsResult.getOrNull() ?: return
-            val winner = results.winner
+            val hasProgress = results.participants.any { it.score > 0 }
+            val winner = if (hasProgress) results.winner else null
             
             // Обновляем статус челленджа
             val today = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault()).date
             val updatedChallenge = challenge.copy(
-                status = ChallengeStatus.COMPLETED,
-                winnerId = winner?.user?.id,
+                status = if (hasProgress) ChallengeStatus.COMPLETED else ChallengeStatus.EXPIRED,
+                winnerId = if (hasProgress) winner?.user?.id else null,
                 updatedAt = today
             )
             
             challengeRepository.updateChallenge(updatedChallenge)
             
             // Отправляем уведомления участникам
-            sendChallengeCompletedNotifications(updatedChallenge, results.participants)
+            if (hasProgress) {
+                sendChallengeCompletedNotifications(updatedChallenge, results.participants)
+            } else {
+                try {
+                    challenge.participants.forEach { participantId ->
+                        socialRepository.sendChallengeCancelledNotification(
+                            participantId,
+                            challenge.id,
+                            challenge.title,
+                            "Челлендж истёк без победителя"
+                        )
+                    }
+                } catch (_: Exception) {
+                    // ignore
+                }
+            }
             
         } catch (e: Exception) {
             // Логируем ошибку, но не прерываем выполнение
@@ -142,6 +159,7 @@ class UpdateChallengeProgressUseCase @Inject constructor(
                 
                 socialRepository.sendChallengeCompletedNotification(
                     participant.user.id,
+                    challenge.id,
                     challenge.title,
                     message,
                     isWinner
@@ -163,7 +181,7 @@ class UpdateChallengeProgressUseCase @Inject constructor(
             val challenge = challengeRepository.getChallengeById(challengeId)
                 ?: return Result.failure(Exception("Челлендж не найден"))
             
-            if (challenge.status == ChallengeStatus.COMPLETED) {
+            if (challenge.isCompleted()) {
                 return Result.failure(Exception("Челлендж уже завершен"))
             }
             
@@ -202,7 +220,7 @@ class UpdateChallengeProgressUseCase @Inject constructor(
             val challenge = challengeRepository.getChallengeById(challengeId)
                 ?: return Result.failure(Exception("Челлендж не найден"))
             
-            if (challenge.status == ChallengeStatus.COMPLETED) {
+            if (challenge.isCompleted()) {
                 return Result.failure(Exception("Нельзя отменить завершенный челлендж"))
             }
             
@@ -222,6 +240,7 @@ class UpdateChallengeProgressUseCase @Inject constructor(
                 challenge.participants.forEach { participantId ->
                     socialRepository.sendChallengeCancelledNotification(
                         participantId,
+                        challenge.id,
                         challenge.title,
                         reason.ifBlank { "Челлендж отменен создателем" }
                     )

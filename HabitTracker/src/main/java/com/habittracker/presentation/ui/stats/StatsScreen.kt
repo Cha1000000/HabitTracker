@@ -1,5 +1,6 @@
 package com.habittracker.presentation.ui.stats
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -7,14 +8,19 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.BarChart
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.EmojiEvents
 import androidx.compose.material.icons.filled.Group
@@ -25,6 +31,7 @@ import androidx.compose.material.icons.filled.Whatshot
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -37,11 +44,13 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -51,6 +60,7 @@ import com.habittracker.domain.model.gamification.HabitStats
 import com.habittracker.domain.model.gamification.SocialStats
 import com.habittracker.domain.model.gamification.StreakStats
 import com.habittracker.domain.model.gamification.TimeStats
+import com.habittracker.presentation.ui.components.UserAvatar
 import com.habittracker.presentation.ui.habits.components.GlassmorphicCard
 import com.habittracker.presentation.ui.habits.components.GradientProgressBar
 import com.habittracker.presentation.ui.habits.components.TahoeGradientBackground
@@ -128,6 +138,18 @@ fun StatsScreen(
                     ) {
                     item {
                         UserLevelCard(userStats.levelInfo)
+                    }
+                    
+                    item {
+                        ActivityChartCard(userStats.habitStats.last7DaysCompletions)
+                    }
+
+                    item {
+                        LeaderboardSection(
+                            leaderboardEntries = uiState.leaderboardEntries,
+                            leaderboardType = uiState.leaderboardType,
+                            onToggleType = { viewModel.toggleLeaderboardType() }
+                        )
                     }
                     
                     item {
@@ -336,6 +358,98 @@ private fun TimeStatsCard(timeStats: TimeStats) {
 }
 
 @Composable
+private fun ActivityChartCard(last7Days: List<Pair<kotlinx.datetime.LocalDate, Int>>) {
+    val isDarkTheme = isSystemInDarkTheme()
+    val maxCompletions = last7Days.maxOfOrNull { it.second }?.coerceAtLeast(1) ?: 1
+
+    GlassmorphicCard(
+        modifier = Modifier.fillMaxWidth(),
+        isDarkTheme = isDarkTheme,
+        cornerRadius = 16.dp,
+        glassAlpha = if (isDarkTheme) 0.18f else 0.85f,
+        borderAlpha = if (isDarkTheme) 0.3f else 0.15f,
+        elevation = 2.dp
+    ) {
+        Column(
+            modifier = Modifier.padding(16.dp)
+        ) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                Icon(
+                    Icons.Default.BarChart,
+                    contentDescription = null,
+                    tint = if (isDarkTheme) Color(0xFF4DC273) else MaterialTheme.colorScheme.primary
+                )
+                Text(
+                    text = stringResource(R.string.stats_activity_title),
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold
+                )
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            Column(
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                // Столбики диаграммы
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(100.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.Bottom
+                ) {
+                    last7Days.forEach { (_, count) ->
+                        val heightFraction = if (count == 0) 0.05f else (count.toFloat() / maxCompletions).coerceIn(0.1f, 1f)
+                        
+                        Box(
+                            modifier = Modifier
+                                .width(24.dp)
+                                .fillMaxHeight(heightFraction)
+                                .clip(RoundedCornerShape(topStart = 4.dp, topEnd = 4.dp))
+                                .background(
+                                    if (isDarkTheme) Color(0xFF60A5FA) else MaterialTheme.colorScheme.primary
+                                )
+                        )
+                    }
+                }
+                
+                Spacer(modifier = Modifier.height(8.dp))
+                
+                // Названия дней недели
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    last7Days.forEach { (date, _) ->
+                        val dayName = when (date.dayOfWeek) {
+                            kotlinx.datetime.DayOfWeek.MONDAY -> stringResource(R.string.weekday_mon)
+                            kotlinx.datetime.DayOfWeek.TUESDAY -> stringResource(R.string.weekday_tue)
+                            kotlinx.datetime.DayOfWeek.WEDNESDAY -> stringResource(R.string.weekday_wed)
+                            kotlinx.datetime.DayOfWeek.THURSDAY -> stringResource(R.string.weekday_thu)
+                            kotlinx.datetime.DayOfWeek.FRIDAY -> stringResource(R.string.weekday_fri)
+                            kotlinx.datetime.DayOfWeek.SATURDAY -> stringResource(R.string.weekday_sat)
+                            kotlinx.datetime.DayOfWeek.SUNDAY -> stringResource(R.string.weekday_sun)
+                            else -> ""
+                        }
+                        Text(
+                            text = dayName,
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.width(24.dp),
+                            textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
 private fun StatsCard(
     title: String,
     icon: ImageVector,
@@ -392,5 +506,236 @@ private fun StatsCard(
                 }
             }
         }
+    }
+}
+
+@Composable
+private fun LeaderboardSection(
+    leaderboardEntries: List<com.habittracker.domain.usecase.gamification.LeaderboardEntry>,
+    leaderboardType: com.habittracker.domain.usecase.gamification.LeaderboardType,
+    onToggleType: () -> Unit
+) {
+    val isDarkTheme = isSystemInDarkTheme()
+    
+    GlassmorphicCard(
+        modifier = Modifier.fillMaxWidth(),
+        isDarkTheme = isDarkTheme,
+        cornerRadius = 16.dp,
+        glassAlpha = if (isDarkTheme) 0.18f else 0.85f,
+        borderAlpha = if (isDarkTheme) 0.3f else 0.15f,
+        elevation = 2.dp
+    ) {
+        Column(
+            modifier = Modifier.padding(16.dp)
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Icon(
+                        Icons.Default.EmojiEvents,
+                        contentDescription = null,
+                        tint = if (isDarkTheme) Color(0xFFFFD700) else MaterialTheme.colorScheme.primary
+                    )
+                    Text(
+                        text = stringResource(R.string.stats_leaderboard_title),
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+                
+                // Кнопка переключения типа лидерборда
+                androidx.compose.material3.FilterChip(
+                    selected = leaderboardType == com.habittracker.domain.usecase.gamification.LeaderboardType.WEEKLY,
+                    onClick = onToggleType,
+                    label = {
+                        Text(
+                            text = if (leaderboardType == com.habittracker.domain.usecase.gamification.LeaderboardType.WEEKLY) 
+                                stringResource(R.string.leaderboard_weekly) 
+                            else 
+                                stringResource(R.string.leaderboard_all_time),
+                            style = MaterialTheme.typography.labelSmall
+                        )
+                    },
+                    modifier = Modifier.height(28.dp)
+                )
+            }
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            if (leaderboardEntries.isEmpty() || leaderboardEntries.size < 2) {
+                Text(
+                    text = stringResource(R.string.leaderboard_empty),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp)
+                )
+            } else {
+                leaderboardEntries.take(5).forEachIndexed { index, entry ->
+                    LeaderboardItemEnhanced(
+                        entry = entry,
+                        isWeekly = leaderboardType == com.habittracker.domain.usecase.gamification.LeaderboardType.WEEKLY
+                    )
+                    if (index < leaderboardEntries.take(5).lastIndex) {
+                        HorizontalDivider(
+                            modifier = Modifier.padding(vertical = 8.dp),
+                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.1f)
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun LeaderboardItemEnhanced(
+    entry: com.habittracker.domain.usecase.gamification.LeaderboardEntry,
+    isWeekly: Boolean
+) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.SpaceBetween
+    ) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier.weight(1f)
+        ) {
+            // Rank
+            Text(
+                text = "${entry.rank}",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold,
+                color = when (entry.rank) {
+                    1 -> Color(0xFFFFD700) // Gold
+                    2 -> Color(0xFFC0C0C0) // Silver
+                    3 -> Color(0xFFCD7F32) // Bronze
+                    else -> MaterialTheme.colorScheme.onSurface
+                },
+                modifier = Modifier.width(24.dp),
+                textAlign = TextAlign.Center
+            )
+            
+            Spacer(modifier = Modifier.width(12.dp))
+            
+            // Avatar
+            UserAvatar(
+                avatarThumbnailUrl = entry.user.avatarThumbnailUrl,
+                avatarUrl = entry.user.avatarUrl,
+                name = entry.user.name,
+                size = 40.dp,
+                backgroundColor = MaterialTheme.colorScheme.primaryContainer,
+                contentDescription = entry.user.name
+            )
+            
+            Spacer(modifier = Modifier.width(12.dp))
+            
+            // Name & Level
+            Column {
+                Text(
+                    text = entry.user.name.ifBlank { "User" },
+                    style = MaterialTheme.typography.bodyMedium,
+                    fontWeight = FontWeight.SemiBold,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+                Text(
+                    text = stringResource(R.string.level_title, entry.user.level),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+        }
+        
+        // Score
+        Column(horizontalAlignment = Alignment.End) {
+            Text(
+                text = "${entry.score}",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.primary
+            )
+            if (isWeekly) {
+                Text(
+                    text = stringResource(R.string.leaderboard_completions),
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun LeaderboardItem(rank: Int, user: com.habittracker.domain.model.User) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.SpaceBetween
+    ) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier.weight(1f)
+        ) {
+            // Rank
+            Text(
+                text = "$rank",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold,
+                color = when (rank) {
+                    1 -> Color(0xFFFFD700) // Gold
+                    2 -> Color(0xFFC0C0C0) // Silver
+                    3 -> Color(0xFFCD7F32) // Bronze
+                    else -> MaterialTheme.colorScheme.onSurface
+                },
+                modifier = Modifier.width(24.dp),
+                textAlign = TextAlign.Center
+            )
+            
+            Spacer(modifier = Modifier.width(12.dp))
+            
+            // Avatar
+            UserAvatar(
+                avatarThumbnailUrl = user.avatarThumbnailUrl,
+                avatarUrl = user.avatarUrl,
+                name = user.name,
+                size = 40.dp,
+                backgroundColor = MaterialTheme.colorScheme.primaryContainer,
+                contentDescription = user.name
+            )
+            
+            Spacer(modifier = Modifier.width(12.dp))
+            
+            // Name & Level
+            Column {
+                Text(
+                    text = user.name.ifBlank { "User" },
+                    style = MaterialTheme.typography.bodyMedium,
+                    fontWeight = FontWeight.SemiBold,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+                Text(
+                    text = stringResource(R.string.level_title, user.level),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+        }
+        
+        // Points
+        Text(
+            text = "${user.points}",
+            style = MaterialTheme.typography.titleMedium,
+            fontWeight = FontWeight.Bold,
+            color = MaterialTheme.colorScheme.primary
+        )
     }
 }

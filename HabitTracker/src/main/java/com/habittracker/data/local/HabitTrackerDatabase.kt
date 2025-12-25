@@ -5,6 +5,7 @@ import androidx.room.Database
 import androidx.room.Room
 import androidx.room.RoomDatabase
 import androidx.room.TypeConverters
+import androidx.room.migration.Migration
 import androidx.sqlite.db.SupportSQLiteDatabase
 import com.habittracker.BuildConfig
 import com.habittracker.data.local.dao.AchievementDao
@@ -53,7 +54,7 @@ import com.habittracker.data.local.entity.UserEntity
         NotificationReadStatusEntity::class,
         GroupHabitNotificationEntity::class
     ],
-    version = 1,
+    version = 7,
     exportSchema = false
 )
 @TypeConverters(Converters::class)
@@ -77,6 +78,59 @@ abstract class HabitTrackerDatabase : RoomDatabase() {
     companion object {
         const val DATABASE_NAME = "habit_tracker_db"
 
+        private val MIGRATION_4_5 = object : Migration(4, 5) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE habits ADD COLUMN updatedAtMillis INTEGER NOT NULL DEFAULT 0")
+                db.execSQL("ALTER TABLE habits ADD COLUMN deletedAtMillis INTEGER")
+
+                db.execSQL("ALTER TABLE challenges ADD COLUMN deletedAtMillis INTEGER")
+
+                // Best-effort backfill for ordering/merge (LocalDate stored as TEXT YYYY-MM-DD)
+                db.execSQL(
+                    "UPDATE habits SET updatedAtMillis = COALESCE(updatedAtMillis, 0) WHERE updatedAtMillis IS NULL"
+                )
+                db.execSQL(
+                    "UPDATE habits SET updatedAtMillis = (strftime('%s', updatedAt) * 1000) WHERE updatedAtMillis = 0 AND updatedAt IS NOT NULL"
+                )
+            }
+        }
+
+        private val MIGRATION_5_6 = object : Migration(5, 6) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE user_achievements ADD COLUMN updatedAtMillis INTEGER NOT NULL DEFAULT 0")
+                db.execSQL(
+                    "UPDATE user_achievements SET updatedAtMillis = CASE WHEN updatedAtMillis = 0 THEN createdAt ELSE updatedAtMillis END"
+                )
+            }
+        }
+
+        private val MIGRATION_6_7 = object : Migration(6, 7) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                // Индексы для таблицы habits
+                db.execSQL("CREATE INDEX IF NOT EXISTS index_habits_createdBy ON habits(createdBy)")
+                db.execSQL("CREATE INDEX IF NOT EXISTS index_habits_type ON habits(type)")
+                db.execSQL("CREATE INDEX IF NOT EXISTS index_habits_isActive ON habits(isActive)")
+                db.execSQL("CREATE INDEX IF NOT EXISTS index_habits_startDate ON habits(startDate)")
+                db.execSQL("CREATE INDEX IF NOT EXISTS index_habits_endDate ON habits(endDate)")
+                db.execSQL("CREATE UNIQUE INDEX IF NOT EXISTS index_habits_inviteCode ON habits(inviteCode)")
+                db.execSQL("CREATE INDEX IF NOT EXISTS index_habits_createdBy_isActive ON habits(createdBy, isActive)")
+                db.execSQL("CREATE INDEX IF NOT EXISTS index_habits_type_isActive ON habits(type, isActive)")
+                
+                // Индексы для таблицы habit_entries
+                db.execSQL("CREATE INDEX IF NOT EXISTS index_habit_entries_habitId ON habit_entries(habitId)")
+                db.execSQL("CREATE INDEX IF NOT EXISTS index_habit_entries_userId ON habit_entries(userId)")
+                db.execSQL("CREATE INDEX IF NOT EXISTS index_habit_entries_date ON habit_entries(date)")
+                db.execSQL("CREATE INDEX IF NOT EXISTS index_habit_entries_completed ON habit_entries(completed)")
+                db.execSQL("CREATE INDEX IF NOT EXISTS index_habit_entries_habitId_date ON habit_entries(habitId, date)")
+                db.execSQL("CREATE INDEX IF NOT EXISTS index_habit_entries_userId_date ON habit_entries(userId, date)")
+                db.execSQL("CREATE INDEX IF NOT EXISTS index_habit_entries_habitId_userId ON habit_entries(habitId, userId)")
+                
+                // Индексы для таблицы users
+                db.execSQL("CREATE UNIQUE INDEX IF NOT EXISTS index_users_email ON users(email)")
+                db.execSQL("CREATE INDEX IF NOT EXISTS index_users_name ON users(name)")
+                db.execSQL("CREATE INDEX IF NOT EXISTS index_users_lastActiveAt ON users(lastActiveAt)")
+            }
+        }
 
         @Volatile
         private var INSTANCE: HabitTrackerDatabase? = null
@@ -93,6 +147,8 @@ abstract class HabitTrackerDatabase : RoomDatabase() {
                     // В debug-сборках допускаем деструктивные миграции для ускорения разработки
                     builder.fallbackToDestructiveMigration()
                 }
+
+                builder.addMigrations(MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7)
 
                 val instance = builder.build()
 

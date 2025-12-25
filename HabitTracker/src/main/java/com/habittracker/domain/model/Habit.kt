@@ -30,6 +30,8 @@ data class Habit(
     val isActive: Boolean = true,
     val createdAt: LocalDate = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault()).date,
     val updatedAt: LocalDate = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault()).date,
+    val updatedAtMillis: Long = Clock.System.now().toEpochMilliseconds(),
+    val deletedAtMillis: Long? = null,
     val startDate: LocalDate? = null, // дата начала привычки (null = с момента создания)
     val endDate: LocalDate? = null // дата окончания привычки (null = бессрочно)
 )
@@ -49,7 +51,7 @@ enum class HabitFrequency {
 }
 
 // Extension functions для работы с привычками
-fun Habit.isGroupHabit(): Boolean = type == HabitType.GROUP
+fun Habit.isGroupHabit(): Boolean = type == HabitType.GROUP || participants.isNotEmpty()
 
 fun Habit.getParticipantsCount(): Int = if (isGroupHabit()) participants.size else 1
 
@@ -65,6 +67,37 @@ fun Habit.getFrequencyText(): String = when (frequency) {
     HabitFrequency.WEEKDAYS -> "По будням"
     HabitFrequency.WEEKENDS -> "По выходным"
     HabitFrequency.CUSTOM -> "Выборочно"
+}
+
+/**
+ * Проверяет, активна ли привычка в указанный день недели
+ * с учётом частоты и выбранных дней
+ */
+fun Habit.isActiveOnDayOfWeek(dayOfWeek: DayOfWeek): Boolean {
+    return when (frequency) {
+        HabitFrequency.DAILY -> true
+        
+        HabitFrequency.WEEKDAYS -> dayOfWeek in setOf(
+            DayOfWeek.MONDAY,
+            DayOfWeek.TUESDAY,
+            DayOfWeek.WEDNESDAY,
+            DayOfWeek.THURSDAY,
+            DayOfWeek.FRIDAY
+        )
+        
+        HabitFrequency.WEEKENDS -> dayOfWeek in setOf(
+            DayOfWeek.SATURDAY,
+            DayOfWeek.SUNDAY
+        )
+        
+        HabitFrequency.WEEKLY,
+        HabitFrequency.TWICE_A_WEEK,
+        HabitFrequency.CUSTOM -> {
+            // Если дни не указаны, считаем привычку активной каждый день (обратная совместимость)
+            if (reminderDays.isEmpty()) true
+            else dayOfWeek in reminderDays
+        }
+    }
 }
 
 fun Habit.getReminderText(): String {

@@ -13,6 +13,7 @@ import com.habittracker.domain.model.gamification.TimeStats
 import com.habittracker.domain.model.gamification.UserStats
 import com.habittracker.domain.model.getLevelProgress
 import com.habittracker.domain.model.getLevelTitle
+import com.habittracker.domain.model.isActiveOnDayOfWeek
 import com.habittracker.domain.repository.ChallengeRepository
 import com.habittracker.domain.repository.HabitEntryRepository
 import com.habittracker.domain.repository.HabitRepository
@@ -116,8 +117,22 @@ class GetUserStatsUseCase @Inject constructor(
             completionsThisYear = thisYearEntries.size,
             averageCompletionRate = calculateAverageCompletionRate(activeHabits, entries, today),
             mostCompletedHabit = findMostCompletedHabit(habits, completedEntries),
-            perfectDays = calculatePerfectDays(activeHabits, entries, today)
+            perfectDays = calculatePerfectDays(activeHabits, entries, today),
+            last7DaysCompletions = calculateLast7DaysCompletions(completedEntries, today)
         )
+    }
+
+    /**
+     * Рассчитать количество выполненных привычек за последние 7 дней для графика
+     */
+    private fun calculateLast7DaysCompletions(
+        completedEntries: List<HabitEntry>,
+        today: LocalDate
+    ): List<Pair<LocalDate, Int>> {
+        val last7Days = (0..6).map { today.minus(it, DateTimeUnit.DAY) }.reversed()
+        return last7Days.map { date ->
+            date to completedEntries.count { it.date == date }
+        }
     }
 
     /**
@@ -128,7 +143,7 @@ class GetUserStatsUseCase @Inject constructor(
         userId: String
     ): ChallengeStats {
         val activeChallenges = challenges.filter { it.status == ChallengeStatus.ACTIVE }
-        val completedChallenges = challenges.filter { it.status == ChallengeStatus.COMPLETED }
+        val completedChallenges = challenges.filter { it.status == ChallengeStatus.COMPLETED || it.status == ChallengeStatus.EXPIRED }
         val wonChallenges = completedChallenges.filter { it.winnerId == userId }
 
         return ChallengeStats(
@@ -266,11 +281,12 @@ class GetUserStatsUseCase @Inject constructor(
         for (i in 0..29) {
             val date = last30Days.plus(i, DateTimeUnit.DAY)
             
-            // Находим привычки, которые были активны в этот день
+            // Находим привычки, которые были активны в этот день с учётом дня недели
             val activeHabitsForDay = habits.filter { habit ->
                 habit.isActive && 
                 (habit.startDate == null || habit.startDate <= date) &&
-                (habit.endDate == null || habit.endDate >= date)
+                (habit.endDate == null || habit.endDate >= date) &&
+                habit.isActiveOnDayOfWeek(date.dayOfWeek)
             }
             
             if (activeHabitsForDay.isEmpty()) continue

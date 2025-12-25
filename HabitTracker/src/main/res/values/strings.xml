@@ -13,8 +13,11 @@
     <string name="action_ok">Понятно</string>
     <string name="save">Сохранить</string>
     <string name="cancel">Отменить</string>
+    <string name="add">Добавить</string>
     <string name="delete">Удалить</string>
     <string name="edit">Редактировать</string>
+    <string name="edit_challenge_title_format">Изменить %1$s</string>
+    <string name="edit_challenge_title_fallback">Изменить челлендж</string>
     <string name="menu_done">Выполнено</string>
     <string name="back">Назад</string>
     <string name="clear">Очистить</string>
@@ -50,6 +53,7 @@
     <string name="cd_friends">Друзья</string>
     <string name="cd_stats">Статистика</string>
     <string name="cd_achievements">Достижения</string>
+    <string name="cd_challenges">Челленджи</string>
     <string name="cd_refresh">Обновить</string>
     <string name="cd_habit_icon">Иконка привычки</string>
     <string name="cd_invitation_icon">Иконка приглашения</string>
@@ -138,7 +142,13 @@
     <string name="weekday_sat">Сб</string>
     <string name="weekday_sun">Вс</string>
 
-    <!-- Reminder day selection hints -->
+    <!-- Active days selection (for habit frequency) -->
+    <string name="active_days_hint_weekly">Выберите день недели для этой привычки</string>
+    <string name="active_days_hint_twice">Выберите 2 дня недели для этой привычки</string>
+    <string name="active_days_hint_custom">Выберите дни недели для этой привычки</string>
+    <string name="active_days_info">💡 Привычка будет отображаться только в выбранные дни. Если включены напоминания, они также будут приходить в эти дни.</string>
+    
+    <!-- Reminder day selection hints (validation) -->
     <string name="reminder_days_hint_weekly">Выберите 1 день</string>
     <string name="reminder_days_hint_twice">Выберите 2 дня</string>
     <string name="reminder_days_hint_custom">Выберите дни</string>
@@ -280,6 +290,13 @@
     <string name="stats_time_consistency">Оценка постоянства</string>
     <string name="stats_time_average">Среднее время</string>
     <string name="stats_time_best_hour">Лучший час</string>
+    <string name="stats_activity_title">Активность за 7 дней</string>
+    <string name="stats_leaderboard_title">Рейтинг друзей</string>
+    <string name="leaderboard_empty">У вас пока нет друзей для соревнования</string>
+    <string name="leaderboard_weekly">За неделю</string>
+    <string name="leaderboard_all_time">Все время</string>
+    <string name="leaderboard_completions">выполнений</string>
+    <string name="leaderboard_habit_title">Рейтинг участников</string>
     <string name="cd_more">Еще</string>
     <string name="wants_to_add_you">Хочет добавить вас в друзья</string>
     <string name="request_sent">Запрос отправлен</string>
@@ -545,6 +562,7 @@
     <!-- Challenge strings -->
     <string name="challenges_title">Челленджи</string>
     <string name="create_challenge">Создать челлендж</string>
+    <string name="invitations">Приглашения</string>
     <string name="active_challenges">Активные</string>
     <string name="ending_soon">Скоро завершатся</string>
     <string name="completed_challenges">Завершенные</string>
@@ -552,12 +570,21 @@
     <string name="join_challenge_confirmation">Вы уверены, что хотите присоединиться к этому челленджу?</string>
     <string name="join">Присоединиться</string>
     <string name="leave_challenge">Покинуть челлендж</string>
+    <string name="leave_challenge_title">Покинуть челлендж?</string>
+    <string name="leave_challenge_confirmation">Вы уверены, что хотите покинуть этот челлендж? Вы больше не сможете участвовать в нём.</string>
+    <string name="leave">Покинуть</string>
+    <string name="cancel_challenge">Отменить челлендж</string>
+    <string name="delete_challenge">Удалить челлендж</string>
+    <string name="remove_participant_title">Удалить участника?</string>
+    <string name="remove_participant_confirmation">Вы уверены, что хотите удалить %1$s из этого челленджа?</string>
     <string name="retry">Повторить</string>
     <string name="dismiss">Закрыть</string>
     <!-- Create Challenge UI helpers -->
     <string name="tap_to_select_habit">Нажмите для выбора привычки</string>
     <string name="tap_to_select_participants">Нажмите для выбора участников</string>
     <string name="selected_participants">Выбрано участников: %1$d</string>
+    <string name="add_participants">Добавить участников</string>
+    <string name="no_friends_to_add">Нет доступных друзей для добавления</string>
     
     <!-- Empty states -->
     <string name="no_active_challenges">Нет активных челленджей</string>
@@ -572,6 +599,7 @@
     <string name="challenge_pending">Ожидает</string>
     <string name="challenge_active">Активный</string>
     <string name="challenge_completed">Завершен</string>
+    <string name="challenge_expired">Истёк</string>
     <string name="challenge_cancelled">Отменен</string>
     <string name="challenge_ended">Завершен</string>
     <string name="one_day_left">1 день</string>
@@ -584,13 +612,18 @@
     <string name="total_days">Всего дней</string>
     <string name="first_to_target">Первый к цели</string>
     
+    <!-- Challenge details -->
+    <string name="challenge_details_title">Детали челленджа</string>
+    
     <!-- Create challenge -->
     <string name="create_challenge_title">Создание челленджа</string>
     <string name="challenge_name">Название челленджа</string>
     <string name="challenge_name_hint">Введите название челленджа</string>
     <string name="challenge_description">Описание</string>
-    <string name="challenge_description_hint">Опишите правила и цели челленджа</string>
+    <string name="challenge_description_hint">Краткое описание челленджа (необязательно)</string>
+    <string name="challenge_invite_skipped_due_to_full_habit">В привычке уже максимум %1$d участников. Эти друзья не могут быть приглашены в челлендж: %2$s</string>
     <string name="select_habit">Выберите привычку</string>
+    <string name="select_habit_empty_hint">У вас нет доступных групповых привычек для создания челленджа</string>
     <string name="select_participants">Выберите участников</string>
     <string name="challenge_dates">Даты челленджа</string>
     <string name="start_date">Дата начала</string>
@@ -689,21 +722,42 @@
     <string name="achievements_progress">%1$d из %2$d разблокировано</string>
     <string name="achievements_loading">Загрузка достижений…</string>
     <string name="achievements_error">Ошибка загрузки</string>
-    <string name="achievements_empty">Достижений пока нет</string>
-    <string name="achievements_empty_description">Начните создавать привычки, чтобы разблокировать достижения</string>
-    
-    <!-- Achievement Categories -->
+    <string name="achievements_empty">Нет достижений</string>
+    <string name="achievements_empty_description">Пока здесь пусто. Выполняйте привычки, участвуйте в челленджах и добавляйте друзей, чтобы открыть достижения!</string>
     <string name="achievements_habits">Привычки</string>
     <string name="achievements_streaks">Серии</string>
-    <string name="achievements_social">Социальное</string>
-    <string name="achievements_challenges">Вызовы</string>
-    <string name="achievements_milestones">Рубежи</string>
+    <string name="achievements_social">Социальные</string>
+    <string name="achievements_challenges">Челленджи</string>
+    <string name="achievements_milestones">Вехи</string>
     <string name="achievements_special">Особые</string>
+    <string name="achievements_near_to_unlock">Близко к получению</string>
     
-    <!-- Achievement Status -->
     <string name="achievement_unlocked">Разблокировано</string>
     <string name="achievement_locked">Заблокировано</string>
     <string name="achievement_progress">Прогресс</string>
+    
+    <!-- Achievement Status -->
+    <string name="achievement_unlocked_title">Достижение разблокировано!</string>
+    <string name="points_label">очков</string>
     <string name="achievement_reward">+%1$d очков</string>
+    
+    <!-- Notification Settings Screen -->
+    <string name="notification_settings_title">Настройки уведомлений</string>
+    <string name="notification_section_habits">Напоминания о привычках</string>
+    <string name="notification_habit_reminders">Напоминания</string>
+    <string name="notification_habit_reminders_desc">Получать напоминания о выполнении привычек</string>
+    <string name="notification_section_social">Социальные уведомления</string>
+    <string name="notification_friend_activity">Активность друзей</string>
+    <string name="notification_friend_activity_desc">Запросы дружбы и приглашения</string>
+    <string name="notification_group_habits">Групповые привычки</string>
+    <string name="notification_group_habits_desc">Обновления в совместных привычках</string>
+    <string name="notification_challenges">Челленджи</string>
+    <string name="notification_challenges_desc">Приглашения и обновления челленджей</string>
+    <string name="notification_section_achievements">Достижения</string>
+    <string name="notification_achievements">Новые достижения</string>
+    <string name="notification_achievements_desc">Уведомления о разблокированных достижениях</string>
+    <string name="notification_section_quiet_hours">Режим \"Не беспокоить\"</string>
+    <string name="notification_quiet_hours">Тихие часы</string>
+    <string name="notification_quiet_hours_desc">Не беспокоить с %1$d:00 до %2$d:00</string>
 
 </resources>

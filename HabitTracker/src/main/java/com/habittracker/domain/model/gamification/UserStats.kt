@@ -29,7 +29,8 @@ data class HabitStats(
     val completionsThisYear: Int,
     val averageCompletionRate: Float,
     val mostCompletedHabit: String?,
-    val perfectDays: Int // Дни, когда все привычки были выполнены
+    val perfectDays: Int, // Дни, когда все привычки были выполнены
+    val last7DaysCompletions: List<Pair<kotlinx.datetime.LocalDate, Int>> = emptyList() // Для графика
 )
 
 /**

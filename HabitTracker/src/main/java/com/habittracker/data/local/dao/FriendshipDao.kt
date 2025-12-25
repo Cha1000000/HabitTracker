@@ -10,7 +10,7 @@ import kotlinx.coroutines.flow.Flow
 
 @Dao
 interface FriendshipDao {
-    @Insert(onConflict = OnConflictStrategy.Companion.REPLACE)
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertFriendship(friendship: FriendshipEntity)
 
     @Update
@@ -43,4 +43,14 @@ interface FriendshipDao {
 
     @Query("DELETE FROM friendships WHERE (userId1 = :userId1 AND userId2 = :userId2) OR (userId1 = :userId2 AND userId2 = :userId1)")
     suspend fun deleteFriendshipBetweenUsers(userId1: String, userId2: String)
+
+    @Query("""
+        SELECT CASE 
+            WHEN userId1 = :userId THEN userId2 
+            ELSE userId1 
+        END 
+        FROM friendships 
+        WHERE (userId1 = :userId OR userId2 = :userId) AND status = 'ACCEPTED'
+    """)
+    suspend fun getFriendIdsForUser(userId: String): List<String>
 }

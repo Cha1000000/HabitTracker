@@ -36,6 +36,7 @@ data class UserAchievementEntity(
     val isUnlocked: Boolean = false,
     val unlockedAt: Long? = null,
     val createdAt: Long,
+    val updatedAtMillis: Long = createdAt,
     val tier: Int = 1,
     val isNotified: Boolean = false
 )

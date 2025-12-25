@@ -142,15 +142,10 @@ class GetHabitCompletionStatusUseCaseTest {
         }
 
         override fun getUserHabits(userId: String) = throw NotImplementedError()
-        override suspend fun saveHabit(habit: Habit) = throw NotImplementedError()
-        override suspend fun updateHabit(habit: Habit) = throw NotImplementedError()
-        override suspend fun deleteHabit(habitId: String) = throw NotImplementedError()
         override suspend fun getHabitById(habitId: String) = throw NotImplementedError()
-        override suspend fun saveHabitEntry(habitEntry: HabitEntry) = throw NotImplementedError()
         override fun getHabitEntries(habitId: String, userId: String) = throw NotImplementedError()
         override suspend fun syncData() = throw NotImplementedError()
         override suspend fun getParticipantSettings(habitId: String, userId: String) = null
-        override suspend fun setParticipantSettings(settings: HabitParticipantSettings) = throw NotImplementedError()
         override fun getAllPublicHabits(excludeUserId: String?) = flowOf(emptyList<Habit>())
         override suspend fun getHabitByInviteCode(inviteCode: String) = throw NotImplementedError()
     }

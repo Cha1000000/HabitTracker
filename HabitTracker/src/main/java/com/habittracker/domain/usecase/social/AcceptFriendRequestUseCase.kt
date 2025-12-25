@@ -2,11 +2,16 @@ package com.habittracker.domain.usecase.social
 
 import com.habittracker.domain.model.Friendship
 import com.habittracker.domain.model.canBeAccepted
+import com.habittracker.domain.model.gamification.GamificationEvent
 import com.habittracker.domain.repository.SocialRepository
+import com.habittracker.domain.usecase.gamification.CheckAchievementsUseCase
+import com.habittracker.domain.usecase.gamification.UpdateUserPointsUseCase
 import javax.inject.Inject
 
 class AcceptFriendRequestUseCase @Inject constructor(
-    private val socialRepository: SocialRepository
+    private val socialRepository: SocialRepository,
+    private val updateUserPointsUseCase: UpdateUserPointsUseCase,
+    private val checkAchievementsUseCase: CheckAchievementsUseCase
 ) {
     suspend operator fun invoke(requestId: String, currentUserId: String): Result<Friendship> {
         return try {
@@ -28,6 +33,14 @@ class AcceptFriendRequestUseCase @Inject constructor(
             // Если успешно, отправляем уведомление отправителю
             if (result.isSuccess) {
                 try {
+                    // Award points to both users
+                    updateUserPointsUseCase(currentUserId, GamificationEvent.NewFriendAdded)
+                    updateUserPointsUseCase(friendRequest.fromUserId, GamificationEvent.NewFriendAdded)
+
+                    // Check achievements for both users
+                    checkAchievementsUseCase(currentUserId)
+                    checkAchievementsUseCase(friendRequest.fromUserId)
+
                     val acceptedByUser = socialRepository.getUserById(currentUserId)
                     acceptedByUser?.let { user ->
                         socialRepository.sendFriendAcceptedNotification(

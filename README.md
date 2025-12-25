@@ -35,7 +35,6 @@
 - [Тестирование](#тестирование)
 - [Безопасность и приватность](#безопасность-и-приватность)
 - [Производительность](#производительность)
-- [Дорожная карта (Roadmap)](#дорожная-карта-roadmap)
 - [Как контрибьютить](#как-контрибьютить)
 - [Лицензия](#лицензия)
 - [Благодарности](#благодарности)
@@ -56,25 +55,38 @@ HabitTracker — мобильное приложение для Android, кот�
 - Напоминания о привычках: WorkManager + корректная работа с разрешением уведомлений (Android 13+).
 - Система друзей: поиск, заявки, принятие/отклонение, список друзей.
 - Push-уведомления (FCM): приглашения, события групповых привычек, активности друзей.
+- Челленджи между друзьями:
+  - создание на основе привычки (в т.ч. групповой);
+  - инвайты участникам и принятие/отклонение;
+  - авто-вступление в групповую привычку при принятии инвайта (если пользователь еще не участник);
+  - защита от переполнения группы: если групповая привычка заполнена, новые внешние участники не добавляются в челлендж, а создатель получает понятное предупреждение;
+  - автоматическое завершение по дате и определение победителя + уведомления участникам.
 - Офлайн-режим: Room-кэш, оптимистичные апдейты, Outbox-синхронизация с Firestore.
 - Аутентификация Google (Credential Manager API).
 - Улучшенный UX: валидация формы в реальном времени, Snackbar, UNDO после удаления, плавные анимации.
 
 Статус модулей:
-- Челленджи: в разработке (будут соревнования между друзьями).
-- Геймификация (очки, уровни, достижения): в разработке.
+- Челленджи: реализовано (core-функциональность + уведомления).
+- Геймификация (очки, уровни, достижения): реализованы базовые достижения (UserAchievements) с синхронизацией.
 
 ## Скриншоты
-Скриншоты будут добавлены позже.
 
-Предлагаемая структура:
-```
-art/screenshots/
-  habits_list.png
-  add_edit_habit.png
-  group_habit_detail.png
-  friends_tabs.png
-```
+Файлы лежат в `art/screenshots/`.
+
+### Splash
+<img src="art/screenshots/splash.png" width="280"/>
+
+### Основные экраны
+
+| Экран | Светлая тема | Тёмная тема |
+| --- | --- | --- |
+| **Мои привычки** | <img src="art/screenshots/habits_list.png" width="280"/> | <img src="art/screenshots/habits_list_dark.png" width="280"/> |
+| **Детали групповой привычки** | <img src="art/screenshots/group_habit_detail.png" width="280"/> | <img src="art/screenshots/group_habit_detail_dark.png" width="280"/> |
+| **Создание/редактирование** | <img src="art/screenshots/add_edit_habit.png" width="280"/> | <img src="art/screenshots/add_edit_habit_dark.png" width="280"/> |
+| **Друзья** | <img src="art/screenshots/friends_tabs.png" width="280"/> | <img src="art/screenshots/friends_tabs_dark.png" width="280"/> |
+| **Статистика** | <img src="art/screenshots/stats.png" width="280"/> | <img src="art/screenshots/stats_dark.png" width="280"/> |
+| **Достижения** | <img src="art/screenshots/achievements.png" width="280"/> | <img src="art/screenshots/achievements_dark.png" width="280"/> |
+| **Публичные привычки** | <img src="art/screenshots/public_habits.png" width="280"/> | <img src="art/screenshots/public_habits_dark.png" width="280"/> |
 
 ## Стек технологий
 - Язык: Kotlin, Coroutines + Flow
@@ -119,8 +131,23 @@ com.habittracker/
 
 Ключевые решения:
 - Room-first + Outbox: все операции сначала в локальную БД, затем — фоновая синхронизация с Firestore.
-- Оптимистичные апдейты в UI, last-write-wins стратегия конфликтов.
+- Оптимистичные апдейты в UI, last-write-wins стратегия конфликтов по `updatedAtMillis`.
+- Soft-delete для `habit`/`challenge`: удаление доставляется через tombstones (`deletedAtMillis`), а не hard delete.
+- Multi-device FCM: `users.fcmTokens[]` обновляется атомарно через outbox ARRAY_UNION/ARRAY_REMOVE.
 - Разрешения на уведомления (Android 13+) запрашиваются корректно и контекстно.
+
+## Документация в репозитории
+- `sync_architecture.md` — актуальный принцип синхронизации Room ↔ Firestore (Outbox, pending-guards, merge/LWW ограничения)
+- `sync_gaps.md` — текущие риски/гепы синхронизации и план закрытия
+
+## Синхронизация (коротко)
+- **Запись (Room-first)**: UI всегда читает из Room. При create/update/delete репозиторий обновляет Room и кладёт операцию в outbox.
+- **Доставка в Firestore**: `SyncWorker` вызывает `SyncManager.drainPending()`. Для пользовательских действий дополнительно делается экспедит: `scheduleOneTimeSync()` + неблокирующий `drainPending()`.
+- **Realtime (Firestore → Room)**: слушатели по ключевым коллекциям мержат данные в Room с pending-guard и LWW по `updatedAtMillis`.
+
+Где смотреть логи:
+- `SyncWorker`: старт/завершение дренажа.
+- `SyncManager`: enqueue / pushUpsert / pushDelete / retry.
 
 ## Быстрый старт
 Требования:
@@ -153,6 +180,10 @@ com.habittracker/
   ```bash
   ./gradlew test
   ```
+- Быстрый запуск unit-тестов только модуля приложения:
+  ```bash
+  ./gradlew :HabitTracker:testDebugUnitTest
+  ```
 - UI-тесты (на подключенном устройстве/эмуляторе):
   ```bash
   ./gradlew connectedDebugAndroidTest
@@ -170,11 +201,6 @@ com.habittracker/
 - Минимизация recomposition в Compose.
 - Пагинация для истории выполнений (по мере необходимости).
 
-## Дорожная карта (Roadmap)
-- Челленджи между друзьями — в разработке (Use Cases + UI, рейтинги челленджа, результаты).
-- Геймификация — в разработке (очки, уровни, достижения, лидерборды).
-- Полировка: расширенная аналитика, дополнительные анимации, улучшение a11y.
-
 ## Как контрибьютить
 1. Форкните репозиторий и создайте ветку из `main`.
 2. Следуйте принятым стилям (Kotlin style, Compose best practices, SOLID/DRY).
@@ -182,8 +208,7 @@ com.habittracker/
 4. Покрывайте критические изменения тестами.
 
 ## Лицензия
-Лицензия пока не выбрана. Рекомендуемая: MIT или Apache-2.0. 
-Если вы форкаете проект — выберите лицензию, подходящую для ваших целей, и добавьте файл `LICENSE` в корень репозитория.
+Проект распространяется под лицензией [Apache License 2.0](LICENSE).
 
 ## Благодарности
 - Jetpack Compose и AndroidX команда

@@ -34,6 +34,31 @@
 
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
+            
+            <!-- Deep links для приглашений в привычки -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                
+                <!-- habittracker://invite?code=XXXXXX -->
+                <data
+                    android:scheme="habittracker"
+                    android:host="invite" />
+            </intent-filter>
+            
+            <!-- HTTPS deep links (App Links) -->
+            <intent-filter android:autoVerify="true">
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                
+                <!-- https://habittracker.app/invite/XXXXXX -->
+                <data
+                    android:scheme="https"
+                    android:host="habittracker.app"
+                    android:pathPrefix="/invite" />
+            </intent-filter>
         </activity>
         
         <!-- Firebase Messaging Service -->

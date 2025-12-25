@@ -103,6 +103,7 @@ data class UserAchievement(
     val isUnlocked: Boolean = false, // разблокировано ли достижение
     val unlockedAt: Instant? = null, // когда было разблокировано
     val createdAt: Instant, // когда было создано (начало отслеживания)
+    val updatedAt: Instant = createdAt,
     val tier: Int = 1, // для многоуровневых достижений (1 = бронза, 2 = серебро, 3 = золото)
     val isNotified: Boolean = false // показано ли уведомление пользователю
 )

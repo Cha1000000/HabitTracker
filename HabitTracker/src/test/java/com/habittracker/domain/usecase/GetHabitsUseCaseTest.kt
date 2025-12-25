@@ -1,11 +1,9 @@
 package com.habittracker.domain.usecase
 
 import com.habittracker.domain.model.Habit
-import com.habittracker.domain.model.HabitEntry
 import com.habittracker.domain.model.HabitFrequency
 import com.habittracker.domain.model.HabitParticipantSettings
 import com.habittracker.domain.model.HabitType
-import com.habittracker.domain.repository.FirestoreRepository
 import com.habittracker.domain.repository.HabitRepository
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
@@ -18,7 +16,6 @@ import kotlinx.datetime.LocalDate
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toLocalDateTime
 import org.junit.Assert.assertEquals
-import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertTrue
 import org.junit.Assert.fail
 import org.junit.Before
@@ -27,7 +24,6 @@ import org.junit.Test
 @ExperimentalCoroutinesApi
 class GetHabitsUseCaseTest {
 
-    private lateinit var firestoreRepository: FakeFirestoreRepository
     private lateinit var habitRepository: FakeHabitRepository
     private lateinit var getHabitsUseCase: GetHabitsUseCase
 
@@ -72,28 +68,13 @@ class GetHabitsUseCaseTest {
 
     @Before
     fun setUp() {
-        firestoreRepository = FakeFirestoreRepository()
         habitRepository = FakeHabitRepository()
-        getHabitsUseCase = GetHabitsUseCase(firestoreRepository, habitRepository)
+        getHabitsUseCase = GetHabitsUseCase(habitRepository)
     }
 
     @Test
-    fun `invoke should return habits from Firestore when available`() = runTest {
+    fun `invoke should return habits from HabitRepository`() = runTest {
         // Arrange
-        firestoreRepository.habitsToReturn = testHabits
-
-        // Act
-        val result = getHabitsUseCase(testUserId).first()
-
-        // Assert
-        assertEquals(testHabits, result)
-        assertTrue(firestoreRepository.getUserHabitsCalled)
-    }
-
-    @Test
-    fun `invoke should fallback to local repository when Firestore fails`() = runTest {
-        // Arrange
-        firestoreRepository.shouldThrowException = true
         habitRepository.habitsToReturn = testHabits
 
         // Act
@@ -101,59 +82,26 @@ class GetHabitsUseCaseTest {
 
         // Assert
         assertEquals(testHabits, result)
-        assertTrue(firestoreRepository.getUserHabitsCalled)
         assertTrue(habitRepository.getHabitsByUserIdCalled)
     }
 
     @Test
-    fun `invoke should return empty list when both repositories fail`() = runTest {
+    fun `invoke should throw when repository fails`() = runTest {
         // Arrange
-        firestoreRepository.shouldThrowException = true
         habitRepository.shouldThrowException = true
 
-        // Act & Assert - ожидаем исключение, так как оба репозитория падают
+        // Act & Assert - ожидаем исключение
         try {
-            val result = getHabitsUseCase(testUserId).first()
-            // Если дошли сюда, значит исключение не было выброшено - это ошибка
-            fail("Expected exception when both repositories fail")
+            getHabitsUseCase(testUserId).first()
+            fail("Expected exception when repository fails")
         } catch (e: RuntimeException) {
-            // Ожидаемое поведение - исключение должно быть выброшено
-            assertNotNull(e)
+            assertTrue(e.message?.contains("Local repository error") == true)
         }
 
-        assertTrue(firestoreRepository.getUserHabitsCalled)
         assertTrue(habitRepository.getHabitsByUserIdCalled)
     }
 
     // Fake implementations for testing
-    private class FakeFirestoreRepository : FirestoreRepository {
-        var getUserHabitsCalled = false
-        var habitsToReturn: List<Habit> = emptyList()
-        var shouldThrowException = false
-
-        override fun getUserHabits(userId: String): Flow<List<Habit>> {
-            getUserHabitsCalled = true
-            return if (shouldThrowException) {
-                flow { throw RuntimeException("Firestore error") }
-            } else {
-                flowOf(habitsToReturn)
-            }
-        }
-
-        override suspend fun saveHabit(habit: Habit) = throw NotImplementedError()
-        override suspend fun updateHabit(habit: Habit) = throw NotImplementedError()
-        override suspend fun deleteHabit(habitId: String) = throw NotImplementedError()
-        override suspend fun getHabitById(habitId: String) = throw NotImplementedError()
-        override suspend fun saveHabitEntry(habitEntry: HabitEntry) = throw NotImplementedError()
-        override suspend fun getHabitEntry(habitId: String, userId: String, date: LocalDate) = throw NotImplementedError()
-        override fun getHabitEntries(habitId: String, userId: String) = throw NotImplementedError()
-        override suspend fun syncData() = throw NotImplementedError()
-        override suspend fun getParticipantSettings(habitId: String, userId: String) = null
-        override suspend fun setParticipantSettings(settings: HabitParticipantSettings) = throw NotImplementedError()
-        override fun getAllPublicHabits(excludeUserId: String?) = flowOf(emptyList<Habit>())
-        override suspend fun getHabitByInviteCode(inviteCode: String) = throw NotImplementedError()
-    }
-
     private class FakeHabitRepository : HabitRepository {
         var getHabitsByUserIdCalled = false
         var habitsToReturn: List<Habit> = emptyList()

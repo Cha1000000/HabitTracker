@@ -103,13 +103,12 @@ class GetUserStatsUseCaseTest {
                 override suspend fun getUserById(userId: String): User? = User(id = userId, name = "Test", level = 2, points = 150)
                 override suspend fun getUserByEmail(email: String): User? = null
                 override fun getAllUsers(): Flow<List<User>> = flowOf(emptyList())
-                override suspend fun getCurrentUser(): User? = null
-                override suspend fun setCurrentUser(userId: String) {}
                 override suspend fun searchUsersByName(query: String): List<User> = emptyList()
                 override suspend fun updateUserLevel(userId: String, level: Int, points: Int) {}
                 override suspend fun upsertUserRemoteAndLocal(user: User, fcmToken: String?) {}
                 override fun observeUser(userId: String): Flow<User?> = flowOf(null)
                 override suspend fun backfillAvatarThumbnails(): Result<Int> = Result.success(0)
+                override suspend fun updateLastActive(userId: String) {}
             },
             habitRepository = object : HabitRepository {
                 override suspend fun insertHabit(habit: Habit) {}
@@ -161,6 +160,21 @@ class GetUserStatsUseCaseTest {
                 override suspend fun updateChallengeStatus(challengeId: String, status: String) {}
                 override suspend fun getChallengeLeaderboard(challengeId: String): List<Pair<String, Int>> = emptyList()
                 override suspend fun endChallenge(challengeId: String, winnerId: String?) {}
+                override fun observeChallengesForUser(userId: String): Flow<List<com.habittracker.domain.model.Challenge>> = flowOf(emptyList())
+                override suspend fun getCompletedDaysForUserInChallenge(challengeId: String, habitId: String, userId: String, startDate: LocalDate, endDate: LocalDate): Int = 0
+                override suspend fun getCurrentStreakForUserInChallenge(habitId: String, userId: String, startDate: LocalDate, endDate: LocalDate): Int = 0
+                override suspend fun getCompletedDaysFromFirestore(habitId: String, userId: String, startDate: LocalDate, endDate: LocalDate): Int = 0
+
+                override suspend fun getCurrentStreakFromFirestore(
+                    habitId: String,
+                    userId: String,
+                    startDate: LocalDate,
+                    endDate: LocalDate
+                ): Int = 0
+                override suspend fun acceptChallengeInvitation(challengeId: String, userId: String) {}
+                override suspend fun declineChallengeInvitation(challengeId: String, userId: String) {}
+                override suspend fun cancelChallenge(challengeId: String) {}
+                override suspend fun addParticipantsToChallenge(challengeId: String, participantIds: List<String>) {}
             },
             socialRepository = object : SocialRepository {
                 override suspend fun searchUsers(query: String, currentUserId: String): List<User> = emptyList()
@@ -288,11 +302,11 @@ class GetUserStatsUseCaseTest {
                 override suspend fun sendHabitInvitationNotification(toUserId: String, fromUserName: String, habitTitle: String) {}
                 override suspend fun sendHabitInvitationAcceptedNotification(toUserId: String, acceptedByName: String, habitTitle: String, habitId: String) {}
                 override suspend fun sendParticipantJoinedNotification(toUserId: String, joinedUserName: String, habitTitle: String, habitId: String) {}
-                override suspend fun sendChallengeInvitationNotification(toUserId: String, fromUserName: String, challengeTitle: String, habitTitle: String) {}
-                override suspend fun sendChallengeJoinedNotification(toUserId: String, joinedUserName: String, challengeTitle: String) {}
-                override suspend fun sendChallengeLeftNotification(toUserId: String, leftUserName: String, challengeTitle: String) {}
-                override suspend fun sendChallengeCompletedNotification(toUserId: String, challengeTitle: String, message: String, isWinner: Boolean) {}
-                override suspend fun sendChallengeCancelledNotification(toUserId: String, challengeTitle: String, reason: String) {}
+                override suspend fun sendChallengeInvitationNotification(toUserId: String, fromUserName: String, challengeId: String, challengeTitle: String, habitTitle: String) {}
+                override suspend fun sendChallengeJoinedNotification(toUserId: String, joinedUserName: String, challengeId: String, challengeTitle: String) {}
+                override suspend fun sendChallengeLeftNotification(toUserId: String, leftUserName: String, challengeId: String, challengeTitle: String) {}
+                override suspend fun sendChallengeCompletedNotification(toUserId: String, challengeId: String, challengeTitle: String, message: String, isWinner: Boolean) {}
+                override suspend fun sendChallengeCancelledNotification(toUserId: String, challengeId: String, challengeTitle: String, reason: String) {}
                 override suspend fun sendPushNotification(fcmToken: String, title: String, body: String, data: Map<String, String>) {}
             }
         )

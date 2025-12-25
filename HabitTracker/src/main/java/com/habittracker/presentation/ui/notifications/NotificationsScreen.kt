@@ -220,8 +220,28 @@ fun NotificationsScreen(
                                         if (!notification.isRead) {
                                             viewModel.markNotificationAsRead(notification.id)
                                         }
-                                        // Навигация к деталям групповой привычки
-                                        navController.navigate(Screen.GroupHabitDetail.createRoute(notification.habitId))
+                                        // Навигация в зависимости от типа уведомления
+                                        when (notification.type) {
+                                            "CHALLENGE_INVITATION" -> {
+                                                // Навигация на экран Челленджей, вкладка Приглашения
+                                                navController.navigate(Screen.Challenges.createRoute("invitations"))
+                                            }
+                                            "CHALLENGE_COMPLETED", "CHALLENGE_CANCELLED", "CHALLENGE_JOINED", "CHALLENGE_LEFT" -> {
+                                                val challengeId = notification.habitId
+                                                if (challengeId.isNotBlank()) {
+                                                    navController.navigate(Screen.ChallengeDetail.createRoute(challengeId))
+                                                } else {
+                                                    navController.navigate(Screen.Challenges.route)
+                                                }
+                                            }
+                                            "ACHIEVEMENT_UNLOCKED" -> {
+                                                navController.navigate(Screen.Achievements.route)
+                                            }
+                                            else -> {
+                                                // Навигация к деталям групповой привычки
+                                                navController.navigate(Screen.GroupHabitDetail.createRoute(notification.habitId))
+                                            }
+                                        }
                                     },
                                     onDelete = {
                                         viewModel.deleteNotification(notification.id)

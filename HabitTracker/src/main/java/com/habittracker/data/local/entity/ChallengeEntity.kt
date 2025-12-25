@@ -15,7 +15,8 @@ data class ChallengeEntity(
     val title: String,
     val description: String,
     val createdBy: String, // userId
-    val participants: List<String>, // Stored as JSON
+    val participants: List<String>, // Stored as JSON - приглашённые участники
+    val acceptedParticipants: List<String> = emptyList(), // Stored as JSON - принявшие приглашение
     val startDate: LocalDate,
     val endDate: LocalDate,
     val rules: String, // JSON representation of ChallengeRules
@@ -23,5 +24,7 @@ data class ChallengeEntity(
     val status: String, // e.g., "ACTIVE", "COMPLETED", "CANCELLED"
     val winnerId: String?,
     val createdAt: LocalDate,
-    val updatedAt: LocalDate
+    val updatedAt: LocalDate,
+    val updatedAtMillis: Long = System.currentTimeMillis(), // For LWW sync
+    val deletedAtMillis: Long? = null
 )

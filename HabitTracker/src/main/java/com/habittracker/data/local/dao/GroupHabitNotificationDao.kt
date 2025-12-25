@@ -34,6 +34,12 @@ interface GroupHabitNotificationDao {
     @Query("DELETE FROM group_habit_notifications WHERE id = :notificationId")
     suspend fun deleteNotification(notificationId: String)
     
+    @Query("SELECT * FROM group_habit_notifications WHERE userId = :userId AND isRead = 1 AND readAt < :olderThan")
+    suspend fun getReadNotificationsOlderThan(userId: String, olderThan: Long): List<GroupHabitNotificationEntity>
+
+    @Query("SELECT * FROM group_habit_notifications WHERE userId = :userId")
+    suspend fun getAllNotificationsForUserSync(userId: String): List<GroupHabitNotificationEntity>
+
     @Query("DELETE FROM group_habit_notifications WHERE userId = :userId AND isRead = 1 AND readAt < :olderThan")
     suspend fun deleteReadNotificationsOlderThan(userId: String, olderThan: Long)
     

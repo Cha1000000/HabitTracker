@@ -6,7 +6,9 @@ import androidx.hilt.work.HiltWorkerFactory
 import androidx.work.Configuration
 import com.google.firebase.appcheck.FirebaseAppCheck
 import com.habittracker.data.service.AppStateManager
+import com.habittracker.data.sync.ChallengeExpirationWorkScheduler
 import com.habittracker.data.sync.SyncWorkScheduler
+import com.habittracker.data.local.seed.AchievementSeeder
 import com.habittracker.domain.usecase.notification.ManageFCMTokenUseCase
 import dagger.hilt.android.HiltAndroidApp
 import kotlinx.coroutines.CoroutineScope
@@ -28,10 +30,16 @@ class HabitTrackerApplication : Application(), Configuration.Provider {
     lateinit var syncWorkScheduler: SyncWorkScheduler
 
     @Inject
+    lateinit var challengeExpirationWorkScheduler: ChallengeExpirationWorkScheduler
+
+    @Inject
     lateinit var firebaseAppCheck: FirebaseAppCheck
     
     @Inject
     lateinit var appStateManager: AppStateManager
+    
+    @Inject
+    lateinit var achievementSeeder: AchievementSeeder
     
     // Application-level scope for non-blocking init tasks
     private val applicationScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
@@ -54,6 +62,17 @@ class HabitTrackerApplication : Application(), Configuration.Provider {
                 }
             }
         }
+        
+        // Seed achievements on first launch
+        applicationScope.launch {
+            try {
+                achievementSeeder.seedIfNeeded()
+            } catch (e: Exception) {
+                if (BuildConfig.DEBUG) {
+                    Log.d("HabitTrackerApp", "Achievement seeding failed: ${e.message}")
+                }
+            }
+        }
 
         // Schedule Outbox sync: periodic + one-time on app start
         try {
@@ -62,6 +81,16 @@ class HabitTrackerApplication : Application(), Configuration.Provider {
         } catch (e: Exception) {
             if (BuildConfig.DEBUG) {
                 Log.d("HabitTrackerApp", "Sync scheduling failed: ${e.message}")
+            }
+        }
+
+        // Schedule close expired challenges: daily 00:30 + one-time on app start
+        try {
+            challengeExpirationWorkScheduler.scheduleDailyAt0030()
+            challengeExpirationWorkScheduler.scheduleOneTimeNow()
+        } catch (e: Exception) {
+            if (BuildConfig.DEBUG) {
+                Log.d("HabitTrackerApp", "Challenge expiration scheduling failed: ${e.message}")
             }
         }
     }

@@ -19,9 +19,11 @@ import androidx.navigation.NavHostController
 import com.habittracker.data.service.PendingNotificationManager
 import com.habittracker.domain.repository.AuthRepository
 import com.habittracker.domain.repository.SocialRepository
+import com.habittracker.domain.repository.UserRepository
 import com.habittracker.presentation.navigation.AppNavHost
 import com.habittracker.presentation.navigation.Screen
 import com.habittracker.presentation.ui.theme.HabitTrackerTheme
+import com.habittracker.presentation.util.SoundManager
 import com.habittracker.presentation.viewmodel.AuthState
 import com.habittracker.presentation.viewmodel.AuthViewModel
 import dagger.hilt.android.AndroidEntryPoint
@@ -37,6 +39,10 @@ class MainActivity : ComponentActivity() {
     lateinit var authRepository: AuthRepository
     @Inject
     lateinit var socialRepository: SocialRepository
+    @Inject
+    lateinit var userRepository: UserRepository
+    @Inject
+    lateinit var achievementEventManager: com.habittracker.presentation.ui.components.AchievementEventManager
 
     private val authViewModel: AuthViewModel by viewModels()
     private var socialSyncJob: Job? = null
@@ -45,6 +51,8 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
+        SoundManager.preload(applicationContext)
         // Устанавливаем системный SplashScreen как можно раньше
         val splash = installSplashScreen()
         // Не задерживаем систему — сразу продолжаем рендер
@@ -62,7 +70,8 @@ class MainActivity : ComponentActivity() {
                         navController = controller
                         // Обработка стартового интента из уведомления
                         handleIntentForNavigation(intent)
-                    }
+                    },
+                    achievementEventManager = achievementEventManager
                 )
             }
         }
@@ -74,6 +83,9 @@ class MainActivity : ComponentActivity() {
         lifecycleScope.launch(Dispatchers.IO) {
             runCatching { PendingNotificationManager.deliverForCurrentUser(applicationContext, authRepository) }
         }
+
+        // Обновляем время последней активности при старте
+        updateUserLastActive()
 
         // Также доставляем при успешной аутентификации/переключении пользователя
         lifecycleScope.launch {
@@ -149,16 +161,43 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun handleIntentForNavigation(intent: android.content.Intent) {
+        // Обработка deep links (habittracker://invite?code=XXX или https://habittracker.app/invite/XXX)
+        val deepLinkUri = intent.data
+        if (deepLinkUri != null) {
+            val inviteCode = when {
+                // habittracker://invite?code=XXXXXX
+                deepLinkUri.scheme == "habittracker" && deepLinkUri.host == "invite" -> {
+                    deepLinkUri.getQueryParameter("code")
+                }
+                // https://habittracker.app/invite/XXXXXX
+                deepLinkUri.host == "habittracker.app" && deepLinkUri.path?.startsWith("/invite/") == true -> {
+                    deepLinkUri.path?.removePrefix("/invite/")
+                }
+                else -> null
+            }
+            
+            if (!inviteCode.isNullOrBlank()) {
+                Log.d("MainActivity", "[deep-link] Invite code detected: $inviteCode")
+                intent.putExtra("navigate_to", "join_by_code")
+                intent.putExtra("invite_code", inviteCode)
+            }
+        }
+        
         val navigateTo = intent.getStringExtra("navigate_to")
         val habitId = intent.getStringExtra("habit_id") ?: intent.getStringExtra("habitId")
+        val challengeId = intent.getStringExtra("challenge_id") ?: intent.getStringExtra("challengeId")
+        val inviteCode = intent.getStringExtra("invite_code")
 
         val route: String? = when (navigateTo) {
             "friends" -> Screen.Friends.route
             "friend_requests" -> Screen.Friends.route + "?tab=requests"
             "habit_invitations" -> Screen.Notifications.route
+            "challenge_invitations" -> Screen.Challenges.createRoute("invitations")
             "notifications" -> Screen.Notifications.route
             "group_habit_detail" -> habitId?.let { Screen.GroupHabitDetail.createRoute(it) } ?: Screen.Habits.route
+            "challenge_detail" -> challengeId?.let { Screen.ChallengeDetail.createRoute(it) } ?: Screen.Challenges.route
             "habits" -> Screen.Habits.route
+            "join_by_code" -> inviteCode?.let { Screen.Habits.route + "?inviteCode=$it" } ?: Screen.Habits.route
             null -> {
                 if (habitId != null) Screen.Habits.route else null
             }
@@ -216,11 +255,14 @@ class MainActivity : ComponentActivity() {
         try {
             val hadNavigateTo = intent?.hasExtra("navigate_to") == true
             val hadHabitId = intent?.hasExtra("habit_id") == true || intent?.hasExtra("habitId") == true
+            val hadChallengeId = intent?.hasExtra("challenge_id") == true || intent?.hasExtra("challengeId") == true
             intent?.removeExtra("navigate_to")
             intent?.removeExtra("habit_id")
             intent?.removeExtra("habitId")
-            if (hadNavigateTo || hadHabitId) {
-                Log.d("MainActivity", "[push-nav] cleared deep link extras (navigate_to/habit_id)")
+            intent?.removeExtra("challenge_id")
+            intent?.removeExtra("challengeId")
+            if (hadNavigateTo || hadHabitId || hadChallengeId) {
+                Log.d("MainActivity", "[push-nav] cleared deep link extras (navigate_to/habit_id/challenge_id)")
             }
         } catch (e: Exception) {
             Log.w("MainActivity", "[push-nav] failed to clear deep link extras: ${e.message}", e)
@@ -263,6 +305,26 @@ class MainActivity : ComponentActivity() {
         socialSyncJob?.cancel()
         socialSyncJob = null
         Log.d("MainActivity", "[bootstrap] Social realtime sync stopped")
+    }
+
+    override fun onResume() {
+        super.onResume()
+        // Обновляем время последней активности при возобновлении
+        updateUserLastActive()
+    }
+
+    override fun onPause() {
+        super.onPause()
+        // Обновляем время последней активности при сворачивании/закрытии
+        // чтобы статус "был X мин назад" отсчитывался от момента закрытия
+        updateUserLastActive()
+    }
+
+    private fun updateUserLastActive() {
+        val userId = authRepository.getCurrentUserId() ?: return
+        lifecycleScope.launch(Dispatchers.IO) {
+            runCatching { userRepository.updateLastActive(userId) }
+        }
     }
 
     private val notificationsPermissionLauncher =

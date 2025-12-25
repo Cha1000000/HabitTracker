@@ -18,7 +18,7 @@ data class User(
     val friendsCount: Int = 0, // количество друзей
     val fcmToken: String? = null, // токен для push-уведомлений
     val createdAt: LocalDate = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault()).date,
-    val lastActiveAt: LocalDate = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault()).date,
+    val lastActiveAt: Long = Clock.System.now().toEpochMilliseconds(), // timestamp для точного онлайн-статуса
     val timezone: String? = TimeZone.currentSystemDefault().id
 )
 
@@ -43,19 +43,24 @@ fun User.getLevelTitle(): String = when (level) {
 }
 
 fun User.isOnline(): Boolean {
-    val today = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault()).date
-    // Считаем онлайн, если последняя активность была сегодня
-    return lastActiveAt == today
+    val now = Clock.System.now().toEpochMilliseconds()
+    val diffMinutes = (now - lastActiveAt) / 60_000
+    // Считаем онлайн, если последняя активность была менее 5 минут назад
+    return diffMinutes < 5
 }
 
 fun User.getLastActiveText(): String {
-    val today = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault()).date
-    val daysDiff = today.toEpochDays() - lastActiveAt.toEpochDays()
+    val now = Clock.System.now().toEpochMilliseconds()
+    val diffMinutes = (now - lastActiveAt) / 60_000
+    val diffHours = diffMinutes / 60
+    val diffDays = diffHours / 24
 
     return when {
-        daysDiff == 0 -> "сегодня"
-        daysDiff == 1 -> "вчера"
-        daysDiff < 7 -> "$daysDiff дн назад"
+        diffMinutes < 5 -> "в сети"
+        diffMinutes < 60 -> "был(а) $diffMinutes мин назад"
+        diffHours < 24 -> "был(а) $diffHours ч назад"
+        diffDays == 1L -> "вчера"
+        diffDays < 7 -> "$diffDays дн назад"
         else -> "давно"
     }
 }

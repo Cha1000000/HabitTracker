@@ -87,6 +87,42 @@ class ChallengeUseCasesTest {
         override suspend fun updateChallengeStatus(challengeId: String, status: String) { /* not used */ }
         override suspend fun getChallengeLeaderboard(challengeId: String): List<Pair<String, Int>> = emptyList()
         override suspend fun endChallenge(challengeId: String, winnerId: String?) { /* not used */ }
+        
+        override fun observeChallengesForUser(userId: String): Flow<List<Challenge>> = allFlow.asStateFlow()
+        
+        override suspend fun getCompletedDaysForUserInChallenge(
+            challengeId: String,
+            habitId: String,
+            userId: String,
+            startDate: LocalDate,
+            endDate: LocalDate
+        ): Int = 0
+        
+        override suspend fun getCurrentStreakForUserInChallenge(
+            habitId: String,
+            userId: String,
+            startDate: LocalDate,
+            endDate: LocalDate
+        ): Int = 0
+        
+        override suspend fun getCompletedDaysFromFirestore(
+            habitId: String,
+            userId: String,
+            startDate: LocalDate,
+            endDate: LocalDate
+        ): Int = 0
+
+        override suspend fun getCurrentStreakFromFirestore(
+            habitId: String,
+            userId: String,
+            startDate: LocalDate,
+            endDate: LocalDate
+        ): Int = 0
+        
+        override suspend fun acceptChallengeInvitation(challengeId: String, userId: String) {}
+        override suspend fun declineChallengeInvitation(challengeId: String, userId: String) {}
+        override suspend fun cancelChallenge(challengeId: String) {}
+        override suspend fun addParticipantsToChallenge(challengeId: String, participantIds: List<String>) {}
     }
 
     private class FakeHabitRepository : HabitRepository {
@@ -181,12 +217,12 @@ class ChallengeUseCasesTest {
         override suspend fun sendFriendAcceptedNotification(toUserId: String, acceptedByName: String) {}
         override suspend fun sendHabitInvitationNotification(toUserId: String, fromUserName: String, habitTitle: String) {}
         override suspend fun sendHabitInvitationAcceptedNotification(toUserId: String, acceptedByName: String, habitTitle: String, habitId: String) {}
-        override suspend fun sendChallengeInvitationNotification(toUserId: String, fromUserName: String, challengeTitle: String, habitTitle: String) {}
-        override suspend fun sendChallengeJoinedNotification(toUserId: String, joinedUserName: String, challengeTitle: String) {}
-        override suspend fun sendChallengeLeftNotification(toUserId: String, leftUserName: String, challengeTitle: String) {}
-        override suspend fun sendChallengeCompletedNotification(toUserId: String, challengeTitle: String, message: String, isWinner: Boolean) {}
+        override suspend fun sendChallengeInvitationNotification(toUserId: String, fromUserName: String, challengeId: String, challengeTitle: String, habitTitle: String) {}
+        override suspend fun sendChallengeJoinedNotification(toUserId: String, joinedUserName: String, challengeId: String, challengeTitle: String) {}
+        override suspend fun sendChallengeLeftNotification(toUserId: String, leftUserName: String, challengeId: String, challengeTitle: String) {}
+        override suspend fun sendChallengeCompletedNotification(toUserId: String, challengeId: String, challengeTitle: String, message: String, isWinner: Boolean) {}
         override suspend fun sendParticipantJoinedNotification(toUserId: String, joinedUserName: String, habitTitle: String, habitId: String) {}
-        override suspend fun sendChallengeCancelledNotification(toUserId: String, challengeTitle: String, reason: String) {}
+        override suspend fun sendChallengeCancelledNotification(toUserId: String, challengeId: String, challengeTitle: String, reason: String) {}
         override suspend fun sendPushNotification(fcmToken: String, title: String, body: String, data: Map<String, String>) {}
 
         fun addFriendship(a: String, b: String) { friends.add(a to b) }
@@ -270,7 +306,7 @@ class ChallengeUseCasesTest {
     }
 
     @Test
-    fun leaveChallenge_cancelIfOnlyCreatorLeft() = runBlocking {
+    fun leaveChallenge_keepsChallengeActiveWhenOnlyCreatorLeft() = runBlocking {
         val challengeRepo = FakeChallengeRepository()
         val socialRepo = FakeSocialRepository()
 
@@ -297,7 +333,7 @@ class ChallengeUseCasesTest {
         assertTrue(res.isSuccess)
         val updated = res.getOrNull()!!
         assertEquals(1, updated.participants.size)
-        assertEquals(ChallengeStatus.CANCELLED, updated.status)
+        assertEquals(ChallengeStatus.ACTIVE, updated.status)
     }
 
     @Test
@@ -331,7 +367,7 @@ class ChallengeUseCasesTest {
         val res = useCase("h1", "creator")
         assertTrue(res.isSuccess)
         val updated = challengeRepo.getChallengeById(ch.id)!!
-        assertEquals(ChallengeStatus.COMPLETED, updated.status)
+        assertEquals(ChallengeStatus.EXPIRED, updated.status)
         assertNotNull(updated.updatedAt)
     }
 }

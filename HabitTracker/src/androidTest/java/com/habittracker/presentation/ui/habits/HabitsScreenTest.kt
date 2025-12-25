@@ -21,6 +21,7 @@ import com.habittracker.domain.model.HabitFrequency
 import com.habittracker.domain.model.HabitType
 import com.habittracker.domain.repository.AuthRepository
 import com.habittracker.domain.repository.GroupHabitNotificationRepository
+import com.habittracker.domain.repository.UserRepository
 import com.habittracker.domain.usecase.DeleteHabitUseCase
 import com.habittracker.domain.usecase.EnsureMySettingsForHabitUseCase
 import com.habittracker.domain.usecase.GetHabitCompletionStatusUseCase
@@ -29,7 +30,9 @@ import com.habittracker.domain.usecase.GetWeekCompletionDataUseCase
 import com.habittracker.domain.usecase.MarkHabitCompletedUseCase
 import com.habittracker.domain.usecase.MarkHabitIncompleteUseCase
 import com.habittracker.domain.usecase.ScheduleHabitReminderUseCase
+import com.habittracker.domain.usecase.habit.GetGroupHabitProgressUseCase
 import com.habittracker.domain.usecase.habit.JoinHabitByCodeUseCase
+import com.habittracker.domain.usecase.habit.LeaveSharedHabitsWithFriendUseCase
 import com.habittracker.presentation.viewmodel.FriendsViewModel
 import com.habittracker.presentation.viewmodel.HabitsViewModel
 import com.habittracker.presentation.viewmodel.NotificationsViewModel
@@ -56,10 +59,13 @@ class HabitsScreenTest {
     private lateinit var markHabitCompletedUseCase: MarkHabitCompletedUseCase
     private lateinit var markHabitIncompleteUseCase: MarkHabitIncompleteUseCase
     private lateinit var getHabitCompletionStatusUseCase: GetHabitCompletionStatusUseCase
+    private lateinit var userRepository: UserRepository
     private lateinit var deleteHabitUseCase: DeleteHabitUseCase
     private lateinit var ensureMySettingsForHabitUseCase: EnsureMySettingsForHabitUseCase
     private lateinit var scheduleHabitReminderUseCase: ScheduleHabitReminderUseCase
     private lateinit var getWeekCompletionDataUseCase: GetWeekCompletionDataUseCase
+    private lateinit var getGroupHabitProgressUseCase: GetGroupHabitProgressUseCase
+    private lateinit var leaveSharedHabitsWithFriendUseCase: LeaveSharedHabitsWithFriendUseCase
 
     private lateinit var notificationsViewModel: NotificationsViewModel
     private lateinit var friendsViewModel: FriendsViewModel
@@ -105,26 +111,31 @@ class HabitsScreenTest {
         markHabitIncompleteUseCase = mockk(relaxed = true)
         getHabitCompletionStatusUseCase = mockk()
         coEvery { getHabitCompletionStatusUseCase.invoke(any(), any(), any()) } returns false
+        userRepository = mockk(relaxed = true)
         deleteHabitUseCase = mockk(relaxed = true)
         ensureMySettingsForHabitUseCase = mockk(relaxed = true)
         scheduleHabitReminderUseCase = mockk(relaxed = true)
         getWeekCompletionDataUseCase = mockk(relaxed = true)
         coEvery { getWeekCompletionDataUseCase.invoke(any(), any()) } returns emptyMap()
+        getGroupHabitProgressUseCase = mockk(relaxed = true)
+        leaveSharedHabitsWithFriendUseCase = mockk(relaxed = true)
         val joinHabitByCodeUseCase = mockk<JoinHabitByCodeUseCase>(relaxed = true)
 
         // --- Real VMs constructed with mocks ---
         habitsViewModel = HabitsViewModel(
-            getHabitsForDateUseCase,
-            markHabitCompletedUseCase,
-            markHabitIncompleteUseCase,
-            getHabitCompletionStatusUseCase,
-            authRepository,
-            deleteHabitUseCase,
-            ensureMySettingsForHabitUseCase,
-            scheduleHabitReminderUseCase,
-            joinHabitByCodeUseCase,
-            getWeekCompletionDataUseCase,
-            composeRule.activity.application
+            getHabitsForDateUseCase = getHabitsForDateUseCase,
+            markHabitCompletedUseCase = markHabitCompletedUseCase,
+            markHabitIncompleteUseCase = markHabitIncompleteUseCase,
+            getHabitCompletionStatusUseCase = getHabitCompletionStatusUseCase,
+            authRepository = authRepository,
+            userRepository = userRepository,
+            deleteHabitUseCase = deleteHabitUseCase,
+            ensureMySettingsForHabitUseCase = ensureMySettingsForHabitUseCase,
+            scheduleHabitReminderUseCase = scheduleHabitReminderUseCase,
+            joinHabitByCodeUseCase = joinHabitByCodeUseCase,
+            getWeekCompletionDataUseCase = getWeekCompletionDataUseCase,
+            getGroupHabitProgressUseCase = getGroupHabitProgressUseCase,
+            application = composeRule.activity.application
         )
 
         // NotificationsViewModel mocks and instance
@@ -161,7 +172,11 @@ class HabitsScreenTest {
             )
         )
 
-        friendsViewModel = FriendsViewModel(socialRepository, authRepoForFriends)
+        friendsViewModel = FriendsViewModel(
+            socialRepository = socialRepository,
+            authRepository = authRepoForFriends,
+            leaveSharedHabitsWithFriendUseCase = leaveSharedHabitsWithFriendUseCase
+        )
 
         // Set content with our VMs
         composeRule.setContent {

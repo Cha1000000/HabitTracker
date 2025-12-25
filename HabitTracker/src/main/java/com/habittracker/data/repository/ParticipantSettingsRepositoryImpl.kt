@@ -7,20 +7,35 @@ import com.habittracker.data.local.mappers.toEntity
 import com.habittracker.domain.model.Habit
 import com.habittracker.domain.model.HabitParticipantSettings
 import com.habittracker.domain.repository.FirestoreRepository
+import com.habittracker.data.sync.SyncManager
 import com.habittracker.domain.repository.ParticipantSettingsRepository
+import com.habittracker.domain.util.SyncPayloads
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
+import kotlinx.datetime.Clock
 import javax.inject.Inject
 import javax.inject.Singleton
 
 @Singleton
 class ParticipantSettingsRepositoryImpl @Inject constructor(
     private val dao: HabitParticipantSettingsDao,
-    private val firestoreRepository: FirestoreRepository
+    private val firestoreRepository: FirestoreRepository,
+    private val syncManager: SyncManager
 ) : ParticipantSettingsRepository {
 
     override suspend fun get(habitId: String, userId: String): HabitParticipantSettings? {
         val local = dao.get(habitId, userId)?.toDomain()
+
+        val entityId = "$habitId:$userId"
+        val hasPending = try {
+            syncManager.hasPendingOperations("habit_participant_settings", entityId)
+        } catch (e: Exception) {
+            Log.d("ParticipantSettingsRepo", "get() hasPendingOperations failed for $entityId: ${e.message}")
+            false
+        }
+        if (hasPending) {
+            return local
+        }
         // Всегда пытаемся получить удалённые настройки
         val remote = try { firestoreRepository.getParticipantSettings(habitId, userId) } catch (e: Exception) {
             Log.d("ParticipantSettingsRepo", "get() remote fetch failed for habit=$habitId user=$userId: ${e.message}")
@@ -56,8 +71,19 @@ class ParticipantSettingsRepositoryImpl @Inject constructor(
     }
 
     override suspend fun upsert(settings: HabitParticipantSettings) {
-        dao.upsert(settings.toEntity())
-        firestoreRepository.setParticipantSettings(settings)
+        val now = Clock.System.now().toEpochMilliseconds()
+        val updatedSettings = settings.copy(updatedAt = now)
+        dao.upsert(updatedSettings.toEntity())
+        
+        // Outbox sync
+        val entityId = "${updatedSettings.habitId}:${updatedSettings.userId}"
+        val payload = SyncPayloads.habitParticipantSettingsToJson(updatedSettings)
+        syncManager.enqueueUpsert(
+            entityType = "habit_participant_settings",
+            entityId = entityId,
+            payloadJson = payload,
+            updatedAt = now
+        )
     }
 
     override suspend fun upsertDefaultsFromHabit(habit: Habit, userId: String): HabitParticipantSettings {

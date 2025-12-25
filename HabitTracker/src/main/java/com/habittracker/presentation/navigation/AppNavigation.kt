@@ -1,6 +1,15 @@
 package com.habittracker.presentation.navigation
 
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Modifier
+import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavHostController
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
@@ -11,6 +20,9 @@ import com.habittracker.presentation.ui.ProfileScreen
 import com.habittracker.presentation.ui.achievements.AchievementsScreen
 import com.habittracker.presentation.ui.auth.LoginScreen
 import com.habittracker.presentation.ui.auth.RegisterScreen
+import com.habittracker.presentation.ui.components.AchievementEventManager
+import com.habittracker.presentation.ui.components.AchievementToastData
+import com.habittracker.presentation.ui.components.AchievementUnlockedToast
 import com.habittracker.presentation.ui.debug.FCMTestScreen
 import com.habittracker.presentation.ui.discover.PublicHabitsScreen
 import com.habittracker.presentation.ui.habits.AddEditHabitScreen
@@ -20,6 +32,11 @@ import com.habittracker.presentation.ui.notifications.NotificationsScreen
 import com.habittracker.presentation.ui.social.FriendsScreen
 import com.habittracker.presentation.ui.splash.SplashScreen
 import com.habittracker.presentation.ui.stats.StatsScreen
+import com.habittracker.presentation.ui.challenges.ChallengeDetailScreen
+import com.habittracker.presentation.ui.challenges.ChallengesScreen
+import com.habittracker.presentation.ui.challenges.CreateChallengeScreen
+import com.habittracker.presentation.ui.settings.NotificationSettingsScreen
+import kotlinx.coroutines.flow.collectLatest
 
 /**
  * Запечатанный класс для определения маршрутов навигации.
@@ -27,7 +44,10 @@ import com.habittracker.presentation.ui.stats.StatsScreen
  */
 sealed class Screen(val route: String) {
     object Splash : Screen("splash_screen")
-    object Habits : Screen("habits_screen")
+    object Habits : Screen("habits_screen?inviteCode={inviteCode}") {
+        fun createRoute(inviteCode: String? = null) = 
+            if (inviteCode != null) "habits_screen?inviteCode=$inviteCode" else "habits_screen"
+    }
     object AddEditHabit : Screen("add_edit_habit_screen")
     object Login : Screen("login_screen")
     object Register : Screen("register_screen")
@@ -43,9 +63,21 @@ sealed class Screen(val route: String) {
         fun createRoute(habitId: String) = "group_habit_detail_screen/$habitId"
     }
     object PublicHabits : Screen("public_habits_screen")
+    // Challenges
+    object Challenges : Screen("challenges_screen?tab={tab}") {
+        fun createRoute(tab: String? = null) = if (tab != null) "challenges_screen?tab=$tab" else "challenges_screen"
+    }
+    object CreateChallenge : Screen("create_challenge_screen?challengeId={challengeId}") {
+        fun createRoute(challengeId: String? = null) =
+            if (challengeId != null) "create_challenge_screen?challengeId=$challengeId" else "create_challenge_screen"
+    }
+    object ChallengeDetail : Screen("challenge_detail_screen/{challengeId}") {
+        fun createRoute(challengeId: String) = "challenge_detail_screen/$challengeId"
+    }
+    // Settings
+    object NotificationSettings : Screen("notification_settings_screen")
     // Debug screens (только для debug сборки)
     object FCMTest : Screen("fcm_test_screen")
-    // TODO: Добавить другие экраны по мере их создания
 }
 
 /**
@@ -54,20 +86,42 @@ sealed class Screen(val route: String) {
  */
 @Composable
 fun AppNavHost(
-    onNavControllerReady: (NavHostController) -> Unit = {}
+    onNavControllerReady: (NavHostController) -> Unit = {},
+    achievementEventManager: AchievementEventManager? = null
 ) {
     val navController = rememberNavController()
-    androidx.compose.runtime.LaunchedEffect(Unit) {
+    LaunchedEffect(Unit) {
         onNavControllerReady(navController)
     }
-    // Start with splash screen
-    NavHost(navController = navController, startDestination = Screen.Splash.route) {
+    
+    // Состояние для отображения toast о достижении
+    var achievementToast by remember { mutableStateOf<AchievementToastData?>(null) }
+    
+    // Подписываемся на события разблокировки достижений
+    LaunchedEffect(achievementEventManager) {
+        achievementEventManager?.achievementUnlocked?.collectLatest { achievement ->
+            achievementToast = achievement
+        }
+    }
+    
+    Box(modifier = Modifier.fillMaxSize()) {
+        // Start with splash screen
+        NavHost(navController = navController, startDestination = Screen.Splash.route) {
         composable(route = Screen.Splash.route) {
             SplashScreen(navController = navController)
         }
         
-        composable(route = Screen.Habits.route) {
-            HabitsScreen(navController = navController)
+        composable(
+            route = Screen.Habits.route,
+            arguments = listOf(
+                navArgument("inviteCode") {
+                    nullable = true
+                    defaultValue = null
+                }
+            )
+        ) { backStackEntry ->
+            val inviteCode = backStackEntry.arguments?.getString("inviteCode")
+            HabitsScreen(navController = navController, inviteCode = inviteCode)
         }
 
         composable(
@@ -170,6 +224,74 @@ fun AppNavHost(
         composable(route = Screen.FCMTest.route) {
             FCMTestScreen()
         }
-        // TODO: Определить навигацию для других экранов
+        
+        // Challenges
+        composable(
+            route = Screen.Challenges.route,
+            arguments = listOf(navArgument("tab") {
+                type = NavType.StringType
+                nullable = true
+                defaultValue = null
+            })
+        ) { backStackEntry ->
+            val initialTab = backStackEntry.arguments?.getString("tab")
+            ChallengesScreen(
+                onNavigateBack = { navController.popBackStack() },
+                onNavigateToCreateChallenge = {
+                    navController.navigate(Screen.CreateChallenge.createRoute())
+                },
+                onNavigateToChallengeDetails = { challengeId ->
+                    navController.navigate(Screen.ChallengeDetail.createRoute(challengeId))
+                },
+                onNavigateToEditChallenge = { challengeId ->
+                    navController.navigate(Screen.CreateChallenge.createRoute(challengeId))
+                },
+                initialTab = initialTab
+            )
+        }
+        
+        composable(
+            route = Screen.CreateChallenge.route,
+            arguments = listOf(navArgument("challengeId") {
+                type = NavType.StringType
+                nullable = true
+                defaultValue = null
+            })
+        ) { backStackEntry ->
+            val challengeId = backStackEntry.arguments?.getString("challengeId")
+            CreateChallengeScreen(
+                onNavigateBack = { navController.popBackStack() },
+                onChallengeCreated = { challengeId ->
+                    navController.popBackStack()
+                    navController.navigate(Screen.ChallengeDetail.createRoute(challengeId))
+                },
+                challengeId = challengeId
+            )
+        }
+        
+        composable(
+            route = Screen.ChallengeDetail.route,
+            arguments = listOf(navArgument("challengeId") {
+                type = NavType.StringType
+                nullable = false
+            })
+        ) { backStackEntry ->
+            val challengeId = backStackEntry.arguments?.getString("challengeId") ?: return@composable
+            ChallengeDetailScreen(
+                challengeId = challengeId,
+                onNavigateBack = { navController.popBackStack() }
+            )
+        }
+        
+        composable(route = Screen.NotificationSettings.route) {
+            NotificationSettingsScreen(navController = navController)
+        }
+    }
+        
+        // Глобальный toast для разблокировки достижений
+        AchievementUnlockedToast(
+            achievement = achievementToast,
+            onDismiss = { achievementToast = null }
+        )
     }
 }

@@ -59,6 +59,7 @@ fun UserAchievementEntity.toDomain(): UserAchievement {
         isUnlocked = isUnlocked,
         unlockedAt = unlockedAt?.let { Instant.fromEpochMilliseconds(it) },
         createdAt = Instant.fromEpochMilliseconds(createdAt),
+        updatedAt = Instant.fromEpochMilliseconds(updatedAtMillis),
         tier = tier,
         isNotified = isNotified
     )
@@ -73,6 +74,7 @@ fun UserAchievement.toEntity(): UserAchievementEntity {
         isUnlocked = isUnlocked,
         unlockedAt = unlockedAt?.toEpochMilliseconds(),
         createdAt = createdAt.toEpochMilliseconds(),
+        updatedAtMillis = updatedAt.toEpochMilliseconds(),
         tier = tier,
         isNotified = isNotified
     )

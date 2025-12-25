@@ -52,9 +52,10 @@ class GetGroupHabitProgressUseCase @Inject constructor(
     /**
      * Получает совместный прогресс групповой привычки
      * @param habitId ID привычки
+     * @param targetDate Дата для которой рассчитывается прогресс (по умолчанию - сегодня)
      * @return Flow с прогрессом группы
      */
-    operator fun invoke(habitId: String): Flow<GroupHabitProgress?> {
+    operator fun invoke(habitId: String, targetDate: LocalDate? = null): Flow<GroupHabitProgress?> {
         return combine(
             habitRepository.getHabitByIdFlow(habitId),
             habitEntryRepository.getEntriesForHabit(habitId)
@@ -64,12 +65,17 @@ class GetGroupHabitProgressUseCase @Inject constructor(
             }
 
             val today = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault()).date
-            val allParticipants = listOf(habit.createdBy) + habit.participants
+            val dateForProgress = targetDate ?: today
+            
+            // Для будущих дат прогресс всегда 0 (никто не может отметить привычку в будущем)
+            val isFutureDate = dateForProgress > today
+            // Убираем дубликаты: createdBy может уже быть в participants
+            val allParticipants = (listOf(habit.createdBy) + habit.participants).distinct()
 
             val participantProgresses = allParticipants.mapNotNull { userId ->
                 val user = socialRepository.getUserById(userId)
                 if (user != null) {
-                    calculateParticipantProgress(user, userId, entries, today)
+                    calculateParticipantProgress(user, userId, entries, dateForProgress, isFutureDate)
                 } else null
             }
 
@@ -93,13 +99,25 @@ class GetGroupHabitProgressUseCase @Inject constructor(
         user: User,
         userId: String,
         entries: List<HabitEntry>,
-        today: LocalDate
+        targetDate: LocalDate,
+        isFutureDate: Boolean
     ): ParticipantProgress {
+        // Для будущих дат прогресс всегда 0
+        if (isFutureDate) {
+            return ParticipantProgress(
+                user = user,
+                completedToday = false,
+                currentStreak = 0,
+                totalCompletions = 0,
+                completionRate = 0f
+            )
+        }
+        
         val userEntries = entries.filter { it.userId == userId }
         val completedEntries = userEntries.filter { it.completed }
 
-        val completedToday = userEntries.any { it.date == today && it.completed }
-        val currentStreak = calculateCurrentStreak(completedEntries, today)
+        val completedToday = userEntries.any { it.date == targetDate && it.completed }
+        val currentStreak = calculateCurrentStreak(completedEntries, targetDate)
         val totalCompletions = completedEntries.size
         
         val completionRate = if (userEntries.isNotEmpty()) {

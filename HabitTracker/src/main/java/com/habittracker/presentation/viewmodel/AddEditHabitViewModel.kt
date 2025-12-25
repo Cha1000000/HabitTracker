@@ -81,7 +81,7 @@ class AddEditHabitViewModel @Inject constructor(
     init {
         val habitId: String? = savedStateHandle["habitId"]
         val startDateParam: String? = savedStateHandle["startDate"]
-        
+
         if (habitId != null) {
             _uiState.update { it.copy(isLoading = true) }
             loadHabit(habitId)
@@ -95,16 +95,16 @@ class AddEditHabitViewModel @Inject constructor(
                     null
                 }
             }
-            
+
             _uiState.update { it.copy(
                 isLoading = false,
                 isInitialized = true,
                 maxParticipantsInput = it.maxParticipants.toString(),
                 startDate = initialStartDate // Устанавливаем дату начала из параметра
             ) }
-            
+
             if (initialStartDate != null) {
-                Log.d("AddEditHabitViewModel", "📅 Initialized with startDate from navigation: $initialStartDate")
+                Log.d("AddEditHabitViewModel", "Initialized with startDate from navigation: $initialStartDate")
             }
         }
     }
@@ -157,7 +157,7 @@ class AddEditHabitViewModel @Inject constructor(
         val tempHabit = createTempHabit().copy(title = title)
         val validationResult = HabitValidation.validateHabit(tempHabit)
         val titleError = validationResult.getError(HabitField.TITLE)?.message
-        
+
         _uiState.update { 
             it.copy(
                 title = title,
@@ -173,7 +173,7 @@ class AddEditHabitViewModel @Inject constructor(
         val tempHabit = createTempHabit().copy(description = description)
         val validationResult = HabitValidation.validateHabit(tempHabit)
         val descriptionError = validationResult.getError(HabitField.DESCRIPTION)?.message
-        
+
         _uiState.update { 
             it.copy(
                 description = description,
@@ -190,14 +190,14 @@ class AddEditHabitViewModel @Inject constructor(
                 currentHabit = getHabitByIdUseCase(habitId)
                 currentHabit?.let { habit ->
                     val currentUserId = authRepository.getCurrentUserId() ?: ""
-                    
+
                     // Проверяем, была ли привычка выполнена хотя бы раз
                     val hasBeenCompleted = try {
                         getHabitCompletionStatusUseCase(habitId, currentUserId)
                     } catch (_: Exception) {
                         false // При ошибке считаем, что не выполнена
                     }
-                    
+
                     _uiState.update { state ->
                         state.copy(
                             habitId = habit.id,
@@ -282,31 +282,31 @@ class AddEditHabitViewModel @Inject constructor(
             try {
                 val isNew = currentHabit == null
                 _uiState.update { it.copy(isLoading = true) }
-                
+
                 val today = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault()).date
                 val currentState = uiState.value
-                
+
                 if (isNew) {
                     // Создаем новую привычку
                     val creatorId = authRepository.getCurrentUserId() 
                         ?: throw IllegalStateException("User must be authenticated to create habits")
-                    
+
                     // Для личных привычек создатель автоматически становится участником
                     // Для групповых привычек добавляем создателя к списку участников если его там нет
                     val participantsIds = currentState.participants.map { it.id }.toMutableList()
                     if (!participantsIds.contains(creatorId)) {
                         participantsIds.add(0, creatorId) // Добавляем создателя первым в списке
                     }
-                    
+
                     // Сохраняем дату начала как есть (может быть в будущем)
                     // Если не указана - по умолчанию сегодня
                     val effectiveStartDate = currentState.startDate 
                         ?: Clock.System.now()
                             .toLocalDateTime(TimeZone.currentSystemDefault())
                             .date
-                    
-                    Log.d("AddEditHabitViewModel", "📅 [saveHabit] Creating habit with startDate=$effectiveStartDate (UI state startDate=${currentState.startDate})")
-                    
+
+                    Log.d("AddEditHabitViewModel", "Creating habit with startDate=$effectiveStartDate (UI state startDate=${currentState.startDate})")
+
                     val newHabit = Habit(
                         id = UUID.randomUUID().toString(),
                         title = currentState.title,
@@ -331,16 +331,16 @@ class AddEditHabitViewModel @Inject constructor(
                         startDate = effectiveStartDate, // Всегда сохраняем дату начала
                         endDate = currentState.endDate
                     )
-                    Log.d("AddEditHabitViewModel", "💾 [saveHabit] Calling addHabitUseCase for habit: ${newHabit.id}")
-                    Log.d("AddEditHabitViewModel", "💾 [saveHabit] Habit details: title='${newHabit.title}', participants=${newHabit.participants}")
-                    Log.d("AddEditHabitViewModel", "📅 [saveHabit] Habit dates: startDate=${newHabit.startDate}, endDate=${newHabit.endDate}")
+                    Log.d("AddEditHabitViewModel", "Calling addHabitUseCase for habit: ${newHabit.id}")
+                    Log.d("AddEditHabitViewModel", "Habit details: title='${newHabit.title}', participants=${newHabit.participants}")
+                    Log.d("AddEditHabitViewModel", "Habit dates: startDate=${newHabit.startDate}, endDate=${newHabit.endDate}")
                     addHabitUseCase(newHabit)
-                    Log.d("AddEditHabitViewModel", "✅ [saveHabit] Habit saved successfully: ${newHabit.id}")
+                    Log.d("AddEditHabitViewModel", "Habit saved successfully: ${newHabit.id}")
                     // Важно: установить текущую привычку для дальнейших операций (например, отправки приглашений)
                     currentHabit = newHabit
                     // Обновляем habitId в uiState для корректной работы методов после сохранения
                     _uiState.update { it.copy(habitId = newHabit.id) }
-                    
+
                     // Планируем напоминание для новой привычки
                     if (newHabit.reminderTime != null) {
                         // Инициализируем персональные настройки для создателя из дефолтов привычки
@@ -358,7 +358,7 @@ class AddEditHabitViewModel @Inject constructor(
                             Log.w("AddEditHabitViewModel", "updateMyHabitReminderSettingsUseCase failed for new habit: ${e.message}", e)
                         }
                         scheduleHabitReminderUseCase(newHabit)
-                        Log.d("AddEditHabitViewModel", "Напоминание запланировано для новой привычки")
+                        Log.d("AddEditHabitViewModel", "Reminder scheduled for new habit")
                     }
                 } else {
                     // Обновляем существующую привычку
@@ -387,7 +387,7 @@ class AddEditHabitViewModel @Inject constructor(
                             .toLocalDateTime(TimeZone.currentSystemDefault())
                             .date
                     }
-                    
+
                     val updatedHabit = currentHabit!!.copy(
                         title = currentState.title,
                         description = currentState.description,
@@ -406,7 +406,7 @@ class AddEditHabitViewModel @Inject constructor(
                         endDate = currentState.endDate
                     )
                     updateHabitUseCase(updatedHabit)
-                    
+
                     // Обновляем персональные настройки напоминаний текущего пользователя и перепланируем
                     try {
                         val userId = authRepository.getCurrentUserId() ?: ""
@@ -420,7 +420,7 @@ class AddEditHabitViewModel @Inject constructor(
                             )
                         )
                         scheduleHabitReminderUseCase(updatedHabit)
-                        Log.d("AddEditHabitViewModel", "Персональные напоминания обновлены и перепланированы")
+                        Log.d("AddEditHabitViewModel", "Personal reminders updated and rescheduled")
                     } catch (e: Exception) {
                         Log.w("AddEditHabitViewModel", "updateMyHabitReminderSettingsUseCase/scheduleHabitReminderUseCase failed: ${e.message}", e)
                     }
@@ -429,7 +429,7 @@ class AddEditHabitViewModel @Inject constructor(
                     // Обновляем habitId в uiState для корректной работы методов после сохранения
                     _uiState.update { it.copy(habitId = updatedHabit.id) }
                 }
-                
+
                 _uiState.update { it.copy(
                     isHabitSaved = true, 
                     isLoading = false,
@@ -459,19 +459,20 @@ class AddEditHabitViewModel @Inject constructor(
             }
         }
     }
-    
+
     // Методы для обновления состояния
     override fun onIconChange(icon: String) {
-        _uiState.update { it.copy(icon = icon) }
+        _uiState.update { it.copy(icon = icon, hasUnsavedChanges = true) }
     }
-    
+
     override fun onColorChange(color: Int) {
         _uiState.value = _uiState.value.copy(color = color)
     }
-    
+
     override fun onTypeChange(type: HabitType) {
         _uiState.update { it.copy(type = type, hasUnsavedChanges = true) }
     }
+
     
     override fun onFrequencyChange(frequency: HabitFrequency) {
         // Если редактируем существующую групповую привычку и пользователь не автор — блокируем смену частоты

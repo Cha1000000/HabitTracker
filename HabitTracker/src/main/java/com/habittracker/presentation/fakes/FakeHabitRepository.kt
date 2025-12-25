@@ -38,7 +38,7 @@ class FakeHabitRepository : HabitRepository {
                 reminderEnabled = true,
                 targetValue = 100,
                 unit = "minutes",
-                createdBy = "current_user_id", // TODO: Replace with actual user ID
+                createdBy = "current_user_id",
                 participants = listOf("current_user_id"),
                 isActive = true,
                 createdAt = now().toLocalDateTime(TimeZone.currentSystemDefault()).date,

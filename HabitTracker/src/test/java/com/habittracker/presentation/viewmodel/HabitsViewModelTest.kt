@@ -1,8 +1,8 @@
 package com.habittracker.presentation.viewmodel
+
 import kotlinx.datetime.Clock
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toLocalDateTime
-
 import android.app.Application
 import android.util.Log
 import com.habittracker.MainDispatcherRule
@@ -11,6 +11,7 @@ import com.habittracker.domain.model.Habit
 import com.habittracker.domain.model.HabitFrequency
 import com.habittracker.domain.model.HabitType
 import com.habittracker.domain.repository.AuthRepository
+import com.habittracker.domain.repository.UserRepository
 import com.habittracker.domain.usecase.DeleteHabitUseCase
 import com.habittracker.domain.usecase.EnsureMySettingsForHabitUseCase
 import com.habittracker.domain.usecase.GetHabitCompletionStatusUseCase
@@ -19,6 +20,7 @@ import com.habittracker.domain.usecase.GetWeekCompletionDataUseCase
 import com.habittracker.domain.usecase.MarkHabitCompletedUseCase
 import com.habittracker.domain.usecase.MarkHabitIncompleteUseCase
 import com.habittracker.domain.usecase.ScheduleHabitReminderUseCase
+import com.habittracker.domain.usecase.habit.GetGroupHabitProgressUseCase
 import com.habittracker.domain.usecase.habit.JoinHabitByCodeUseCase
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableSharedFlow
@@ -53,11 +55,13 @@ class HabitsViewModelTest {
     private val markHabitIncompleteUseCase: MarkHabitIncompleteUseCase = mock()
     private val getHabitCompletionStatusUseCase: GetHabitCompletionStatusUseCase = mock()
     private val authRepository: AuthRepository = mock()
+    private val userRepository: UserRepository = mock()
     private val deleteHabitUseCase: DeleteHabitUseCase = mock()
     private val ensureMySettingsForHabitUseCase: EnsureMySettingsForHabitUseCase = mock()
     private val scheduleHabitReminderUseCase: ScheduleHabitReminderUseCase = mock()
     private val joinHabitByCodeUseCase: JoinHabitByCodeUseCase = mock()
     private val getWeekCompletionDataUseCase: GetWeekCompletionDataUseCase = mock()
+    private val getGroupHabitProgressUseCase: GetGroupHabitProgressUseCase = mock()
     private val application: Application = mock()
     private lateinit var logMock: MockedStatic<Log>
 
@@ -112,11 +116,13 @@ class HabitsViewModelTest {
             markHabitIncompleteUseCase,
             getHabitCompletionStatusUseCase,
             authRepository,
+            userRepository,
             deleteHabitUseCase,
             ensureMySettingsForHabitUseCase,
             scheduleHabitReminderUseCase,
             joinHabitByCodeUseCase,
             getWeekCompletionDataUseCase,
+            getGroupHabitProgressUseCase,
             application
         )
     }
