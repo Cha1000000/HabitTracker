@@ -38,11 +38,13 @@ calendar = "2.6.0"
 googleAuth = "1.19.0"
 splashscreen = "1.0.1"
 konfetti = "2.0.4"
+profileinstaller = "1.4.1"
 
 [libraries]
 # Core
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
 androidx-core-splashscreen = { group = "androidx.core", name = "core-splashscreen", version.ref = "splashscreen" }
+androidx-profileinstaller = { group = "androidx.profileinstaller", name = "profileinstaller", version.ref = "profileinstaller" }
 
 # Testing
 firebase-appcheck-debug = { module = "com.google.firebase:firebase-appcheck-debug" }

@@ -508,6 +508,7 @@ fun StoredNotificationItem(
     notification: com.habittracker.domain.model.GroupHabitNotificationModel,
     onClick: () -> Unit,
     onDelete: () -> Unit,
+    onMarkAsRead: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     val dismissState = androidx.compose.material3.rememberSwipeToDismissBoxState(
@@ -577,7 +578,8 @@ fun StoredNotificationItem(
                                 MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
                             else 
                                 MaterialTheme.colorScheme.primaryContainer
-                        ),
+                        )
+                        .clickable { onMarkAsRead() },
                     contentAlignment = Alignment.Center
                 ) {
                     Icon(
@@ -631,10 +633,19 @@ fun StoredNotificationItem(
                 if (!notification.isRead) {
                     Box(
                         modifier = Modifier
-                            .size(12.dp)
+                            .padding(start = 8.dp) // Немного отступа для тач-таргета
+                            .size(24.dp) // Увеличиваем область клика
                             .clip(CircleShape)
-                            .background(MaterialTheme.colorScheme.primary)
-                    )
+                            .clickable { onMarkAsRead() },
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .size(12.dp)
+                                .clip(CircleShape)
+                                .background(MaterialTheme.colorScheme.primary)
+                        )
+                    }
                 }
             }
         }
