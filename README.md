@@ -74,28 +74,28 @@ HabitTracker — мобильное приложение для Android, кот�
 Файлы лежат в `art/screenshots/`.
 
 ### Splash
-![Splash](art/screenshots/splash.png)
+<img src="art/screenshots/splash.png" width="280"/>
 
 ### Мои привычки
-![Мои привычки](art/screenshots/habits_list.png)
+<img src="art/screenshots/habits_list.png" width="280"/>
 
 ### Детали групповой привычки
-![Детали групповой привычки](art/screenshots/group_habit_detail.png)
+<img src="art/screenshots/group_habit_detail.png" width="280"/>
 
 ### Создание/редактирование привычки
-![Создание/редактирование привычки](art/screenshots/add_edit_habit.png)
+<img src="art/screenshots/add_edit_habit.png" width="280"/>
 
 ### Друзья
-![Друзья](art/screenshots/friends_tabs.png)
+<img src="art/screenshots/friends_tabs.png" width="280"/>
 
 ### Статистика
-![Статистика](art/screenshots/stats.png)
+<img src="art/screenshots/stats.png" width="280"/>
 
 ### Достижения
-![Достижения](art/screenshots/achievements.png)
+<img src="art/screenshots/achievements.png" width="280"/>
 
 ### Публичные привычки
-![Публичные привычки](art/screenshots/public_habits.png)
+<img src="art/screenshots/public_habits.png" width="280"/>
 
 ## Стек технологий
 - Язык: Kotlin, Coroutines + Flow
