@@ -184,6 +184,20 @@ tasks.register("renameApkRelease") {
     }
 }
 
+tasks.register("renameBundleRelease") {
+    doLast {
+        val dateStr = apkDateProvider.get()
+        val srcFile = layout.buildDirectory.file("outputs/bundle/release/HabitTracker-release.aab").get().asFile
+        val destFile = layout.buildDirectory.file("outputs/bundle/release/HabitTracker-release-$appVersionName-$dateStr.aab").get().asFile
+        
+        if (srcFile.exists()) {
+            // Добавляем версию и дату к имени файла
+            srcFile.renameTo(destFile)
+            println("AAB renamed: ${srcFile.name} -> ${destFile.name}")
+        }
+    }
+}
+
 // Правим output-metadata.json, чтобы он указывал на новое имя файла
 tasks.register("fixDebugApkMetadata") {
     dependsOn("renameApkDebug")
@@ -218,6 +232,7 @@ tasks.whenTaskAdded {
     if (name == "packageRelease") finalizedBy("renameApkRelease", "fixReleaseApkMetadata")
     if (name == "createDebugApkListingFileRedirect") dependsOn("fixDebugApkMetadata")
     if (name == "createReleaseApkListingFileRedirect") dependsOn("fixReleaseApkMetadata")
+    if (name == "bundleRelease") finalizedBy("renameBundleRelease")
 }
 
 // Когда выполняем installDebug, явно объявляем зависимость от задач переименования и фикса метаданных,
