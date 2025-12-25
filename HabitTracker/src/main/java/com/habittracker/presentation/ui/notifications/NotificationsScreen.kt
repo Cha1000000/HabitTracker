@@ -13,6 +13,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.DoneAll
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
@@ -61,7 +62,8 @@ import kotlinx.datetime.Clock
 fun NotificationsScreen(
     navController: NavController,
     viewModel: NotificationsViewModel = hiltViewModel(),
-    onBackClick: () -> Unit = { navController.popBackStack() }
+    onBackClick: () -> Unit = { navController.popBackStack() },
+    onSettingsClick: () -> Unit
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val snackbarHostState = remember { SnackbarHostState() }
@@ -167,6 +169,7 @@ fun NotificationsScreen(
                     unreadCount = uiState.unreadCount,
                     hasReadNotifications = uiState.storedNotifications.any { it.isRead },
                     onBackClick = onBackClick,
+                    onSettingsClick = onSettingsClick,
                     onMarkAllAsRead = { viewModel.markAllAsRead() },
                     onClearAllRead = { viewModel.deleteAllReadNotifications() },
                     isDarkTheme = isDarkTheme
@@ -245,6 +248,11 @@ fun NotificationsScreen(
                                     },
                                     onDelete = {
                                         viewModel.deleteNotification(notification.id)
+                                    },
+                                    onMarkAsRead = {
+                                        if (!notification.isRead) {
+                                            viewModel.markNotificationAsRead(notification.id)
+                                        }
                                     }
                                 )
                             }
@@ -278,6 +286,7 @@ fun NotificationsTopBar(
     unreadCount: Int,
     hasReadNotifications: Boolean,
     onBackClick: () -> Unit,
+    onSettingsClick: () -> Unit,
     onMarkAllAsRead: () -> Unit,
     onClearAllRead: () -> Unit,
     modifier: Modifier = Modifier,
@@ -304,6 +313,14 @@ fun NotificationsTopBar(
             }
         },
         actions = {
+            // Кнопка настроек уведомлений
+            IconButton(onClick = onSettingsClick) {
+                Icon(
+                    imageVector = Icons.Default.Settings,
+                    contentDescription = stringResource(R.string.settings_title)
+                )
+            }
+
             when {
                 unreadCount > 0 -> {
                     // Показываем кнопку "Отметить все как прочитанные"
@@ -368,6 +385,7 @@ fun NotificationsScreenPreview() {
                 unreadCount = 3,
                 hasReadNotifications = false,
                 onBackClick = {},
+                onSettingsClick = {},
                 onMarkAllAsRead = {},
                 onClearAllRead = {}
             )

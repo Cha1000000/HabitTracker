@@ -183,6 +183,9 @@ fun AppNavHost(
                 navController = navController,
                 onBackClick = {
                     navController.popBackStack()
+                },
+                onSettingsClick = {
+                    navController.navigate(Screen.NotificationSettings.route)
                 }
             )
         }

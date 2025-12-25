@@ -418,6 +418,7 @@
     <string name="notification_invitation_accepted">%1$s принял(а) приглашение в \"%2$s\"</string>
     <string name="notification_participant_joined">%1$s присоединился к \"%2$s\"</string>
     <string name="notification_habit_reminder">Время выполнить \"%1$s\"</string>
+    <string name="settings_title">Настройки</string>
     <!-- Invitations in Notifications -->
     <string name="invitations_title">Приглашения к привычкам</string>
     <string name="no_invitations">Нет входящих приглашений</string>
