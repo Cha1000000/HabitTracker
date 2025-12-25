@@ -76,26 +76,17 @@ HabitTracker — мобильное приложение для Android, кот�
 ### Splash
 <img src="art/screenshots/splash.png" width="280"/>
 
-### Мои привычки
-<img src="art/screenshots/habits_list.png" width="280"/>
+### Основные экраны
 
-### Детали групповой привычки
-<img src="art/screenshots/group_habit_detail.png" width="280"/>
-
-### Создание/редактирование привычки
-<img src="art/screenshots/add_edit_habit.png" width="280"/>
-
-### Друзья
-<img src="art/screenshots/friends_tabs.png" width="280"/>
-
-### Статистика
-<img src="art/screenshots/stats.png" width="280"/>
-
-### Достижения
-<img src="art/screenshots/achievements.png" width="280"/>
-
-### Публичные привычки
-<img src="art/screenshots/public_habits.png" width="280"/>
+| Экран | Светлая тема | Тёмная тема |
+| --- | --- | --- |
+| **Мои привычки** | <img src="art/screenshots/habits_list.png" width="280"/> | <img src="art/screenshots/habits_list_dark.png" width="280"/> |
+| **Детали групповой привычки** | <img src="art/screenshots/group_habit_detail.png" width="280"/> | <img src="art/screenshots/group_habit_detail_dark.png" width="280"/> |
+| **Создание/редактирование** | <img src="art/screenshots/add_edit_habit.png" width="280"/> | <img src="art/screenshots/add_edit_habit_dark.png" width="280"/> |
+| **Друзья** | <img src="art/screenshots/friends_tabs.png" width="280"/> | <img src="art/screenshots/friends_tabs_dark.png" width="280"/> |
+| **Статистика** | <img src="art/screenshots/stats.png" width="280"/> | <img src="art/screenshots/stats_dark.png" width="280"/> |
+| **Достижения** | <img src="art/screenshots/achievements.png" width="280"/> | <img src="art/screenshots/achievements_dark.png" width="280"/> |
+| **Публичные привычки** | <img src="art/screenshots/public_habits.png" width="280"/> | <img src="art/screenshots/public_habits_dark.png" width="280"/> |
 
 ## Стек технологий
 - Язык: Kotlin, Coroutines + Flow
