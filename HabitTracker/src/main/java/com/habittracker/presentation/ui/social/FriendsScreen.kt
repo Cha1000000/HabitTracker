@@ -1,11 +1,8 @@
 package com.habittracker.presentation.ui.social
 
-import android.graphics.BitmapFactory
-import android.util.Base64
 import androidx.compose.animation.Crossfade
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.BorderStroke
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.isSystemInDarkTheme
@@ -75,24 +72,18 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.asImageBitmap
-import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
-import coil.compose.AsyncImage
-import coil.request.CachePolicy
-import coil.request.ImageRequest
 import com.habittracker.R
 import com.habittracker.domain.model.FriendRequestWithUsers
 import com.habittracker.domain.model.User
 import com.habittracker.domain.model.getLastActiveText
 import com.habittracker.domain.model.isOnline
+import com.habittracker.presentation.ui.components.UserAvatar
 import com.habittracker.presentation.ui.habits.components.GlassmorphicCard
 import com.habittracker.presentation.ui.habits.components.TahoeGradientBackground
 import com.habittracker.presentation.ui.theme.GlassBlack10
@@ -275,91 +266,6 @@ fun FriendsScreen(
                     Text(text = stringResource(id = R.string.delete))
                 }
             }
-        )
-    }
-}
-
-/**
- * Унифицированный компонент аватара пользователя с поддержкой data:image base64,
- * как на `ProfileScreen`.
- */
-@Composable
-private fun AvatarImage(
-    data: String?,
-    contentDescription: String?,
-    sizeDp: androidx.compose.ui.unit.Dp,
-    placeholderColor: Color,
-    modifier: Modifier = Modifier
-) {
-    val displayData: Any? = data?.takeIf { it.isNotBlank() }
-
-    if (displayData != null) {
-        val isDataUrl = (displayData as? String)?.startsWith("data:image") == true
-        if (isDataUrl) {
-            val base64 = displayData.substringAfter(',')
-            val bytes = runCatching { Base64.decode(base64, Base64.DEFAULT) }.getOrNull()
-            val bmp = bytes?.let { BitmapFactory.decodeByteArray(it, 0, it.size) }
-            if (bmp != null) {
-                Image(
-                    bitmap = bmp.asImageBitmap(),
-                    contentDescription = contentDescription,
-                    modifier = modifier
-                        .size(sizeDp)
-                        .clip(CircleShape)
-                        .background(placeholderColor),
-                    contentScale = ContentScale.Crop
-                )
-            } else {
-                AsyncImage(
-                    model = ImageRequest.Builder(LocalContext.current)
-                        .data(displayData)
-                        .crossfade(true)
-                        .diskCachePolicy(CachePolicy.ENABLED)
-                        .memoryCachePolicy(CachePolicy.ENABLED)
-                        .build(),
-                    contentDescription = contentDescription,
-                    modifier = modifier
-                        .size(sizeDp)
-                        .clip(CircleShape)
-                        .background(placeholderColor),
-                    contentScale = ContentScale.Crop,
-                    placeholder = painterResource(id = R.drawable.ic_avatar_placeholder),
-                    error = painterResource(id = R.drawable.ic_avatar_placeholder)
-                )
-            }
-        } else {
-            AsyncImage(
-                model = ImageRequest.Builder(LocalContext.current)
-                    .data(displayData)
-                    .crossfade(true)
-                    .diskCachePolicy(CachePolicy.ENABLED)
-                    .memoryCachePolicy(CachePolicy.ENABLED)
-                    .build(),
-                contentDescription = contentDescription,
-                modifier = modifier
-                    .size(sizeDp)
-                    .clip(CircleShape)
-                    .background(placeholderColor),
-                contentScale = ContentScale.Crop,
-                placeholder = painterResource(id = R.drawable.ic_avatar_placeholder),
-                error = painterResource(id = R.drawable.ic_avatar_placeholder)
-            )
-        }
-    } else {
-        // Плейсхолдер (иконка)
-        AsyncImage(
-            model = ImageRequest.Builder(LocalContext.current)
-                .data("")
-                .crossfade(true)
-                .build(),
-            contentDescription = contentDescription,
-            modifier = modifier
-                .size(sizeDp)
-                .clip(CircleShape)
-                .background(placeholderColor),
-            contentScale = ContentScale.Crop,
-            placeholder = painterResource(id = R.drawable.ic_avatar_placeholder),
-            error = painterResource(id = R.drawable.ic_avatar_placeholder)
         )
     }
 }
@@ -664,12 +570,13 @@ private fun FriendCard(
             verticalAlignment = Alignment.CenterVertically
         ) {
             // Аватар
-            AvatarImage(
-                data = (friend.avatarThumbnailUrl?.takeIf { it.isNotBlank() }
-                    ?: friend.avatarUrl?.takeIf { it.isNotBlank() }),
-                contentDescription = friend.name,
-                sizeDp = 56.dp,
-                placeholderColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.1f)
+            UserAvatar(
+                avatarThumbnailUrl = friend.avatarThumbnailUrl,
+                avatarUrl = friend.avatarUrl,
+                name = friend.name,
+                size = 56.dp,
+                backgroundColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.1f),
+                contentDescription = friend.name
             )
             
             Spacer(modifier = Modifier.width(16.dp))
@@ -822,12 +729,13 @@ private fun IncomingRequestCard(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 // Аватар отправителя
-                AvatarImage(
-                    data = (request.fromUser.avatarThumbnailUrl?.takeIf { it.isNotBlank() }
-                        ?: request.fromUser.avatarUrl?.takeIf { it.isNotBlank() }),
-                    contentDescription = request.fromUser.name,
-                    sizeDp = 48.dp,
-                    placeholderColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.1f)
+                UserAvatar(
+                    avatarThumbnailUrl = request.fromUser.avatarThumbnailUrl,
+                    avatarUrl = request.fromUser.avatarUrl,
+                    name = request.fromUser.name,
+                    size = 48.dp,
+                    backgroundColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.1f),
+                    contentDescription = request.fromUser.name
                 )
                 
                 Spacer(modifier = Modifier.width(12.dp))
@@ -913,12 +821,13 @@ private fun OutgoingRequestCard(
             verticalAlignment = Alignment.CenterVertically
         ) {
             // Аватар получателя
-            AvatarImage(
-                data = (request.toUser.avatarThumbnailUrl?.takeIf { it.isNotBlank() }
-                    ?: request.toUser.avatarUrl?.takeIf { it.isNotBlank() }),
-                contentDescription = request.toUser.name,
-                sizeDp = 48.dp,
-                placeholderColor = MaterialTheme.colorScheme.secondary.copy(alpha = 0.1f)
+            UserAvatar(
+                avatarThumbnailUrl = request.toUser.avatarThumbnailUrl,
+                avatarUrl = request.toUser.avatarUrl,
+                name = request.toUser.name,
+                size = 48.dp,
+                backgroundColor = MaterialTheme.colorScheme.secondary.copy(alpha = 0.1f),
+                contentDescription = request.toUser.name
             )
             
             Spacer(modifier = Modifier.width(12.dp))
@@ -975,12 +884,13 @@ private fun SearchResultCard(
             verticalAlignment = Alignment.CenterVertically
         ) {
             // Аватар
-            AvatarImage(
-                data = (user.avatarThumbnailUrl?.takeIf { it.isNotBlank() }
-                    ?: user.avatarUrl?.takeIf { it.isNotBlank() }),
-                contentDescription = user.name,
-                sizeDp = 48.dp,
-                placeholderColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.1f)
+            UserAvatar(
+                avatarThumbnailUrl = user.avatarThumbnailUrl,
+                avatarUrl = user.avatarUrl,
+                name = user.name,
+                size = 48.dp,
+                backgroundColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.1f),
+                contentDescription = user.name
             )
             
             Spacer(modifier = Modifier.width(12.dp))

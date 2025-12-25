@@ -1,8 +1,5 @@
 package com.habittracker.presentation.ui.challenges
 
-import android.graphics.BitmapFactory
-import android.util.Base64
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.isSystemInDarkTheme
@@ -61,9 +58,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.asImageBitmap
-import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -72,8 +66,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import coil.compose.AsyncImage
-import coil.request.ImageRequest
 import com.habittracker.R
 import com.habittracker.domain.model.Challenge
 import com.habittracker.domain.model.ChallengeParticipantStats
@@ -85,6 +77,7 @@ import com.habittracker.domain.model.getDaysRemaining
 import com.habittracker.domain.model.getDurationInDays
 import com.habittracker.domain.model.getProgressPercentage
 import com.habittracker.domain.model.getRulesText
+import com.habittracker.presentation.ui.components.UserAvatar
 import com.habittracker.presentation.ui.habits.components.GlassmorphicCard
 import com.habittracker.presentation.ui.habits.components.GlassmorphicDialog
 import com.habittracker.presentation.ui.habits.components.GradientProgressBar
@@ -757,45 +750,12 @@ private fun ParticipantCard(
                     Spacer(modifier = Modifier.width(8.dp))
                 }
 
-                // Avatar - используем thumbnailUrl или avatarUrl с поддержкой base64
-                val avatarUrl = user.avatarThumbnailUrl?.takeIf { it.isNotBlank() }
-                    ?: user.avatarUrl?.takeIf { it.isNotBlank() }
-                val avatarModifier = Modifier
-                    .size(40.dp)
-                    .clip(CircleShape)
-                    .background(MaterialTheme.colorScheme.surfaceVariant)
-                
-                if (!avatarUrl.isNullOrBlank()) {
-                    val isDataUrl = avatarUrl.startsWith("data:image")
-                    if (isDataUrl) {
-                        val base64 = avatarUrl.substringAfter(',')
-                        val bytes = runCatching { Base64.decode(base64, Base64.DEFAULT) }.getOrNull()
-                        val bmp = bytes?.let { BitmapFactory.decodeByteArray(it, 0, it.size) }
-                        if (bmp != null) {
-                            Image(
-                                bitmap = bmp.asImageBitmap(),
-                                contentDescription = null,
-                                modifier = avatarModifier,
-                                contentScale = ContentScale.Crop
-                            )
-                        } else {
-                            // Fallback на placeholder
-                            AvatarPlaceholder(user.name, avatarModifier)
-                        }
-                    } else {
-                        AsyncImage(
-                            model = ImageRequest.Builder(LocalContext.current)
-                                .data(avatarUrl)
-                                .crossfade(true)
-                                .build(),
-                            contentDescription = null,
-                            modifier = avatarModifier,
-                            contentScale = ContentScale.Crop
-                        )
-                    }
-                } else {
-                    AvatarPlaceholder(user.name, avatarModifier)
-                }
+                UserAvatar(
+                    avatarThumbnailUrl = user.avatarThumbnailUrl,
+                    avatarUrl = user.avatarUrl,
+                    name = user.name,
+                    size = 40.dp
+                )
 
                 Spacer(modifier = Modifier.width(12.dp))
 
@@ -982,30 +942,13 @@ private fun AddParticipantDialog(
                             Spacer(modifier = Modifier.width(8.dp))
                             
                             // Avatar
-                            if (friend.avatarThumbnailUrl != null || friend.avatarUrl != null) {
-                                AsyncImage(
-                                    model = friend.avatarThumbnailUrl ?: friend.avatarUrl,
-                                    contentDescription = null,
-                                    modifier = Modifier
-                                        .size(32.dp)
-                                        .clip(CircleShape),
-                                    contentScale = ContentScale.Crop
-                                )
-                            } else {
-                                Surface(
-                                    modifier = Modifier.size(32.dp),
-                                    shape = CircleShape,
-                                    color = MaterialTheme.colorScheme.primaryContainer
-                                ) {
-                                    Box(contentAlignment = Alignment.Center) {
-                                        Text(
-                                            text = friend.name.firstOrNull()?.uppercase() ?: "?",
-                                            style = MaterialTheme.typography.labelMedium,
-                                            color = MaterialTheme.colorScheme.onPrimaryContainer
-                                        )
-                                    }
-                                }
-                            }
+                            UserAvatar(
+                                avatarThumbnailUrl = friend.avatarThumbnailUrl,
+                                avatarUrl = friend.avatarUrl,
+                                name = friend.name,
+                                size = 32.dp,
+                                backgroundColor = MaterialTheme.colorScheme.primaryContainer
+                            )
                             
                             Spacer(modifier = Modifier.width(8.dp))
                             Text(
@@ -1035,27 +978,4 @@ private fun AddParticipantDialog(
             }
         }
     )
-}
-
-@Composable
-private fun AvatarPlaceholder(name: String, modifier: Modifier = Modifier) {
-    Box(
-        modifier = modifier,
-        contentAlignment = Alignment.Center
-    ) {
-        Surface(
-            modifier = Modifier.fillMaxSize(),
-            color = MaterialTheme.colorScheme.primaryContainer,
-            shape = CircleShape
-        ) {
-            Box(contentAlignment = Alignment.Center) {
-                Text(
-                    text = name.take(1).uppercase(),
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.onPrimaryContainer
-                )
-            }
-        }
-    }
 }

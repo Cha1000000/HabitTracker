@@ -1,8 +1,5 @@
 package com.habittracker.presentation.ui.habits.components
 
-import android.graphics.BitmapFactory
-import android.util.Base64
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
@@ -14,16 +11,15 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
-import androidx.compose.material.icons.filled.Person
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
@@ -34,21 +30,17 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.asImageBitmap
-import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import coil.compose.AsyncImage
-import coil.request.ImageRequest
 import com.habittracker.R
 import com.habittracker.domain.model.Habit
 import com.habittracker.domain.model.HabitFrequency
 import com.habittracker.domain.model.HabitType
 import com.habittracker.domain.model.isGroupHabit
+import com.habittracker.presentation.ui.components.UserAvatar
 import kotlinx.datetime.Clock
 import kotlinx.datetime.LocalTime
 import kotlinx.datetime.TimeZone
@@ -122,6 +114,7 @@ fun GroupHabitProgressComponent(
             items(participantsProgress) { participant ->
                 ParticipantStatusItem(
                     participant = participant,
+                    size = 40.dp,
                     modifier = Modifier.size(40.dp)
                 )
             }
@@ -135,6 +128,7 @@ fun GroupHabitProgressComponent(
 @Composable
 private fun ParticipantStatusItem(
     participant: ParticipantProgress,
+    size: androidx.compose.ui.unit.Dp,
     modifier: Modifier = Modifier
 ) {
     val successColor = Color(0xFF4CAF50)
@@ -145,7 +139,10 @@ private fun ParticipantStatusItem(
         contentAlignment = Alignment.Center
     ) {
         // Аватарка или плейсхолдер
-        Box(
+        UserAvatar(
+            data = participant.avatarUrl,
+            name = participant.userName,
+            size = size,
             modifier = Modifier
                 .fillMaxSize()
                 .clip(CircleShape)
@@ -153,46 +150,8 @@ private fun ParticipantStatusItem(
                     width = if (participant.isCompletedToday) 2.dp else 0.dp,
                     color = borderColor,
                     shape = CircleShape
-                )
-                .background(MaterialTheme.colorScheme.surfaceVariant),
-            contentAlignment = Alignment.Center
-        ) {
-            val avatarUrl = participant.avatarUrl
-            if (!avatarUrl.isNullOrBlank()) {
-                val isDataUrl = avatarUrl.startsWith("data:image")
-                if (isDataUrl) {
-                    val base64 = avatarUrl.substringAfter(',')
-                    val bytes = runCatching { Base64.decode(base64, Base64.DEFAULT) }.getOrNull()
-                    val bmp = bytes?.let { BitmapFactory.decodeByteArray(it, 0, it.size) }
-                    if (bmp != null) {
-                        Image(
-                            bitmap = bmp.asImageBitmap(),
-                            contentDescription = participant.userName,
-                            modifier = Modifier
-                                .fillMaxSize()
-                                .clip(CircleShape),
-                            contentScale = ContentScale.Crop
-                        )
-                    } else {
-                        ParticipantPlaceholder(participant.userName)
-                    }
-                } else {
-                    AsyncImage(
-                        model = ImageRequest.Builder(LocalContext.current)
-                            .data(avatarUrl)
-                            .crossfade(true)
-                            .build(),
-                        contentDescription = participant.userName,
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .clip(CircleShape),
-                        contentScale = ContentScale.Crop
-                    )
-                }
-            } else {
-                ParticipantPlaceholder(participant.userName)
-            }
-        }
+                ),
+        )
         
         // Индикатор выполнения (галочка в углу)
         if (participant.isCompletedToday) {
@@ -214,20 +173,6 @@ private fun ParticipantStatusItem(
             }
         }
     }
-}
-
-/**
- * Плейсхолдер для участника без аватарки (первая буква имени)
- */
-@Composable
-private fun ParticipantPlaceholder(userName: String) {
-    val initial = userName.firstOrNull()?.uppercaseChar() ?: '?'
-    Text(
-        text = initial.toString(),
-        style = MaterialTheme.typography.labelMedium,
-        color = MaterialTheme.colorScheme.onSurfaceVariant,
-        fontWeight = FontWeight.Bold
-    )
 }
 
 /**
@@ -289,6 +234,7 @@ private fun ParticipantDetailRow(
         ) {
             ParticipantStatusItem(
                 participant = participant,
+                size = 24.dp,
                 modifier = Modifier.size(24.dp)
             )
             Spacer(modifier = Modifier.width(8.dp))

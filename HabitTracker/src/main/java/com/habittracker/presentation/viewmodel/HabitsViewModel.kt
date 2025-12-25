@@ -387,7 +387,7 @@ class HabitsViewModel @Inject constructor(
                                                 isCompletedToday = p.completedToday,
                                                 currentStreak = p.currentStreak,
                                                 completionRate = p.completionRate,
-                                                avatarUrl = p.user.avatarUrl
+                                                avatarUrl = p.user.avatarThumbnailUrl ?: p.user.avatarUrl
                                             )
                                         } ?: emptyList()
                                     } catch (e: CancellationException) {
@@ -501,7 +501,7 @@ class HabitsViewModel @Inject constructor(
                                     isCompletedToday = p.completedToday,
                                     currentStreak = p.currentStreak,
                                     completionRate = p.completionRate,
-                                    avatarUrl = p.user.avatarUrl
+                                    avatarUrl = p.user.avatarThumbnailUrl ?: p.user.avatarUrl
                                 )
                             }
                             

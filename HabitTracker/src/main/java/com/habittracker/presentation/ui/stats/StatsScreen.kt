@@ -1,8 +1,5 @@
 package com.habittracker.presentation.ui.stats
 
-import android.graphics.BitmapFactory
-import android.util.Base64
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
@@ -49,11 +46,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -61,15 +54,13 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import coil.compose.AsyncImage
-import coil.request.CachePolicy
-import coil.request.ImageRequest
 import com.habittracker.R
 import com.habittracker.domain.model.gamification.ChallengeStats
 import com.habittracker.domain.model.gamification.HabitStats
 import com.habittracker.domain.model.gamification.SocialStats
 import com.habittracker.domain.model.gamification.StreakStats
 import com.habittracker.domain.model.gamification.TimeStats
+import com.habittracker.presentation.ui.components.UserAvatar
 import com.habittracker.presentation.ui.habits.components.GlassmorphicCard
 import com.habittracker.presentation.ui.habits.components.GradientProgressBar
 import com.habittracker.presentation.ui.habits.components.TahoeGradientBackground
@@ -635,11 +626,13 @@ private fun LeaderboardItemEnhanced(
             Spacer(modifier = Modifier.width(12.dp))
             
             // Avatar
-            AvatarImage(
-                data = entry.user.avatarThumbnailUrl ?: entry.user.avatarUrl,
-                contentDescription = entry.user.name,
-                sizeDp = 40.dp,
-                placeholderColor = MaterialTheme.colorScheme.primaryContainer
+            UserAvatar(
+                avatarThumbnailUrl = entry.user.avatarThumbnailUrl,
+                avatarUrl = entry.user.avatarUrl,
+                name = entry.user.name,
+                size = 40.dp,
+                backgroundColor = MaterialTheme.colorScheme.primaryContainer,
+                contentDescription = entry.user.name
             )
             
             Spacer(modifier = Modifier.width(12.dp))
@@ -709,11 +702,13 @@ private fun LeaderboardItem(rank: Int, user: com.habittracker.domain.model.User)
             Spacer(modifier = Modifier.width(12.dp))
             
             // Avatar
-            AvatarImage(
-                data = user.avatarThumbnailUrl ?: user.avatarUrl,
-                contentDescription = user.name,
-                sizeDp = 40.dp,
-                placeholderColor = MaterialTheme.colorScheme.primaryContainer
+            UserAvatar(
+                avatarThumbnailUrl = user.avatarThumbnailUrl,
+                avatarUrl = user.avatarUrl,
+                name = user.name,
+                size = 40.dp,
+                backgroundColor = MaterialTheme.colorScheme.primaryContainer,
+                contentDescription = user.name
             )
             
             Spacer(modifier = Modifier.width(12.dp))
@@ -741,87 +736,6 @@ private fun LeaderboardItem(rank: Int, user: com.habittracker.domain.model.User)
             style = MaterialTheme.typography.titleMedium,
             fontWeight = FontWeight.Bold,
             color = MaterialTheme.colorScheme.primary
-        )
-    }
-}
-
-@Composable
-private fun AvatarImage(
-    data: String?,
-    contentDescription: String?,
-    sizeDp: androidx.compose.ui.unit.Dp,
-    placeholderColor: Color,
-    modifier: Modifier = Modifier
-) {
-    val displayData: Any? = data?.takeIf { it.isNotBlank() }
-
-    if (displayData != null) {
-        val isDataUrl = (displayData as? String)?.startsWith("data:image") == true
-        if (isDataUrl) {
-            val base64 = displayData.substringAfter(',')
-            val bytes = runCatching { Base64.decode(base64, Base64.DEFAULT) }.getOrNull()
-            val bmp = bytes?.let { BitmapFactory.decodeByteArray(it, 0, it.size) }
-            if (bmp != null) {
-                Image(
-                    bitmap = bmp.asImageBitmap(),
-                    contentDescription = contentDescription,
-                    modifier = modifier
-                        .size(sizeDp)
-                        .clip(CircleShape)
-                        .background(placeholderColor),
-                    contentScale = ContentScale.Crop
-                )
-            } else {
-                AsyncImage(
-                    model = ImageRequest.Builder(LocalContext.current)
-                        .data(displayData)
-                        .crossfade(true)
-                        .diskCachePolicy(CachePolicy.ENABLED)
-                        .memoryCachePolicy(CachePolicy.ENABLED)
-                        .build(),
-                    contentDescription = contentDescription,
-                    modifier = modifier
-                        .size(sizeDp)
-                        .clip(CircleShape)
-                        .background(placeholderColor),
-                    contentScale = ContentScale.Crop,
-                    placeholder = painterResource(id = R.drawable.ic_avatar_placeholder),
-                    error = painterResource(id = R.drawable.ic_avatar_placeholder)
-                )
-            }
-        } else {
-            AsyncImage(
-                model = ImageRequest.Builder(LocalContext.current)
-                    .data(displayData)
-                    .crossfade(true)
-                    .diskCachePolicy(CachePolicy.ENABLED)
-                    .memoryCachePolicy(CachePolicy.ENABLED)
-                    .build(),
-                contentDescription = contentDescription,
-                modifier = modifier
-                    .size(sizeDp)
-                    .clip(CircleShape)
-                    .background(placeholderColor),
-                contentScale = ContentScale.Crop,
-                placeholder = painterResource(id = R.drawable.ic_avatar_placeholder),
-                error = painterResource(id = R.drawable.ic_avatar_placeholder)
-            )
-        }
-    } else {
-        // Плейсхолдер
-        AsyncImage(
-            model = ImageRequest.Builder(LocalContext.current)
-                .data("")
-                .crossfade(true)
-                .build(),
-            contentDescription = contentDescription,
-            modifier = modifier
-                .size(sizeDp)
-                .clip(CircleShape)
-                .background(placeholderColor),
-            contentScale = ContentScale.Crop,
-            placeholder = painterResource(id = R.drawable.ic_avatar_placeholder),
-            error = painterResource(id = R.drawable.ic_avatar_placeholder)
         )
     }
 }

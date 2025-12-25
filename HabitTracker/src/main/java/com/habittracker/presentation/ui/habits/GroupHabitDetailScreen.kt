@@ -91,6 +91,7 @@ import com.habittracker.domain.model.HabitFrequency
 import com.habittracker.domain.model.HabitInvitation
 import com.habittracker.domain.model.User
 import com.habittracker.presentation.ui.components.SectionCard
+import com.habittracker.presentation.ui.components.UserAvatar
 import com.habittracker.presentation.ui.habits.components.GlassmorphicDialog
 import com.habittracker.presentation.ui.habits.components.GradientProgressBar
 import com.habittracker.presentation.ui.habits.components.TahoeGradientBackground
@@ -668,20 +669,12 @@ private fun ParticipantListItem(
         ),
         leadingContent = {
             // Аватар участника
-            Box(
-                modifier = Modifier
-                    .size(40.dp)
-                    .clip(CircleShape)
-                    .background(MaterialTheme.colorScheme.surfaceVariant),
-                contentAlignment = Alignment.Center
-            ) {
-                Text(
-                    text = participant.name.take(2).uppercase(),
-                    style = MaterialTheme.typography.labelLarge,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    fontWeight = FontWeight.Medium
-                )
-            }
+            UserAvatar(
+                avatarThumbnailUrl = participant.avatarThumbnailUrl,
+                avatarUrl = participant.avatarUrl,
+                name = participant.name,
+                size = 40.dp
+            )
         },
         headlineContent = {
             Row(
@@ -987,20 +980,12 @@ private fun ActivityItem(
         verticalAlignment = Alignment.CenterVertically
     ) {
         // Аватар
-        Box(
-            modifier = Modifier
-                .size(32.dp)
-                .clip(CircleShape)
-                .background(MaterialTheme.colorScheme.primary),
-            contentAlignment = Alignment.Center
-        ) {
-            Text(
-                text = participant.name.firstOrNull()?.uppercase() ?: "?",
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onPrimary,
-                fontWeight = FontWeight.Bold
-            )
-        }
+        UserAvatar(
+            avatarThumbnailUrl = participant.avatarThumbnailUrl,
+            avatarUrl = participant.avatarUrl,
+            name = participant.name,
+            size = 32.dp
+        )
         
         Spacer(modifier = Modifier.width(12.dp))
         
@@ -1175,20 +1160,12 @@ private fun LeaderboardParticipantItem(
             Spacer(modifier = Modifier.width(12.dp))
             
             // Аватар
-            Box(
-                modifier = Modifier
-                    .size(36.dp)
-                    .clip(CircleShape)
-                    .background(MaterialTheme.colorScheme.primaryContainer),
-                contentAlignment = Alignment.Center
-            ) {
-                Text(
-                    text = entry.user.name.firstOrNull()?.uppercase() ?: "?",
-                    style = MaterialTheme.typography.bodyMedium,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.onPrimaryContainer
-                )
-            }
+            UserAvatar(
+                avatarThumbnailUrl = entry.user.avatarThumbnailUrl,
+                avatarUrl = entry.user.avatarUrl,
+                name = entry.user.name,
+                size = 36.dp
+            )
             
             Spacer(modifier = Modifier.width(12.dp))
             

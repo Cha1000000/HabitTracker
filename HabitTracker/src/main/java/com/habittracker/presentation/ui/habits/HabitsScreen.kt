@@ -1,10 +1,7 @@
 package com.habittracker.presentation.ui.habits
 
-import android.graphics.BitmapFactory
-import android.util.Base64
 import android.util.Log
 import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.isSystemInDarkTheme
@@ -19,7 +16,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
@@ -31,7 +27,6 @@ import androidx.compose.material.icons.filled.EmojiEvents
 import androidx.compose.material.icons.filled.Flag
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.People
-import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.pullrefresh.pullRefresh
 import androidx.compose.material.pullrefresh.rememberPullRefreshState
 import androidx.compose.material3.CircularProgressIndicator
@@ -64,8 +59,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.asImageBitmap
-import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
@@ -78,8 +71,6 @@ import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.navigation.NavController
 import androidx.navigation.compose.rememberNavController
-import coil.compose.AsyncImage
-import coil.request.ImageRequest
 import com.habittracker.HabitTrackerApplication
 import com.habittracker.R
 import com.habittracker.domain.model.Habit
@@ -87,7 +78,9 @@ import com.habittracker.domain.model.HabitFrequency
 import com.habittracker.domain.model.HabitType
 import com.habittracker.domain.model.isGroupHabit
 import com.habittracker.presentation.navigation.Screen
+import com.habittracker.presentation.ui.components.ConfettiOverlay
 import com.habittracker.presentation.ui.components.GradientPullRefreshIndicator
+import com.habittracker.presentation.ui.components.UserAvatar
 import com.habittracker.presentation.ui.habits.components.ConfirmDialog
 import com.habittracker.presentation.ui.habits.components.EnhancedHabitItem
 import com.habittracker.presentation.ui.habits.components.ExpandableFAB
@@ -99,7 +92,6 @@ import com.habittracker.presentation.ui.habits.components.TahoeDockBar
 import com.habittracker.presentation.ui.habits.components.TahoeDockDivider
 import com.habittracker.presentation.ui.habits.components.TahoeDockItem
 import com.habittracker.presentation.ui.habits.components.TahoeGradientBackground
-import com.habittracker.presentation.ui.components.ConfettiOverlay
 import com.habittracker.presentation.ui.notifications.NotificationBadge
 import com.habittracker.presentation.viewmodel.ChallengesViewModel
 import com.habittracker.presentation.viewmodel.FriendsViewModel
@@ -237,51 +229,18 @@ fun HabitsScreen(
                         navController.navigate(Screen.Profile.route)
                     }) {
                         val avatarUrl = uiState.currentUserAvatarUrl
-                        val avatarModifier = Modifier
-                            .size(42.dp)
-                            .clip(CircleShape)
-                            .border(
+
+                        UserAvatar(
+                            data = avatarUrl,
+                            name = null,
+                            size = 42.dp,
+                            modifier = Modifier.border(
                                 width = 2.dp,
                                 color = MaterialTheme.colorScheme.primary,
                                 shape = CircleShape
-                            )
-                        
-                        if (!avatarUrl.isNullOrBlank()) {
-                            val isDataUrl = avatarUrl.startsWith("data:image")
-                            if (isDataUrl) {
-                                val base64 = avatarUrl.substringAfter(',')
-                                val bytes = runCatching { Base64.decode(base64, Base64.DEFAULT) }.getOrNull()
-                                val bmp = bytes?.let { BitmapFactory.decodeByteArray(it, 0, it.size) }
-                                if (bmp != null) {
-                                    Image(
-                                        bitmap = bmp.asImageBitmap(),
-                                        contentDescription = stringResource(R.string.cd_profile),
-                                        modifier = avatarModifier,
-                                        contentScale = ContentScale.Crop
-                                    )
-                                } else {
-                                    Icon(
-                                        imageVector = Icons.Default.Person,
-                                        contentDescription = stringResource(R.string.cd_profile)
-                                    )
-                                }
-                            } else {
-                                AsyncImage(
-                                    model = ImageRequest.Builder(LocalContext.current)
-                                        .data(avatarUrl)
-                                        .crossfade(true)
-                                        .build(),
-                                    contentDescription = stringResource(R.string.cd_profile),
-                                    modifier = avatarModifier,
-                                    contentScale = ContentScale.Crop
-                                )
-                            }
-                        } else {
-                            Icon(
-                                imageVector = Icons.Default.Person,
-                                contentDescription = stringResource(R.string.cd_profile)
-                            )
-                        }
+                            ),
+                            contentDescription = stringResource(R.string.cd_profile)
+                        )
                     }
                 }
             )
