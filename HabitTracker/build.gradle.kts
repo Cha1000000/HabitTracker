@@ -151,39 +151,25 @@ android {
             excludes += "/META-INF/LICENSE-notice.md"
         }
     }
+
+    // Правильное переименование APK через Variant API
+    // Это гарантирует, что IDE и Gradle знают правильный путь к файлу для установки
+    applicationVariants.all {
+        val variant = this
+        variant.outputs
+            .map { it as com.android.build.gradle.internal.api.BaseVariantOutputImpl }
+            .forEach { output ->
+                val dateStr = SimpleDateFormat("yyyyMMdd").format(Date())
+                val newName = "HabitTracker-${variant.name}-${variant.versionName}-${dateStr}.apk"
+                output.outputFileName = newName
+            }
+    }
 }
 
 // Автопереименование APK после упаковки (без Variant API)
 val apkDateProvider = providers.provider { SimpleDateFormat("yyyyMMdd").format(Date()) }
 
-tasks.register("renameApkDebug") {
-    doLast {
-        val dateStr = apkDateProvider.get()
-        val srcFile = layout.buildDirectory.file("outputs/apk/debug/HabitTracker-debug.apk").get().asFile
-        val destFile = layout.buildDirectory.file("outputs/apk/debug/HabitTracker-debug-$appVersionName-$dateStr.apk").get().asFile
-        
-        if (srcFile.exists()) {
-            // Добавляем версию и дату к имени файла
-            srcFile.renameTo(destFile)
-            println("APK renamed: ${srcFile.name} -> ${destFile.name}")
-        }
-    }
-}
-
-tasks.register("renameApkRelease") {
-    doLast {
-        val dateStr = apkDateProvider.get()
-        val srcFile = layout.buildDirectory.file("outputs/apk/release/HabitTracker-release.apk").get().asFile
-        val destFile = layout.buildDirectory.file("outputs/apk/release/HabitTracker-release-$appVersionName-$dateStr.apk").get().asFile
-        
-        if (srcFile.exists()) {
-            // Добавляем версию и дату к имени файла
-            srcFile.renameTo(destFile)
-            println("APK renamed: ${srcFile.name} -> ${destFile.name}")
-        }
-    }
-}
-
+// Переименование App Bundle (.aab) оставляем таском, так как IDE его не устанавливает
 tasks.register("renameBundleRelease") {
     doLast {
         val dateStr = apkDateProvider.get()
@@ -191,54 +177,14 @@ tasks.register("renameBundleRelease") {
         val destFile = layout.buildDirectory.file("outputs/bundle/release/HabitTracker-release-$appVersionName-$dateStr.aab").get().asFile
         
         if (srcFile.exists()) {
-            // Добавляем версию и дату к имени файла
             srcFile.renameTo(destFile)
             println("AAB renamed: ${srcFile.name} -> ${destFile.name}")
         }
     }
 }
 
-// Правим output-metadata.json, чтобы он указывал на новое имя файла
-tasks.register("fixDebugApkMetadata") {
-    dependsOn("renameApkDebug")
-    doLast {
-        val dateStr = apkDateProvider.get()
-        val meta = layout.buildDirectory.file("outputs/apk/debug/output-metadata.json").get().asFile
-        if (meta.exists()) {
-            val desired = "HabitTracker-debug-$appVersionName-$dateStr.apk"
-            val content = meta.readText()
-            val updated = content.replace(Regex("\"outputFile\"\\s*:\\s*\"[^\"]+\""), "\"outputFile\":\"$desired\"")
-            meta.writeText(updated)
-        }
-    }
-}
-
-tasks.register("fixReleaseApkMetadata") {
-    dependsOn("renameApkRelease")
-    doLast {
-        val dateStr = apkDateProvider.get()
-        val meta = layout.buildDirectory.file("outputs/apk/release/output-metadata.json").get().asFile
-        if (meta.exists()) {
-            val desired = "HabitTracker-release-$appVersionName-$dateStr.apk"
-            val content = meta.readText()
-            val updated = content.replace(Regex("\"outputFile\"\\s*:\\s*\"[^\"]+\""), "\"outputFile\":\"$desired\"")
-            meta.writeText(updated)
-        }
-    }
-}
-
 tasks.whenTaskAdded {
-    if (name == "packageDebug") finalizedBy("renameApkDebug", "fixDebugApkMetadata")
-    if (name == "packageRelease") finalizedBy("renameApkRelease", "fixReleaseApkMetadata")
-    if (name == "createDebugApkListingFileRedirect") dependsOn("fixDebugApkMetadata")
-    if (name == "createReleaseApkListingFileRedirect") dependsOn("fixReleaseApkMetadata")
     if (name == "bundleRelease") finalizedBy("renameBundleRelease")
-}
-
-// Когда выполняем installDebug, явно объявляем зависимость от задач переименования и фикса метаданных,
-// чтобы избежать проблем Gradle с неявными зависимостями.
-tasks.whenTaskAdded {
-    if (name == "installDebug") dependsOn("renameApkDebug", "fixDebugApkMetadata")
 }
 
 dependencies {
@@ -249,6 +195,7 @@ dependencies {
     // Core Android
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.core.splashscreen)
+    implementation(libs.androidx.profileinstaller)
     implementation(libs.androidx.lifecycle.runtime.ktx)
     implementation(libs.androidx.activity.compose)
 
