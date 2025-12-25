@@ -35,7 +35,6 @@
 - [Тестирование](#тестирование)
 - [Безопасность и приватность](#безопасность-и-приватность)
 - [Производительность](#производительность)
-- [Дорожная карта (Roadmap)](#дорожная-карта-roadmap)
 - [Как контрибьютить](#как-контрибьютить)
 - [Лицензия](#лицензия)
 - [Благодарности](#благодарности)
@@ -75,28 +74,28 @@ HabitTracker — мобильное приложение для Android, кот�
 Файлы лежат в `art/screenshots/`.
 
 ### Splash
-![Splash](./art/screenshots/splash.png)
+![Splash](art/screenshots/splash.png)
 
 ### Мои привычки
-![Мои привычки](./art/screenshots/habits_list.png)
+![Мои привычки](art/screenshots/habits_list.png)
 
 ### Детали групповой привычки
-![Детали групповой привычки](./art/screenshots/group_habit_detail.png)
+![Детали групповой привычки](art/screenshots/group_habit_detail.png)
 
 ### Создание/редактирование привычки
-![Создание/редактирование привычки](./art/screenshots/add_edit_habit.png)
+![Создание/редактирование привычки](art/screenshots/add_edit_habit.png)
 
 ### Друзья
-![Друзья](./art/screenshots/friends_tabs.png)
+![Друзья](art/screenshots/friends_tabs.png)
 
 ### Статистика
-![Статистика](./art/screenshots/stats.png)
+![Статистика](art/screenshots/stats.png)
 
 ### Достижения
-![Достижения](./art/screenshots/achievements.png)
+![Достижения](art/screenshots/achievements.png)
 
 ### Публичные привычки
-![Публичные привычки](./art/screenshots/public_habits.png)
+![Публичные привычки](art/screenshots/public_habits.png)
 
 ## Стек технологий
 - Язык: Kotlin, Coroutines + Flow
@@ -159,12 +158,6 @@ com.habittracker/
 - `SyncWorker`: старт/завершение дренажа.
 - `SyncManager`: enqueue / pushUpsert / pushDelete / retry.
 
-Быстрый smoke-check:
-1. Переименовать групповую привычку → проверить `habits/{id}.title` в Firestore.
-2. Переименовать челлендж → проверить `challenges/{id}.title`.
-3. Отметить выполнение → проверить запись в `habit_entries`.
-4. Разблокировать достижение → проверить `user_achievements`.
-
 ## Быстрый старт
 Требования:
 - Android Studio Koala или новее
@@ -216,11 +209,6 @@ com.habittracker/
 - Coil с кэшированием изображений.
 - Минимизация recomposition в Compose.
 - Пагинация для истории выполнений (по мере необходимости).
-
-## Дорожная карта (Roadmap)
-- Челленджи между друзьями — реализовано (создание/инвайты/принятие, прогресс, завершение, победитель, уведомления).
-- Геймификация — в разработке (очки, уровни, достижения, лидерборды).
-- Полировка: расширенная аналитика, дополнительные анимации, улучшение a11y.
 
 ## Как контрибьютить
 1. Форкните репозиторий и создайте ветку из `main`.
