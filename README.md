@@ -71,16 +71,19 @@ HabitTracker — мобильное приложение для Android, кот�
 - Геймификация (очки, уровни, достижения): реализованы базовые достижения (UserAchievements) с синхронизацией.
 
 ## Скриншоты
-Скриншоты будут добавлены позже.
 
-Предлагаемая структура:
-```
-art/screenshots/
-  habits_list.png
-  add_edit_habit.png
-  group_habit_detail.png
-  friends_tabs.png
-```
+| Экран | Скриншот |
+| --- | --- |
+| Splash | ![Splash](art/screenshots/splash.png) |
+| Мои привычки | ![Habits list](art/screenshots/habits_list.png) |
+| Детали групповой привычки | ![Group habit detail](art/screenshots/group_habit_detail.png) |
+| Создание/редактирование привычки | ![Add/Edit habit](art/screenshots/add_edit_habit.png) |
+| Друзья | ![Friends](art/screenshots/friends_tabs.png) |
+| Статистика | ![Stats](art/screenshots/stats.png) |
+| Достижения | ![Achievements](art/screenshots/achievements.png) |
+| Публичные привычки | ![Public habits](art/screenshots/public_habits.png) |
+
+Файлы лежат в `art/screenshots/`.
 
 ## Стек технологий
 - Язык: Kotlin, Coroutines + Flow
