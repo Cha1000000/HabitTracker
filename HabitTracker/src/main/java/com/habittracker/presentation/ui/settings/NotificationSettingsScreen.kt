@@ -18,8 +18,6 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Switch
-import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
@@ -35,6 +33,7 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
 import com.habittracker.R
+import com.habittracker.presentation.ui.habits.components.GlassmorphicSwitch
 import com.habittracker.presentation.ui.habits.components.TahoeGradientBackground
 import com.habittracker.presentation.viewmodel.NotificationSettingsViewModel
 
@@ -178,30 +177,7 @@ private fun SettingsSwitch(
     onCheckedChange: (Boolean) -> Unit
 ) {
     val isDarkTheme = isSystemInDarkTheme()
-    
-    // Цвета для переключателя с учётом темы
-    val checkedThumbColor = Color.White
-    val checkedTrackColor = if (isDarkTheme) {
-        Color(0xFF4A90D9) // Синий для тёмной темы
-    } else {
-        Color(0xFF2563EB) // Более насыщенный синий для светлой темы
-    }
-    val uncheckedThumbColor = if (isDarkTheme) {
-        Color(0xFF9CA3AF) // Серый для тёмной темы
-    } else {
-        Color.White
-    }
-    val uncheckedTrackColor = if (isDarkTheme) {
-        Color(0xFF374151) // Тёмно-серый для тёмной темы
-    } else {
-        Color(0xFFD1D5DB) // Светло-серый для светлой темы
-    }
-    val uncheckedBorderColor = if (isDarkTheme) {
-        Color(0xFF6B7280)
-    } else {
-        Color(0xFF9CA3AF)
-    }
-    
+
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -220,16 +196,10 @@ private fun SettingsSwitch(
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
         }
-        Switch(
+        GlassmorphicSwitch(
             checked = checked,
             onCheckedChange = onCheckedChange,
-            colors = SwitchDefaults.colors(
-                checkedThumbColor = checkedThumbColor,
-                checkedTrackColor = checkedTrackColor,
-                uncheckedThumbColor = uncheckedThumbColor,
-                uncheckedTrackColor = uncheckedTrackColor,
-                uncheckedBorderColor = uncheckedBorderColor
-            )
+            isDarkTheme = isDarkTheme,
         )
     }
 }
