@@ -1,5 +1,6 @@
 package com.habittracker.domain.model
 
+import com.habittracker.domain.model.gamification.GamificationConstants
 import kotlinx.datetime.Clock
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.TimeZone
@@ -26,15 +27,21 @@ data class User(
 fun User.getDisplayName(): String = name.ifBlank { "Пользователь" }
 
 fun User.getLevelProgress(): Float {
-    val pointsForCurrentLevel = (level - 1) * 1000
-    val pointsForNextLevel = level * 1000
+    // Recalculate level from points to ensure consistency
+    val calculatedLevel = GamificationConstants.getLevelFromPoints(points)
+    
+    val pointsForCurrentLevel = GamificationConstants.pointsForLevel(calculatedLevel)
+    val pointsForNextLevel = GamificationConstants.pointsForLevel(calculatedLevel + 1)
+    
     val currentLevelPoints = points - pointsForCurrentLevel
-    return if (pointsForNextLevel > pointsForCurrentLevel) {
-        currentLevelPoints.toFloat() / (pointsForNextLevel - pointsForCurrentLevel)
+    val pointsNeeded = pointsForNextLevel - pointsForCurrentLevel
+    
+    return if (pointsNeeded > 0) {
+        (currentLevelPoints.toFloat() / pointsNeeded.toFloat()).coerceIn(0f, 1f)
     } else 1f
 }
 
-fun User.getLevelTitle(): String = when (level) {
+fun User.getLevelTitle(): String = when (GamificationConstants.getLevelFromPoints(points)) {
     in 1..5 -> "Новичок"
     in 6..15 -> "Энтузиаст"
     in 16..30 -> "Эксперт"

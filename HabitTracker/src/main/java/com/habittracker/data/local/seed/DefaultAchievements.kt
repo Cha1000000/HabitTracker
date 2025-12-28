@@ -139,7 +139,7 @@ object DefaultAchievements {
         AchievementEntity(
             id = "comeback_kid",
             title = "Возвращение героя",
-            description = "Вернись в приложение после недели отсутствия",
+            description = "Вы вернулись в приложение после недели отсутствия",
             icon = "🦸",
             category = "SPECIAL",
             type = "SINGLE",

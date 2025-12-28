@@ -31,7 +31,7 @@ enum class AchievementCategory {
     STREAKS,       // связанные с сериями
     SOCIAL,        // социальные достижения
     CHALLENGES,    // связанные с челленджами
-    MILESTONES,    // важные вехи
+    MILESTONES,    // ранги уровня
     SPECIAL        // особые достижения
 }
 

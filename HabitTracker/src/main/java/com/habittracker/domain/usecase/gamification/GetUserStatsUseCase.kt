@@ -6,6 +6,7 @@ import com.habittracker.domain.model.Habit
 import com.habittracker.domain.model.HabitEntry
 import com.habittracker.domain.model.UserLevelInfo
 import com.habittracker.domain.model.gamification.ChallengeStats
+import com.habittracker.domain.model.gamification.GamificationConstants
 import com.habittracker.domain.model.gamification.HabitStats
 import com.habittracker.domain.model.gamification.SocialStats
 import com.habittracker.domain.model.gamification.StreakStats
@@ -68,6 +69,10 @@ class GetUserStatsUseCase @Inject constructor(
             challengesWon = challenges.count { it.winnerId == userId }
         )
 
+        // Calculate level info dynamically to ensure consistency
+        val calculatedLevel = GamificationConstants.getLevelFromPoints(user.points)
+        val nextLevelPoints = GamificationConstants.pointsForLevel(calculatedLevel + 1)
+
         return UserStats(
             user = user,
             habitStats = habitStats,
@@ -76,13 +81,13 @@ class GetUserStatsUseCase @Inject constructor(
             timeStats = timeStats,
             socialStats = socialStats,
             levelInfo = UserLevelInfo(
-                currentLevel = user.level,
+                currentLevel = calculatedLevel,
                 currentPoints = user.points,
-                pointsForNextLevel = user.level * 1000,
-                pointsToNextLevel = ((user.level * 1000) - user.points).coerceAtLeast(0),
+                pointsForNextLevel = nextLevelPoints,
+                pointsToNextLevel = (nextLevelPoints - user.points).coerceAtLeast(0),
                 progress = user.getLevelProgress(),
                 levelTitle = user.getLevelTitle(),
-                isMaxLevel = user.level >= 100
+                isMaxLevel = calculatedLevel >= 100
             )
         )
     }
