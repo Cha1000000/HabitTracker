@@ -343,7 +343,7 @@ class ChallengeRepositoryImpl @Inject constructor(
             val data = this.data ?: return null
             val rulesMap = data["rules"] as? Map<*, *>
             val deletedAtMillis = (data["deletedAtMillis"] as? Number)?.toLong()
-            
+
             ChallengeEntity(
                 id = this.id,
                 habitId = data["habitId"] as? String ?: return null,
@@ -359,7 +359,8 @@ class ChallengeRepositoryImpl @Inject constructor(
                         type = ChallengeType.valueOf(rulesMap?.get("type") as? String ?: "COMPLETION_RATE"),
                         targetValue = (rulesMap?.get("targetValue") as? Number)?.toInt() ?: 100,
                         allowMissedDays = (rulesMap?.get("allowMissedDays") as? Number)?.toInt() ?: 0,
-                        requireConsecutive = rulesMap?.get("requireConsecutive") as? Boolean ?: false
+                        requireConsecutive = rulesMap?.get("requireConsecutive") as? Boolean ?: false,
+                        allowBackfillCompletions = rulesMap?.get("allowBackfillCompletions") as? Boolean ?: false
                     )
                 ),
                 reward = data["reward"] as? String ?: "",

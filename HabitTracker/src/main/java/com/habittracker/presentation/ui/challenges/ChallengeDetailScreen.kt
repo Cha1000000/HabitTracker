@@ -583,6 +583,15 @@ private fun ChallengeDetailContent(
                             value = "Последовательное выполнение"
                         )
                     }
+                    
+                    if (challenge.rules.allowBackfillCompletions) {
+                        Spacer(modifier = Modifier.height(8.dp))
+                        RuleItem(
+                            icon = Icons.Default.Schedule,
+                            label = "Дополнительно",
+                            value = stringResource(R.string.allow_backfill_completions_info)
+                        )
+                    }
                 }
             }
         }

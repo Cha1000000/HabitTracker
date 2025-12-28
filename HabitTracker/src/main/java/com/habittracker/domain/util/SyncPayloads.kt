@@ -173,7 +173,8 @@ object SyncPayloads {
                 "type" to challenge.rules.type.name,
                 "targetValue" to challenge.rules.targetValue,
                 "allowMissedDays" to challenge.rules.allowMissedDays,
-                "requireConsecutive" to challenge.rules.requireConsecutive
+                "requireConsecutive" to challenge.rules.requireConsecutive,
+                "allowBackfillCompletions" to challenge.rules.allowBackfillCompletions
             ),
             "reward" to challenge.reward,
             "status" to challenge.status.name,

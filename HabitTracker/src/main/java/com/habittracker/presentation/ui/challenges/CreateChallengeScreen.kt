@@ -60,6 +60,7 @@ import com.habittracker.presentation.state.DatePickerType
 import com.habittracker.presentation.ui.habits.components.GlassmorphicButton
 import com.habittracker.presentation.ui.habits.components.GlassmorphicCard
 import com.habittracker.presentation.ui.habits.components.GlassmorphicDialog
+import com.habittracker.presentation.ui.habits.components.GlassmorphicSwitch
 import com.habittracker.presentation.ui.habits.components.GlassmorphicTextField
 import com.habittracker.presentation.ui.habits.components.TahoeGradientBackground
 import com.habittracker.presentation.viewmodel.CreateChallengeViewModel
@@ -201,32 +202,32 @@ fun CreateChallengeScreen(
                         )
                     }
 
-                    if (!isEditMode) {
-                        // Challenge Rules
-                        item {
-                            ChallengeRulesSection(
-                                challengeType = uiState.challengeType,
-                                targetValue = uiState.targetValue,
-                                allowMissedDays = uiState.allowMissedDays,
-                                requireConsecutive = uiState.requireConsecutive,
-                                onChallengeTypeChange = viewModel::onChallengeTypeSelected,
-                                onTargetValueChange = viewModel::onTargetValueChange,
-                                onAllowMissedDaysChange = viewModel::onAllowMissedDaysChange,
-                                onRequireConsecutiveToggle = viewModel::onRequireConsecutiveToggle
-                            )
-                        }
+                    // Challenge Rules
+                    item {
+                        ChallengeRulesSection(
+                            challengeType = uiState.challengeType,
+                            targetValue = uiState.targetValue,
+                            allowMissedDays = uiState.allowMissedDays,
+                            requireConsecutive = uiState.requireConsecutive,
+                            allowBackfillCompletions = uiState.allowBackfillCompletions,
+                            onChallengeTypeChange = viewModel::onChallengeTypeSelected,
+                            onTargetValueChange = viewModel::onTargetValueChange,
+                            onAllowMissedDaysChange = viewModel::onAllowMissedDaysChange,
+                            onRequireConsecutiveToggle = viewModel::onRequireConsecutiveToggle,
+                            onAllowBackfillCompletionsChange = viewModel::onAllowBackfillCompletionsChange
+                        )
+                    }
 
-                        // Reward
-                        item {
-                            GlassmorphicTextField(
-                                value = uiState.reward,
-                                onValueChange = viewModel::onRewardChange,
-                                label = { Text(stringResource(R.string.reward)) },
-                                placeholder = { Text(stringResource(R.string.reward_hint)) },
-                                modifier = Modifier.fillMaxWidth(),
-                                singleLine = false
-                            )
-                        }
+                    // Reward
+                    item {
+                        GlassmorphicTextField(
+                            value = uiState.reward,
+                            onValueChange = viewModel::onRewardChange,
+                            label = { Text(stringResource(R.string.reward)) },
+                            placeholder = { Text(stringResource(R.string.reward_hint)) },
+                            modifier = Modifier.fillMaxWidth(),
+                            singleLine = false
+                        )
                     }
 
                     // Save/Create Button
@@ -565,10 +566,12 @@ private fun ChallengeRulesSection(
     targetValue: String,
     allowMissedDays: String,
     requireConsecutive: Boolean,
+    allowBackfillCompletions: Boolean,
     onChallengeTypeChange: (ChallengeType) -> Unit,
     onTargetValueChange: (String) -> Unit,
     onAllowMissedDaysChange: (String) -> Unit,
-    onRequireConsecutiveToggle: (Boolean) -> Unit
+    onRequireConsecutiveToggle: (Boolean) -> Unit,
+    onAllowBackfillCompletionsChange: (Boolean) -> Unit
 ) {
     GlassmorphicCard(
         modifier = Modifier.fillMaxWidth()
@@ -628,15 +631,41 @@ private fun ChallengeRulesSection(
                 }
             }
             
-            // Target Value
-            GlassmorphicTextField(
-                value = targetValue,
-                onValueChange = onTargetValueChange,
-                label = { Text(stringResource(R.string.target_value)) },
-                placeholder = { Text(stringResource(R.string.target_value_hint)) },
+            // Target Value - показываем только для FIRST_TO_TARGET
+            if (challengeType == ChallengeType.FIRST_TO_TARGET) {
+                GlassmorphicTextField(
+                    value = targetValue,
+                    onValueChange = onTargetValueChange,
+                    label = { Text(stringResource(R.string.target_value)) },
+                    placeholder = { Text(stringResource(R.string.target_value_hint)) },
+                    modifier = Modifier.fillMaxWidth(),
+                    singleLine = true
+                )
+            }
+            
+            // Allow Backfill Completions - можно отмечать выполнения за прошедшие дни
+            Row(
                 modifier = Modifier.fillMaxWidth(),
-                singleLine = true
-            )
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = stringResource(R.string.allow_backfill_completions),
+                        style = MaterialTheme.typography.bodyMedium
+                    )
+                    Text(
+                        text = stringResource(R.string.allow_backfill_completions_description),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+                Spacer(modifier = Modifier.width(8.dp))
+                GlassmorphicSwitch(
+                    checked = allowBackfillCompletions,
+                    onCheckedChange = onAllowBackfillCompletionsChange
+                )
+            }
         }
     }
 }

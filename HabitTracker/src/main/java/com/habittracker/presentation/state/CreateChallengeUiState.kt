@@ -27,6 +27,7 @@ data class CreateChallengeUiState(
     val targetValue: String = "100",
     val allowMissedDays: String = "0",
     val requireConsecutive: Boolean = false,
+    val allowBackfillCompletions: Boolean = false,
     val reward: String = "",
     val isLoading: Boolean = false,
     val errorMessage: String? = null,

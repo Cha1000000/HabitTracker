@@ -163,6 +163,10 @@ class CreateChallengeViewModel @Inject constructor(
         _uiState.value = _uiState.value.copy(requireConsecutive = require)
     }
 
+    fun onAllowBackfillCompletionsChange(allow: Boolean) {
+        _uiState.value = _uiState.value.copy(allowBackfillCompletions = allow)
+    }
+
     fun onRewardChange(reward: String) {
         _uiState.value = _uiState.value.copy(reward = reward)
     }
@@ -286,7 +290,8 @@ class CreateChallengeViewModel @Inject constructor(
                     type = state.challengeType,
                     targetValue = targetValue,
                     allowMissedDays = allowMissedDays,
-                    requireConsecutive = state.requireConsecutive
+                    requireConsecutive = state.requireConsecutive,
+                    allowBackfillCompletions = state.allowBackfillCompletions
                 )
 
                 Log.d("CreateChallengeVM", "Calling createChallengeUseCase with habitId=${state.selectedHabit.id}, participants=${state.selectedParticipants.map { it.id }}")
@@ -406,6 +411,7 @@ class CreateChallengeViewModel @Inject constructor(
                 targetValue = challenge.rules.targetValue.toString(),
                 allowMissedDays = challenge.rules.allowMissedDays.toString(),
                 requireConsecutive = challenge.rules.requireConsecutive,
+                allowBackfillCompletions = challenge.rules.allowBackfillCompletions,
                 reward = challenge.reward
             )
         } catch (e: Exception) {
@@ -468,6 +474,10 @@ class CreateChallengeViewModel @Inject constructor(
                 val newParticipantIds = (state.selectedParticipants.map { it.id } + userId).distinct()
                 val newAcceptedParticipants = existing.acceptedParticipants.filter { it in newParticipantIds }
 
+                val updatedRules = existing.rules.copy(
+                    allowBackfillCompletions = state.allowBackfillCompletions
+                )
+
                 val updatedChallenge = existing.copy(
                     title = state.title,
                     description = state.description,
@@ -475,6 +485,7 @@ class CreateChallengeViewModel @Inject constructor(
                     acceptedParticipants = newAcceptedParticipants,
                     startDate = state.startDate,
                     endDate = state.endDate,
+                    rules = updatedRules,
                     status = if (state.startDate <= today) ChallengeStatus.ACTIVE else ChallengeStatus.PENDING,
                     updatedAt = today
                 )
