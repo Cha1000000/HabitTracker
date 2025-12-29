@@ -29,6 +29,7 @@ import androidx.compose.material.icons.filled.EmojiEvents
 import androidx.compose.material.icons.filled.Flag
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.People
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.pullrefresh.pullRefresh
 import androidx.compose.material.pullrefresh.rememberPullRefreshState
 import androidx.compose.material3.CircularProgressIndicator
@@ -223,6 +224,16 @@ fun HabitsScreen(
                         scrolledContainerColor = Color.Transparent
                     ),
                 actions = {
+                    // Настройки
+                    IconButton(onClick = {
+                        navController.navigate(Screen.HabitSettings.route)
+                    }) {
+                        Icon(
+                            imageVector = Icons.Default.Settings,
+                            contentDescription = stringResource(R.string.settings_title)
+                        )
+                    }
+
                     // Уведомления
                     Box {
                         IconButton(onClick = {

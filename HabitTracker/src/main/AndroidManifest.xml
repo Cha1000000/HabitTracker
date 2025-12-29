@@ -7,6 +7,11 @@
     <uses-permission android:name="android.permission.VIBRATE" />
     <uses-permission android:name="android.permission.WAKE_LOCK" />
     
+    <!-- Разрешения для AlarmManager (точные напоминания) -->
+    <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />
+    <uses-permission android:name="android.permission.USE_EXACT_ALARM" />
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
+    
     <!-- Разрешения для FCM -->
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
@@ -96,6 +101,25 @@
                 android:value="androidx.startup"
                 tools:node="remove" />
         </provider>
+        
+        <!-- Receiver для ежедневных напоминаний (AlarmManager) -->
+        <receiver
+            android:name=".data.receiver.DailyReminderReceiver"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="com.habittracker.ACTION_DAILY_REMINDER" />
+            </intent-filter>
+        </receiver>
+        
+        <!-- Receiver для перепланирования напоминаний после перезагрузки -->
+        <receiver
+            android:name=".data.receiver.BootCompletedReceiver"
+            android:exported="true"
+            tools:ignore="ExportedReceiver">
+            <intent-filter>
+                <action android:name="android.intent.action.BOOT_COMPLETED" />
+            </intent-filter>
+        </receiver>
     </application>
 
 </manifest>

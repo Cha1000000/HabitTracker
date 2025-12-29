@@ -27,6 +27,8 @@ class NotificationHelper @Inject constructor(
         const val HABIT_REMINDER_CHANNEL_DESCRIPTION = "Уведомления для напоминания о выполнении привычек"
         
         private const val NOTIFICATION_REQUEST_CODE = 1001
+        private const val DAILY_REMINDER_REQUEST_CODE = 1002
+        private const val DAILY_REMINDER_NOTIFICATION_ID = 9999
     }
 
     private val notificationManager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
@@ -91,6 +93,43 @@ class NotificationHelper @Inject constructor(
 
         notificationManager.notify(habitId.hashCode(), notification)
         Log.d("NotificationHelper", "Уведомление показано для привычки $habitId")
+    }
+
+    /**
+     * Показывает ежедневное напоминание
+     */
+    fun showDailyReminderNotification(
+        title: String,
+        message: String
+    ) {
+        val intent = Intent(context, MainActivity::class.java).apply {
+            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+            putExtra("navigate_to", "habits")
+        }
+
+        val pendingIntent = PendingIntent.getActivity(
+            context,
+            DAILY_REMINDER_REQUEST_CODE,
+            intent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+
+        val notification = NotificationCompat.Builder(context, HABIT_REMINDER_CHANNEL_ID)
+            .setSmallIcon(R.drawable.ic_notification)
+            .setContentTitle(title)
+            .setContentText(message)
+            .setStyle(
+                NotificationCompat.BigTextStyle()
+                    .bigText(message)
+            )
+            .setPriority(NotificationCompat.PRIORITY_DEFAULT)
+            .setContentIntent(pendingIntent)
+            .setAutoCancel(true)
+            .setCategory(NotificationCompat.CATEGORY_REMINDER)
+            .build()
+
+        notificationManager.notify(DAILY_REMINDER_NOTIFICATION_ID, notification)
+        Log.d("NotificationHelper", "Ежедневное напоминание показано")
     }
 
     /**

@@ -1,4 +1,16 @@
 <resources>
+    <string name="daily_reminder_title">Как ваши успехи?</string>
+    <string name="daily_reminder_message">Не забудьте отметить выполненные сегодня привычки!</string>
+    
+    <!-- Settings Screen -->
+    <string name="settings_notifications_header">Уведомления</string>
+    <string name="settings_daily_reminder">Ежедневное напоминание</string>
+    <string name="settings_daily_reminder_summary">Получать напоминание о проверке привычек в выбранное время</string>
+    <string name="settings_daily_reminder_time">Время напоминания</string>
+    <string name="settings_display_header">Отображение</string>
+    <string name="settings_sort_completed_bottom">Сортировка</string>
+    <string name="settings_sort_completed_bottom_summary">Перемещать выполненные привычки вниз списка</string>
+    
     <!-- App Info -->
     <string name="app_name">HabitTracker</string>
     <string name="default_web_client_id">637297267141-flvhigsfcbgc0m20hdoh3kid6vl0k0ne.apps.googleusercontent.com</string>

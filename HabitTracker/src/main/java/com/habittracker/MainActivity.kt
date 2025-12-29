@@ -19,9 +19,12 @@ import androidx.navigation.NavHostController
 import com.habittracker.data.service.PendingNotificationManager
 import com.habittracker.domain.repository.AuthRepository
 import com.habittracker.domain.repository.SocialRepository
+import com.habittracker.domain.repository.UserPreferencesRepository
 import com.habittracker.domain.repository.UserRepository
+import com.habittracker.domain.scheduler.DailyReminderScheduler
 import com.habittracker.presentation.navigation.AppNavHost
 import com.habittracker.presentation.navigation.Screen
+import com.habittracker.presentation.ui.components.AchievementEventManager
 import com.habittracker.presentation.ui.theme.HabitTrackerTheme
 import com.habittracker.presentation.util.SoundManager
 import com.habittracker.presentation.viewmodel.AuthState
@@ -30,6 +33,7 @@ import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
@@ -42,7 +46,11 @@ class MainActivity : ComponentActivity() {
     @Inject
     lateinit var userRepository: UserRepository
     @Inject
-    lateinit var achievementEventManager: com.habittracker.presentation.ui.components.AchievementEventManager
+    lateinit var userPreferencesRepository: UserPreferencesRepository
+    @Inject
+    lateinit var dailyReminderScheduler: DailyReminderScheduler
+    @Inject
+    lateinit var achievementEventManager: AchievementEventManager
 
     private val authViewModel: AuthViewModel by viewModels()
     private var socialSyncJob: Job? = null
@@ -86,6 +94,18 @@ class MainActivity : ComponentActivity() {
 
         // Обновляем время последней активности при старте
         updateUserLastActive()
+
+        // Проверяем и планируем ежедневное напоминание при старте
+        lifecycleScope.launch(Dispatchers.IO) {
+            runCatching {
+                val prefs = userPreferencesRepository.userPreferences.firstOrNull()
+                if (prefs?.dailyReminderEnabled == true) {
+                    dailyReminderScheduler.scheduleIfNotSet(prefs.dailyReminderTime)
+                }
+            }.onFailure { e ->
+                Log.e("MainActivity", "Error scheduling daily reminder on startup", e)
+            }
+        }
 
         // Также доставляем при успешной аутентификации/переключении пользователя
         lifecycleScope.launch {

@@ -8,6 +8,7 @@ import com.habittracker.R
 import com.habittracker.domain.model.Habit
 import com.habittracker.domain.model.isGroupHabit
 import com.habittracker.domain.repository.AuthRepository
+import com.habittracker.domain.repository.UserPreferencesRepository
 import com.habittracker.domain.repository.UserRepository
 import com.habittracker.domain.usecase.DeleteHabitUseCase
 import com.habittracker.domain.usecase.EnsureMySettingsForHabitUseCase
@@ -32,6 +33,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.catch
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.firstOrNull
@@ -74,6 +76,7 @@ class HabitsViewModel @Inject constructor(
     private val joinHabitByCodeUseCase: JoinHabitByCodeUseCase,
     private val getWeekCompletionDataUseCase: GetWeekCompletionDataUseCase,
     private val getGroupHabitProgressUseCase: GetGroupHabitProgressUseCase,
+    private val userPreferencesRepository: UserPreferencesRepository,
     application: Application
 ) : AndroidViewModel(application) {
 
@@ -310,13 +313,22 @@ class HabitsViewModel @Inject constructor(
         }
 
         var emissionCount = 0
-        habitsJob = getHabitsForDateUseCase(userId, date)
+        habitsJob = combine(
+            getHabitsForDateUseCase(userId, date),
+            userPreferencesRepository.userPreferences
+        ) { habits, preferences ->
+            Pair(habits, preferences)
+        }
             // Normalize ordering to make equality stable
-            .map { habits -> habits.sortedBy { it.id } }
+            .map { (habits, preferences) -> 
+                Pair(habits.sortedBy { it.id }, preferences) 
+            }
             // Skip identical lists to avoid redundant UI updates and status reloads
+            // We use a custom comparator or just rely on distinctUntilChanged if data classes are correct
+            // Here we rely on Pair equals
             .distinctUntilChanged()
             // For each emission, emit skeleton first, then the resolved statuses
-            .flatMapLatest { habits ->
+            .flatMapLatest { (habits, preferences) ->
                 emissionCount += 1
                 Log.d(TAG, "📊 [habits][flow] emission #$emissionCount, size=${habits.size} (user=$userId)")
                 habits.forEach { habit ->
@@ -410,12 +422,22 @@ class HabitsViewModel @Inject constructor(
                         }.awaitAll()
                     }
                     
+                    // Apply sorting based on preferences
+                    val sortedHabits = if (preferences.sortCompletedHabitsToBottom) {
+                        updatedHabits.sortedWith(
+                            compareBy<HabitWithCompletion> { it.isCompletedToday }
+                                .thenBy { it.habit.id }
+                        )
+                    } else {
+                        updatedHabits
+                    }
+                    
                     // 3) Вычисляем границы дат
                     val oldestDate = habits.minOfOrNull { it.createdAt }
                     val maxFutureDate = today.plus(1, DateTimeUnit.YEAR)
                     
                     emit(_uiState.value.copy(
-                        habitsWithCompletion = updatedHabits,
+                        habitsWithCompletion = sortedHabits,
                         isLoading = false,
                         oldestHabitDate = oldestDate,
                         maxFutureDate = maxFutureDate

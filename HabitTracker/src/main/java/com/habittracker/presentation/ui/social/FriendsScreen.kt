@@ -2,7 +2,6 @@ package com.habittracker.presentation.ui.social
 
 import androidx.compose.animation.Crossfade
 import androidx.compose.animation.core.tween
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.isSystemInDarkTheme
@@ -21,7 +20,6 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Check
@@ -38,20 +36,13 @@ import androidx.compose.material.icons.outlined.Search
 import androidx.compose.material.icons.outlined.SearchOff
 import androidx.compose.material3.Badge
 import androidx.compose.material3.BadgedBox
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Tab
 import androidx.compose.material3.TabRow
@@ -70,7 +61,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
@@ -84,13 +74,12 @@ import com.habittracker.domain.model.User
 import com.habittracker.domain.model.getLastActiveText
 import com.habittracker.domain.model.isOnline
 import com.habittracker.presentation.ui.components.UserAvatar
+import com.habittracker.presentation.ui.habits.components.GlassmorphicButton
 import com.habittracker.presentation.ui.habits.components.GlassmorphicCard
+import com.habittracker.presentation.ui.habits.components.GlassmorphicDialog
+import com.habittracker.presentation.ui.habits.components.GlassmorphicOutlinedButton
+import com.habittracker.presentation.ui.habits.components.GlassmorphicTextField
 import com.habittracker.presentation.ui.habits.components.TahoeGradientBackground
-import com.habittracker.presentation.ui.theme.GlassBlack10
-import com.habittracker.presentation.ui.theme.GlassBlack30
-import com.habittracker.presentation.ui.theme.GlassWhite30
-import com.habittracker.presentation.ui.theme.GlassWhite40
-import com.habittracker.presentation.ui.theme.TahoeLightAccent
 import com.habittracker.presentation.viewmodel.FriendsViewModel
 
 /**
@@ -232,7 +221,7 @@ fun FriendsScreen(
     // Диалог подтверждения удаления друга (Tahoe)
     if (showRemoveDialog) {
         val pendingName = pendingRemoveFriendId?.let { id -> uiState.friends.firstOrNull { it.id == id }?.name } ?: ""
-        com.habittracker.presentation.ui.habits.components.GlassmorphicDialog(
+        GlassmorphicDialog(
             onDismissRequest = { showRemoveDialog = false },
             title = { Text(text = stringResource(id = R.string.confirm_remove_friend_title, pendingName)) },
             content = {
@@ -254,7 +243,7 @@ fun FriendsScreen(
                     Text(text = stringResource(id = R.string.cancel))
                 }
                 Spacer(modifier = Modifier.width(8.dp))
-                com.habittracker.presentation.ui.habits.components.GlassmorphicButton(
+                GlassmorphicButton(
                     onClick = {
                         val id = pendingRemoveFriendId
                         if (id != null) {
@@ -399,7 +388,7 @@ private fun SearchTab(
             .padding(16.dp)
     ) {
         // Поисковая строка
-        OutlinedTextField(
+        GlassmorphicTextField(
             value = searchQuery,
             onValueChange = onSearchQueryChange,
             modifier = Modifier.fillMaxWidth(),
@@ -414,7 +403,6 @@ private fun SearchTab(
                     }
                 }
             },
-            shape = RoundedCornerShape(16.dp),
             singleLine = true
         )
         
@@ -463,15 +451,15 @@ private fun FriendsHeader(
     friendsCount: Int,
     pendingRequestsCount: Int
 ) {
-    Card(
+    val isDarkTheme = isSystemInDarkTheme()
+    
+    GlassmorphicCard(
         modifier = Modifier
             .fillMaxWidth()
             .padding(16.dp),
-        shape = RoundedCornerShape(20.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.primaryContainer
-        ),
-        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+        isDarkTheme = isDarkTheme,
+        cornerRadius = 20.dp,
+        elevation = 4.dp
     ) {
         Column(
             modifier = Modifier.padding(20.dp),
@@ -481,7 +469,7 @@ private fun FriendsHeader(
                 text = stringResource(id = R.string.friends_title),
                 style = MaterialTheme.typography.headlineSmall,
                 fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.onPrimaryContainer
+                color = MaterialTheme.colorScheme.onSurface
             )
             
             Spacer(modifier = Modifier.height(12.dp))
@@ -530,12 +518,12 @@ private fun StatCard(
             text = count.toString(),
             style = MaterialTheme.typography.headlineSmall,
             fontWeight = FontWeight.Bold,
-            color = MaterialTheme.colorScheme.onPrimaryContainer
+            color = MaterialTheme.colorScheme.onSurface
         )
         Text(
             text = label,
             style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f)
+            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
         )
     }
 }
@@ -662,12 +650,13 @@ private fun EmptyStateCard(
     title: String,
     subtitle: String
 ) {
-    Card(
+    val isDarkTheme = isSystemInDarkTheme()
+    
+    GlassmorphicCard(
         modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(20.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)
-        )
+        isDarkTheme = isDarkTheme,
+        cornerRadius = 20.dp,
+        glassAlpha = if (isDarkTheme) 0.1f else 0.5f
     ) {
         Column(
             modifier = Modifier
@@ -762,10 +751,9 @@ private fun IncomingRequestCard(
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 // Принять
-                Button(
+                GlassmorphicButton(
                     onClick = onAccept,
-                    modifier = Modifier.weight(1f),
-                    shape = RoundedCornerShape(12.dp)
+                    modifier = Modifier.weight(1f)
                 ) {
                     Icon(
                         Icons.Default.Check,
@@ -777,13 +765,9 @@ private fun IncomingRequestCard(
                 }
                 
                 // Отклонить
-                OutlinedButton(
+                GlassmorphicOutlinedButton(
                     onClick = onDecline,
-                    modifier = Modifier.weight(1f),
-                    shape = RoundedCornerShape(12.dp),
-                    colors = ButtonDefaults.outlinedButtonColors(
-                        contentColor = MaterialTheme.colorScheme.error
-                    )
+                    modifier = Modifier.weight(1f)
                 ) {
                     Icon(
                         Icons.Default.Close,
@@ -806,13 +790,13 @@ private fun OutgoingRequestCard(
     request: FriendRequestWithUsers,
     onCancel: () -> Unit
 ) {
-    Card(
+    val isDarkTheme = isSystemInDarkTheme()
+    
+    GlassmorphicCard(
         modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceVariant
-        ),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+        isDarkTheme = isDarkTheme,
+        cornerRadius = 16.dp,
+        elevation = 2.dp
     ) {
         Row(
             modifier = Modifier
@@ -846,13 +830,8 @@ private fun OutgoingRequestCard(
             }
             
             // Кнопка отмены
-            OutlinedButton(
+            GlassmorphicOutlinedButton(
                 onClick = onCancel,
-                shape = RoundedCornerShape(12.dp),
-                border = BorderStroke(1.dp, MaterialTheme.colorScheme.error),
-                colors = ButtonDefaults.outlinedButtonColors(
-                    contentColor = MaterialTheme.colorScheme.error
-                )
             ) {
                 Text(stringResource(id = R.string.cancel))
             }
@@ -869,13 +848,12 @@ private fun SearchResultCard(
     onSendRequest: () -> Unit
 ) {
     val isDarkTheme = isSystemInDarkTheme()
-    Card(
+    
+    GlassmorphicCard(
         modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceVariant
-        ),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+        isDarkTheme = isDarkTheme,
+        cornerRadius = 16.dp,
+        elevation = 2.dp
     ) {
         Row(
             modifier = Modifier
@@ -911,31 +889,8 @@ private fun SearchResultCard(
             }
             
             // Кнопка отправки запроса
-            val backgroundColor = if (isDarkTheme) {
-                GlassWhite30
-            } else {
-                Color.White.copy(alpha = 0.9f)
-            }
-
-            val borderColor = if (isDarkTheme) {
-                GlassWhite40
-            } else {
-                GlassBlack10
-            }
-
-            FilledTonalButton(
-                onClick = onSendRequest,
-                shape = RoundedCornerShape(12.dp),
-                colors = ButtonDefaults.filledTonalButtonColors(
-                    containerColor = backgroundColor,
-                    contentColor = if (isDarkTheme) Color.White else TahoeLightAccent,
-                    disabledContainerColor = backgroundColor.copy(alpha = 0.5f),
-                    disabledContentColor = if (isDarkTheme) GlassWhite30 else GlassBlack30
-                ),
-                border = BorderStroke(
-                    width = 1.dp,
-                    color = borderColor
-                ),
+            GlassmorphicButton(
+                onClick = onSendRequest
             ) {
                 Icon(
                     Icons.Default.PersonAdd,
