@@ -58,8 +58,17 @@ class HabitReminderWorker(
             }
             Log.d(
                 "HabitReminderWorker",
-                "Loaded habit from DB: id=${habit.id}, isActive=${habit.isActive}, reminderEnabled=${habit.reminderEnabled}, reminderTime=${habit.reminderTime}"
+                "Loaded habit from DB: id=${habit.id}, isActive=${habit.isActive}, reminderEnabled=${habit.reminderEnabled}, reminderTime=${habit.reminderTime}, startDate=${habit.startDate}, endDate=${habit.endDate}"
             )
+            
+            // Проверяем, что привычка активна на текущую дату (учитывая startDate и endDate)
+            val today = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault()).date
+            val isActiveOnDate = (habit.startDate == null || habit.startDate <= today) &&
+                                 (habit.endDate == null || habit.endDate >= today)
+            if (!isActiveOnDate) {
+                Log.d("HabitReminderWorker", "Habit is not active on $today (startDate=${habit.startDate}, endDate=${habit.endDate}) — skip notification")
+                return@withContext Result.success()
+            }
 
             // Загружаем персональные настройки участника, если есть
             val settings = participantDao.get(habitId, userId)
@@ -81,8 +90,6 @@ class HabitReminderWorker(
             }
 
             // Умная проверка: не отправляем уведомление, если привычка уже выполнена сегодня
-            val today = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault()).date
-            
             Log.d("HabitReminderWorker", "Checking if habit is already completed today: $today")
             val todayEntry = habitEntryDao.getEntry(habitId, userId, today)
             

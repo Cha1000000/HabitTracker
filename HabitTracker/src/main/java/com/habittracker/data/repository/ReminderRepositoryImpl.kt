@@ -40,6 +40,17 @@ class ReminderRepositoryImpl @Inject constructor(
         // Отменяем существующее напоминание
         cancelReminder(habit.id)
         
+        // Проверяем, что привычка активна (не истёк срок действия)
+        val today = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault()).date
+        if (habit.endDate != null && habit.endDate < today) {
+            Log.d("ReminderRepositoryImpl", "Habit ${habit.id} has expired (endDate=${habit.endDate}), not scheduling reminders")
+            return
+        }
+        if (habit.startDate != null && habit.startDate > today) {
+            Log.d("ReminderRepositoryImpl", "Habit ${habit.id} hasn't started yet (startDate=${habit.startDate}), not scheduling reminders")
+            return
+        }
+        
         // Вычисляем задержку до первого напоминания с учетом частоты и выбранных дней
         val delay = calculateDelayForNextOccurrence(habit)
         
@@ -102,6 +113,12 @@ class ReminderRepositoryImpl @Inject constructor(
             repeat(horizonDays) { dayOffset ->
                 if (dayOffset > 0) {
                     val targetDate = now.date.plus(dayOffset, DateTimeUnit.DAY)
+                    
+                    // Не планируем напоминания после даты окончания привычки
+                    if (habit.endDate != null && targetDate > habit.endDate) {
+                        return@repeat
+                    }
+                    
                     val dow = targetDate.dayOfWeek.value // 1..7
                     if (allowedDays.contains(dow)) {
                         scheduleReminderForDay(habit, dayOffset, initialDelay)
@@ -180,6 +197,12 @@ class ReminderRepositoryImpl @Inject constructor(
         repeat(14) { dayOffset ->
             if (dayOffset > 0) {
                 val targetDate = now.date.plus(dayOffset, DateTimeUnit.DAY)
+                
+                // Не планируем напоминания после даты окончания привычки
+                if (habit.endDate != null && targetDate > habit.endDate) {
+                    return@repeat
+                }
+                
                 val dayOfWeek = targetDate.dayOfWeek.value // 1=понедельник, 7=воскресенье
                 
                 // Проверяем, что это будний день (пн-пт)
@@ -201,6 +224,12 @@ class ReminderRepositoryImpl @Inject constructor(
         repeat(14) { dayOffset ->
             if (dayOffset > 0) {
                 val targetDate = now.date.plus(dayOffset, DateTimeUnit.DAY)
+                
+                // Не планируем напоминания после даты окончания привычки
+                if (habit.endDate != null && targetDate > habit.endDate) {
+                    return@repeat
+                }
+                
                 val dayOfWeek = targetDate.dayOfWeek.value // 1=понедельник, 7=воскресенье
                 
                 // Проверяем, что это выходной день (сб-вс)
@@ -223,6 +252,13 @@ class ReminderRepositoryImpl @Inject constructor(
 
         for (dayOffset in 0..28) {
             val targetDate = now.date.plus(dayOffset, DateTimeUnit.DAY)
+            
+            // Не планируем напоминания после даты окончания привычки
+            if (habit.endDate != null && targetDate > habit.endDate) {
+                Log.d("ReminderRepositoryImpl", "Target date $targetDate is after endDate ${habit.endDate}, stopping search")
+                break
+            }
+            
             val dow = targetDate.dayOfWeek.value
             val targetDateTime = LocalDateTime(targetDate, reminderTime)
             val targetInstant = targetDateTime.toInstant(TimeZone.currentSystemDefault())

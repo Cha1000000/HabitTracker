@@ -103,6 +103,10 @@ class HabitsViewModel @Inject constructor(
     // Кеш данных о прогрессе выполнения для разных недель (ключ - начало недели)
     private val weekCompletionCache: MutableMap<LocalDate, Map<LocalDate, Float>> = mutableMapOf()
     
+    // Кеш последних настроек пользователя для синхронного доступа при сортировке
+    @Volatile
+    private var cachedUserPreferences: com.habittracker.domain.model.UserPreferences? = null
+    
     private val currentUserId: String
         get() = authRepository.getCurrentUserId() 
             ?: throw IllegalStateException("User must be authenticated to access habits")
@@ -329,6 +333,9 @@ class HabitsViewModel @Inject constructor(
             .distinctUntilChanged()
             // For each emission, emit skeleton first, then the resolved statuses
             .flatMapLatest { (habits, preferences) ->
+                // Кешируем настройки для синхронного доступа при сортировке
+                cachedUserPreferences = preferences
+                
                 emissionCount += 1
                 Log.d(TAG, "📊 [habits][flow] emission #$emissionCount, size=${habits.size} (user=$userId)")
                 habits.forEach { habit ->
@@ -752,6 +759,7 @@ class HabitsViewModel @Inject constructor(
     
     /**
      * Обновляет статус выполнения конкретной привычки в UI состоянии
+     * и применяет сортировку согласно настройкам пользователя
      */
     private fun updateHabitCompletionStatus(habitId: String, isCompleted: Boolean, isLoading: Boolean) {
         val currentState = _uiState.value
@@ -762,7 +770,30 @@ class HabitsViewModel @Inject constructor(
                 habitWithCompletion
             }
         }
-        _uiState.value = currentState.copy(habitsWithCompletion = updatedHabits)
+        
+        // Применяем сортировку только если не в состоянии загрузки (финальное обновление)
+        val sortedHabits = if (!isLoading) {
+            applySortingIfNeeded(updatedHabits)
+        } else {
+            updatedHabits
+        }
+        
+        _uiState.value = currentState.copy(habitsWithCompletion = sortedHabits)
+    }
+    
+    /**
+     * Применяет сортировку списка привычек согласно настройкам пользователя
+     */
+    private fun applySortingIfNeeded(habits: List<HabitWithCompletion>): List<HabitWithCompletion> {
+        val preferences = cachedUserPreferences
+        return if (preferences?.sortCompletedHabitsToBottom == true) {
+            habits.sortedWith(
+                compareBy<HabitWithCompletion> { it.isCompletedToday }
+                    .thenBy { it.habit.id }
+            )
+        } else {
+            habits
+        }
     }
     
     /**
