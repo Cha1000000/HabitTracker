@@ -29,7 +29,9 @@ import kotlinx.datetime.DateTimeUnit
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.minus
+import kotlinx.datetime.plus
 import kotlinx.datetime.toLocalDateTime
+import kotlinx.datetime.todayIn
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertTrue
@@ -253,8 +255,9 @@ class ChallengeUseCasesTest {
         habitRepo.insertHabit(habit)
 
         val useCase = CreateChallengeUseCase(challengeRepo, habitRepo, socialRepo)
-        val start = LocalDate(2025, 1, 1)
-        val end = LocalDate(2025, 12, 31)
+        val today = Clock.System.todayIn(TimeZone.currentSystemDefault())
+        val start = today
+        val end = today.plus(7, DateTimeUnit.DAY)
         val result = useCase(
             habitId = habit.id,
             title = "Challenge",
@@ -267,7 +270,7 @@ class ChallengeUseCasesTest {
             reward = ""
         )
 
-        assertTrue(result.isSuccess)
+        assertTrue(result.exceptionOrNull()?.message ?: "Expected success", result.isSuccess)
         val ch = result.getOrNull()!!
         assertEquals("h1", ch.habitId)
         assertNotNull(ch.createdAt)

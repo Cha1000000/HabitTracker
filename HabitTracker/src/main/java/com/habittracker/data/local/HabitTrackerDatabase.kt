@@ -54,7 +54,7 @@ import com.habittracker.data.local.entity.UserEntity
         NotificationReadStatusEntity::class,
         GroupHabitNotificationEntity::class
     ],
-    version = 7,
+    version = 8,
     exportSchema = false
 )
 @TypeConverters(Converters::class)
@@ -132,6 +132,17 @@ abstract class HabitTrackerDatabase : RoomDatabase() {
             }
         }
 
+        private val MIGRATION_7_8 = object : Migration(7, 8) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE habits ADD COLUMN followUpReminderEnabled INTEGER NOT NULL DEFAULT 1")
+                // Store LocalTime as String (HH:mm) or update type converter if it stores as something else.
+                // Assuming standard ISO-8601 string format for LocalTime in this project based on other fields if they use standard converter.
+                // Looking at HabitEntity, reminderTime is LocalTime. Let's check Converters later if needed, usually string.
+                // Default '02:00'
+                db.execSQL("ALTER TABLE habits ADD COLUMN followUpReminderDuration TEXT NOT NULL DEFAULT '02:00'")
+            }
+        }
+
         @Volatile
         private var INSTANCE: HabitTrackerDatabase? = null
 
@@ -148,7 +159,7 @@ abstract class HabitTrackerDatabase : RoomDatabase() {
                     builder.fallbackToDestructiveMigration()
                 }
 
-                builder.addMigrations(MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7)
+                builder.addMigrations(MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8)
 
                 val instance = builder.build()
 

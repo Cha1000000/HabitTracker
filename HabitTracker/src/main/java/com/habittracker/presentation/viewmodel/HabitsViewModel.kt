@@ -97,6 +97,20 @@ class HabitsViewModel @Inject constructor(
     private var pendingDeletion: PendingDeletion? = null
     private data class PendingDeletion(val habitWithCompletion: HabitWithCompletion, val index: Int)
 
+    private fun dedupeByHabitId(list: List<HabitWithCompletion>): List<HabitWithCompletion> {
+        if (list.size <= 1) return list
+        val seen = HashSet<String>(list.size)
+        return list.filter { seen.add(it.habit.id) }
+    }
+
+    private fun restoreDeduped(list: List<HabitWithCompletion>, item: HabitWithCompletion, index: Int): List<HabitWithCompletion> {
+        val mutable = list.toMutableList()
+        mutable.removeAll { it.habit.id == item.habit.id }
+        val insertIndex = index.coerceIn(0, mutable.size)
+        mutable.add(insertIndex, item)
+        return dedupeByHabitId(mutable)
+    }
+
     // Reactive rescheduling disabled to avoid loops; we schedule on demand where settings change
     private val lastScheduleKeyByHabit: MutableMap<String, String> = mutableMapOf()
     
@@ -454,7 +468,7 @@ class HabitsViewModel @Inject constructor(
             .onEach { state ->
                 // Merge with existing state to preserve selectedDate and other fields
                 _uiState.value = _uiState.value.copy(
-                    habitsWithCompletion = state.habitsWithCompletion,
+                    habitsWithCompletion = dedupeByHabitId(state.habitsWithCompletion),
                     isLoading = state.isLoading,
                     oldestHabitDate = state.oldestHabitDate,
                     maxFutureDate = state.maxFutureDate
@@ -701,11 +715,12 @@ class HabitsViewModel @Inject constructor(
                     currentUserId
                 )
             } catch (e: Exception) {
-                val restored = _uiState.value.habitsWithCompletion.toMutableList()
-                val restoreIndex = deletion.index.coerceIn(0, restored.size)
-                restored.add(restoreIndex, deletion.habitWithCompletion)
                 _uiState.value = _uiState.value.copy(
-                    habitsWithCompletion = restored,
+                    habitsWithCompletion = restoreDeduped(
+                        list = _uiState.value.habitsWithCompletion,
+                        item = deletion.habitWithCompletion,
+                        index = deletion.index
+                    ),
                     error = getApplication<Application>().getString(R.string.error_delete_habit, e.localizedMessage ?: "")
                 )
             }
@@ -718,10 +733,13 @@ class HabitsViewModel @Inject constructor(
     fun cancelPendingDeletion() {
         val deletion = pendingDeletion ?: return
         pendingDeletion = null
-        val restored = _uiState.value.habitsWithCompletion.toMutableList()
-        val restoreIndex = deletion.index.coerceIn(0, restored.size)
-        restored.add(restoreIndex, deletion.habitWithCompletion)
-        _uiState.value = _uiState.value.copy(habitsWithCompletion = restored)
+        _uiState.value = _uiState.value.copy(
+            habitsWithCompletion = restoreDeduped(
+                list = _uiState.value.habitsWithCompletion,
+                item = deletion.habitWithCompletion,
+                index = deletion.index
+            )
+        )
     }
     
     /**
@@ -743,14 +761,12 @@ class HabitsViewModel @Inject constructor(
                 deleteHabitUseCase(habitId, currentUserId)
             } catch (e: Exception) {
                 // Откатываем
-                val restored = _uiState.value.habitsWithCompletion.toMutableList()
-                if (index <= restored.size) {
-                    restored.add(index, removedItem)
-                } else {
-                    restored.add(removedItem)
-                }
                 _uiState.value = _uiState.value.copy(
-                    habitsWithCompletion = restored,
+                    habitsWithCompletion = restoreDeduped(
+                        list = _uiState.value.habitsWithCompletion,
+                        item = removedItem,
+                        index = index
+                    ),
                     error = getApplication<Application>().getString(R.string.error_delete_habit, e.localizedMessage ?: "")
                 )
             }

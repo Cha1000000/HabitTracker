@@ -4,6 +4,7 @@ import androidx.activity.ComponentActivity
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
+import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.test.ext.junit.runners.AndroidJUnit4
@@ -84,10 +85,10 @@ class InvitationsSectionTest {
 
         // Элемент отображается
         composeRule.onNodeWithText("Run").assertIsDisplayed()
-        composeRule.onNodeWithText(composeRule.activity.getString(R.string.accept_invitation)).performClick()
+        composeRule.onAllNodesWithText(composeRule.activity.getString(R.string.accept_invitation))[0].performClick()
         composeRule.runOnIdle { assert(acceptedId == "i1") }
 
-        composeRule.onNodeWithText(composeRule.activity.getString(R.string.decline_invitation)).performClick()
+        composeRule.onAllNodesWithText(composeRule.activity.getString(R.string.decline_invitation))[0].performClick()
         composeRule.runOnIdle { assert(declinedId == "i1") }
     }
 

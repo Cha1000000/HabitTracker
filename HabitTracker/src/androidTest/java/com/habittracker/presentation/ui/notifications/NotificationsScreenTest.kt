@@ -3,12 +3,14 @@ package com.habittracker.presentation.ui.notifications
 import androidx.activity.ComponentActivity
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
+import androidx.compose.ui.test.onAllNodesWithContentDescription
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.navigation.compose.rememberNavController
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.habittracker.R
+import com.habittracker.domain.model.GroupHabitNotificationModel
 import com.habittracker.domain.model.HabitInvitation
 import com.habittracker.domain.model.HabitInvitationStatus
 import kotlinx.datetime.Clock
@@ -72,6 +74,22 @@ class NotificationsScreenTest {
                 isRead = false
             )
         )
+
+        val storedNotifications = notifications.map {
+            GroupHabitNotificationModel(
+                id = it.id,
+                userId = "u1",
+                habitId = it.habitId,
+                type = it.type.name,
+                participantId = "p1",
+                participantName = it.participantName ?: "",
+                habitTitle = it.habitTitle,
+                message = it.message,
+                isRead = it.isRead,
+                readAt = null,
+                createdAt = it.timestamp.toEpochMilliseconds()
+            )
+        }
         every { authRepository.getCurrentUserId() } returns "u1"
         every { groupUC.getGroupHabitNotifications("u1") } returns flowOf(notifications)
         coEvery { groupUC.markAllNotificationsAsRead("u1") } returns Result.success(Unit)
@@ -79,24 +97,28 @@ class NotificationsScreenTest {
         every { invitationsUC.getPendingInvitationsCount("u1") } returns flowOf(0)
 
         val groupRepo = mockk<GroupHabitNotificationRepository>(relaxed = true)
-        every { groupRepo.getNotificationsForUser("u1") } returns flowOf(emptyList())
+        every { groupRepo.getNotificationsForUser("u1") } returns flowOf(storedNotifications)
         val vm = NotificationsViewModel(groupUC, authRepository, invitationsUC, acceptUC, declineUC, groupRepo)
 
         composeRule.setContent {
             val navController = rememberNavController()
-            NotificationsScreen(navController = navController, viewModel = vm)
+            NotificationsScreen(navController = navController, viewModel = vm, onSettingsClick = {})
         }
 
-        // До клика кнопка есть
-        composeRule.onNodeWithContentDescription(composeRule.activity.getString(R.string.mark_all_as_read)).assertIsDisplayed()
+        // До клика кнопка есть (ждём, пока VM загрузит notifications из репозитория)
+        val markAllCd = composeRule.activity.getString(R.string.mark_all_as_read)
+        composeRule.waitUntil(timeoutMillis = 5_000) {
+            composeRule.onAllNodesWithContentDescription(markAllCd).fetchSemanticsNodes().isNotEmpty()
+        }
+        composeRule.onNodeWithContentDescription(markAllCd).assertIsDisplayed()
 
         // Клик
-        composeRule.onNodeWithContentDescription(composeRule.activity.getString(R.string.mark_all_as_read)).performClick()
+        composeRule.onNodeWithContentDescription(markAllCd).performClick()
 
         // После клика появляется snackbar об успехе
         composeRule.onNodeWithText(composeRule.activity.getString(R.string.success_all_marked_read)).assertIsDisplayed()
         // Иконка действия исчезает (unreadCount = 0)
-        composeRule.onNodeWithContentDescription(composeRule.activity.getString(R.string.mark_all_as_read)).assertDoesNotExist()
+        composeRule.onNodeWithContentDescription(markAllCd).assertDoesNotExist()
     }
 
     @Test
@@ -113,6 +135,22 @@ class NotificationsScreenTest {
                 isRead = false
             )
         )
+
+        val storedNotifications = notifications.map {
+            GroupHabitNotificationModel(
+                id = it.id,
+                userId = "u1",
+                habitId = it.habitId,
+                type = it.type.name,
+                participantId = "p1",
+                participantName = it.participantName ?: "",
+                habitTitle = it.habitTitle,
+                message = it.message,
+                isRead = it.isRead,
+                readAt = null,
+                createdAt = it.timestamp.toEpochMilliseconds()
+            )
+        }
         every { authRepository.getCurrentUserId() } returns "u1"
         every { groupUC.getGroupHabitNotifications("u1") } returns flowOf(notifications)
         coEvery { groupUC.markAllNotificationsAsRead("u1") } returns Result.failure(IllegalStateException("fail"))
@@ -120,15 +158,19 @@ class NotificationsScreenTest {
         every { invitationsUC.getPendingInvitationsCount("u1") } returns flowOf(0)
 
         val groupRepo = mockk<GroupHabitNotificationRepository>(relaxed = true)
-        every { groupRepo.getNotificationsForUser("u1") } returns flowOf(emptyList())
+        every { groupRepo.getNotificationsForUser("u1") } returns flowOf(storedNotifications)
         val vm = NotificationsViewModel(groupUC, authRepository, invitationsUC, acceptUC, declineUC, groupRepo)
 
         composeRule.setContent {
             val navController = rememberNavController()
-            NotificationsScreen(navController = navController, viewModel = vm)
+            NotificationsScreen(navController = navController, viewModel = vm, onSettingsClick = {})
         }
 
-        composeRule.onNodeWithContentDescription(composeRule.activity.getString(R.string.mark_all_as_read)).performClick()
+        val markAllCd = composeRule.activity.getString(R.string.mark_all_as_read)
+        composeRule.waitUntil(timeoutMillis = 5_000) {
+            composeRule.onAllNodesWithContentDescription(markAllCd).fetchSemanticsNodes().isNotEmpty()
+        }
+        composeRule.onNodeWithContentDescription(markAllCd).performClick()
         composeRule.onNodeWithText(composeRule.activity.getString(R.string.error_mark_all_notifications)).assertIsDisplayed()
     }
 
@@ -161,7 +203,7 @@ class NotificationsScreenTest {
 
         composeRule.setContent {
             val navController = rememberNavController()
-            NotificationsScreen(navController = navController, viewModel = vm)
+            NotificationsScreen(navController = navController, viewModel = vm, onSettingsClick = {})
         }
 
         // Заголовок секции приглашений
@@ -199,7 +241,7 @@ class NotificationsScreenTest {
 
         composeRule.setContent {
             val navController = rememberNavController()
-            NotificationsScreen(navController = navController, viewModel = vm)
+            NotificationsScreen(navController = navController, viewModel = vm, onSettingsClick = {})
         }
 
         composeRule.onNodeWithText(composeRule.activity.getString(R.string.accept_invitation)).performClick()
@@ -235,7 +277,7 @@ class NotificationsScreenTest {
 
         composeRule.setContent {
             val navController = rememberNavController()
-            NotificationsScreen(navController = navController, viewModel = vm)
+            NotificationsScreen(navController = navController, viewModel = vm, onSettingsClick = {})
         }
 
         composeRule.onNodeWithText(composeRule.activity.getString(R.string.decline_invitation)).performClick()
@@ -299,7 +341,7 @@ class NotificationsScreenTest {
 
         composeRule.setContent {
             val navController = rememberNavController()
-            NotificationsScreen(navController = navController, viewModel = vm)
+            NotificationsScreen(navController = navController, viewModel = vm, onSettingsClick = {})
         }
 
         composeRule.onNodeWithText("Run").assertIsDisplayed()

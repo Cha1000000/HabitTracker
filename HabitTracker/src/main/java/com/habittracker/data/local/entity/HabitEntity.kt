@@ -46,5 +46,7 @@ data class HabitEntity(
     val updatedAtMillis: Long = System.currentTimeMillis(),
     val deletedAtMillis: Long? = null,
     val startDate: LocalDate? = null,
-    val endDate: LocalDate? = null
+    val endDate: LocalDate? = null,
+    val followUpReminderEnabled: Boolean = true,
+    val followUpReminderDuration: LocalTime = LocalTime(2, 0)
 )

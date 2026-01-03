@@ -10,7 +10,9 @@ import com.habittracker.R
 import com.habittracker.domain.model.Habit
 import com.habittracker.domain.model.HabitFrequency
 import com.habittracker.domain.model.HabitType
+import com.habittracker.domain.model.UserPreferences
 import com.habittracker.domain.repository.AuthRepository
+import com.habittracker.domain.repository.UserPreferencesRepository
 import com.habittracker.domain.repository.UserRepository
 import com.habittracker.domain.usecase.DeleteHabitUseCase
 import com.habittracker.domain.usecase.EnsureMySettingsForHabitUseCase
@@ -24,6 +26,7 @@ import com.habittracker.domain.usecase.habit.GetGroupHabitProgressUseCase
 import com.habittracker.domain.usecase.habit.JoinHabitByCodeUseCase
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
 import org.junit.After
@@ -62,6 +65,7 @@ class HabitsViewModelTest {
     private val joinHabitByCodeUseCase: JoinHabitByCodeUseCase = mock()
     private val getWeekCompletionDataUseCase: GetWeekCompletionDataUseCase = mock()
     private val getGroupHabitProgressUseCase: GetGroupHabitProgressUseCase = mock()
+    private val userPreferencesRepository: UserPreferencesRepository = mock()
     private val application: Application = mock()
     private lateinit var logMock: MockedStatic<Log>
 
@@ -99,6 +103,11 @@ class HabitsViewModelTest {
 
     private suspend fun createViewModelWithHabits(initial: List<Habit>): HabitsViewModel {
         whenever(authRepository.getCurrentUserId()).thenReturn("user1")
+
+        // Preferences flow обязателен для combine(...) в HabitsViewModel
+        whenever(userPreferencesRepository.userPreferences)
+            .thenReturn(MutableStateFlow(UserPreferences(sortCompletedHabitsToBottom = false)))
+
         // Поток привычек
         val flow = MutableSharedFlow<List<Habit>>(replay = 1)
         flow.tryEmit(initial)
@@ -123,6 +132,7 @@ class HabitsViewModelTest {
             joinHabitByCodeUseCase,
             getWeekCompletionDataUseCase,
             getGroupHabitProgressUseCase,
+            userPreferencesRepository,
             application
         )
     }

@@ -5,6 +5,7 @@ import androidx.work.Data
 import androidx.work.ExistingWorkPolicy
 import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.WorkManager
+import com.habittracker.data.worker.HabitFollowUpWorker
 import com.habittracker.data.worker.HabitReminderWorker
 import com.habittracker.domain.model.Habit
 import com.habittracker.domain.model.HabitFrequency
@@ -32,6 +33,7 @@ class ReminderRepositoryImpl @Inject constructor(
 
     companion object {
         private const val REMINDER_WORK_PREFIX = "habit_reminder_"
+        private const val FOLLOWUP_WORK_PREFIX = "habit_followup_"
     }
 
     override suspend fun scheduleReminder(habit: Habit) {
@@ -67,6 +69,7 @@ class ReminderRepositoryImpl @Inject constructor(
             .setInitialDelay(delay, TimeUnit.MILLISECONDS)
             .setInputData(inputData)
             .addTag(getWorkTag(habit.id))
+            .addTag("habit_reminder")
             .build()
 
         // Планируем работу
@@ -75,6 +78,26 @@ class ReminderRepositoryImpl @Inject constructor(
             ExistingWorkPolicy.REPLACE,
             workRequest
         )
+
+        // Планируем повторное напоминание (follow-up), если включено
+        val followUpDurationMillis = (habit.followUpReminderDuration.hour * 60 + habit.followUpReminderDuration.minute) * 60 * 1000L
+        if (habit.followUpReminderEnabled && followUpDurationMillis > 0L) {
+            val followUpDelay = delay + followUpDurationMillis
+            
+            val followUpWorkRequest = OneTimeWorkRequestBuilder<HabitFollowUpWorker>()
+                .setInitialDelay(followUpDelay, TimeUnit.MILLISECONDS)
+                .setInputData(inputData) // Используем те же данные
+                .addTag(getWorkTag(habit.id))
+                .addTag("habit_reminder")
+                .build()
+                
+            workManager.enqueueUniqueWork(
+                getFollowUpWorkName(habit.id),
+                ExistingWorkPolicy.REPLACE,
+                followUpWorkRequest
+            )
+            Log.d("ReminderRepositoryImpl", "Scheduled follow-up reminder for habit ${habit.id} with total delay $followUpDelay")
+        }
 
         Log.d("ReminderRepositoryImpl", "Scheduled reminder for habit ${habit.id} with delay $delay")
 
@@ -85,6 +108,7 @@ class ReminderRepositoryImpl @Inject constructor(
     override suspend fun cancelReminder(habitId: String) {
         Log.d("ReminderRepositoryImpl", "cancelReminder: $habitId")
         workManager.cancelUniqueWork(getWorkName(habitId))
+        workManager.cancelUniqueWork(getFollowUpWorkName(habitId))
         workManager.cancelAllWorkByTag(getWorkTag(habitId))
     }
 
@@ -184,6 +208,21 @@ class ReminderRepositoryImpl @Inject constructor(
             .build()
 
         workManager.enqueue(workRequest)
+        
+        // Планируем повторное напоминание (follow-up)
+        val followUpDurationMillis = (habit.followUpReminderDuration.hour * 60 + habit.followUpReminderDuration.minute) * 60 * 1000L
+        if (habit.followUpReminderEnabled && followUpDurationMillis > 0L) {
+            val followUpTotalDelay = totalDelay + followUpDurationMillis
+            
+            val followUpWorkRequest = OneTimeWorkRequestBuilder<HabitFollowUpWorker>()
+                .setInitialDelay(followUpTotalDelay, TimeUnit.MILLISECONDS)
+                .setInputData(inputData)
+                .addTag(getWorkTag(habit.id))
+                .addTag("habit_reminder")
+                .build()
+                
+            workManager.enqueue(followUpWorkRequest)
+        }
     }
 
     /**
@@ -298,6 +337,8 @@ class ReminderRepositoryImpl @Inject constructor(
     }
 
     private fun getWorkName(habitId: String): String = "${REMINDER_WORK_PREFIX}$habitId"
+    
+    private fun getFollowUpWorkName(habitId: String): String = "${FOLLOWUP_WORK_PREFIX}$habitId"
     
     private fun getWorkTag(habitId: String): String = "habit_reminder_$habitId"
 }

@@ -1,6 +1,5 @@
 package com.habittracker.presentation.ui.habits
 
-import androidx.activity.ComponentActivity
 import androidx.compose.ui.test.SemanticsNodeInteraction
 import androidx.compose.ui.test.TouchInjectionScope
 import androidx.compose.ui.test.assertIsDisplayed
@@ -11,17 +10,23 @@ import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performScrollTo
+import androidx.compose.ui.test.performScrollToNode
 import androidx.compose.ui.test.performTouchInput
 import androidx.compose.ui.test.swipeLeft
 import androidx.navigation.compose.rememberNavController
 import androidx.test.platform.app.InstrumentationRegistry
+import androidx.work.testing.WorkManagerTestInitHelper
 import com.habittracker.R
+import com.habittracker.TestHiltActivity
 import com.habittracker.domain.model.Habit
 import com.habittracker.domain.model.HabitFrequency
 import com.habittracker.domain.model.HabitType
+import com.habittracker.domain.model.UserPreferences
 import com.habittracker.domain.repository.AuthRepository
 import com.habittracker.domain.repository.GroupHabitNotificationRepository
 import com.habittracker.domain.repository.UserRepository
+import com.habittracker.domain.repository.UserPreferencesRepository
 import com.habittracker.domain.usecase.DeleteHabitUseCase
 import com.habittracker.domain.usecase.EnsureMySettingsForHabitUseCase
 import com.habittracker.domain.usecase.GetHabitCompletionStatusUseCase
@@ -41,18 +46,26 @@ import io.mockk.coVerify
 import io.mockk.every
 import io.mockk.mockk
 import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.datetime.Clock
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toLocalDateTime
+import dagger.hilt.android.testing.HiltAndroidRule
+import dagger.hilt.android.testing.HiltAndroidTest
+import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
 
+@HiltAndroidTest
 class HabitsScreenTest {
 
     @get:Rule
-    val composeRule = createAndroidComposeRule<ComponentActivity>()
+    val hiltRule = HiltAndroidRule(this)
+
+    @get:Rule
+    val composeRule = createAndroidComposeRule<TestHiltActivity>()
 
     private lateinit var authRepository: AuthRepository
     private lateinit var getHabitsForDateUseCase: GetHabitsForDateUseCase
@@ -66,6 +79,7 @@ class HabitsScreenTest {
     private lateinit var getWeekCompletionDataUseCase: GetWeekCompletionDataUseCase
     private lateinit var getGroupHabitProgressUseCase: GetGroupHabitProgressUseCase
     private lateinit var leaveSharedHabitsWithFriendUseCase: LeaveSharedHabitsWithFriendUseCase
+    private lateinit var userPreferencesRepository: UserPreferencesRepository
 
     private lateinit var notificationsViewModel: NotificationsViewModel
     private lateinit var friendsViewModel: FriendsViewModel
@@ -97,8 +111,20 @@ class HabitsScreenTest {
         slow()
     }
 
+    private fun waitForHabitItem(habitId: String): SemanticsNodeInteraction {
+        val tag = "habit-$habitId"
+        composeRule.onNodeWithTag("habits-list").performScrollToNode(hasTestTag(tag))
+        composeRule.waitUntil(timeoutMillis = 10_000) {
+            composeRule.onAllNodes(hasTestTag(tag)).fetchSemanticsNodes().isNotEmpty()
+        }
+        return composeRule.onNodeWithTag(tag).performScrollTo()
+    }
+
     @Before
     fun setup() {
+        hiltRule.inject()
+
+        WorkManagerTestInitHelper.initializeTestWorkManager(composeRule.activity.applicationContext)
         // --- Mocks for HabitsViewModel ---
         authRepository = mockk(relaxed = true)
         every { authRepository.getCurrentUserId() } returns "user1"
@@ -120,6 +146,9 @@ class HabitsScreenTest {
         getGroupHabitProgressUseCase = mockk(relaxed = true)
         leaveSharedHabitsWithFriendUseCase = mockk(relaxed = true)
         val joinHabitByCodeUseCase = mockk<JoinHabitByCodeUseCase>(relaxed = true)
+        userPreferencesRepository = mockk {
+            every { userPreferences } returns MutableStateFlow(UserPreferences(sortCompletedHabitsToBottom = false))
+        }
 
         // --- Real VMs constructed with mocks ---
         habitsViewModel = HabitsViewModel(
@@ -135,6 +164,7 @@ class HabitsScreenTest {
             joinHabitByCodeUseCase = joinHabitByCodeUseCase,
             getWeekCompletionDataUseCase = getWeekCompletionDataUseCase,
             getGroupHabitProgressUseCase = getGroupHabitProgressUseCase,
+            userPreferencesRepository = userPreferencesRepository,
             application = composeRule.activity.application
         )
 
@@ -215,22 +245,21 @@ class HabitsScreenTest {
     @Test
     fun swipeDelete_thenUndo_restoresItem() {
         // Swipe left on first item to open confirm dialog
-        composeRule.onNodeWithTag("habit-h1").assertIsDisplayed()
-        composeRule.onNodeWithTag("habit-h1").performTouchInputSlow { swipeLeft() }
+        waitForHabitItem("h1").assertIsDisplayed().performTouchInputSlow { swipeLeft() }
 
         // Confirm deletion in dialog
         val deleteText = composeRule.activity.getString(R.string.delete)
         composeRule.onNodeWithText(deleteText).assertIsDisplayed().performClickSlow()
 
         // After optimistic removal, item should be gone
-        composeRule.onNodeWithTag("habit-h1").assertDoesNotExist()
+        assertTrue(composeRule.onAllNodes(hasTestTag("habit-h1")).fetchSemanticsNodes().isEmpty())
 
         // Snackbar appears; click Undo
         val undoText = composeRule.activity.getString(R.string.undo)
         composeRule.onNode(hasClickAction() and hasText(undoText)).assertIsDisplayed().performClickSlow()
 
         // Item should be restored
-        composeRule.onNodeWithTag("habit-h1").assertIsDisplayed()
+        waitForHabitItem("h1").assertIsDisplayed()
 
         // Ensure DeleteHabitUseCase was NOT called due to undo
         coVerify(exactly = 0) { deleteHabitUseCase.invoke("h1", any()) }
@@ -239,8 +268,7 @@ class HabitsScreenTest {
     @Test
     fun swipeDelete_thenConfirm_confirmsDeletion() {
         // Swipe left and confirm in dialog
-        composeRule.onNodeWithTag("habit-h1").assertIsDisplayed()
-        composeRule.onNodeWithTag("habit-h1").performTouchInput { swipeLeft() }
+        waitForHabitItem("h1").assertIsDisplayed().performTouchInput { swipeLeft() }
         val deleteText = composeRule.activity.getString(R.string.delete)
         composeRule.onNodeWithText(deleteText).assertIsDisplayed().performClick()
 
@@ -248,7 +276,7 @@ class HabitsScreenTest {
         habitsViewModel.confirmPendingDeletion()
 
         // Item should remain deleted
-        composeRule.onNodeWithTag("habit-h1").assertDoesNotExist()
+        assertTrue(composeRule.onAllNodes(hasTestTag("habit-h1")).fetchSemanticsNodes().isEmpty())
 
         // Verify use case invoked
         coVerify(exactly = 1) { deleteHabitUseCase.invoke("h1", "user1") }
@@ -287,25 +315,23 @@ class HabitsScreenTest {
     @Test
     fun requestDelete_twice_second_ignored_when_pending_exists() {
         // First deletion request for h1
-        composeRule.onNodeWithTag("habit-h1").assertIsDisplayed()
-        composeRule.onNodeWithTag("habit-h1").performTouchInput { swipeLeft() }
+        waitForHabitItem("h1").assertIsDisplayed().performTouchInput { swipeLeft() }
         val deleteText = composeRule.activity.getString(R.string.delete)
         composeRule.onNodeWithText(deleteText).assertIsDisplayed().performClick()
 
         // Ensure h1 is optimistically removed
-        composeRule.onNodeWithTag("habit-h1").assertDoesNotExist()
+        assertTrue(composeRule.onAllNodes(hasTestTag("habit-h1")).fetchSemanticsNodes().isEmpty())
 
         // Try to delete h2 while pending deletion exists
-        composeRule.onNodeWithTag("habit-h2").assertIsDisplayed()
-        composeRule.onNodeWithTag("habit-h2").performTouchInputSlow { swipeLeft() }
+        waitForHabitItem("h2").assertIsDisplayed().performTouchInputSlow { swipeLeft() }
         composeRule.onNodeWithText(deleteText).assertIsDisplayed().performClick()
 
         // h2 should remain visible because second request is ignored
-        composeRule.onNodeWithTag("habit-h2").assertIsDisplayed()
+        waitForHabitItem("h2").assertIsDisplayed()
 
         // Cleanup: cancel pending to restore h1 and close flow
         habitsViewModel.cancelPendingDeletion()
-        composeRule.onNodeWithTag("habit-h1").assertIsDisplayed()
+        waitForHabitItem("h1").assertIsDisplayed()
 
         // Ensure use case not called yet (since nothing confirmed)
         coVerify(exactly = 0) { deleteHabitUseCase.invoke(any(), any()) }
@@ -314,24 +340,23 @@ class HabitsScreenTest {
     @Test
     fun requestDelete_sameItem_twice_ignored() {
         // First deletion request via UI dialog to ensure snackbar shows
-        composeRule.onNodeWithTag("habit-h1").assertIsDisplayed()
-        composeRule.onNodeWithTag("habit-h1").performTouchInput { swipeLeft() }
+        waitForHabitItem("h1").assertIsDisplayed().performTouchInput { swipeLeft() }
         val deleteText = composeRule.activity.getString(R.string.delete)
         composeRule.onNodeWithText(deleteText).assertIsDisplayed().performClick()
 
         // h1 removed optimistically
-        composeRule.onNodeWithTag("habit-h1").assertDoesNotExist()
+        assertTrue(composeRule.onAllNodes(hasTestTag("habit-h1")).fetchSemanticsNodes().isEmpty())
 
         // Try to request deletion of the same item again (should be ignored)
         habitsViewModel.requestDeleteHabit("h1")
         composeRule.waitForIdle()
 
         // Still absent (no duplicate pending changed state)
-        composeRule.onNodeWithTag("habit-h1").assertDoesNotExist()
+        assertTrue(composeRule.onAllNodes(hasTestTag("habit-h1")).fetchSemanticsNodes().isEmpty())
 
         // Cancel pending to restore
         habitsViewModel.cancelPendingDeletion()
-        composeRule.onNodeWithTag("habit-h1").assertIsDisplayed()
+        waitForHabitItem("h1").assertIsDisplayed()
 
         // Ensure use case not called
         coVerify(exactly = 0) { deleteHabitUseCase.invoke(any(), any()) }
@@ -340,8 +365,7 @@ class HabitsScreenTest {
     @Test
     fun swipeDelete_snackbar_no_action_confirms() {
         // Start via UI
-        composeRule.onNodeWithTag("habit-h1").assertIsDisplayed()
-        composeRule.onNodeWithTag("habit-h1").performTouchInput { swipeLeft() }
+        waitForHabitItem("h1").assertIsDisplayed().performTouchInput { swipeLeft() }
         val deleteText = composeRule.activity.getString(R.string.delete)
         composeRule.onNodeWithText(deleteText).assertIsDisplayed().performClick()
 
@@ -353,7 +377,7 @@ class HabitsScreenTest {
         habitsViewModel.confirmPendingDeletion()
 
         // h1 stays deleted
-        composeRule.onNodeWithTag("habit-h1").assertDoesNotExist()
+        assertTrue(composeRule.onAllNodes(hasTestTag("habit-h1")).fetchSemanticsNodes().isEmpty())
         coVerify(exactly = 1) { deleteHabitUseCase.invoke("h1", "user1") }
     }
 
@@ -363,12 +387,12 @@ class HabitsScreenTest {
         coEvery { deleteHabitUseCase.invoke("h1", "user1") } throws RuntimeException("server down")
 
         // Trigger direct delete path
-        composeRule.onNodeWithTag("habit-h1").assertIsDisplayed()
+        waitForHabitItem("h1").assertIsDisplayed()
         habitsViewModel.deleteHabit("h1")
         composeRule.waitForIdle()
 
         // Expect restored item
-        composeRule.onNodeWithTag("habit-h1").assertIsDisplayed()
+        waitForHabitItem("h1").assertIsDisplayed()
 
         // Error snackbar should be shown
         val expectedError = composeRule.activity.getString(R.string.error_delete_habit, "server down")

@@ -124,6 +124,7 @@ fun HabitsScreen(
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
     val habitDeletedText = stringResource(id = R.string.habit_deleted)
+    val undoText = stringResource(id = R.string.undo)
     val badgeCount by notificationsViewModel.badgeCount.collectAsState()
     val friendsUiState by friendsViewModel.uiState.collectAsState()
     val friendRequestsBadgeCount = friendsUiState.incomingRequests.size
@@ -440,13 +441,15 @@ fun HabitsScreen(
                         } else {
                             key(recomposeKey) {
                                 LazyColumn(
-                                    modifier = Modifier.fillMaxSize(),
+                                    modifier = Modifier
+                                        .fillMaxSize()
+                                        .testTag("habits-list"),
                                     contentPadding = PaddingValues(16.dp),
                                     verticalArrangement = Arrangement.spacedBy(12.dp)
                                 ) {
                                 items(
                                     uiState.habitsWithCompletion,
-                                    key = { hwc -> "${hwc.habit.id}:${hwc.isCompletedToday}" }
+                                    key = { hwc -> hwc.habit.id }
                                 ) { habitWithCompletion ->
                                     var showDeleteDialog by remember { mutableStateOf(false) }
                                     val dismissState = rememberSwipeToDismissBoxState(
@@ -522,15 +525,18 @@ fun HabitsScreen(
                                             cancelLabel = stringResource(id = R.string.cancel),
                                             onConfirm = {
                                                 showDeleteDialog = false
-                                                // Мгновенно удаляем (локально + Firestore) без UNDO, чтобы элемент не возвращался при refresh
-                                                viewModel.deleteHabit(habitWithCompletion.habit.id)
-                                                // Показываем короткое уведомление об успехе
+                                                viewModel.requestDeleteHabit(habitWithCompletion.habit.id)
                                                 scope.launch {
-                                                    snackbarHostState.showSnackbar(
+                                                    val result = snackbarHostState.showSnackbar(
                                                         message = habitDeletedText,
-                                                        withDismissAction = true,
+                                                        actionLabel = undoText,
                                                         duration = SnackbarDuration.Short
                                                     )
+                                                    if (result == androidx.compose.material3.SnackbarResult.ActionPerformed) {
+                                                        viewModel.cancelPendingDeletion()
+                                                    } else {
+                                                        viewModel.confirmPendingDeletion()
+                                                    }
                                                 }
                                             },
                                             onDismiss = { showDeleteDialog = false }

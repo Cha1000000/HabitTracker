@@ -33,7 +33,9 @@ data class Habit(
     val updatedAtMillis: Long = Clock.System.now().toEpochMilliseconds(),
     val deletedAtMillis: Long? = null,
     val startDate: LocalDate? = null, // дата начала привычки (null = с момента создания)
-    val endDate: LocalDate? = null // дата окончания привычки (null = бессрочно)
+    val endDate: LocalDate? = null, // дата окончания привычки (null = бессрочно)
+    val followUpReminderEnabled: Boolean = true, // включено ли повторное напоминание
+    val followUpReminderDuration: LocalTime = LocalTime(2, 0) // через сколько времени напомнить (по умолчанию 2 часа)
 )
 
 enum class HabitType {
@@ -147,13 +149,11 @@ fun Habit.isActiveOnDate(date: LocalDate, habitCreatedDate: LocalDate? = null): 
     if (startDate != null) {
         // Проверяем, что текущая дата не раньше даты начала
         if (date < startDate) {
-            android.util.Log.d("Habit", "❌ Habit '$title' not active: date=$date < startDate=$startDate")
             return false
         }
     } else if (habitCreatedDate != null) {
         // Если даты начала нет, используем дату создания
         if (date < habitCreatedDate) {
-            android.util.Log.d("Habit", "❌ Habit '$title' not active: date=$date < createdDate=$habitCreatedDate")
             return false
         }
     }
@@ -161,7 +161,6 @@ fun Habit.isActiveOnDate(date: LocalDate, habitCreatedDate: LocalDate? = null): 
     
     // Проверяем дату окончания
     if (endDate != null && date > endDate) {
-        android.util.Log.d("Habit", "❌ Habit '$title' not active: date=$date > endDate=$endDate")
         return false
     }
     

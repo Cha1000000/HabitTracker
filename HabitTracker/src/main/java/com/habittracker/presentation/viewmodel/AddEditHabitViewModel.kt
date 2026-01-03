@@ -140,13 +140,15 @@ class AddEditHabitViewModel @Inject constructor(
                 } else {
                     _uiState.update { it.copy(
                         isLoading = false,
-                        error = res.exceptionOrNull()?.localizedMessage ?: "Ошибка применения настроек для всех"
+                        error = res.exceptionOrNull()?.localizedMessage
+                            ?: getApplication<Application>().getString(R.string.error_apply_reminder_all_generic)
                     ) }
                 }
             } catch (e: Exception) {
                 _uiState.update { it.copy(
                     isLoading = false,
-                    error = e.localizedMessage ?: "Ошибка применения настроек для всех"
+                    error = e.localizedMessage
+                        ?: getApplication<Application>().getString(R.string.error_apply_reminder_all_fallback)
                 ) }
             }
         }
@@ -210,6 +212,8 @@ class AddEditHabitViewModel @Inject constructor(
                             reminderEnabled = habit.reminderEnabled,
                             reminderTime = habit.reminderTime,
                             reminderDaysInput = habit.reminderDays,
+                            followUpReminderEnabled = habit.followUpReminderEnabled,
+                            followUpReminderDuration = habit.followUpReminderDuration,
                             targetValue = habit.targetValue,
                             targetValueInput = habit.targetValue.toString(),
                             unit = habit.unit,
@@ -253,12 +257,6 @@ class AddEditHabitViewModel @Inject constructor(
                         _uiState.update { it.copy(isInitialized = true) }
                     } catch (e: Exception) {
                         Log.d("AddEditHabitViewModel", "ensureMySettingsForHabitUseCase failed (non-fatal): ${e.message}")
-                    }
-
-                    // Финальная нормализация UI: если есть время, но флаг выключен — включим флаг (устранение артефактов старых данных)
-                    val s = _uiState.value
-                    if (s.reminderTime != null && !s.reminderEnabled) {
-                        _uiState.update { it.copy(reminderEnabled = true) }
                     }
 
                     Log.d(
@@ -395,6 +393,23 @@ class AddEditHabitViewModel @Inject constructor(
                         color = "#%06X".format(0xFFFFFF and currentState.color), // Конвертируем Int (ARGB) в hex-строку RGB
                         type = currentState.type,
                         frequency = effectiveFrequency,
+                        reminderTime = if (currentHabit!!.type == HabitType.PERSONAL) {
+                            if (currentState.reminderEnabled) currentState.reminderTime else null
+                        } else {
+                            currentHabit!!.reminderTime
+                        },
+                        reminderEnabled = if (currentHabit!!.type == HabitType.PERSONAL) {
+                            currentState.reminderEnabled
+                        } else {
+                            currentHabit!!.reminderEnabled
+                        },
+                        reminderDays = if (currentHabit!!.type == HabitType.PERSONAL) {
+                            currentState.reminderDaysInput
+                        } else {
+                            currentHabit!!.reminderDays
+                        },
+                        followUpReminderEnabled = currentState.followUpReminderEnabled,
+                        followUpReminderDuration = currentState.followUpReminderDuration,
                         targetValue = currentState.targetValue,
                         unit = currentState.unit,
                         maxParticipants = currentState.maxParticipants,
@@ -645,6 +660,29 @@ class AddEditHabitViewModel @Inject constructor(
 
     override fun onReminderEnabledChange(enabled: Boolean) {
         _uiState.update { s -> s.copy(reminderEnabled = enabled, hasUnsavedChanges = true) }
+    }
+
+    override fun onFollowUpReminderEnabledChange(enabled: Boolean) {
+        _uiState.update { 
+            it.copy(
+                followUpReminderEnabled = enabled, 
+                hasUnsavedChanges = true
+            ) 
+        }
+    }
+
+    override fun onFollowUpReminderDurationChange(duration: LocalTime) {
+        val safeDuration = if (duration.hour == 0 && duration.minute == 0) {
+            LocalTime(0, 5)
+        } else {
+            duration
+        }
+        _uiState.update { 
+            it.copy(
+                followUpReminderDuration = safeDuration, 
+                hasUnsavedChanges = true
+            ) 
+        }
     }
 
     override fun onReminderDayToggle(day: DayOfWeek) {

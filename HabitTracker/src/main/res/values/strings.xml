@@ -78,6 +78,7 @@
     
     <!-- Add/Edit Habit Screen -->
     <string name="habit_new_title">Новая привычка</string>
+    <string name="habit_edit_title">Редактировать привычку</string>
     <string name="habit_saving">Сохранение...</string>
     <string name="habit_name_label">Название</string>
     <string name="habit_description_label">Описание (необязательно)</string>
@@ -96,12 +97,21 @@
     <string name="habit_select_icon">Выберите иконку</string>
     <string name="habit_select_color">Выберите цвет</string>
     <string name="habit_click_to_change_icon">Нажмите, чтобы изменить иконку</string>
+    
+    <!-- Follow-up reminder (Add/Edit Habit Screen) -->
+    <string name="follow_up_reminder_title">Повторное напоминание</string>
+    <string name="follow_up_reminder_subtitle">Напомнить, если привычка не выполнена</string>
+    <string name="follow_up_reminder_interval_label">Интервал напоминания</string>
+    <string name="follow_up_reminder_interval_picker_title">Выберите интервал</string>
+    <string name="follow_up_reminder_after_format">Через %1$dч %2$dмин</string>
     <!-- Personal reminder settings -->
     <string name="reminder_personal_hint">Напоминание — только для меня</string>
     <string name="apply_reminder_to_all">Применить для всех</string>
     <string name="confirm_apply_reminder_title">Применить напоминание для всех?</string>
     <string name="confirm_apply_reminder_message">Текущие настройки напоминания (время и дни) будут применены всем участникам группы. Продолжить?</string>
     <string name="apply">Применить</string>
+    <string name="error_apply_reminder_all_generic">Ошибка применения настроек для всех</string>
+    <string name="error_apply_reminder_all_fallback">Ошибка применения настроек для всех</string>
     <!-- Frequency global control -->
     <string name="frequency_global_hint">Глобальная настройка — изменяет только автор</string>
     <string name="confirm_change_frequency_title">Изменить частоту для всех?</string>
@@ -405,6 +415,7 @@
     <string name="generating_code">Генерируем...</string>
     <string name="generate_invite_code">Создать код приглашения</string>
     <string name="invite_code_after_save">У этой привычки пока нет кода приглашения</string>
+    <string name="invite_code_can_generate_after_save">Код приглашения можно создать после сохранения привычки</string>
     <string name="join_habit_by_code">Присоединиться по коду</string>
     <string name="join_habit_by_code_description">Введите код приглашения, чтобы присоединиться к групповой привычке</string>
     <string name="joining">Присоединяемся...</string>

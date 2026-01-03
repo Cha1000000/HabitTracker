@@ -32,6 +32,10 @@ data class AddEditHabitUiState(
     val reminderTime: LocalTime? = null,
     // Выбранные дни недели для напоминаний (используются для WEEKLY/TWICE_A_WEEK/CUSTOM)
     val reminderDaysInput: Set<DayOfWeek> = emptySet(),
+    
+    // Повторное напоминание (follow-up)
+    val followUpReminderEnabled: Boolean = true,
+    val followUpReminderDuration: LocalTime = LocalTime(2, 0), // По умолчанию 2 часа
 
     // Целевые значения
     val targetValue: Int = 1,

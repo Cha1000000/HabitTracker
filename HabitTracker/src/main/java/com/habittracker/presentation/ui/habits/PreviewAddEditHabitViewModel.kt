@@ -130,6 +130,9 @@ class PreviewAddEditHabitViewModel @Inject constructor(
         // Не используется в новом интерфейсе
     }
 
+    override fun onFollowUpReminderEnabledChange(enabled: Boolean) {}
+    override fun onFollowUpReminderDurationChange(duration: LocalTime) {}
+
     override fun applyReminderToAllParticipants() {
         // no-op in preview
     }
@@ -238,7 +241,7 @@ class PreviewAddEditHabitViewModel @Inject constructor(
                 it.copy(
                     isLoading = false, 
                     isHabitSaved = true,
-                    successMessage = "Привычка сохранена (превью)",
+                    successMessage = null,
                     hasUnsavedChanges = false
                 ) 
             }
@@ -267,7 +270,7 @@ class PreviewAddEditHabitViewModel @Inject constructor(
         _uiState.update { 
             it.copy(
                 inviteCode = "PREVIEW123",
-                successMessage = "Код приглашения создан (превью)"
+                successMessage = null
             ) 
         }
     }
@@ -276,14 +279,14 @@ class PreviewAddEditHabitViewModel @Inject constructor(
         _uiState.update { 
             it.copy(
                 inviteCode = null,
-                successMessage = "Код приглашения отключен (превью)"
+                successMessage = null
             ) 
         }
     }
 
     override fun shareInviteCode(inviteCode: String) {
         // В превью просто показываем сообщение
-        _uiState.update { it.copy(successMessage = "Код '$inviteCode' скопирован (превью)") }
+        _uiState.update { it.copy(successMessage = null) }
     }
 
     override fun loadAvailableFriends() {
@@ -304,7 +307,7 @@ class PreviewAddEditHabitViewModel @Inject constructor(
             _uiState.update { 
                 it.copy(
                     isLoading = false,
-                    successMessage = "Приглашения отправлены (превью)",
+                    successMessage = null,
                     selectedFriendsToInvite = emptyList(),
                     showFriendSelector = false
                 ) 
@@ -318,7 +321,7 @@ class PreviewAddEditHabitViewModel @Inject constructor(
         if (canSendNow) {
             sendInvitations()
         } else {
-            _uiState.update { it.copy(sendInvitesAfterSave = true, successMessage = "Сохраните привычку, чтобы отправить приглашения (превью)") }
+            _uiState.update { it.copy(sendInvitesAfterSave = true, successMessage = null) }
         }
     }
 

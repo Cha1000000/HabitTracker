@@ -21,6 +21,11 @@ interface IAddEditHabitViewModel {
     fun onReminderTimeChange(time: LocalTime?)
     fun onReminderEnabledChange(enabled: Boolean)
     fun onReminderDayToggle(day: DayOfWeek)
+    
+    // Follow-up reminder
+    fun onFollowUpReminderEnabledChange(enabled: Boolean)
+    fun onFollowUpReminderDurationChange(duration: LocalTime)
+
     // Текстовый ввод для поля «Целевое значение» (поддержка промежуточных состояний)
     fun onTargetValueInputChange(text: String)
     fun onTargetValueChange(value: Int)
