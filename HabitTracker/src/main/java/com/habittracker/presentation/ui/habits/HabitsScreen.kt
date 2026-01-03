@@ -104,7 +104,6 @@ import com.habittracker.presentation.viewmodel.HabitsViewModel
 import com.habittracker.presentation.viewmodel.NotificationsViewModel
 import kotlinx.coroutines.launch
 import kotlinx.datetime.Clock
-import kotlinx.datetime.TimeZone
 import kotlinx.datetime.TimeZone.Companion.currentSystemDefault
 import kotlinx.datetime.toLocalDateTime
 import kotlin.math.abs
@@ -507,12 +506,16 @@ fun HabitsScreen(
                                                 onToggleCompletion = {
                                                     viewModel.toggleHabitCompletion(habitWithCompletion.habit.id)
                                                 },
+                                                onToggleRestDay = {
+                                                    viewModel.toggleRestDay(habitWithCompletion.habit.id)
+                                                },
                                                 onEdit = { habit ->
                                                     navController.navigate(Screen.AddEditHabit.route + "?habitId=${habit.habit.id}")
                                                 },
                                                 onDelete = {
                                                     showDeleteDialog = true
-                                                }
+                                                },
+                                                isFutureDate = selectedDate > today
                                             )
                                         }
                                     }
@@ -591,8 +594,8 @@ fun EnhancedHabitItemPreview() {
         createdBy = "user1",
         participants = listOf("user1"),
         isActive = true,
-        createdAt = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault()).date,
-        updatedAt = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault()).date
+        createdAt = Clock.System.now().toLocalDateTime(currentSystemDefault()).date,
+        updatedAt = Clock.System.now().toLocalDateTime(currentSystemDefault()).date
     )
     
     Column {

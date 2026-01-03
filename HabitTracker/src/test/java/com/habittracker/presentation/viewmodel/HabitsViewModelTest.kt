@@ -22,6 +22,7 @@ import com.habittracker.domain.usecase.GetWeekCompletionDataUseCase
 import com.habittracker.domain.usecase.MarkHabitCompletedUseCase
 import com.habittracker.domain.usecase.MarkHabitIncompleteUseCase
 import com.habittracker.domain.usecase.ScheduleHabitReminderUseCase
+import com.habittracker.domain.usecase.SetHabitRestDayUseCase
 import com.habittracker.domain.usecase.habit.GetGroupHabitProgressUseCase
 import com.habittracker.domain.usecase.habit.JoinHabitByCodeUseCase
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -65,6 +66,7 @@ class HabitsViewModelTest {
     private val joinHabitByCodeUseCase: JoinHabitByCodeUseCase = mock()
     private val getWeekCompletionDataUseCase: GetWeekCompletionDataUseCase = mock()
     private val getGroupHabitProgressUseCase: GetGroupHabitProgressUseCase = mock()
+    private val setHabitRestDayUseCase: SetHabitRestDayUseCase = mock()
     private val userPreferencesRepository: UserPreferencesRepository = mock()
     private val application: Application = mock()
     private lateinit var logMock: MockedStatic<Log>
@@ -132,6 +134,7 @@ class HabitsViewModelTest {
             joinHabitByCodeUseCase,
             getWeekCompletionDataUseCase,
             getGroupHabitProgressUseCase,
+            setHabitRestDayUseCase,
             userPreferencesRepository,
             application
         )

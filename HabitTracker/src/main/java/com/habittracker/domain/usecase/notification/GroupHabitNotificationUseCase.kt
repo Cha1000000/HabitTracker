@@ -213,7 +213,6 @@ class GroupHabitNotificationUseCase @Inject constructor(
      */
     private fun calculateStreak(entries: List<HabitEntry>, today: LocalDate): Int {
         val sortedEntries = entries
-            .filter { it.completed }
             .sortedByDescending { it.date }
         
         var streak = 0
@@ -221,9 +220,15 @@ class GroupHabitNotificationUseCase @Inject constructor(
         
         for (entry in sortedEntries) {
             if (entry.date == currentDate) {
-                streak++
-                currentDate = currentDate.minus(1, DateTimeUnit.DAY)
-            } else {
+                if (entry.completed) {
+                    streak++
+                    currentDate = currentDate.minus(1, DateTimeUnit.DAY)
+                } else if (entry.isRestDay) {
+                    currentDate = currentDate.minus(1, DateTimeUnit.DAY)
+                } else {
+                    break
+                }
+            } else if (entry.date < currentDate) {
                 break
             }
         }

@@ -19,11 +19,12 @@ data class FirebaseHabitEntry(
     val completedAt: String? = null, // LocalDateTime в ISO формате
     val value: Int = 1,
     val note: String? = "",
+    val isRestDay: Boolean = false,
     val createdAt: String = "", // LocalDate в ISO формате
     val updatedAt: String = "" // LocalDate в ISO формате
 ) {
     // Конструктор без аргументов требуется для Firebase
-    constructor() : this("", "", "", false, null, 1, "", "", "")
+    constructor() : this("", "", "", false, null, 1, "", false, "", "")
     
     companion object {
         /**
@@ -38,6 +39,7 @@ data class FirebaseHabitEntry(
                 completedAt = entry.completedAt?.toString(), // LocalDateTime -> String
                 value = entry.value,
                 note = entry.note,
+                isRestDay = entry.isRestDay,
                 createdAt = entry.createdAt.toString(), // LocalDate -> String
                 updatedAt = entry.updatedAt.toString() // LocalDate -> String
             )
@@ -66,6 +68,7 @@ data class FirebaseHabitEntry(
                 },
                 value = value,
                 note = note,
+                isRestDay = isRestDay,
                 createdAt = try { LocalDate.parse(createdAt) } catch (_: Exception) {
                     Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault()).date 
                 },

@@ -54,7 +54,7 @@ import com.habittracker.data.local.entity.UserEntity
         NotificationReadStatusEntity::class,
         GroupHabitNotificationEntity::class
     ],
-    version = 8,
+    version = 9,
     exportSchema = false
 )
 @TypeConverters(Converters::class)
@@ -143,6 +143,12 @@ abstract class HabitTrackerDatabase : RoomDatabase() {
             }
         }
 
+        private val MIGRATION_8_9 = object : Migration(8, 9) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE habit_entries ADD COLUMN isRestDay INTEGER NOT NULL DEFAULT 0")
+            }
+        }
+
         @Volatile
         private var INSTANCE: HabitTrackerDatabase? = null
 
@@ -159,7 +165,7 @@ abstract class HabitTrackerDatabase : RoomDatabase() {
                     builder.fallbackToDestructiveMigration()
                 }
 
-                builder.addMigrations(MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8)
+                builder.addMigrations(MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9)
 
                 val instance = builder.build()
 

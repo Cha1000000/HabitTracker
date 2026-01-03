@@ -37,7 +37,7 @@ android {
         applicationId = "com.habittracker"
         minSdk = 26
         targetSdk = 35
-        versionCode = 2
+        versionCode = 3
         versionName = appVersionName
 
         testInstrumentationRunner = "com.habittracker.HiltTestRunner"

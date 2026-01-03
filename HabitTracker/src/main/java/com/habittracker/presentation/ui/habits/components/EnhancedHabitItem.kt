@@ -30,6 +30,7 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -77,10 +78,12 @@ fun EnhancedHabitItem(
     habitWithCompletion: HabitWithCompletion,
     onHabitClick: (HabitWithCompletion) -> Unit,
     onToggleCompletion: () -> Unit,
+    onToggleRestDay: () -> Unit = {},
     modifier: Modifier = Modifier,
     onEdit: (HabitWithCompletion) -> Unit = {},
     onDelete: (HabitWithCompletion) -> Unit = {},
-    showGroupProgress: Boolean = true
+    showGroupProgress: Boolean = true,
+    isFutureDate: Boolean = false
 ) {
     val habit = habitWithCompletion.habit
     var showMenu by remember { mutableStateOf(false) }
@@ -88,10 +91,16 @@ fun EnhancedHabitItem(
     val context = LocalContext.current
 
     val isDone = habitWithCompletion.isCompletedToday
+    val isRestDay = habitWithCompletion.isRestDayToday
     val successColor = Color(0xFF4CAF50)
     val outlineColor = MaterialTheme.colorScheme.outline
     val shape = MaterialTheme.shapes.medium
     val isDarkTheme = isSystemInDarkTheme()
+
+    // Цвета для состояния "Выходной"
+    val contentAlpha = if (isRestDay) 0.38f else 1f
+    val titleColor = if (isRestDay) MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f) else if (isDone) successColor else MaterialTheme.colorScheme.onSurface
+    val iconTint = if (isRestDay) MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f) else if (isDone) successColor else MaterialTheme.colorScheme.primary
 
     Box(modifier = modifier.fillMaxWidth()) {
         val interaction = remember { MutableInteractionSource() }
@@ -113,15 +122,19 @@ fun EnhancedHabitItem(
             cornerRadius = 12.dp,
             glassAlpha = if (isDone) {
                 if (isDarkTheme) 0.25f else 0.95f
+            } else if (isRestDay) {
+                if (isDarkTheme) 0.1f else 0.6f // Более прозрачный фон для выходного
             } else {
                 if (isDarkTheme) 0.15f else 0.85f
             },
             borderAlpha = if (isDone) {
                 if (isDarkTheme) 0.5f else 0.3f
+            } else if (isRestDay) {
+                0.1f // Тусклая рамка
             } else {
                 if (isDarkTheme) 0.3f else 0.15f
             },
-            elevation = if (isDone) 4.dp else 2.dp
+            elevation = if (isDone) 4.dp else if (isRestDay) 0.dp else 2.dp
         ) {
             // Корневой слой без внутреннего отступа, чтобы «⋮» можно было прижать к краю карточки
             Box(
@@ -154,19 +167,20 @@ fun EnhancedHabitItem(
                             }
                         } else Modifier.drawBehind {
                             val borderWidth = 1.dp.toPx()
+                            val borderColor = if (isRestDay) outlineColor.copy(alpha = 0.2f) else outlineColor
                             when (val outline = shape.createOutline(this.size, layoutDirection, this)) {
                                 is Outline.Rounded -> {
                                     val p = Path().apply { addRoundRect(outline.roundRect) }
-                                    drawPath(p, color = outlineColor, style = Stroke(width = borderWidth))
+                                    drawPath(p, color = borderColor, style = Stroke(width = borderWidth))
                                 }
                                 is Outline.Rectangle -> drawRect(
-                                    color = outlineColor,
+                                    color = borderColor,
                                     size = this.size,
                                     style = Stroke(width = borderWidth)
                                 )
                                 is Outline.Generic -> drawPath(
                                     outline.path,
-                                    color = outlineColor,
+                                    color = borderColor,
                                     style = Stroke(width = borderWidth)
                                 )
                             }
@@ -184,7 +198,13 @@ fun EnhancedHabitItem(
                         Text(
                             text = habit.icon,
                             fontSize = 24.sp,
-                            modifier = Modifier.size(48.dp).padding(8.dp)
+                            modifier = Modifier
+                                .size(48.dp)
+                                .padding(8.dp)
+                                .then(if (isRestDay) Modifier.drawBehind {
+                                    drawRect(Color.Gray.copy(alpha = 0.1f), size = size)
+                                } else Modifier), // Optional: visual cue for icon in rest mode
+                            color = if (isRestDay) Color.Unspecified.copy(alpha = 0.5f) else Color.Unspecified
                         )
                         Spacer(modifier = Modifier.width(16.dp))
                         Column(modifier = Modifier.weight(1f)) {
@@ -193,23 +213,24 @@ fun EnhancedHabitItem(
                                     text = habit.title,
                                     fontWeight = FontWeight.Bold,
                                     fontSize = 18.sp,
-                                    color = if (habitWithCompletion.isCompletedToday) successColor else MaterialTheme.colorScheme.onSurface
+                                    color = titleColor
                                 )
                                 Spacer(modifier = Modifier.width(8.dp))
                                 if (habit.isGroupHabit()) {
-                                    Icon(imageVector = Icons.Default.Group, contentDescription = stringResource(R.string.group_habit), tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(16.dp))
+                                    Icon(imageVector = Icons.Default.Group, contentDescription = stringResource(R.string.group_habit), tint = if (isRestDay) MaterialTheme.colorScheme.primary.copy(alpha = 0.38f) else MaterialTheme.colorScheme.primary, modifier = Modifier.size(16.dp))
                                 } else {
-                                    Icon(imageVector = Icons.Default.Person, contentDescription = stringResource(R.string.personal_habit), tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(16.dp))
+                                    Icon(imageVector = Icons.Default.Person, contentDescription = stringResource(R.string.personal_habit), tint = if (isRestDay) MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.38f) else MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(16.dp))
                                 }
                             }
                             if (habit.description.isNotEmpty()) {
                                 Text(
                                     text = habit.description,
                                     style = MaterialTheme.typography.bodyMedium,
-                                    color = if (habitWithCompletion.isCompletedToday) successColor.copy(alpha = 0.7f) else Color.Gray
+                                    color = if (habitWithCompletion.isCompletedToday) successColor.copy(alpha = 0.7f) else Color.Gray.copy(alpha = if (isRestDay) 0.38f else 1f)
                                 )
                             }
                             Row(horizontalArrangement = Arrangement.spacedBy(16.dp), verticalAlignment = Alignment.CenterVertically) {
+                                val infoColor = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = if (isRestDay) 0.38f else 1f)
                                 Text(
                                     text = when (habit.frequency) {
                                         HabitFrequency.DAILY -> stringResource(R.string.frequency_daily)
@@ -220,44 +241,51 @@ fun EnhancedHabitItem(
                                         HabitFrequency.CUSTOM -> stringResource(R.string.frequency_custom)
                                     },
                                     style = MaterialTheme.typography.bodySmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    color = infoColor
                                 )
                                 if (habit.isGroupHabit()) {
                                     Text(
                                         text = stringResource(R.string.participants_count, habit.participants.size, habit.maxParticipants),
                                         style = MaterialTheme.typography.bodySmall,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                        color = infoColor
                                     )
                                 }
                                 if (habit.targetValue > 1 || habit.unit != "раз") {
                                     Text(
                                         text = "${habit.targetValue} ${habit.unit}",
                                         style = MaterialTheme.typography.bodySmall,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                        color = infoColor
                                     )
                                 }
                             }
                         }
-                        IconButton(
-                            onClick = {
-                                // Воспроизводим звук только при отметке как выполненной
-                                if (!habitWithCompletion.isCompletedToday) {
-                                    SoundManager.playSuccessSound(context)
+                        
+                        // Показываем кнопку выполнения только если это не выходной
+                        if (!isRestDay) {
+                            IconButton(
+                                onClick = {
+                                    // Воспроизводим звук только при отметке как выполненной
+                                    if (!habitWithCompletion.isCompletedToday) {
+                                        SoundManager.playSuccessSound(context)
+                                    }
+                                    onToggleCompletion()
+                                },
+                                enabled = !habitWithCompletion.isLoading
+                            ) {
+                                if (habitWithCompletion.isLoading) {
+                                    CircularProgressIndicator(modifier = Modifier.size(24.dp), strokeWidth = 2.dp)
+                                } else {
+                                    AnimatedCheckmark(
+                                        isChecked = habitWithCompletion.isCompletedToday,
+                                        size = 28.dp,
+                                        color = successColor,
+                                        strokeWidth = 2.dp
+                                    )
                                 }
-                                onToggleCompletion()
-                            },
-                            enabled = !habitWithCompletion.isLoading
-                        ) {
-                            if (habitWithCompletion.isLoading) {
-                                CircularProgressIndicator(modifier = Modifier.size(24.dp), strokeWidth = 2.dp)
-                            } else {
-                                AnimatedCheckmark(
-                                    isChecked = habitWithCompletion.isCompletedToday,
-                                    size = 28.dp,
-                                    color = successColor,
-                                    strokeWidth = 2.dp
-                                )
                             }
+                        } else {
+                            // Пустое место вместо кнопки, чтобы верстка не прыгала (опционально)
+                            Spacer(modifier = Modifier.size(48.dp))
                         }
                     }
                     if (habit.isGroupHabit() && showGroupProgress && habitWithCompletion.participantsProgress.isNotEmpty()) {
@@ -274,7 +302,11 @@ fun EnhancedHabitItem(
                             haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                             showMenu = true
                         }) {
-                            Icon(imageVector = Icons.Default.MoreVert, contentDescription = stringResource(id = R.string.cd_more))
+                            Icon(
+                                imageVector = Icons.Default.MoreVert, 
+                                contentDescription = stringResource(id = R.string.cd_more),
+                                tint = if (isRestDay) MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f) else LocalContentColor.current
+                            )
                         }
                     }
                     GlassmorphicDropdownMenu(
@@ -284,40 +316,68 @@ fun EnhancedHabitItem(
                         offset = IntOffset(-48, 48),
                         isDarkTheme = isDarkTheme
                     ) {
-                        val doneLabel = if (habitWithCompletion.isCompletedToday) {
-                            stringResource(id = R.string.habits_unmark_complete)
-                        } else {
-                            stringResource(id = R.string.menu_done)
-                        }
-                        val doneIcon = if (habitWithCompletion.isCompletedToday) {
-                            Icons.Default.Close
-                        } else {
-                            Icons.Default.Check
-                        }
-                        val doneTint by animateColorAsState(
-                            targetValue = if (habitWithCompletion.isCompletedToday) {
-                                MaterialTheme.colorScheme.onSurfaceVariant
+                        // Пункт "Выполнено" показываем только если не выходной
+                        if (!isRestDay) {
+                            val doneLabel = if (habitWithCompletion.isCompletedToday) {
+                                stringResource(id = R.string.habits_unmark_complete)
                             } else {
-                                MaterialTheme.colorScheme.primary
-                            },
-                            label = "menuDoneTint"
-                        )
-                        GlassmorphicDropdownMenuItem(
-                            text = {
-                                Crossfade(targetState = doneLabel, label = "menuDoneText") { labelText ->
-                                    Text(text = labelText)
-                                }
-                            },
-                            leadingIcon = {
-                                Crossfade(targetState = doneIcon, label = "menuDoneIcon") { icon ->
-                                    Icon(imageVector = icon, contentDescription = null, tint = doneTint)
-                                }
-                            },
-                            onClick = {
-                                showMenu = false
-                                onToggleCompletion()
+                                stringResource(id = R.string.menu_done)
                             }
-                        )
+                            val doneIcon = if (habitWithCompletion.isCompletedToday) {
+                                Icons.Default.Close
+                            } else {
+                                Icons.Default.Check
+                            }
+                            val doneTint by animateColorAsState(
+                                targetValue = if (habitWithCompletion.isCompletedToday) {
+                                    MaterialTheme.colorScheme.onSurfaceVariant
+                                } else {
+                                    MaterialTheme.colorScheme.primary
+                                },
+                                label = "menuDoneTint"
+                            )
+                            GlassmorphicDropdownMenuItem(
+                                text = {
+                                    Crossfade(targetState = doneLabel, label = "menuDoneText") { labelText ->
+                                        Text(text = labelText)
+                                    }
+                                },
+                                leadingIcon = {
+                                    Crossfade(targetState = doneIcon, label = "menuDoneIcon") { icon ->
+                                        Icon(imageVector = icon, contentDescription = null, tint = doneTint)
+                                    }
+                                },
+                                onClick = {
+                                    showMenu = false
+                                    onToggleCompletion()
+                                }
+                            )
+                        }
+                        
+                        // Пункт "Сделать выходной" / "Возобновить"
+                        // Скрываем для выполненных привычек и будущих дней
+                        // Показываем только если: уже выходной (чтобы можно было снять) ИЛИ (не выполнено И не будущий день)
+                        val showRestDayOption = isRestDay || (!isDone && !isFutureDate)
+                        
+                        if (showRestDayOption) {
+                            val restDayLabel = if (isRestDay) {
+                                stringResource(id = R.string.menu_resume)
+                            } else {
+                                stringResource(id = R.string.menu_rest_day)
+                            }
+                            
+                            GlassmorphicDropdownMenuItem(
+                                text = { Text(text = restDayLabel) },
+                                leadingIcon = { 
+                                    Icon(imageVector = Icons.Default.Edit, contentDescription = null, tint = Color.Transparent)
+                                },
+                                onClick = {
+                                    showMenu = false
+                                    onToggleRestDay()
+                                }
+                            )
+                        }
+
                         GlassmorphicDropdownMenuItem(
                             text = { Text(text = stringResource(id = R.string.edit)) },
                             leadingIcon = { Icon(imageVector = Icons.Default.Edit, contentDescription = null) },

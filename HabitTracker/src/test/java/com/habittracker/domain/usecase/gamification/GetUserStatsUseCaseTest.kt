@@ -143,6 +143,7 @@ class GetUserStatsUseCaseTest {
                 override suspend fun getCompletionRateForHabit(habitId: String, userId: String, startDate: LocalDate, endDate: LocalDate): Float = 0f
                 override suspend fun markHabitCompleted(habitId: String, userId: String, date: LocalDate, note: String?) {}
                 override suspend fun markHabitIncomplete(habitId: String, userId: String, date: LocalDate) {}
+                override suspend fun setRestDay(habitId: String, userId: String, date: LocalDate, isRestDay: Boolean) {}
             },
             challengeRepository = object : ChallengeRepository {
                 override suspend fun insertChallenge(challenge: com.habittracker.domain.model.Challenge) {}

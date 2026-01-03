@@ -21,6 +21,9 @@ interface HabitEntryDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertEntries(entries: List<HabitEntryEntity>)
     
+    @Insert(onConflict = OnConflictStrategy.IGNORE)
+    suspend fun insertEntriesIfNotExists(entries: List<HabitEntryEntity>)
+    
     @Update
     suspend fun updateEntry(entry: HabitEntryEntity)
     

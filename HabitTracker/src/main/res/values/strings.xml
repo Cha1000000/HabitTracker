@@ -31,6 +31,8 @@
     <string name="edit_challenge_title_format">Изменить %1$s</string>
     <string name="edit_challenge_title_fallback">Изменить челлендж</string>
     <string name="menu_done">Выполнено</string>
+    <string name="menu_rest_day">Сделать выходной</string>
+    <string name="menu_resume">Возобновить</string>
     <string name="back">Назад</string>
     <string name="clear">Очистить</string>
     <string name="done">Готово</string>
@@ -340,6 +342,7 @@
     <string name="error_declining_request">Ошибка отклонения запроса</string>
     <string name="error_removing_friend">Ошибка удаления друга</string>
     <string name="error_canceling_request">Ошибка отмены запроса</string>
+    <string name="error_generic">Произошла ошибка</string>
     
     <!-- Social Status -->
     <string name="online">В сети</string>

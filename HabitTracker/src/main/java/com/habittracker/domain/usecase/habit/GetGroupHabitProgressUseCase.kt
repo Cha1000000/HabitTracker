@@ -117,7 +117,7 @@ class GetGroupHabitProgressUseCase @Inject constructor(
         val completedEntries = userEntries.filter { it.completed }
 
         val completedToday = userEntries.any { it.date == targetDate && it.completed }
-        val currentStreak = calculateCurrentStreak(completedEntries, targetDate)
+        val currentStreak = calculateCurrentStreak(userEntries, targetDate)
         val totalCompletions = completedEntries.size
         
         val completionRate = if (userEntries.isNotEmpty()) {
@@ -136,16 +136,22 @@ class GetGroupHabitProgressUseCase @Inject constructor(
     /**
      * Вычисляет текущую серию выполнений для участника
      */
-    private fun calculateCurrentStreak(completedEntries: List<HabitEntry>, today: LocalDate): Int {
-        val sortedEntries = completedEntries.sortedByDescending { it.date }
+    private fun calculateCurrentStreak(entries: List<HabitEntry>, today: LocalDate): Int {
+        val sortedEntries = entries.sortedByDescending { it.date }
         var streak = 0
         var currentDate = today
 
         for (entry in sortedEntries) {
             if (entry.date == currentDate) {
-                streak++
-                currentDate = currentDate.minus(1, DateTimeUnit.DAY)
-            } else {
+                if (entry.completed) {
+                    streak++
+                    currentDate = currentDate.minus(1, DateTimeUnit.DAY)
+                } else if (entry.isRestDay) {
+                    currentDate = currentDate.minus(1, DateTimeUnit.DAY)
+                } else {
+                    break
+                }
+            } else if (entry.date < currentDate) {
                 break
             }
         }

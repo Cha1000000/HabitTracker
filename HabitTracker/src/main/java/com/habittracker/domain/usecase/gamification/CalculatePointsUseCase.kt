@@ -100,9 +100,15 @@ class CalculatePointsUseCase @Inject constructor() {
         var currentDate = today
 
         for (entry in habitEntries) {
-            if (entry.date == currentDate && entry.completed) {
-                streak++
-                currentDate = currentDate.minus(1, DateTimeUnit.DAY)
+            if (entry.date == currentDate) {
+                if (entry.completed) {
+                    streak++
+                    currentDate = currentDate.minus(1, DateTimeUnit.DAY)
+                } else if (entry.isRestDay) {
+                    currentDate = currentDate.minus(1, DateTimeUnit.DAY)
+                } else {
+                    break
+                }
             } else if (entry.date < currentDate) {
                 break
             }

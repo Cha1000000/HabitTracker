@@ -175,6 +175,9 @@ class GetChallengeResultsUseCase @Inject constructor(
             if (entry?.completed == true) {
                 streak++
                 currentDate = currentDate.minus(1, DateTimeUnit.DAY)
+            } else if (entry?.isRestDay == true) {
+                // Skip rest day
+                currentDate = currentDate.minus(1, DateTimeUnit.DAY)
             } else {
                 break
             }

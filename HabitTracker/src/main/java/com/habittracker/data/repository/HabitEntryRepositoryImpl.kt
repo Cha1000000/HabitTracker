@@ -114,22 +114,9 @@ class HabitEntryRepositoryImpl @Inject constructor(
                     } ?: emptyList()
                     scope.launch {
                         try {
-                            val filtered = mutableListOf<HabitEntry>()
-                            for (entry in list) {
-                                val entityId = HabitEntryIds.make(entry.habitId, entry.userId, entry.date)
-                                val hasPending = try {
-                                    syncManager.hasPendingOperations("habit_entry", entityId)
-                                } catch (e: Exception) {
-                                    Log.w("HabitEntryRepo", "hasPendingOperations failed (habit_entry id=$entityId): ${e.message}")
-                                    false
-                                }
-                                if (!hasPending) filtered.add(entry)
-                            }
-                            if (filtered.isNotEmpty()) {
-                                habitEntryDao.insertEntries(filtered.map { it.habitEntryToEntity() })
-                            }
+                            mergeFirebaseEntries(list)
                         } catch (e: Exception) {
-                            Log.w("HabitEntryRepo", "Insert entries failed: ${e.message}", e)
+                            Log.w("HabitEntryRepo", "Merge entries failed: ${e.message}", e)
                         }
                     }
                 }
@@ -167,22 +154,9 @@ class HabitEntryRepositoryImpl @Inject constructor(
                     } ?: emptyList()
                     scope.launch {
                         try {
-                            val filtered = mutableListOf<HabitEntry>()
-                            for (entry in list) {
-                                val entityId = HabitEntryIds.make(entry.habitId, entry.userId, entry.date)
-                                val hasPending = try {
-                                    syncManager.hasPendingOperations("habit_entry", entityId)
-                                } catch (e: Exception) {
-                                    Log.w("HabitEntryRepo", "hasPendingOperations failed (habit_entry id=$entityId): ${e.message}")
-                                    false
-                                }
-                                if (!hasPending) filtered.add(entry)
-                            }
-                            if (filtered.isNotEmpty()) {
-                                habitEntryDao.insertEntries(filtered.map { it.habitEntryToEntity() })
-                            }
+                            mergeFirebaseEntries(list)
                         } catch (e: Exception) {
-                            Log.w("HabitEntryRepo", "Insert entries failed: ${e.message}", e)
+                            Log.w("HabitEntryRepo", "Merge entries failed: ${e.message}", e)
                         }
                     }
                 }
@@ -221,22 +195,9 @@ class HabitEntryRepositoryImpl @Inject constructor(
                     } ?: emptyList()
                     scope.launch {
                         try {
-                            val filtered = mutableListOf<HabitEntry>()
-                            for (entry in list) {
-                                val entityId = HabitEntryIds.make(entry.habitId, entry.userId, entry.date)
-                                val hasPending = try {
-                                    syncManager.hasPendingOperations("habit_entry", entityId)
-                                } catch (e: Exception) {
-                                    Log.w("HabitEntryRepo", "hasPendingOperations failed (habit_entry id=$entityId): ${e.message}")
-                                    false
-                                }
-                                if (!hasPending) filtered.add(entry)
-                            }
-                            if (filtered.isNotEmpty()) {
-                                habitEntryDao.insertEntries(filtered.map { it.habitEntryToEntity() })
-                            }
+                            mergeFirebaseEntries(list)
                         } catch (e: Exception) {
-                            Log.w("HabitEntryRepo", "Insert entries failed: ${e.message}", e)
+                            Log.w("HabitEntryRepo", "Merge entries failed: ${e.message}", e)
                         }
                     }
                 }
@@ -332,6 +293,86 @@ class HabitEntryRepositoryImpl @Inject constructor(
                 updatedAt = today
             )
             insertEntry(newEntry)
+        }
+    }
+
+    override suspend fun setRestDay(habitId: String, userId: String, date: LocalDate, isRestDay: Boolean) {
+        val existingEntry = getEntry(habitId, userId, date)
+        val now = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault())
+        val today = now.date
+
+        if (existingEntry != null) {
+            // Если включаем выходной, то сбрасываем выполнение
+            val newCompleted = if (isRestDay) false else existingEntry.completed
+            val newCompletedAt = if (isRestDay) null else existingEntry.completedAt
+            
+            val updatedEntry = existingEntry.copy(
+                isRestDay = isRestDay,
+                completed = newCompleted,
+                completedAt = newCompletedAt,
+                updatedAt = today
+            )
+            updateEntry(updatedEntry)
+        } else {
+            val newEntry = HabitEntry(
+                habitId = habitId,
+                userId = userId,
+                date = date,
+                completed = false,
+                isRestDay = isRestDay,
+                createdAt = today,
+                updatedAt = today
+            )
+            insertEntry(newEntry)
+        }
+    }
+    
+    /**
+     * Умное слияние данных из Firebase с локальными данными.
+     * Не перезаписывает локальные данные, если:
+     * 1. Есть pending операции синхронизации для этой записи
+     * 2. Локальные данные новее (по updatedAt)
+     */
+    private suspend fun mergeFirebaseEntries(firebaseEntries: List<HabitEntry>) {
+        if (firebaseEntries.isEmpty()) return
+        
+        val entriesToInsert = mutableListOf<HabitEntry>()
+        
+        for (entry in firebaseEntries) {
+            val entityId = HabitEntryIds.make(entry.habitId, entry.userId, entry.date)
+            
+            // Проверяем, есть ли pending операции
+            val hasPending = try {
+                syncManager.hasPendingOperations("habit_entry", entityId)
+            } catch (e: Exception) {
+                Log.w("HabitEntryRepo", "hasPendingOperations failed: ${e.message}")
+                false
+            }
+            
+            if (hasPending) {
+                // Есть pending операции - не перезаписываем локальные данные
+                Log.d("HabitEntryRepo", "Skipping Firebase entry (pending sync): $entityId")
+                continue
+            }
+            
+            // Проверяем локальную запись
+            val localEntry = habitEntryDao.getEntry(entry.habitId, entry.userId, entry.date)
+            
+            if (localEntry == null) {
+                // Локальной записи нет - вставляем из Firebase
+                entriesToInsert.add(entry)
+            } else {
+                // Сравниваем updatedAt - Firebase данные применяем только если они новее
+                if (entry.updatedAt > localEntry.updatedAt) {
+                    entriesToInsert.add(entry)
+                } else {
+                    Log.d("HabitEntryRepo", "Skipping Firebase entry (local is newer): $entityId, local=${localEntry.updatedAt}, firebase=${entry.updatedAt}")
+                }
+            }
+        }
+        
+        if (entriesToInsert.isNotEmpty()) {
+            habitEntryDao.insertEntries(entriesToInsert.map { it.habitEntryToEntity() })
         }
     }
 }

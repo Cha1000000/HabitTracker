@@ -15,6 +15,7 @@ data class HabitEntry(
     val completedAt: LocalDateTime? = null, // точное время выполнения
     val value: Int = 1, // сколько раз выполнил (для привычек с targetValue > 1)
     val note: String? = "",
+    val isRestDay: Boolean = false,
     val createdAt: LocalDate = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault()).date,
     val updatedAt: LocalDate = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault()).date
 )
@@ -100,6 +101,9 @@ private fun calculateCurrentStreak(entries: List<HabitEntry>): Int {
     for (entry in sortedEntries) {
         if (entry.completed) {
             streak++
+        } else if (entry.isRestDay) {
+            // Выходной день сохраняет серию, но не увеличивает её
+            continue
         } else {
             break
         }
@@ -119,6 +123,8 @@ private fun calculateLongestStreak(entries: List<HabitEntry>): Int {
         if (entry.completed) {
             currentStreak++
             longestStreak = maxOf(longestStreak, currentStreak)
+        } else if (entry.isRestDay) {
+            // Выходной день не прерывает серию, но и не увеличивает её
         } else {
             currentStreak = 0
         }

@@ -40,4 +40,6 @@ interface HabitEntryRepository {
     suspend fun markHabitCompleted(habitId: String, userId: String, date: LocalDate, note: String? = null)
 
     suspend fun markHabitIncomplete(habitId: String, userId: String, date: LocalDate)
+
+    suspend fun setRestDay(habitId: String, userId: String, date: LocalDate, isRestDay: Boolean)
 }

@@ -84,6 +84,7 @@ object SyncPayloads {
             "completedAt" to entry.completedAt?.toString(),
             "value" to entry.value,
             "note" to entry.note,
+            "isRestDay" to entry.isRestDay,
             "createdAt" to entry.createdAt.toString(),
             "updatedAt" to entry.updatedAt.toString()
         )

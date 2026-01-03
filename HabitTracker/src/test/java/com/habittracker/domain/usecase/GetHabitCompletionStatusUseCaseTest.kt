@@ -56,8 +56,11 @@ class GetHabitCompletionStatusUseCaseTest {
         habitEntryRepository = FakeHabitEntryRepository()
         getHabitCompletionStatusUseCase = GetHabitCompletionStatusUseCase(firestoreRepository, habitEntryRepository)
     }
+
+    @Test
     fun `invoke should return true when habit is completed in Firestore`() = runTest {
         // Arrange
+        habitEntryRepository.entryToReturn = null
         firestoreRepository.entryToReturn = completedEntry
 
         // Act
@@ -66,11 +69,13 @@ class GetHabitCompletionStatusUseCaseTest {
         // Assert
         assertTrue(result)
         assertTrue(firestoreRepository.getHabitEntryCalled)
+        assertTrue(habitEntryRepository.getEntryCalled)
     }
 
     @Test
     fun `invoke should return false when habit is not completed in Firestore`() = runTest {
         // Arrange
+        habitEntryRepository.entryToReturn = null
         firestoreRepository.entryToReturn = incompleteEntry
 
         // Act
@@ -79,6 +84,7 @@ class GetHabitCompletionStatusUseCaseTest {
         // Assert
         assertFalse(result)
         assertTrue(firestoreRepository.getHabitEntryCalled)
+        assertTrue(habitEntryRepository.getEntryCalled)
     }
 
     @Test
@@ -92,7 +98,8 @@ class GetHabitCompletionStatusUseCaseTest {
 
         // Assert
         assertTrue(result)
-        assertTrue(firestoreRepository.getHabitEntryCalled)
+        // Локальные данные приоритетны, поэтому при наличии локальной записи Firestore не вызывается
+        assertFalse(firestoreRepository.getHabitEntryCalled)
         assertTrue(habitEntryRepository.getEntryCalled)
     }
 
@@ -123,8 +130,8 @@ class GetHabitCompletionStatusUseCaseTest {
         // Assert
         assertFalse(result)
         assertTrue(firestoreRepository.getHabitEntryCalled)
-        // Локальный репозиторий НЕ вызывается, если Firestore возвращает null (а не исключение)
-        assertFalse(habitEntryRepository.getEntryCalled)
+        // Теперь локальный репозиторий вызывается первым, независимо от результата Firestore
+        assertTrue(habitEntryRepository.getEntryCalled)
     }
 
     // Fake implementations for testing
@@ -170,5 +177,6 @@ class GetHabitCompletionStatusUseCaseTest {
         override suspend fun getCompletionRateForHabit(habitId: String, userId: String, startDate: LocalDate, endDate: LocalDate) = throw NotImplementedError()
         override suspend fun markHabitCompleted(habitId: String, userId: String, date: LocalDate, note: String?) = throw NotImplementedError()
         override suspend fun markHabitIncomplete(habitId: String, userId: String, date: LocalDate) = throw NotImplementedError()
+        override suspend fun setRestDay(habitId: String, userId: String, date: LocalDate, isRestDay: Boolean) = throw NotImplementedError()
     }
 }

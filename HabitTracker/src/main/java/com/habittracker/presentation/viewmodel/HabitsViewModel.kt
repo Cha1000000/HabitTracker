@@ -58,6 +58,7 @@ import javax.inject.Inject
 data class HabitWithCompletion(
     val habit: Habit,
     val isCompletedToday: Boolean = false,
+    val isRestDayToday: Boolean = false,
     val isLoading: Boolean = false,
     val participantsProgress: List<ParticipantProgress> = emptyList() // Прогресс участников для групповых привычек
 )
@@ -76,6 +77,7 @@ class HabitsViewModel @Inject constructor(
     private val joinHabitByCodeUseCase: JoinHabitByCodeUseCase,
     private val getWeekCompletionDataUseCase: GetWeekCompletionDataUseCase,
     private val getGroupHabitProgressUseCase: GetGroupHabitProgressUseCase,
+    private val setHabitRestDayUseCase: com.habittracker.domain.usecase.SetHabitRestDayUseCase,
     private val userPreferencesRepository: UserPreferencesRepository,
     application: Application
 ) : AndroidViewModel(application) {
@@ -400,14 +402,13 @@ class HabitsViewModel @Inject constructor(
                                     }
                                 }
 
-                                val isCompleted = try {
-                                    getHabitCompletionStatusUseCase(habit.id, userId, date)
-                                } catch (e: CancellationException) {
-                                    throw e
+                                val habitEntry = try {
+                                    getHabitCompletionStatusUseCase.getEntry(habit.id, userId, date)
                                 } catch (e: Exception) {
-                                    Log.d(TAG, "getHabitCompletionStatusUseCase failed for habit=${habit.id}: ${e.message}")
-                                    false
+                                    null
                                 }
+                                val isCompleted = habitEntry?.completed ?: false
+                                val isRestDay = habitEntry?.isRestDay ?: false
                                 
                                 // Загружаем прогресс участников для групповых привычек
                                 val participantsProgress = if (habit.isGroupHabit()) {
@@ -436,6 +437,7 @@ class HabitsViewModel @Inject constructor(
                                 HabitWithCompletion(
                                     habit = habit,
                                     isCompletedToday = isCompleted,
+                                    isRestDayToday = isRestDay,
                                     isLoading = false,
                                     participantsProgress = participantsProgress
                                 )
@@ -685,6 +687,50 @@ class HabitsViewModel @Inject constructor(
         }
     }
     
+    /**
+     * Переключает режим "выходной" для привычки
+     */
+    fun toggleRestDay(habitId: String) {
+        viewModelScope.launch {
+            try {
+                val selectedDate = _uiState.value.selectedDate ?: today
+                
+                // Находим текущее состояние
+                val currentState = _uiState.value
+                val itemIndex = currentState.habitsWithCompletion.indexOfFirst { it.habit.id == habitId }
+                
+                if (itemIndex != -1) {
+                    val item = currentState.habitsWithCompletion[itemIndex]
+                    val newIsRestDay = !item.isRestDayToday
+                    
+                    // Оптимистичное обновление UI
+                    val newCompleted = if (newIsRestDay) false else item.isCompletedToday
+                    
+                    val updatedItem = item.copy(
+                        isRestDayToday = newIsRestDay,
+                        isCompletedToday = newCompleted
+                    )
+                    
+                    val updatedList = currentState.habitsWithCompletion.toMutableList()
+                    updatedList[itemIndex] = updatedItem
+                    
+                    _uiState.value = currentState.copy(habitsWithCompletion = updatedList)
+                    
+                    // Вызов use case
+                    setHabitRestDayUseCase(habitId, selectedDate, newIsRestDay)
+                    
+                    // Инвалидируем кеш статистики за неделю
+                    val weekStart = getStartOfWeek(selectedDate)
+                    loadWeekCompletionData(currentUserId, weekStart, forceReload = true)
+                }
+            } catch (e: Exception) {
+                Log.e(TAG, "Error toggling rest day", e)
+                // В идеале здесь нужен rollback UI, если запрос упал, но для простоты пока оставим лог
+                _uiState.value = _uiState.value.copy(error = getApplication<Application>().getString(R.string.error_generic))
+            }
+        }
+    }
+
     /**
      * Начинает удаление привычки с оптимистичным удалением из UI, но без фактического вызова use case.
      * Используется совместно со Snackbar (UNDO). Для завершения вызовите [confirmPendingDeletion] или [cancelPendingDeletion].

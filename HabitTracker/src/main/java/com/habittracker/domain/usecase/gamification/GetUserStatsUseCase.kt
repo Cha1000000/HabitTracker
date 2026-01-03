@@ -325,14 +325,41 @@ class GetUserStatsUseCase @Inject constructor(
         var currentDate = today
 
         for (entry in habitEntries) {
-            if (entry.date == currentDate && entry.completed) {
-                streak++
-                currentDate = currentDate.minus(1, DateTimeUnit.DAY)
+            if (entry.date == currentDate) {
+                if (entry.completed) {
+                    streak++
+                    currentDate = currentDate.minus(1, DateTimeUnit.DAY)
+                } else if (entry.isRestDay) {
+                    // Skip rest day, continue checking previous day, do not increment streak
+                    currentDate = currentDate.minus(1, DateTimeUnit.DAY)
+                } else {
+                    // Not completed and not rest day - streak broken if it's today (unless we allow today to be incomplete yet)
+                    // Logic typically: if today is not completed, streak might still be valid from yesterday.
+                    // But this function iterates back.
+                    // If entry.date == currentDate:
+                    // If it is NOT completed and NOT rest day:
+                    // If currentDate is TODAY, streak doesn't necessarily break (user can still do it).
+                    // But if this is for "current streak including today if done", usually we count from yesterday if today is not done.
+                    
+                    // Let's look at existing logic:
+                    // if (entry.date == currentDate && entry.completed) { ... } else if (entry.date < currentDate) { break }
+                    
+                    // Revised logic to handle Rest Day:
+                    break
+                }
             } else if (entry.date < currentDate) {
-                break
+                 // Gap in dates?
+                 // Original logic:
+                 // if (entry.date == currentDate && entry.completed) { ... } else if (entry.date < currentDate) { break }
+                 // This implies if we miss a date in iteration (entry.date < currentDate), it breaks.
+                 break
             }
         }
-
+        
+        // Wait, the original logic was simple iteration.
+        // Let's stick to the pattern in HabitEntry.kt which I updated.
+        // But here we filter by habitId first.
+        
         return streak
     }
 
