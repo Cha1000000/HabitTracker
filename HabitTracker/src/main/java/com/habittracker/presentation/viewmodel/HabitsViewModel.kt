@@ -35,8 +35,8 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
-import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.firstOrNull
+import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.map
@@ -404,7 +404,7 @@ class HabitsViewModel @Inject constructor(
 
                                 val habitEntry = try {
                                     getHabitCompletionStatusUseCase.getEntry(habit.id, userId, date)
-                                } catch (e: Exception) {
+                                } catch (_: Exception) {
                                     null
                                 }
                                 val isCompleted = habitEntry?.completed ?: false
@@ -446,14 +446,13 @@ class HabitsViewModel @Inject constructor(
                     }
                     
                     // Apply sorting based on preferences
-                    val sortedHabits = if (preferences.sortCompletedHabitsToBottom) {
-                        updatedHabits.sortedWith(
-                            compareBy<HabitWithCompletion> { it.isCompletedToday }
-                                .thenBy { it.habit.id }
-                        )
-                    } else {
-                        updatedHabits
-                    }
+                    val sortedHabits = updatedHabits.sortedWith(
+                        // Сначала сортируем по времени суток
+                        compareBy<HabitWithCompletion> { it.habit.timeOfDay.ordinal }
+                            // Затем по статусу выполнения (если включена настройка)
+                            .thenBy { if (preferences.sortCompletedHabitsToBottom) it.isCompletedToday else false }
+                            .thenBy { it.habit.id }
+                    )
                     
                     // 3) Вычисляем границы дат
                     val oldestDate = habits.minOfOrNull { it.createdAt }

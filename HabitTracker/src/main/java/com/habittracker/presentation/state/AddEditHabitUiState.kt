@@ -8,6 +8,7 @@ import com.habittracker.presentation.utils.GroupHabitValidationResult
 import kotlinx.datetime.DayOfWeek
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.LocalTime
+import com.habittracker.domain.model.HabitTimeOfDay
 
 data class AddEditHabitUiState(
     // Основные поля
@@ -20,6 +21,9 @@ data class AddEditHabitUiState(
 
     // Настройки частоты
     val frequency: HabitFrequency = HabitFrequency.DAILY,
+    
+    // Время выполнения
+    val timeOfDay: HabitTimeOfDay = HabitTimeOfDay.ANY_TIME,
     
     // Даты начала и окончания привычки
     val startDate: LocalDate? = null, // Дата начала (null = с сегодня)

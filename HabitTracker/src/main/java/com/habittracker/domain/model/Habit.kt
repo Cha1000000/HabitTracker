@@ -35,8 +35,16 @@ data class Habit(
     val startDate: LocalDate? = null, // дата начала привычки (null = с момента создания)
     val endDate: LocalDate? = null, // дата окончания привычки (null = бессрочно)
     val followUpReminderEnabled: Boolean = true, // включено ли повторное напоминание
-    val followUpReminderDuration: LocalTime = LocalTime(2, 0) // через сколько времени напомнить (по умолчанию 2 часа)
+    val followUpReminderDuration: LocalTime = LocalTime(2, 0), // через сколько времени напомнить (по умолчанию 2 часа)
+    val timeOfDay: HabitTimeOfDay = HabitTimeOfDay.ANY_TIME // время выполнения привычки
 )
+
+enum class HabitTimeOfDay {
+    MORNING,   // Утро (05:00 - 11:59)
+    AFTERNOON, // День (12:00 - 17:59)
+    EVENING,   // Вечер (18:00 - End of day)
+    ANY_TIME   // Любое время
+}
 
 enum class HabitType {
     PERSONAL, // личная привычка
@@ -55,21 +63,8 @@ enum class HabitFrequency {
 // Extension functions для работы с привычками
 fun Habit.isGroupHabit(): Boolean = type == HabitType.GROUP || participants.size > 1
 
-fun Habit.getParticipantsCount(): Int = if (isGroupHabit()) participants.size else 1
-
-fun Habit.canUserEdit(userId: String): Boolean = createdBy == userId
-
 fun Habit.isUserParticipant(userId: String): Boolean =
     createdBy == userId || participants.contains(userId)
-
-fun Habit.getFrequencyText(): String = when (frequency) {
-    HabitFrequency.DAILY -> "Каждый день"
-    HabitFrequency.WEEKLY -> "Раз в неделю"
-    HabitFrequency.TWICE_A_WEEK -> "Два раза в неделю"
-    HabitFrequency.WEEKDAYS -> "По будням"
-    HabitFrequency.WEEKENDS -> "По выходным"
-    HabitFrequency.CUSTOM -> "Выборочно"
-}
 
 /**
  * Проверяет, активна ли привычка в указанный день недели
@@ -102,46 +97,8 @@ fun Habit.isActiveOnDayOfWeek(dayOfWeek: DayOfWeek): Boolean {
     }
 }
 
-fun Habit.getReminderText(): String {
-    return if (reminderEnabled && reminderTime != null) {
-        "Напоминание в ${reminderTime}"
-    } else {
-        "Без напоминаний"
-    }
-}
-
-fun Habit.getTargetText(): String {
-    return if (targetValue == 1) {
-        "Выполнить"
-    } else {
-        "$targetValue $unit"
-    }
-}
-
 fun Habit.canAddParticipants(): Boolean = 
     isGroupHabit() && participants.size < maxParticipants
-
-fun Habit.hasInviteCode(): Boolean = !inviteCode.isNullOrBlank()
-
-fun Habit.canUserInvite(userId: String): Boolean = 
-    isGroupHabit() && createdBy == userId && canAddParticipants()
-
-fun Habit.canUserRemoveParticipant(userId: String, targetUserId: String): Boolean =
-    isGroupHabit() && createdBy == userId && targetUserId != createdBy
-
-fun Habit.getRemainingSlots(): Int = 
-    if (isGroupHabit()) maxParticipants - participants.size else 0
-
-fun Habit.getTypeText(): String = when (type) {
-    HabitType.PERSONAL -> "Личная"
-    HabitType.GROUP -> "Групповая"
-}
-
-fun Habit.getParticipantsText(): String = when {
-    !isGroupHabit() -> "Только вы"
-    participants.isEmpty() -> "Только создатель"
-    else -> "${participants.size + 1} из $maxParticipants участников"
-}
 
 // Extension функции для работы с датами привычек
 fun Habit.isActiveOnDate(date: LocalDate, habitCreatedDate: LocalDate? = null): Boolean {
@@ -167,17 +124,3 @@ fun Habit.isActiveOnDate(date: LocalDate, habitCreatedDate: LocalDate? = null): 
     return isActive
 }
 
-fun Habit.hasStarted(today: LocalDate): Boolean {
-    val effectiveStartDate = startDate ?: return true
-    return today >= effectiveStartDate
-}
-
-fun Habit.hasEnded(today: LocalDate): Boolean {
-    val effectiveEndDate = endDate ?: return false
-    return today > effectiveEndDate
-}
-
-fun Habit.isEditableDateRange(hasBeenCompleted: Boolean): Boolean {
-    // Дату начала можно редактировать только если привычка ещё не была выполнена
-    return !hasBeenCompleted
-}

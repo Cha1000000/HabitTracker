@@ -24,6 +24,7 @@ import kotlinx.datetime.LocalDate
 import kotlinx.datetime.LocalTime
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toLocalDateTime
+import com.habittracker.domain.model.HabitTimeOfDay
 import javax.inject.Inject
 
 /**
@@ -118,6 +119,11 @@ class PreviewAddEditHabitViewModel @Inject constructor(
             }
             state.copy(frequency = frequency, reminderDaysInput = presetDays, hasUnsavedChanges = true)
         }
+        updateValidationState()
+    }
+
+    override fun onTimeOfDayChange(timeOfDay: HabitTimeOfDay) {
+        _uiState.update { it.copy(timeOfDay = timeOfDay, hasUnsavedChanges = true) }
         updateValidationState()
     }
 
@@ -364,7 +370,8 @@ class PreviewAddEditHabitViewModel @Inject constructor(
             isPublic = false, // простое значение по умолчанию
             isActive = true,
             createdAt = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault()).date,
-            updatedAt = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault()).date
+            updatedAt = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault()).date,
+            timeOfDay = currentState.timeOfDay
         )
     }
 

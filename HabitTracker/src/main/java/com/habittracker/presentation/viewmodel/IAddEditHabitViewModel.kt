@@ -8,6 +8,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.LocalTime
 import kotlinx.datetime.DayOfWeek
+import com.habittracker.domain.model.HabitTimeOfDay
 
 interface IAddEditHabitViewModel {
     val uiState: StateFlow<AddEditHabitUiState>
@@ -16,6 +17,7 @@ interface IAddEditHabitViewModel {
     fun onDescriptionChange(description: String)
     fun onTypeChange(type: HabitType)
     fun onFrequencyChange(frequency: HabitFrequency)
+    fun onTimeOfDayChange(timeOfDay: HabitTimeOfDay)
     fun onColorChange(color: Int)
     fun onIconChange(icon: String)
     fun onReminderTimeChange(time: LocalTime?)

@@ -11,10 +11,8 @@ import com.habittracker.domain.model.Habit
 import com.habittracker.domain.model.HabitEntry
 import com.habittracker.domain.model.HabitInvitation
 import com.habittracker.domain.model.HabitParticipantSettings
-import com.habittracker.domain.model.HabitType
 import com.habittracker.domain.model.User
 import kotlinx.datetime.Instant
-import kotlinx.datetime.LocalDate
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toLocalDateTime
 
@@ -71,6 +69,7 @@ object SyncPayloads {
             habit.deletedAtMillis?.let { put("deletedAtMillis", it) }
             habit.startDate?.let { put("startDate", it.toString()) }
             habit.endDate?.let { put("endDate", it.toString()) }
+            put("timeOfDay", habit.timeOfDay.name)
         }
     )
 
@@ -88,26 +87,6 @@ object SyncPayloads {
             "createdAt" to entry.createdAt.toString(),
             "updatedAt" to entry.updatedAt.toString()
         )
-    )
-
-    // Частичное обновление Habit (используется SetOptions.merge в SyncManager)
-    fun habitPartialUpdateToJson(
-        participants: List<String>? = null,
-        type: HabitType? = null,
-        createdBy: String? = null,
-        isActive: Boolean? = null,
-        updatedAt: LocalDate
-    ): String = gson.toJson(
-        buildMap<String, Any?> {
-            put("updatedAt", updatedAt.toString())
-            if (participants != null) put("participants", participants)
-            if (type != null) put("type", type.name)
-            if (createdBy != null) put("createdBy", createdBy)
-            if (isActive != null) {
-                // isActive-only стандарт
-                put("isActive", isActive)
-            }
-        }
     )
 
     // Friend request payload

@@ -25,6 +25,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Bedtime
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.DateRange
@@ -33,8 +34,11 @@ import androidx.compose.material.icons.filled.Group
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.PersonAdd
+import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material.icons.filled.Timeline
 import androidx.compose.material.icons.filled.Title
+import androidx.compose.material.icons.filled.WbSunny
+import androidx.compose.material.icons.filled.WbTwilight
 import androidx.compose.material3.AssistChip
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -85,6 +89,7 @@ import androidx.navigation.NavController
 import androidx.navigation.compose.rememberNavController
 import com.habittracker.R
 import com.habittracker.domain.model.HabitFrequency
+import com.habittracker.domain.model.HabitTimeOfDay
 import com.habittracker.domain.model.HabitType
 import com.habittracker.presentation.state.AddEditHabitUiState
 import com.habittracker.presentation.ui.components.FieldValidationFeedback
@@ -458,6 +463,120 @@ private fun GroupSettings(
             }
         }
     }
+}
+
+@Composable
+private fun TimeOfDaySelector(
+    selectedTime: HabitTimeOfDay,
+    onTimeSelected: (HabitTimeOfDay) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val isDarkTheme = isSystemInDarkTheme()
+    
+    GlassmorphicCard(
+        modifier = modifier.fillMaxWidth(),
+        isDarkTheme = isDarkTheme,
+        cornerRadius = 16.dp,
+        glassAlpha = if (isDarkTheme) 0.15f else 0.85f,
+        borderAlpha = if (isDarkTheme) 0.3f else 0.15f,
+        elevation = 2.dp
+    ) {
+        Column(
+            modifier = Modifier.padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            GlassmorphicSectionHeader(
+                text = stringResource(R.string.habit_time_of_day_label),
+                isDarkTheme = isDarkTheme
+            )
+            
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    TimeOfDayChip(
+                        timeOfDay = HabitTimeOfDay.MORNING,
+                        isSelected = selectedTime == HabitTimeOfDay.MORNING,
+                        onSelect = onTimeSelected,
+                        modifier = Modifier.weight(1f)
+                    )
+                    TimeOfDayChip(
+                        timeOfDay = HabitTimeOfDay.AFTERNOON,
+                        isSelected = selectedTime == HabitTimeOfDay.AFTERNOON,
+                        onSelect = onTimeSelected,
+                        modifier = Modifier.weight(1f)
+                    )
+                }
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    TimeOfDayChip(
+                        timeOfDay = HabitTimeOfDay.EVENING,
+                        isSelected = selectedTime == HabitTimeOfDay.EVENING,
+                        onSelect = onTimeSelected,
+                        modifier = Modifier.weight(1f)
+                    )
+                    TimeOfDayChip(
+                        timeOfDay = HabitTimeOfDay.ANY_TIME,
+                        isSelected = selectedTime == HabitTimeOfDay.ANY_TIME,
+                        onSelect = onTimeSelected,
+                        modifier = Modifier.weight(1f)
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun TimeOfDayChip(
+    timeOfDay: HabitTimeOfDay,
+    isSelected: Boolean,
+    onSelect: (HabitTimeOfDay) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val isDarkTheme = isSystemInDarkTheme()
+    val label = when (timeOfDay) {
+        HabitTimeOfDay.MORNING -> stringResource(R.string.time_of_day_morning)
+        HabitTimeOfDay.AFTERNOON -> stringResource(R.string.time_of_day_afternoon)
+        HabitTimeOfDay.EVENING -> stringResource(R.string.time_of_day_evening)
+        HabitTimeOfDay.ANY_TIME -> stringResource(R.string.time_of_day_any)
+    }
+    
+    val icon = when (timeOfDay) {
+        HabitTimeOfDay.MORNING -> Icons.Default.WbTwilight
+        HabitTimeOfDay.AFTERNOON -> Icons.Default.WbSunny
+        HabitTimeOfDay.EVENING -> Icons.Default.Bedtime
+        HabitTimeOfDay.ANY_TIME -> Icons.Default.Schedule
+    }
+
+    FilterChip(
+        selected = isSelected,
+        onClick = { onSelect(timeOfDay) },
+        label = { 
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    text = label, 
+                    style = MaterialTheme.typography.bodyMedium,
+                    modifier = Modifier.weight(1f, fill = false),
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+            }
+        },
+        leadingIcon = {
+            Icon(
+                imageVector = icon,
+                contentDescription = null,
+                modifier = Modifier.size(18.dp)
+            )
+        },
+        modifier = modifier.height(40.dp),
+        colors = FilterChipDefaults.filterChipColors(
+            selectedContainerColor = if (isDarkTheme) 
+                MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.6f) else 
+                MaterialTheme.colorScheme.primaryContainer,
+            selectedLabelColor = MaterialTheme.colorScheme.onPrimaryContainer,
+            selectedLeadingIconColor = MaterialTheme.colorScheme.onPrimaryContainer
+        ),
+        shape = CircleShape
+    )
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -984,6 +1103,15 @@ fun AddEditHabitScreen(
 
                         else -> Unit
                     }
+                }
+
+                item {
+                    // Время выполнения (TimeOfDay)
+                    TimeOfDaySelector(
+                        selectedTime = uiState.timeOfDay,
+                        onTimeSelected = { viewModel.onTimeOfDayChange(it) },
+                        modifier = Modifier.fillMaxWidth()
+                    )
                 }
 
                 item {

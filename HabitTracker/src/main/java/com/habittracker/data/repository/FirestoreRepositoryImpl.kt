@@ -151,6 +151,10 @@ class FirestoreRepositoryImpl @Inject constructor(
                 }
             }
 
+            val timeOfDayStr = (data["timeOfDay"] as? String)?.uppercase() ?: "ANY_TIME"
+            val timeOfDay = runCatching { com.habittracker.domain.model.HabitTimeOfDay.valueOf(timeOfDayStr) }
+                .getOrElse { com.habittracker.domain.model.HabitTimeOfDay.ANY_TIME }
+
             Habit(
                 id = id,
                 title = title,
@@ -177,7 +181,8 @@ class FirestoreRepositoryImpl @Inject constructor(
                 updatedAtMillis = updatedAtMillis,
                 deletedAtMillis = deletedAtMillis,
                 startDate = startDate,
-                endDate = endDate
+                endDate = endDate,
+                timeOfDay = timeOfDay
             )
         } catch (e: Exception) {
             Log.e(TAG, "❌ [parseHabitSafely] Error parsing habit: ${doc.id}", e)
@@ -344,7 +349,7 @@ class FirestoreRepositoryImpl @Inject constructor(
                 timeZone = timeZone,
                 updatedAt = updatedAt
             )
-        } catch (e: CancellationException) {
+        } catch (_: CancellationException) {
             Log.d(TAG, "getParticipantSettings cancelled: habit=$habitId user=$userId")
             null
         } catch (e: Exception) {

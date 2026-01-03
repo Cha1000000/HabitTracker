@@ -314,6 +314,14 @@
     <string name="stats_time_consistency">Оценка постоянства</string>
     <string name="stats_time_average">Среднее время</string>
     <string name="stats_time_best_hour">Лучший час</string>
+    
+    <!-- Time of Day Selection -->
+    <string name="habit_time_of_day_label">Время выполнения</string>
+    <string name="time_of_day_morning">Утро</string>
+    <string name="time_of_day_afternoon">День</string>
+    <string name="time_of_day_evening">Вечер</string>
+    <string name="time_of_day_any">Любое время</string>
+
     <string name="stats_activity_title">Активность за 7 дней</string>
     <string name="stats_leaderboard_title">Рейтинг друзей</string>
     <string name="leaderboard_empty">У вас пока нет друзей для соревнования</string>

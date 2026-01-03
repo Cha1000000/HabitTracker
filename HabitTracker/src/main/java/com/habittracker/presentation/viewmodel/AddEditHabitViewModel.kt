@@ -11,6 +11,7 @@ import com.habittracker.R
 import com.habittracker.domain.model.Habit
 import com.habittracker.domain.model.HabitFrequency
 import com.habittracker.domain.model.HabitParticipantSettings
+import com.habittracker.domain.model.HabitTimeOfDay
 import com.habittracker.domain.model.HabitType
 import com.habittracker.domain.model.HabitValidation
 import com.habittracker.domain.model.HabitValidation.HabitField
@@ -228,7 +229,8 @@ class AddEditHabitViewModel @Inject constructor(
                             startDate = habit.startDate,
                             endDate = habit.endDate,
                             // Дату начала можно редактировать только если привычка ещё не была выполнена
-                            canEditStartDate = !hasBeenCompleted
+                            canEditStartDate = !hasBeenCompleted,
+                            timeOfDay = habit.timeOfDay
                         )
                     }
                     // Переопределяем/гарантируем персональные настройки через use case
@@ -327,7 +329,8 @@ class AddEditHabitViewModel @Inject constructor(
                         createdAt = today,
                         updatedAt = today,
                         startDate = effectiveStartDate, // Всегда сохраняем дату начала
-                        endDate = currentState.endDate
+                        endDate = currentState.endDate,
+                        timeOfDay = currentState.timeOfDay
                     )
                     Log.d("AddEditHabitViewModel", "Calling addHabitUseCase for habit: ${newHabit.id}")
                     Log.d("AddEditHabitViewModel", "Habit details: title='${newHabit.title}', participants=${newHabit.participants}")
@@ -418,7 +421,8 @@ class AddEditHabitViewModel @Inject constructor(
                         participants = safeParticipants,
                         updatedAt = today,
                         startDate = effectiveStartDate, // Всегда сохраняем валидную дату начала
-                        endDate = currentState.endDate
+                        endDate = currentState.endDate,
+                        timeOfDay = currentState.timeOfDay
                     )
                     updateHabitUseCase(updatedHabit)
 
@@ -514,8 +518,12 @@ class AddEditHabitViewModel @Inject constructor(
                 HabitFrequency.WEEKENDS -> setOf(DayOfWeek.SATURDAY, DayOfWeek.SUNDAY)
                 HabitFrequency.CUSTOM -> state.reminderDaysInput
             }
-            state.copy(frequency = frequency, reminderDaysInput = presetDays)
+            state.copy(frequency = frequency, reminderDaysInput = presetDays, hasUnsavedChanges = true)
         }
+    }
+
+    override fun onTimeOfDayChange(timeOfDay: HabitTimeOfDay) {
+        _uiState.update { it.copy(timeOfDay = timeOfDay, hasUnsavedChanges = true) }
     }
     
     override fun onTargetValueChange(value: Int) {
@@ -1141,7 +1149,8 @@ class AddEditHabitViewModel @Inject constructor(
             updatedAt = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault()).date,
             inviteCode = currentState.inviteCode,
             startDate = currentState.startDate,
-            endDate = currentState.endDate
+            endDate = currentState.endDate,
+            timeOfDay = currentState.timeOfDay
         )
     }
 

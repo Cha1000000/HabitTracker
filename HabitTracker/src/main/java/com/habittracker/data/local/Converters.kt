@@ -3,8 +3,8 @@ package com.habittracker.data.local
 import androidx.room.TypeConverter
 import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
-import com.habittracker.domain.model.ChallengeRules
 import com.habittracker.domain.model.HabitFrequency
+import com.habittracker.domain.model.HabitTimeOfDay
 import com.habittracker.domain.model.HabitType
 import kotlinx.datetime.Instant
 import kotlinx.datetime.LocalDate
@@ -63,17 +63,6 @@ class Converters {
             gson.fromJson<List<Int>>(it, type)
         } ?: emptyList()
 
-    // ChallengeRules converters
-    @TypeConverter
-    fun toChallengeRules(value: String?): ChallengeRules? {
-        return value?.let { gson.fromJson(it, ChallengeRules::class.java) }
-    }
-
-    @TypeConverter
-    fun fromChallengeRules(rules: ChallengeRules?): String? {
-        return gson.toJson(rules)
-    }
-
     // HabitType converters
     @TypeConverter
     fun fromHabitType(type: HabitType): String = type.name
@@ -89,4 +78,16 @@ class Converters {
     @TypeConverter
     fun toHabitFrequency(frequencyName: String): HabitFrequency =
         HabitFrequency.valueOf(frequencyName)
+
+    // HabitTimeOfDay converters
+    @TypeConverter
+    fun fromHabitTimeOfDay(timeOfDay: HabitTimeOfDay): String = timeOfDay.name
+
+    @TypeConverter
+    fun toHabitTimeOfDay(timeOfDayName: String): HabitTimeOfDay =
+        try {
+            HabitTimeOfDay.valueOf(timeOfDayName)
+        } catch (_: IllegalArgumentException) {
+            HabitTimeOfDay.ANY_TIME
+        }
 }
