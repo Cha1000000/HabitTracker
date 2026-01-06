@@ -79,6 +79,7 @@ import com.habittracker.HabitTrackerApplication
 import com.habittracker.R
 import com.habittracker.domain.model.Habit
 import com.habittracker.domain.model.HabitFrequency
+import com.habittracker.domain.model.HabitTimeOfDay
 import com.habittracker.domain.model.HabitType
 import com.habittracker.domain.model.isGroupHabit
 import com.habittracker.presentation.navigation.Screen
@@ -88,6 +89,7 @@ import com.habittracker.presentation.ui.components.UserAvatar
 import com.habittracker.presentation.ui.habits.components.ConfirmDialog
 import com.habittracker.presentation.ui.habits.components.EnhancedHabitItem
 import com.habittracker.presentation.ui.habits.components.ExpandableFAB
+import com.habittracker.presentation.ui.habits.components.GlassmorphicSectionHeader
 import com.habittracker.presentation.ui.habits.components.JoinByCodeDialog
 import com.habittracker.presentation.ui.habits.components.TahoeBackToTodayButton
 import com.habittracker.presentation.ui.habits.components.TahoeDateHeader
@@ -107,8 +109,6 @@ import kotlinx.datetime.Clock
 import kotlinx.datetime.TimeZone.Companion.currentSystemDefault
 import kotlinx.datetime.toLocalDateTime
 import kotlin.math.abs
-import com.habittracker.domain.model.HabitTimeOfDay
-import com.habittracker.presentation.ui.habits.components.GlassmorphicSectionHeader
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterialApi::class)
 @Composable
@@ -364,7 +364,8 @@ fun HabitsScreen(
         val completionPercentage = if (uiState.habitsWithCompletion.isEmpty()) {
             0
         } else {
-            val completed = uiState.habitsWithCompletion.count { it.isCompletedToday }
+            val completed = uiState.habitsWithCompletion.count { it.isCompletedToday } +
+                    uiState.habitsWithCompletion.count { it.isRestDayToday }
             (completed * 100) / uiState.habitsWithCompletion.size
         }
         
@@ -456,8 +457,9 @@ fun HabitsScreen(
                                 LazyColumn(
                                     modifier = Modifier
                                         .fillMaxSize()
+                                        .padding(horizontal = 16.dp)
                                         .testTag("habits-list"),
-                                    contentPadding = PaddingValues(16.dp),
+                                    contentPadding = PaddingValues(bottom = 100.dp),
                                     verticalArrangement = Arrangement.spacedBy(12.dp)
                                 ) {
                                     groupedHabits.forEach { (timeOfDay, habits) ->
