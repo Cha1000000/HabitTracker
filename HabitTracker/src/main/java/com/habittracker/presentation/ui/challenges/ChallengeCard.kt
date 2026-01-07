@@ -64,7 +64,7 @@ fun ChallengeCard(
     val daysRemaining = (challenge.endDate.toEpochDays() - today.toEpochDays()).toInt()
     val totalDays = (challenge.endDate.toEpochDays() - challenge.startDate.toEpochDays()).toInt() + 1
     val progress = if (totalDays > 0) {
-        maxOf(0f, (totalDays - daysRemaining).toFloat() / totalDays)
+        ((totalDays - daysRemaining).toFloat() / totalDays).coerceIn(0f, 1f)
     } else 0f
     val isDarkTheme = isSystemInDarkTheme()
 
