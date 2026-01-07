@@ -155,6 +155,10 @@ class FirestoreRepositoryImpl @Inject constructor(
             val timeOfDay = runCatching { com.habittracker.domain.model.HabitTimeOfDay.valueOf(timeOfDayStr) }
                 .getOrElse { com.habittracker.domain.model.HabitTimeOfDay.ANY_TIME }
 
+            val goalTypeStr = (data["goalType"] as? String)?.uppercase() ?: "SIMPLE"
+            val goalType = runCatching { com.habittracker.domain.model.HabitGoalType.valueOf(goalTypeStr) }
+                .getOrElse { com.habittracker.domain.model.HabitGoalType.SIMPLE }
+
             Habit(
                 id = id,
                 title = title,
@@ -182,7 +186,8 @@ class FirestoreRepositoryImpl @Inject constructor(
                 deletedAtMillis = deletedAtMillis,
                 startDate = startDate,
                 endDate = endDate,
-                timeOfDay = timeOfDay
+                timeOfDay = timeOfDay,
+                goalType = goalType
             )
         } catch (e: Exception) {
             Log.e(TAG, "❌ [parseHabitSafely] Error parsing habit: ${doc.id}", e)

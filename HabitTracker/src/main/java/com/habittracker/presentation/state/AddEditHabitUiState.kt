@@ -8,6 +8,7 @@ import com.habittracker.presentation.utils.GroupHabitValidationResult
 import kotlinx.datetime.DayOfWeek
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.LocalTime
+import com.habittracker.domain.model.HabitGoalType
 import com.habittracker.domain.model.HabitTimeOfDay
 
 data class AddEditHabitUiState(
@@ -18,6 +19,8 @@ data class AddEditHabitUiState(
     val icon: String = "🛎",
     val color: Int = 0xFF2196F3.toInt(), // Цвет привычки как Int
     val type: HabitType = HabitType.PERSONAL,
+    val goalType: HabitGoalType = HabitGoalType.SIMPLE,
+
 
     // Настройки частоты
     val frequency: HabitFrequency = HabitFrequency.DAILY,

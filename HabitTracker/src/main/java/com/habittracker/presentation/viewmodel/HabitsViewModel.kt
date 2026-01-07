@@ -50,6 +50,7 @@ import kotlinx.datetime.TimeZone
 import kotlinx.datetime.minus
 import kotlinx.datetime.plus
 import kotlinx.datetime.toLocalDateTime
+import com.habittracker.domain.usecase.UpdateHabitEntryValueUseCase
 import javax.inject.Inject
 
 /**
@@ -60,7 +61,8 @@ data class HabitWithCompletion(
     val isCompletedToday: Boolean = false,
     val isRestDayToday: Boolean = false,
     val isLoading: Boolean = false,
-    val participantsProgress: List<ParticipantProgress> = emptyList() // Прогресс участников для групповых привычек
+    val participantsProgress: List<ParticipantProgress> = emptyList(), // Прогресс участников для групповых привычек
+    val currentValue: Int = 0 // Текущее значение выполнения (для измеримых привычек)
 )
 
 @HiltViewModel
@@ -68,6 +70,7 @@ class HabitsViewModel @Inject constructor(
     private val getHabitsForDateUseCase: GetHabitsForDateUseCase,
     private val markHabitCompletedUseCase: MarkHabitCompletedUseCase,
     private val markHabitIncompleteUseCase: MarkHabitIncompleteUseCase,
+    private val updateHabitEntryValueUseCase: UpdateHabitEntryValueUseCase,
     private val getHabitCompletionStatusUseCase: GetHabitCompletionStatusUseCase,
     private val authRepository: AuthRepository,
     private val userRepository: UserRepository,
@@ -409,6 +412,7 @@ class HabitsViewModel @Inject constructor(
                                 }
                                 val isCompleted = habitEntry?.completed ?: false
                                 val isRestDay = habitEntry?.isRestDay ?: false
+                                val currentValue = habitEntry?.value ?: 0
                                 
                                 // Загружаем прогресс участников для групповых привычек
                                 val participantsProgress = if (habit.isGroupHabit()) {
@@ -439,7 +443,8 @@ class HabitsViewModel @Inject constructor(
                                     isCompletedToday = isCompleted,
                                     isRestDayToday = isRestDay,
                                     isLoading = false,
-                                    participantsProgress = participantsProgress
+                                    participantsProgress = participantsProgress,
+                                    currentValue = currentValue
                                 )
                             }
                         }.awaitAll()
@@ -597,6 +602,58 @@ class HabitsViewModel @Inject constructor(
     }
 
     /**
+     * Обновляет значение выполнения привычки
+     */
+    fun updateHabitValue(habitId: String, value: Int) {
+        viewModelScope.launch {
+            try {
+                val selectedDate = _uiState.value.selectedDate ?: today
+                
+                // Получаем привычку для проверки targetValue
+                val habit = _uiState.value.habitsWithCompletion.find { it.habit.id == habitId }?.habit
+                val targetValue = habit?.targetValue ?: 1
+                val isCompleted = value >= targetValue
+                
+                // Обновляем UI оптимистично с новым значением
+                updateHabitCurrentValue(habitId, newValue = value, isCompleted = isCompleted, isLoading = true)
+                
+                updateHabitEntryValueUseCase(habitId, currentUserId, value, selectedDate)
+                
+                // Показываем конфетти при достижении цели
+                if (isCompleted) {
+                    _uiState.value = _uiState.value.copy(showConfetti = true)
+                }
+                
+                // Скрываем диалог и снимаем флаг загрузки
+                _uiState.value = _uiState.value.copy(habitIdForValueInput = null)
+                updateHabitCurrentValue(habitId, newValue = value, isCompleted = isCompleted, isLoading = false)
+                
+                // Инвалидируем кеш недельной статистики
+                val weekStart = getStartOfWeek(selectedDate)
+                loadWeekCompletionData(currentUserId, weekStart, forceReload = true)
+                
+            } catch (e: Exception) {
+                // В случае ошибки откатываем состояние
+                val previousValue = _uiState.value.habitsWithCompletion
+                    .find { it.habit.id == habitId }?.currentValue ?: 0
+                _uiState.value = _uiState.value.copy(
+                    error = getApplication<Application>().getString(R.string.error_update_habit, e.localizedMessage ?: ""),
+                    habitIdForValueInput = null
+                )
+                updateHabitCurrentValue(habitId, newValue = previousValue, isCompleted = false, isLoading = false)
+            }
+        }
+    }
+
+    fun showValueInputDialog(habitId: String) {
+        _uiState.value = _uiState.value.copy(habitIdForValueInput = habitId)
+    }
+
+    fun dismissValueInputDialog() {
+        _uiState.value = _uiState.value.copy(habitIdForValueInput = null)
+    }
+
+    /**
      * Отмечает привычку как выполненную
      */
     fun markHabitCompleted(habitId: String, note: String? = null) {
@@ -677,6 +734,12 @@ class HabitsViewModel @Inject constructor(
         
         val currentHabit = _uiState.value.habitsWithCompletion.find { it.habit.id == habitId }
         if (currentHabit != null) {
+            // Для измеримых привычек открываем диалог ввода значения
+            if (currentHabit.habit.goalType == com.habittracker.domain.model.HabitGoalType.MEASURABLE) {
+                showValueInputDialog(habitId)
+                return
+            }
+
             if (currentHabit.isCompletedToday) {
                 markHabitIncomplete(habitId)
             } else {
@@ -827,6 +890,33 @@ class HabitsViewModel @Inject constructor(
         val updatedHabits = currentState.habitsWithCompletion.map { habitWithCompletion ->
             if (habitWithCompletion.habit.id == habitId) {
                 habitWithCompletion.copy(isCompletedToday = isCompleted, isLoading = isLoading)
+            } else {
+                habitWithCompletion
+            }
+        }
+        
+        // Применяем сортировку только если не в состоянии загрузки (финальное обновление)
+        val sortedHabits = if (!isLoading) {
+            applySortingIfNeeded(updatedHabits)
+        } else {
+            updatedHabits
+        }
+        
+        _uiState.value = currentState.copy(habitsWithCompletion = sortedHabits)
+    }
+    
+    /**
+     * Обновляет значение (currentValue) для измеримой привычки в UI состоянии
+     */
+    private fun updateHabitCurrentValue(habitId: String, newValue: Int, isCompleted: Boolean, isLoading: Boolean) {
+        val currentState = _uiState.value
+        val updatedHabits = currentState.habitsWithCompletion.map { habitWithCompletion ->
+            if (habitWithCompletion.habit.id == habitId) {
+                habitWithCompletion.copy(
+                    currentValue = newValue,
+                    isCompletedToday = isCompleted,
+                    isLoading = isLoading
+                )
             } else {
                 habitWithCompletion
             }

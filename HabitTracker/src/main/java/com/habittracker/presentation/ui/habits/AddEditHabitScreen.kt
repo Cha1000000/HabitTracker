@@ -1114,33 +1114,35 @@ fun AddEditHabitScreen(
                     )
                 }
 
-                item {
-                    // Целевое значение
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        GlassmorphicTextField(
-                            value = uiState.targetValueInput,
-                            onValueChange = { input ->
-                                viewModel.onTargetValueInputChange(input)
-                            },
-                            label = { Text(stringResource(R.string.habit_target_value_label)) },
-                            modifier = Modifier.weight(1f),
-                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                            singleLine = true,
-                            leadingIcon = { Icon(Icons.Default.Timeline, null) },
-                        )
+                if (uiState.goalType == com.habittracker.domain.model.HabitGoalType.MEASURABLE) {
+                    item {
+                        // Целевое значение
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            GlassmorphicTextField(
+                                value = uiState.targetValueInput,
+                                onValueChange = { input ->
+                                    viewModel.onTargetValueInputChange(input)
+                                },
+                                label = { Text(stringResource(R.string.habit_target_value_label)) },
+                                modifier = Modifier.weight(1f),
+                                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                                singleLine = true,
+                                leadingIcon = { Icon(Icons.Default.Timeline, null) },
+                            )
 
-                        GlassmorphicTextField(
-                            value = uiState.unit,
-                            onValueChange = { viewModel.onUnitChange(it) },
-                            label = { Text(stringResource(R.string.habit_unit_label)) },
-                            modifier = Modifier.width(100.dp),
-                            singleLine = true,
-                        )
+                            GlassmorphicTextField(
+                                value = uiState.unit,
+                                onValueChange = { viewModel.onUnitChange(it) },
+                                label = { Text(stringResource(R.string.habit_unit_label)) },
+                                modifier = Modifier.width(100.dp),
+                                singleLine = true,
+                            )
+                        }
+                        FieldValidationFeedback(uiState.targetValueError)
                     }
-                    FieldValidationFeedback(uiState.targetValueError)
                 }
 
                 // Секция выбора дат привычки

@@ -36,7 +36,13 @@
     <string name="back">Назад</string>
     <string name="clear">Очистить</string>
     <string name="done">Готово</string>
-    
+    <string name="create_new_habit">Создать новую привычку</string>
+    <string name="action_close">Закрыть</string>
+    <string name="habit_goal_type_simple">Отмечаемая</string>
+    <string name="habit_goal_type_simple_desc">Просто отметить, что привычка выполнена</string>
+    <string name="habit_goal_type_measurable">Измеряемая</string>
+    <string name="habit_goal_type_measurable_desc">Указывать количество.\nНапример: сколько выпито стаканов воды, или сделано отжиманий</string>
+
     <!-- Splash Screen -->
     <string name="app_name_display">Habit Tracker</string>
     <string name="splash_subtitle">Создавайте привычки вместе</string>
@@ -474,6 +480,11 @@
     <string name="error_accept_invitation">Ошибка принятия приглашения</string>
     <string name="success_invitation_declined">Приглашение отклонено</string>
     <string name="error_decline_invitation">Ошибка отклонения приглашения</string>
+    <string name="error_update_habit">Ошибка обновления привычки</string>
+    
+    <!-- Dialogs -->
+    <string name="enter_value_title">Указать количество</string>
+    <string name="enter_value_message">Введите выполненное количество для привычки «%1$s»\n(Цель: %2$d %3$s)</string>
     
     <!-- Expandable FAB -->
     <string name="fab_enter_code">Ввести код приглашения</string>

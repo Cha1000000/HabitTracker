@@ -90,6 +90,8 @@ import com.habittracker.presentation.ui.habits.components.ConfirmDialog
 import com.habittracker.presentation.ui.habits.components.EnhancedHabitItem
 import com.habittracker.presentation.ui.habits.components.ExpandableFAB
 import com.habittracker.presentation.ui.habits.components.GlassmorphicSectionHeader
+import com.habittracker.presentation.ui.habits.components.HabitTypeSelectionDialog
+import com.habittracker.presentation.ui.habits.components.HabitValueInputDialog
 import com.habittracker.presentation.ui.habits.components.JoinByCodeDialog
 import com.habittracker.presentation.ui.habits.components.TahoeBackToTodayButton
 import com.habittracker.presentation.ui.habits.components.TahoeDateHeader
@@ -137,6 +139,9 @@ fun HabitsScreen(
     // Состояние диалога присоединения по коду
     var showCodeDialog by remember { mutableStateOf(false) }
     var prefilledInviteCode by remember { mutableStateOf<String?>(null) }
+    
+    // Состояние диалога выбора типа цели привычки
+    var showGoalTypeDialog by remember { mutableStateOf(false) }
     
     // Автоматическое открытие диалога при наличии inviteCode из deep link
     LaunchedEffect(inviteCode) {
@@ -279,9 +284,8 @@ fun HabitsScreen(
             if (selectedDate >= today) {
                 ExpandableFAB(
                     onCreateHabit = { 
-                        // Передаём выбранную дату как параметр при создании привычки
-                        val dateParam = "?startDate=$selectedDate"
-                        navController.navigate(Screen.AddEditHabit.route + dateParam) 
+                        // Открываем диалог выбора типа цели перед переходом к созданию
+                        showGoalTypeDialog = true
                     },
                     onBrowsePublic = { 
                         navController.navigate(Screen.PublicHabits.route) 
@@ -289,6 +293,20 @@ fun HabitsScreen(
                     onJoinByCode = { 
                         prefilledInviteCode = null
                         showCodeDialog = true 
+                    }
+                )
+            }
+            
+            // Диалог выбора типа цели (Simple vs Measurable)
+            if (showGoalTypeDialog) {
+                HabitTypeSelectionDialog(
+                    onDismiss = { showGoalTypeDialog = false },
+                    onTypeSelected = { goalType ->
+                        showGoalTypeDialog = false
+                        // Передаём выбранную дату и тип цели как параметры при создании привычки
+                        val dateParam = "startDate=$selectedDate"
+                        val typeParam = "goalType=${goalType.name}"
+                        navController.navigate(Screen.AddEditHabit.route + "?$dateParam&$typeParam") 
                     }
                 )
             }
@@ -510,6 +528,25 @@ fun HabitsScreen(
             showConfetti = uiState.showConfetti,
             onConfettiComplete = { viewModel.hideConfetti() }
         )
+        
+        // Диалог ввода значения для измеримых привычек
+        if (uiState.habitIdForValueInput != null) {
+            val habitWithCompletion = uiState.habitsWithCompletion.find { it.habit.id == uiState.habitIdForValueInput }
+            if (habitWithCompletion != null) {
+                HabitValueInputDialog(
+                    habitTitle = habitWithCompletion.habit.title,
+                    currentValue = habitWithCompletion.currentValue,
+                    targetValue = habitWithCompletion.habit.targetValue,
+                    unit = habitWithCompletion.habit.unit,
+                    onConfirm = { value ->
+                        viewModel.updateHabitValue(habitWithCompletion.habit.id, value)
+                    },
+                    onDismiss = {
+                        viewModel.dismissValueInputDialog()
+                    }
+                )
+            }
+        }
     }
 }
 

@@ -70,6 +70,7 @@ object SyncPayloads {
             habit.startDate?.let { put("startDate", it.toString()) }
             habit.endDate?.let { put("endDate", it.toString()) }
             put("timeOfDay", habit.timeOfDay.name)
+            put("goalType", habit.goalType.name)
         }
     )
 

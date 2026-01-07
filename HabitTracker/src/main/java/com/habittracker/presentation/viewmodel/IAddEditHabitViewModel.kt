@@ -2,6 +2,7 @@ package com.habittracker.presentation.viewmodel
 
 import com.habittracker.domain.model.HabitFrequency
 import com.habittracker.domain.model.HabitType
+import com.habittracker.domain.model.HabitGoalType
 import com.habittracker.domain.model.User
 import com.habittracker.presentation.state.AddEditHabitUiState
 import kotlinx.coroutines.flow.StateFlow
@@ -16,6 +17,7 @@ interface IAddEditHabitViewModel {
     fun onTitleChange(title: String)
     fun onDescriptionChange(description: String)
     fun onTypeChange(type: HabitType)
+    fun onGoalTypeChange(goalType: HabitGoalType)
     fun onFrequencyChange(frequency: HabitFrequency)
     fun onTimeOfDayChange(timeOfDay: HabitTimeOfDay)
     fun onColorChange(color: Int)

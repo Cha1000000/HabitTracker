@@ -126,12 +126,16 @@ fun AppNavHost(
         }
 
         composable(
-            route = Screen.AddEditHabit.route + "?habitId={habitId}&startDate={startDate}",
+            route = Screen.AddEditHabit.route + "?habitId={habitId}&startDate={startDate}&goalType={goalType}",
             arguments = listOf(
                 navArgument("habitId") {
                     nullable = true
                 },
                 navArgument("startDate") {
+                    nullable = true
+                    defaultValue = null
+                },
+                navArgument("goalType") {
                     nullable = true
                     defaultValue = null
                 }

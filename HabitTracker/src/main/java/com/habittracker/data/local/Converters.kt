@@ -90,4 +90,16 @@ class Converters {
         } catch (_: IllegalArgumentException) {
             HabitTimeOfDay.ANY_TIME
         }
+
+    // HabitGoalType converters
+    @TypeConverter
+    fun fromHabitGoalType(type: com.habittracker.domain.model.HabitGoalType): String = type.name
+
+    @TypeConverter
+    fun toHabitGoalType(typeName: String): com.habittracker.domain.model.HabitGoalType =
+        try {
+            com.habittracker.domain.model.HabitGoalType.valueOf(typeName)
+        } catch (_: IllegalArgumentException) {
+            com.habittracker.domain.model.HabitGoalType.SIMPLE
+        }
 }

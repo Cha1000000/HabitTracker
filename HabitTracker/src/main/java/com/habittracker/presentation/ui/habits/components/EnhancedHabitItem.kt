@@ -59,6 +59,7 @@ import androidx.compose.ui.unit.sp
 import com.habittracker.R
 import com.habittracker.domain.model.Habit
 import com.habittracker.domain.model.HabitFrequency
+import com.habittracker.domain.model.HabitGoalType
 import com.habittracker.domain.model.HabitType
 import com.habittracker.domain.model.isGroupHabit
 import com.habittracker.presentation.ui.components.AnimatedCheckmark
@@ -250,7 +251,21 @@ fun EnhancedHabitItem(
                                         color = infoColor
                                     )
                                 }
-                                if (habit.targetValue > 1 || habit.unit != "раз") {
+                                
+                                // Отображение значения/цели для измеримых привычек
+                                if (habit.goalType == HabitGoalType.MEASURABLE) {
+                                    val currentValue = habitWithCompletion.currentValue
+                                    val target = habit.targetValue
+                                    val unit = habit.unit
+                                    
+                                    Text(
+                                        text = "$currentValue / $target $unit",
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = if (currentValue >= target) successColor.copy(alpha = 0.8f) else infoColor,
+                                        fontWeight = if (currentValue >= target) FontWeight.Bold else FontWeight.Normal
+                                    )
+                                } else if (habit.targetValue > 1 || habit.unit != "раз") {
+                                    // Fallback для старых/простых привычек с нестандартными единицами
                                     Text(
                                         text = "${habit.targetValue} ${habit.unit}",
                                         style = MaterialTheme.typography.bodySmall,
@@ -264,8 +279,10 @@ fun EnhancedHabitItem(
                         if (!isRestDay) {
                             IconButton(
                                 onClick = {
-                                    // Воспроизводим звук только при отметке как выполненной
-                                    if (!habitWithCompletion.isCompletedToday) {
+                                    // Воспроизводим звук только при отметке как выполненной (для простых)
+                                    // Для измеримых звук будет воспроизведен после ввода значения если цель достигнута (logic in VM/UseCase)
+                                    // Но здесь мы просто вызываем callback
+                                    if (habit.goalType == HabitGoalType.SIMPLE && !habitWithCompletion.isCompletedToday) {
                                         SoundManager.playSuccessSound(context)
                                     }
                                     onToggleCompletion()
@@ -275,8 +292,15 @@ fun EnhancedHabitItem(
                                 if (habitWithCompletion.isLoading) {
                                     CircularProgressIndicator(modifier = Modifier.size(24.dp), strokeWidth = 2.dp)
                                 } else {
+                                    // Для измеримых привычек, если не выполнено, показываем серую галочку или иконку ввода?
+                                    // ТЗ: "до тех пор, пока введённое пользователем и сохранённое значение меньше целевого значения привычки - кнопка CheckMark остётся отображаться серой"
+                                    
+                                    val isCompleted = habitWithCompletion.isCompletedToday
+                                    // Если это измеримая привычка и она не выполнена - используем серый цвет (как default/inactive state AnimatedCheckmark?)
+                                    // AnimatedCheckmark использует color при isChecked=true.
+                                    
                                     AnimatedCheckmark(
-                                        isChecked = habitWithCompletion.isCompletedToday,
+                                        isChecked = isCompleted,
                                         size = 28.dp,
                                         color = successColor,
                                         strokeWidth = 2.dp

@@ -10,6 +10,7 @@ import androidx.lifecycle.viewModelScope
 import com.habittracker.R
 import com.habittracker.domain.model.Habit
 import com.habittracker.domain.model.HabitFrequency
+import com.habittracker.domain.model.HabitGoalType
 import com.habittracker.domain.model.HabitParticipantSettings
 import com.habittracker.domain.model.HabitTimeOfDay
 import com.habittracker.domain.model.HabitType
@@ -82,6 +83,7 @@ class AddEditHabitViewModel @Inject constructor(
     init {
         val habitId: String? = savedStateHandle["habitId"]
         val startDateParam: String? = savedStateHandle["startDate"]
+        val goalTypeParam: String? = savedStateHandle["goalType"]
 
         if (habitId != null) {
             _uiState.update { it.copy(isLoading = true) }
@@ -96,12 +98,23 @@ class AddEditHabitViewModel @Inject constructor(
                     null
                 }
             }
+            
+            // Парсим тип цели
+            val initialGoalType = goalTypeParam?.let { typeStr ->
+                try {
+                    HabitGoalType.valueOf(typeStr)
+                } catch (_: Exception) {
+                    Log.w("AddEditHabitViewModel", "Failed to parse goalType from navigation: $typeStr")
+                    HabitGoalType.SIMPLE
+                }
+            } ?: HabitGoalType.SIMPLE
 
             _uiState.update { it.copy(
                 isLoading = false,
                 isInitialized = true,
                 maxParticipantsInput = it.maxParticipants.toString(),
-                startDate = initialStartDate // Устанавливаем дату начала из параметра
+                startDate = initialStartDate, // Устанавливаем дату начала из параметра
+                goalType = initialGoalType
             ) }
 
             if (initialStartDate != null) {
@@ -209,6 +222,7 @@ class AddEditHabitViewModel @Inject constructor(
                             icon = habit.icon,
                             color = habit.color.toColorInt(), // Безопасный парсинг hex-строки в Int
                             type = habit.type,
+                            goalType = habit.goalType,
                             frequency = habit.frequency,
                             reminderEnabled = habit.reminderEnabled,
                             reminderTime = habit.reminderTime,
@@ -314,6 +328,7 @@ class AddEditHabitViewModel @Inject constructor(
                         icon = currentState.icon,
                         color = "#%06X".format(0xFFFFFF and currentState.color), // Конвертируем Int (ARGB) в hex-строку RGB
                         type = currentState.type,
+                        goalType = currentState.goalType,
                         frequency = currentState.frequency,
                         reminderTime = if (currentState.reminderEnabled) currentState.reminderTime else null,
                         reminderEnabled = currentState.reminderEnabled,
@@ -395,6 +410,7 @@ class AddEditHabitViewModel @Inject constructor(
                         icon = currentState.icon,
                         color = "#%06X".format(0xFFFFFF and currentState.color), // Конвертируем Int (ARGB) в hex-строку RGB
                         type = currentState.type,
+                        goalType = currentState.goalType,
                         frequency = effectiveFrequency,
                         reminderTime = if (currentHabit!!.type == HabitType.PERSONAL) {
                             if (currentState.reminderEnabled) currentState.reminderTime else null
@@ -490,6 +506,10 @@ class AddEditHabitViewModel @Inject constructor(
 
     override fun onTypeChange(type: HabitType) {
         _uiState.update { it.copy(type = type, hasUnsavedChanges = true) }
+    }
+
+    override fun onGoalTypeChange(goalType: HabitGoalType) {
+        _uiState.update { it.copy(goalType = goalType, hasUnsavedChanges = true) }
     }
 
     

@@ -25,6 +25,7 @@ import kotlinx.datetime.LocalTime
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toLocalDateTime
 import com.habittracker.domain.model.HabitTimeOfDay
+import com.habittracker.domain.model.HabitGoalType
 import javax.inject.Inject
 
 /**
@@ -98,6 +99,11 @@ class PreviewAddEditHabitViewModel @Inject constructor(
 
     override fun onTypeChange(type: HabitType) {
         _uiState.update { it.copy(type = type, hasUnsavedChanges = true) }
+        updateValidationState()
+    }
+
+    override fun onGoalTypeChange(goalType: HabitGoalType) {
+        _uiState.update { it.copy(goalType = goalType, hasUnsavedChanges = true) }
         updateValidationState()
     }
 
