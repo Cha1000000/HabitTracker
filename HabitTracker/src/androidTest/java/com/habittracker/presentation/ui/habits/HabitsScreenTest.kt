@@ -35,6 +35,8 @@ import com.habittracker.domain.usecase.GetWeekCompletionDataUseCase
 import com.habittracker.domain.usecase.MarkHabitCompletedUseCase
 import com.habittracker.domain.usecase.MarkHabitIncompleteUseCase
 import com.habittracker.domain.usecase.ScheduleHabitReminderUseCase
+import com.habittracker.domain.usecase.SetHabitRestDayUseCase
+import com.habittracker.domain.usecase.UpdateHabitEntryValueUseCase
 import com.habittracker.domain.usecase.habit.GetGroupHabitProgressUseCase
 import com.habittracker.domain.usecase.habit.JoinHabitByCodeUseCase
 import com.habittracker.domain.usecase.habit.LeaveSharedHabitsWithFriendUseCase
@@ -80,6 +82,8 @@ class HabitsScreenTest {
     private lateinit var getGroupHabitProgressUseCase: GetGroupHabitProgressUseCase
     private lateinit var leaveSharedHabitsWithFriendUseCase: LeaveSharedHabitsWithFriendUseCase
     private lateinit var userPreferencesRepository: UserPreferencesRepository
+    private lateinit var updateHabitEntryValueUseCase: UpdateHabitEntryValueUseCase
+    private lateinit var setHabitRestDayUseCase: SetHabitRestDayUseCase
 
     private lateinit var notificationsViewModel: NotificationsViewModel
     private lateinit var friendsViewModel: FriendsViewModel
@@ -145,6 +149,8 @@ class HabitsScreenTest {
         coEvery { getWeekCompletionDataUseCase.invoke(any(), any()) } returns emptyMap()
         getGroupHabitProgressUseCase = mockk(relaxed = true)
         leaveSharedHabitsWithFriendUseCase = mockk(relaxed = true)
+        updateHabitEntryValueUseCase = mockk(relaxed = true)
+        setHabitRestDayUseCase = mockk(relaxed = true)
         val joinHabitByCodeUseCase = mockk<JoinHabitByCodeUseCase>(relaxed = true)
         userPreferencesRepository = mockk {
             every { userPreferences } returns MutableStateFlow(UserPreferences(sortCompletedHabitsToBottom = false))
@@ -155,6 +161,7 @@ class HabitsScreenTest {
             getHabitsForDateUseCase = getHabitsForDateUseCase,
             markHabitCompletedUseCase = markHabitCompletedUseCase,
             markHabitIncompleteUseCase = markHabitIncompleteUseCase,
+            updateHabitEntryValueUseCase = updateHabitEntryValueUseCase,
             getHabitCompletionStatusUseCase = getHabitCompletionStatusUseCase,
             authRepository = authRepository,
             userRepository = userRepository,
@@ -164,6 +171,7 @@ class HabitsScreenTest {
             joinHabitByCodeUseCase = joinHabitByCodeUseCase,
             getWeekCompletionDataUseCase = getWeekCompletionDataUseCase,
             getGroupHabitProgressUseCase = getGroupHabitProgressUseCase,
+            setHabitRestDayUseCase = setHabitRestDayUseCase,
             userPreferencesRepository = userPreferencesRepository,
             application = composeRule.activity.application
         )

@@ -163,6 +163,20 @@ class CloseExpiredChallengesUseCaseTest {
         override suspend fun cancelChallenge(challengeId: String) = Unit
 
         override suspend fun addParticipantsToChallenge(challengeId: String, participantIds: List<String>) = Unit
+        
+        override suspend fun getTotalValueForUserInChallenge(
+            habitId: String,
+            userId: String,
+            startDate: LocalDate,
+            endDate: LocalDate
+        ): Int = 0
+        
+        override suspend fun getTotalValueFromFirestore(
+            habitId: String,
+            userId: String,
+            startDate: LocalDate,
+            endDate: LocalDate
+        ): Int = 0
     }
 
     private data class CompletedNotif(

@@ -110,6 +110,8 @@ class UpdateChallengeProgressUseCase @Inject constructor(
     
     /**
      * Проверяет условия досрочного завершения для челленджа типа FIRST_TO_TARGET
+     * Для измеряемых привычек проверяет суммарное значение (totalValue),
+     * для простых — количество дней выполнения
      */
     private suspend fun checkForEarlyWinner(challenge: Challenge): Boolean {
         return try {
@@ -119,10 +121,11 @@ class UpdateChallengeProgressUseCase @Inject constructor(
             val results = resultsResult.getOrNull() ?: return false
             
             // Проверяем, достиг ли кто-то целевого значения
+            // score уже вычислен с учётом goalType привычки в GetChallengeResultsUseCase
             val targetAchieved = results.participants.any { participant ->
                 when (challenge.rules.type) {
                     ChallengeType.FIRST_TO_TARGET -> {
-                        participant.completionRate >= (challenge.rules.targetValue / 100f)
+                        participant.score >= challenge.rules.targetValue
                     }
                     else -> false
                 }

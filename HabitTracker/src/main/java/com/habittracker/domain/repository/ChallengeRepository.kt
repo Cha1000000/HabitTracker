@@ -101,4 +101,26 @@ interface ChallengeRepository {
      * Добавить участников в челлендж
      */
     suspend fun addParticipantsToChallenge(challengeId: String, participantIds: List<String>)
+    
+    /**
+     * Получить суммарное значение (value) для пользователя в челлендже
+     * Используется для измеряемых привычек
+     */
+    suspend fun getTotalValueForUserInChallenge(
+        habitId: String,
+        userId: String,
+        startDate: LocalDate,
+        endDate: LocalDate
+    ): Int
+    
+    /**
+     * Получить суммарное значение (value) для пользователя из Firestore
+     * Используется для измеряемых привычек
+     */
+    suspend fun getTotalValueFromFirestore(
+        habitId: String,
+        userId: String,
+        startDate: LocalDate,
+        endDate: LocalDate
+    ): Int
 }

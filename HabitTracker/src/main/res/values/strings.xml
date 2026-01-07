@@ -678,6 +678,10 @@
     <string name="challenge_type">Тип челленджа</string>
     <string name="target_value">Целевое значение</string>
     <string name="target_value_hint">Введите целевое значение</string>
+    <string name="target_total_value">Целевое количество</string>
+    <string name="target_total_value_hint">Например: 100%1$s</string>
+    <string name="first_to_target_simple_hint">Побеждает первый, кто выполнит привычку указанное количество дней</string>
+    <string name="first_to_target_measurable_hint">Побеждает первый, кто наберёт указанное количество выполнений</string>
     <string name="allow_backfill_completions">Отметки за прошлые дни</string>
     <string name="allow_backfill_completions_description">Можно отмечать выполнения за прошедшие дни, если забыли отметить вовремя</string>
     <string name="allow_backfill_completions_info">Можно отмечать выполнения за прошедшие дни</string>

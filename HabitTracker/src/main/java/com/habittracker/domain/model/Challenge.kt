@@ -67,7 +67,8 @@ data class ChallengeParticipantStats(
     val totalDays: Int,
     val currentStreak: Int,
     val completionRate: Float,
-    val position: Int // позиция в рейтинге
+    val position: Int, // позиция в рейтинге
+    val totalValue: Int = 0 // суммарное значение для измеряемых привычек
 )
 
 // Extension functions для работы с челленджами

@@ -55,6 +55,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.habittracker.R
 import com.habittracker.domain.model.ChallengeType
 import com.habittracker.domain.model.Habit
+import com.habittracker.domain.model.HabitGoalType
 import com.habittracker.domain.model.User
 import com.habittracker.presentation.state.DatePickerType
 import com.habittracker.presentation.ui.habits.components.GlassmorphicButton
@@ -214,7 +215,8 @@ fun CreateChallengeScreen(
                             onTargetValueChange = viewModel::onTargetValueChange,
                             onAllowMissedDaysChange = viewModel::onAllowMissedDaysChange,
                             onRequireConsecutiveToggle = viewModel::onRequireConsecutiveToggle,
-                            onAllowBackfillCompletionsChange = viewModel::onAllowBackfillCompletionsChange
+                            onAllowBackfillCompletionsChange = viewModel::onAllowBackfillCompletionsChange,
+                            selectedHabit = uiState.selectedHabit
                         )
                     }
 
@@ -571,8 +573,11 @@ private fun ChallengeRulesSection(
     onTargetValueChange: (String) -> Unit,
     onAllowMissedDaysChange: (String) -> Unit,
     onRequireConsecutiveToggle: (Boolean) -> Unit,
-    onAllowBackfillCompletionsChange: (Boolean) -> Unit
+    onAllowBackfillCompletionsChange: (Boolean) -> Unit,
+    selectedHabit: Habit? = null
 ) {
+    val isMeasurableHabit = selectedHabit?.goalType == HabitGoalType.MEASURABLE
+    val habitUnit = selectedHabit?.unit ?: ""
     GlassmorphicCard(
         modifier = Modifier.fillMaxWidth()
     ) {
@@ -633,14 +638,42 @@ private fun ChallengeRulesSection(
             
             // Target Value - показываем только для FIRST_TO_TARGET
             if (challengeType == ChallengeType.FIRST_TO_TARGET) {
+                // Разные подсказки для измеряемых и простых привычек
+                val labelText = if (isMeasurableHabit) {
+                    stringResource(R.string.target_total_value)
+                } else {
+                    stringResource(R.string.target_value)
+                }
+                val placeholderText = if (isMeasurableHabit) {
+                    val unitHint = if (habitUnit.isNotBlank()) " $habitUnit" else ""
+                    stringResource(R.string.target_total_value_hint, unitHint)
+                } else {
+                    stringResource(R.string.target_value_hint)
+                }
+                
                 GlassmorphicTextField(
                     value = targetValue,
                     onValueChange = onTargetValueChange,
-                    label = { Text(stringResource(R.string.target_value)) },
-                    placeholder = { Text(stringResource(R.string.target_value_hint)) },
+                    label = { Text(labelText) },
+                    placeholder = { Text(placeholderText) },
                     modifier = Modifier.fillMaxWidth(),
                     singleLine = true
                 )
+                
+                // Подсказка о типе подсчёта
+                if (isMeasurableHabit) {
+                    Text(
+                        text = stringResource(R.string.first_to_target_measurable_hint),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                } else {
+                    Text(
+                        text = stringResource(R.string.first_to_target_simple_hint),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
             }
             
             // Allow Backfill Completions - можно отмечать выполнения за прошедшие дни

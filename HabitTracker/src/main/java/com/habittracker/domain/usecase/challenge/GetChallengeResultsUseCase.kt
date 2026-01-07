@@ -4,8 +4,10 @@ import com.habittracker.domain.model.Challenge
 import com.habittracker.domain.model.ChallengeStatus
 import com.habittracker.domain.model.ChallengeType
 import com.habittracker.domain.model.User
+import com.habittracker.domain.model.HabitGoalType
 import com.habittracker.domain.repository.ChallengeRepository
 import com.habittracker.domain.repository.HabitEntryRepository
+import com.habittracker.domain.repository.HabitRepository
 import com.habittracker.domain.repository.SocialRepository
 import kotlinx.datetime.Clock
 import kotlinx.datetime.DateTimeUnit
@@ -24,6 +26,7 @@ data class ChallengeParticipantResult(
     val completionRate: Float,
     val currentStreak: Int,
     val totalDays: Int,
+    val totalValue: Int = 0,
     val position: Int,
     val isWinner: Boolean = false
 )
@@ -43,6 +46,7 @@ data class ChallengeResults(
 class GetChallengeResultsUseCase @Inject constructor(
     private val challengeRepository: ChallengeRepository,
     private val habitEntryRepository: HabitEntryRepository,
+    private val habitRepository: HabitRepository,
     private val socialRepository: SocialRepository
 ) {
     /**
@@ -55,6 +59,11 @@ class GetChallengeResultsUseCase @Inject constructor(
             // Получаем челлендж
             val challenge = challengeRepository.getChallengeById(challengeId)
                 ?: return Result.failure(Exception("Челлендж не найден"))
+            
+            // Получаем привычку для определения goalType
+            val habit = habitRepository.getHabitById(challenge.habitId)
+            val isMeasurableHabit = habit?.goalType == HabitGoalType.MEASURABLE
+            val habitTargetValue = habit?.targetValue ?: 1
             
             // Получаем информацию об участниках
             val participantResults = mutableListOf<ChallengeParticipantResult>()
@@ -72,7 +81,12 @@ class GetChallengeResultsUseCase @Inject constructor(
                 )
                 
                 // Вычисляем статистику в зависимости от типа челленджа
-                val stats = calculateParticipantStats(challenge, entries)
+                val stats = calculateParticipantStats(
+                    challenge = challenge,
+                    entries = entries,
+                    isMeasurableHabit = isMeasurableHabit,
+                    habitTargetValue = habitTargetValue
+                )
                 
                 participantResults.add(
                     ChallengeParticipantResult(
@@ -81,6 +95,7 @@ class GetChallengeResultsUseCase @Inject constructor(
                         completionRate = stats.completionRate,
                         currentStreak = stats.currentStreak,
                         totalDays = stats.totalDays,
+                        totalValue = stats.totalValue,
                         position = 0 // Будет установлено позже
                     )
                 )
@@ -124,14 +139,21 @@ class GetChallengeResultsUseCase @Inject constructor(
     
     /**
      * Вычисляет статистику участника в зависимости от типа челленджа
+     * @param isMeasurableHabit true если привычка измеряемая (MEASURABLE)
+     * @param habitTargetValue целевое значение привычки (для измеряемых)
      */
     private fun calculateParticipantStats(
         challenge: Challenge,
-        entries: List<com.habittracker.domain.model.HabitEntry>
+        entries: List<com.habittracker.domain.model.HabitEntry>,
+        isMeasurableHabit: Boolean,
+        habitTargetValue: Int
     ): ParticipantStats {
         val completedEntries = entries.filter { it.completed }
-        val totalDays = (challenge.endDate.toEpochDays() - challenge.startDate.toEpochDays()).toInt() + 1
-        val completionRate = if (totalDays > 0) completedEntries.size.toFloat() / totalDays else 0f
+        val challengeDays = (challenge.endDate.toEpochDays() - challenge.startDate.toEpochDays()).toInt() + 1
+        val completionRate = if (challengeDays > 0) completedEntries.size.toFloat() / challengeDays else 0f
+        
+        // Суммарное значение для измеряемых привычек
+        val totalValue = entries.sumOf { it.value }
         
         // Вычисляем текущую серию
         val currentStreak = calculateCurrentStreak(entries, challenge.endDate)
@@ -142,10 +164,22 @@ class GetChallengeResultsUseCase @Inject constructor(
             ChallengeType.STREAK -> currentStreak
             ChallengeType.TOTAL_DAYS -> completedEntries.size
             ChallengeType.FIRST_TO_TARGET -> {
-                if (completionRate >= challenge.rules.targetValue / 100f) {
-                    challenge.rules.targetValue
+                if (isMeasurableHabit) {
+                    // Для измеряемых привычек: считаем суммарное значение
+                    // targetValue челленджа интерпретируется как целевая сумма значений
+                    val targetSum = challenge.rules.targetValue
+                    if (totalValue >= targetSum) {
+                        targetSum // Цель достигнута
+                    } else {
+                        totalValue // Текущий прогресс
+                    }
                 } else {
-                    (completionRate * 100).toInt()
+                    // Для простых привычек: считаем дни выполнения
+                    if (completedEntries.size >= challenge.rules.targetValue) {
+                        challenge.rules.targetValue
+                    } else {
+                        completedEntries.size
+                    }
                 }
             }
         }
@@ -154,7 +188,8 @@ class GetChallengeResultsUseCase @Inject constructor(
             score = score,
             completionRate = completionRate,
             currentStreak = currentStreak,
-            totalDays = completedEntries.size
+            totalDays = completedEntries.size,
+            totalValue = totalValue
         )
     }
     
@@ -193,6 +228,7 @@ class GetChallengeResultsUseCase @Inject constructor(
         val score: Int,
         val completionRate: Float,
         val currentStreak: Int,
-        val totalDays: Int
+        val totalDays: Int,
+        val totalValue: Int = 0
     )
 }

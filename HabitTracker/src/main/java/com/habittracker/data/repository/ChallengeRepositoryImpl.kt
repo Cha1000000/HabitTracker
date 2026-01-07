@@ -529,6 +529,44 @@ class ChallengeRepositoryImpl @Inject constructor(
         updateChallenge(updatedChallenge)
     }
 
+    override suspend fun getTotalValueForUserInChallenge(
+        habitId: String,
+        userId: String,
+        startDate: LocalDate,
+        endDate: LocalDate
+    ): Int {
+        return try {
+            habitEntryDao.getTotalValueForPeriod(habitId, userId, startDate.toString(), endDate.toString())
+        } catch (e: Exception) {
+            Log.e(TAG, "Error getting total value for user in challenge: ${e.message}", e)
+            0
+        }
+    }
+
+    override suspend fun getTotalValueFromFirestore(
+        habitId: String,
+        userId: String,
+        startDate: LocalDate,
+        endDate: LocalDate
+    ): Int {
+        return try {
+            val snapshot = firestore.collection("habit_entries")
+                .whereEqualTo("habitId", habitId)
+                .whereEqualTo("userId", userId)
+                .whereGreaterThanOrEqualTo("date", startDate.toString())
+                .whereLessThanOrEqualTo("date", endDate.toString())
+                .get()
+                .await()
+            
+            snapshot.documents.sumOf { doc ->
+                (doc.getLong("value") ?: 0L).toInt()
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Error getting total value from Firestore: ${e.message}", e)
+            0
+        }
+    }
+
     companion object {
         private const val TAG = "ChallengeRepository"
     }

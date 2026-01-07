@@ -125,6 +125,20 @@ class ChallengeUseCasesTest {
         override suspend fun declineChallengeInvitation(challengeId: String, userId: String) {}
         override suspend fun cancelChallenge(challengeId: String) {}
         override suspend fun addParticipantsToChallenge(challengeId: String, participantIds: List<String>) {}
+        
+        override suspend fun getTotalValueForUserInChallenge(
+            habitId: String,
+            userId: String,
+            startDate: LocalDate,
+            endDate: LocalDate
+        ): Int = 0
+        
+        override suspend fun getTotalValueFromFirestore(
+            habitId: String,
+            userId: String,
+            startDate: LocalDate,
+            endDate: LocalDate
+        ): Int = 0
     }
 
     private class FakeHabitRepository : HabitRepository {
@@ -345,7 +359,8 @@ class ChallengeUseCasesTest {
         val challengeRepo = FakeChallengeRepository()
         val habitEntryRepo = FakeHabitEntryRepository()
         val socialRepo = FakeSocialRepository()
-        val resultsUseCase = GetChallengeResultsUseCase(challengeRepo, habitEntryRepo, socialRepo)
+        val habitRepo = FakeHabitRepository()
+        val resultsUseCase = GetChallengeResultsUseCase(challengeRepo, habitEntryRepo, habitRepo, socialRepo)
 
         // закончился вчера
         val yesterday = kotlinx.datetime.Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault()).date.minus(1, DateTimeUnit.DAY)

@@ -86,4 +86,12 @@ interface HabitEntryDao {
         startDate: String,
         endDate: String
     ): List<HabitEntryEntity>
+    
+    @Query("SELECT COALESCE(SUM(value), 0) FROM habit_entries WHERE habitId = :habitId AND userId = :userId AND date BETWEEN :startDate AND :endDate")
+    suspend fun getTotalValueForPeriod(
+        habitId: String,
+        userId: String,
+        startDate: String,
+        endDate: String
+    ): Int
 }
