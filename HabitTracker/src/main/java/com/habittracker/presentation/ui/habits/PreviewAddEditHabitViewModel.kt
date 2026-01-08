@@ -128,8 +128,17 @@ class PreviewAddEditHabitViewModel @Inject constructor(
         updateValidationState()
     }
 
-    override fun onTimeOfDayChange(timeOfDay: HabitTimeOfDay) {
-        _uiState.update { it.copy(timeOfDay = timeOfDay, hasUnsavedChanges = true) }
+    override fun onTimeOfDayToggle(timeOfDay: HabitTimeOfDay) {
+        _uiState.update { state ->
+            if (state.isEditMode) return@update state
+            val currentSelection = state.selectedTimesOfDay.toMutableSet()
+            if (currentSelection.contains(timeOfDay)) {
+                if (currentSelection.size > 1) currentSelection.remove(timeOfDay)
+            } else {
+                currentSelection.add(timeOfDay)
+            }
+            state.copy(selectedTimesOfDay = currentSelection, hasUnsavedChanges = true)
+        }
         updateValidationState()
     }
 
@@ -377,7 +386,7 @@ class PreviewAddEditHabitViewModel @Inject constructor(
             isActive = true,
             createdAt = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault()).date,
             updatedAt = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault()).date,
-            timeOfDay = currentState.timeOfDay
+            timeOfDay = currentState.selectedTimesOfDay.firstOrNull() ?: HabitTimeOfDay.ANY_TIME
         )
     }
 

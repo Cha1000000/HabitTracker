@@ -327,6 +327,9 @@
     <string name="time_of_day_afternoon">День</string>
     <string name="time_of_day_evening">Вечер</string>
     <string name="time_of_day_any">Любое время</string>
+    <string name="time_of_day_multi_select_hint">Можно выбрать несколько периодов</string>
+    <string name="time_of_day_will_create_multiple">Будет создано %d отдельных привычек</string>
+    <string name="time_of_day_edit_mode_hint">Время выполнения нельзя изменить при редактировании</string>
 
     <string name="stats_activity_title">Активность за 7 дней</string>
     <string name="stats_leaderboard_title">Рейтинг друзей</string>

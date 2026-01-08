@@ -467,8 +467,9 @@ private fun GroupSettings(
 
 @Composable
 private fun TimeOfDaySelector(
-    selectedTime: HabitTimeOfDay,
-    onTimeSelected: (HabitTimeOfDay) -> Unit,
+    selectedTimes: Set<HabitTimeOfDay>,
+    onTimeToggle: (HabitTimeOfDay) -> Unit,
+    isEditMode: Boolean,
     modifier: Modifier = Modifier
 ) {
     val isDarkTheme = isSystemInDarkTheme()
@@ -490,35 +491,66 @@ private fun TimeOfDaySelector(
                 isDarkTheme = isDarkTheme
             )
             
+            // Подсказка о множественном выборе (только при создании)
+            if (!isEditMode) {
+                Text(
+                    text = stringResource(R.string.time_of_day_multi_select_hint),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+            
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     TimeOfDayChip(
                         timeOfDay = HabitTimeOfDay.MORNING,
-                        isSelected = selectedTime == HabitTimeOfDay.MORNING,
-                        onSelect = onTimeSelected,
+                        isSelected = selectedTimes.contains(HabitTimeOfDay.MORNING),
+                        onSelect = onTimeToggle,
+                        enabled = !isEditMode,
                         modifier = Modifier.weight(1f)
                     )
                     TimeOfDayChip(
                         timeOfDay = HabitTimeOfDay.AFTERNOON,
-                        isSelected = selectedTime == HabitTimeOfDay.AFTERNOON,
-                        onSelect = onTimeSelected,
+                        isSelected = selectedTimes.contains(HabitTimeOfDay.AFTERNOON),
+                        onSelect = onTimeToggle,
+                        enabled = !isEditMode,
                         modifier = Modifier.weight(1f)
                     )
                 }
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     TimeOfDayChip(
                         timeOfDay = HabitTimeOfDay.EVENING,
-                        isSelected = selectedTime == HabitTimeOfDay.EVENING,
-                        onSelect = onTimeSelected,
+                        isSelected = selectedTimes.contains(HabitTimeOfDay.EVENING),
+                        onSelect = onTimeToggle,
+                        enabled = !isEditMode,
                         modifier = Modifier.weight(1f)
                     )
                     TimeOfDayChip(
                         timeOfDay = HabitTimeOfDay.ANY_TIME,
-                        isSelected = selectedTime == HabitTimeOfDay.ANY_TIME,
-                        onSelect = onTimeSelected,
+                        isSelected = selectedTimes.contains(HabitTimeOfDay.ANY_TIME),
+                        onSelect = onTimeToggle,
+                        enabled = !isEditMode,
                         modifier = Modifier.weight(1f)
                     )
                 }
+            }
+            
+            // Информация о количестве создаваемых привычек
+            if (!isEditMode && selectedTimes.size > 1) {
+                Text(
+                    text = stringResource(R.string.time_of_day_will_create_multiple, selectedTimes.size),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.primary
+                )
+            }
+            
+            // Предупреждение при редактировании
+            if (isEditMode) {
+                Text(
+                    text = stringResource(R.string.time_of_day_edit_mode_hint),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
             }
         }
     }
@@ -529,6 +561,7 @@ private fun TimeOfDayChip(
     timeOfDay: HabitTimeOfDay,
     isSelected: Boolean,
     onSelect: (HabitTimeOfDay) -> Unit,
+    enabled: Boolean = true,
     modifier: Modifier = Modifier
 ) {
     val isDarkTheme = isSystemInDarkTheme()
@@ -548,7 +581,8 @@ private fun TimeOfDayChip(
 
     FilterChip(
         selected = isSelected,
-        onClick = { onSelect(timeOfDay) },
+        onClick = { if (enabled) onSelect(timeOfDay) },
+        enabled = enabled,
         label = { 
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(
@@ -1106,10 +1140,11 @@ fun AddEditHabitScreen(
                 }
 
                 item {
-                    // Время выполнения (TimeOfDay)
+                    // Время выполнения (TimeOfDay) - множественный выбор при создании
                     TimeOfDaySelector(
-                        selectedTime = uiState.timeOfDay,
-                        onTimeSelected = { viewModel.onTimeOfDayChange(it) },
+                        selectedTimes = uiState.selectedTimesOfDay,
+                        onTimeToggle = { viewModel.onTimeOfDayToggle(it) },
+                        isEditMode = uiState.isEditMode,
                         modifier = Modifier.fillMaxWidth()
                     )
                 }

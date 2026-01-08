@@ -25,8 +25,10 @@ data class AddEditHabitUiState(
     // Настройки частоты
     val frequency: HabitFrequency = HabitFrequency.DAILY,
     
-    // Время выполнения
-    val timeOfDay: HabitTimeOfDay = HabitTimeOfDay.ANY_TIME,
+    // Время выполнения (множественный выбор для создания нескольких привычек)
+    val selectedTimesOfDay: Set<HabitTimeOfDay> = setOf(HabitTimeOfDay.ANY_TIME),
+    // Флаг режима редактирования (при редактировании нельзя менять количество периодов)
+    val isEditMode: Boolean = false,
     
     // Даты начала и окончания привычки
     val startDate: LocalDate? = null, // Дата начала (null = с сегодня)

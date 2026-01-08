@@ -39,7 +39,8 @@ fun HabitEntity.toDomain(): Habit {
         followUpReminderEnabled = followUpReminderEnabled,
         followUpReminderDuration = followUpReminderDuration,
         timeOfDay = timeOfDay,
-        goalType = goalType
+        goalType = goalType,
+        timeGroupId = timeGroupId
     )
 }
 
@@ -72,7 +73,8 @@ fun Habit.toEntity(): HabitEntity {
         followUpReminderEnabled = followUpReminderEnabled,
         followUpReminderDuration = followUpReminderDuration,
         timeOfDay = timeOfDay,
-        goalType = goalType
+        goalType = goalType,
+        timeGroupId = timeGroupId
     )
 }
 

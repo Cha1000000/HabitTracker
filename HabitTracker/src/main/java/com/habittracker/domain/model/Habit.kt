@@ -37,7 +37,8 @@ data class Habit(
     val followUpReminderEnabled: Boolean = true, // включено ли повторное напоминание
     val followUpReminderDuration: LocalTime = LocalTime(2, 0), // через сколько времени напомнить (по умолчанию 2 часа)
     val timeOfDay: HabitTimeOfDay = HabitTimeOfDay.ANY_TIME, // время выполнения привычки
-    val goalType: HabitGoalType = HabitGoalType.SIMPLE // тип цели: простая или измеримая
+    val goalType: HabitGoalType = HabitGoalType.SIMPLE, // тип цели: простая или измеримая
+    val timeGroupId: String? = null // ID группы привычек с одинаковым названием, но разным временем выполнения
 )
 
 enum class HabitGoalType {

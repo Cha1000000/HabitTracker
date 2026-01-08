@@ -52,5 +52,6 @@ data class HabitEntity(
     val followUpReminderEnabled: Boolean = true,
     val followUpReminderDuration: LocalTime = LocalTime(2, 0),
     val timeOfDay: HabitTimeOfDay = HabitTimeOfDay.ANY_TIME,
-    val goalType: HabitGoalType = HabitGoalType.SIMPLE
+    val goalType: HabitGoalType = HabitGoalType.SIMPLE,
+    val timeGroupId: String? = null
 )

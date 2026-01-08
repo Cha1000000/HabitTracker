@@ -19,7 +19,7 @@ interface IAddEditHabitViewModel {
     fun onTypeChange(type: HabitType)
     fun onGoalTypeChange(goalType: HabitGoalType)
     fun onFrequencyChange(frequency: HabitFrequency)
-    fun onTimeOfDayChange(timeOfDay: HabitTimeOfDay)
+    fun onTimeOfDayToggle(timeOfDay: HabitTimeOfDay)
     fun onColorChange(color: Int)
     fun onIconChange(icon: String)
     fun onReminderTimeChange(time: LocalTime?)
