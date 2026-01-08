@@ -315,9 +315,10 @@ fun HabitsScreen(
             if (showCodeDialog) {
                 JoinByCodeDialog(
                     initialCode = prefilledInviteCode,
-                    onDismiss = { },
+                    onDismiss = { showCodeDialog = false },
                     onJoin = { code ->
                         viewModel.joinByInviteCode(code)
+                        showCodeDialog = false
                     }
                 )
             }
