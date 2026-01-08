@@ -76,6 +76,7 @@ sealed class Screen(val route: String) {
     }
     // Settings
     object NotificationSettings : Screen("notification_settings_screen")
+    object HabitSettings : Screen("habit_settings_screen")
     // Debug screens (только для debug сборки)
     object FCMTest : Screen("fcm_test_screen")
 }
@@ -125,12 +126,16 @@ fun AppNavHost(
         }
 
         composable(
-            route = Screen.AddEditHabit.route + "?habitId={habitId}&startDate={startDate}",
+            route = Screen.AddEditHabit.route + "?habitId={habitId}&startDate={startDate}&goalType={goalType}",
             arguments = listOf(
                 navArgument("habitId") {
                     nullable = true
                 },
                 navArgument("startDate") {
+                    nullable = true
+                    defaultValue = null
+                },
+                navArgument("goalType") {
                     nullable = true
                     defaultValue = null
                 }
@@ -288,6 +293,10 @@ fun AppNavHost(
         
         composable(route = Screen.NotificationSettings.route) {
             NotificationSettingsScreen(navController = navController)
+        }
+
+        composable(route = Screen.HabitSettings.route) {
+            com.habittracker.presentation.ui.settings.HabitSettingsScreen(navController = navController)
         }
     }
         

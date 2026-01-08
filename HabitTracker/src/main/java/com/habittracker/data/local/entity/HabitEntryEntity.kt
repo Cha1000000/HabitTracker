@@ -26,6 +26,7 @@ data class HabitEntryEntity(
     val completedAt: LocalDateTime?, // точное время выполнения
     val value: Int,
     val note: String?,
+    val isRestDay: Boolean,
     val createdAt: LocalDate,
     val updatedAt: LocalDate
 )

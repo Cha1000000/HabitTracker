@@ -11,9 +11,11 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
@@ -27,6 +29,7 @@ import androidx.compose.material.icons.filled.EmojiEvents
 import androidx.compose.material.icons.filled.Flag
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.People
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.pullrefresh.pullRefresh
 import androidx.compose.material.pullrefresh.rememberPullRefreshState
 import androidx.compose.material3.CircularProgressIndicator
@@ -60,6 +63,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
@@ -75,6 +79,7 @@ import com.habittracker.HabitTrackerApplication
 import com.habittracker.R
 import com.habittracker.domain.model.Habit
 import com.habittracker.domain.model.HabitFrequency
+import com.habittracker.domain.model.HabitTimeOfDay
 import com.habittracker.domain.model.HabitType
 import com.habittracker.domain.model.isGroupHabit
 import com.habittracker.presentation.navigation.Screen
@@ -84,6 +89,9 @@ import com.habittracker.presentation.ui.components.UserAvatar
 import com.habittracker.presentation.ui.habits.components.ConfirmDialog
 import com.habittracker.presentation.ui.habits.components.EnhancedHabitItem
 import com.habittracker.presentation.ui.habits.components.ExpandableFAB
+import com.habittracker.presentation.ui.habits.components.GlassmorphicSectionHeader
+import com.habittracker.presentation.ui.habits.components.HabitTypeSelectionDialog
+import com.habittracker.presentation.ui.habits.components.HabitValueInputDialog
 import com.habittracker.presentation.ui.habits.components.JoinByCodeDialog
 import com.habittracker.presentation.ui.habits.components.TahoeBackToTodayButton
 import com.habittracker.presentation.ui.habits.components.TahoeDateHeader
@@ -100,7 +108,6 @@ import com.habittracker.presentation.viewmodel.HabitsViewModel
 import com.habittracker.presentation.viewmodel.NotificationsViewModel
 import kotlinx.coroutines.launch
 import kotlinx.datetime.Clock
-import kotlinx.datetime.TimeZone
 import kotlinx.datetime.TimeZone.Companion.currentSystemDefault
 import kotlinx.datetime.toLocalDateTime
 import kotlin.math.abs
@@ -120,6 +127,7 @@ fun HabitsScreen(
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
     val habitDeletedText = stringResource(id = R.string.habit_deleted)
+    val undoText = stringResource(id = R.string.undo)
     val badgeCount by notificationsViewModel.badgeCount.collectAsState()
     val friendsUiState by friendsViewModel.uiState.collectAsState()
     val friendRequestsBadgeCount = friendsUiState.incomingRequests.size
@@ -132,8 +140,10 @@ fun HabitsScreen(
     var showCodeDialog by remember { mutableStateOf(false) }
     var prefilledInviteCode by remember { mutableStateOf<String?>(null) }
     
+    // Состояние диалога выбора типа цели привычки
+    var showGoalTypeDialog by remember { mutableStateOf(false) }
+    
     // Автоматическое открытие диалога при наличии inviteCode из deep link
-    // Проверяем что это реальный код, а не placeholder из навигации
     LaunchedEffect(inviteCode) {
         if (!inviteCode.isNullOrBlank() && inviteCode != "{inviteCode}") {
             prefilledInviteCode = inviteCode
@@ -150,6 +160,7 @@ fun HabitsScreen(
     val weekCompletionData = uiState.weekCompletionData
     val isToday = selectedDate == today
     val isCurrentWeekDisplayed = viewModel.isCurrentWeekDisplayed()
+    val isFutureDate = selectedDate > today
     
     // Логирование для отладки
     LaunchedEffect(uiState.selectedDate) {
@@ -159,6 +170,19 @@ fun HabitsScreen(
     val lifecycleOwner = LocalLifecycleOwner.current
     val appStateManager = remember {
         (context.applicationContext as? HabitTrackerApplication)?.appStateManager
+    }
+
+    val density = LocalDensity.current
+    var bottomSystemNavPadding by remember { mutableStateOf(0.dp) }
+
+    val bottomNavBarPx = WindowInsets.navigationBars.getBottom(density)
+    val bottomNavBarDp = with(density) { bottomNavBarPx.toDp() }
+    val hasThreeButtonNavBar = bottomNavBarDp >= 40.dp
+
+    LaunchedEffect(bottomNavBarPx) {
+        appStateManager?.setBottomSystemNavigationBarHeightPx(bottomNavBarPx)
+        appStateManager?.setHasBottomSystemNavigationBar(hasThreeButtonNavBar)
+        bottomSystemNavPadding = if (hasThreeButtonNavBar) bottomNavBarDp else 0.dp
     }
 
     // Отслеживаем lifecycle и обновляем состояние экрана
@@ -207,6 +231,16 @@ fun HabitsScreen(
                         scrolledContainerColor = Color.Transparent
                     ),
                 actions = {
+                    // Настройки
+                    IconButton(onClick = {
+                        navController.navigate(Screen.HabitSettings.route)
+                    }) {
+                        Icon(
+                            imageVector = Icons.Default.Settings,
+                            contentDescription = stringResource(R.string.settings_title)
+                        )
+                    }
+
                     // Уведомления
                     Box {
                         IconButton(onClick = {
@@ -250,9 +284,8 @@ fun HabitsScreen(
             if (selectedDate >= today) {
                 ExpandableFAB(
                     onCreateHabit = { 
-                        // Передаём выбранную дату как параметр при создании привычки
-                        val dateParam = "?startDate=$selectedDate"
-                        navController.navigate(Screen.AddEditHabit.route + dateParam) 
+                        // Открываем диалог выбора типа цели перед переходом к созданию
+                        showGoalTypeDialog = true
                     },
                     onBrowsePublic = { 
                         navController.navigate(Screen.PublicHabits.route) 
@@ -264,24 +297,35 @@ fun HabitsScreen(
                 )
             }
             
+            // Диалог выбора типа цели (Simple vs Measurable)
+            if (showGoalTypeDialog) {
+                HabitTypeSelectionDialog(
+                    onDismiss = { showGoalTypeDialog = false },
+                    onTypeSelected = { goalType ->
+                        showGoalTypeDialog = false
+                        // Передаём выбранную дату и тип цели как параметры при создании привычки
+                        val dateParam = "startDate=$selectedDate"
+                        val typeParam = "goalType=${goalType.name}"
+                        navController.navigate(Screen.AddEditHabit.route + "?$dateParam&$typeParam") 
+                    }
+                )
+            }
+            
             // Диалог ввода кода (вынесен из FAB для поддержки deep links)
             if (showCodeDialog) {
                 JoinByCodeDialog(
                     initialCode = prefilledInviteCode,
-                    onDismiss = { 
-                        showCodeDialog = false
-                        prefilledInviteCode = null
-                    },
+                    onDismiss = { showCodeDialog = false },
                     onJoin = { code ->
-                        showCodeDialog = false
-                        prefilledInviteCode = null
                         viewModel.joinByInviteCode(code)
+                        showCodeDialog = false
                     }
                 )
             }
         },
         bottomBar = {
             TahoeDockBar(
+                modifier = Modifier.padding(bottom = bottomSystemNavPadding),
                 isDarkTheme = isSystemInDarkTheme()
             ) {
                 // Статистика
@@ -339,7 +383,8 @@ fun HabitsScreen(
         val completionPercentage = if (uiState.habitsWithCompletion.isEmpty()) {
             0
         } else {
-            val completed = uiState.habitsWithCompletion.count { it.isCompletedToday }
+            val completed = uiState.habitsWithCompletion.count { it.isCompletedToday } +
+                    uiState.habitsWithCompletion.count { it.isRestDayToday }
             (completed * 100) / uiState.habitsWithCompletion.size
         }
         
@@ -416,104 +461,53 @@ fun HabitsScreen(
                             Text(stringResource(R.string.habits_empty_state))
                         } else {
                             key(recomposeKey) {
+                                // Группируем привычки по времени суток
+                                val groupedHabits = remember(uiState.habitsWithCompletion) {
+                                    val grouped = uiState.habitsWithCompletion.groupBy { it.habit.timeOfDay }
+                                        .toSortedMap(compareBy { it.ordinal })
+                                    grouped
+                                }
+                                // Проверяем, нужно ли показывать заголовки секций
+                                // Показываем только если есть хотя бы одна привычка не в ANY_TIME
+                                val showSections = remember(groupedHabits) {
+                                    groupedHabits.keys.any { it != HabitTimeOfDay.ANY_TIME }
+                                }
+
                                 LazyColumn(
-                                    modifier = Modifier.fillMaxSize(),
-                                    contentPadding = PaddingValues(16.dp),
+                                    modifier = Modifier
+                                        .fillMaxSize()
+                                        .padding(horizontal = 16.dp)
+                                        .testTag("habits-list"),
+                                    contentPadding = PaddingValues(bottom = 100.dp),
                                     verticalArrangement = Arrangement.spacedBy(12.dp)
                                 ) {
-                                items(
-                                    uiState.habitsWithCompletion,
-                                    key = { hwc -> "${hwc.habit.id}:${hwc.isCompletedToday}" }
-                                ) { habitWithCompletion ->
-                                    var showDeleteDialog by remember { mutableStateOf(false) }
-                                    val dismissState = rememberSwipeToDismissBoxState(
-                                        confirmValueChange = { value ->
-                                            if (value == SwipeToDismissBoxValue.EndToStart) {
-                                                showDeleteDialog = true
-                                            }
-                                            // Не позволяем автоматически закрепить состояние, пока не подтвердим
-                                            false
-                                        }
-                                    )
-
-                                    SwipeToDismissBox(
-                                        state = dismissState,
-                                        modifier = Modifier.testTag("habit-${habitWithCompletion.habit.id}"),
-                                        enableDismissFromStartToEnd = false,
-                                        backgroundContent = {
-                                            // Фон удаления: проявляется только при свайпе, совпадает по скруглению с карточкой
-                                            val shape = MaterialTheme.shapes.medium
-                                            val offsetPx = try { dismissState.requireOffset() } catch (_: IllegalStateException) { 0f }
-                                            val targetAlpha = if (abs(offsetPx) > 0f) {
-                                                // Наращиваем непрозрачность с прогрессом свайпа
-                                                (abs(offsetPx) / 600f).coerceIn(0f, 1f)
-                                            } else 0f
-                                            val bgAlpha = animateFloatAsState(targetValue = targetAlpha, label = "swipeBgAlpha").value
-                                            val coral = Color(0xFFD74646)
-
-                                            Box(
-                                                modifier = Modifier
-                                                    .fillMaxSize()
-                                                    .padding(horizontal = 4.dp)
-                                                    .clip(shape)
-                                                    .background(coral.copy(alpha = bgAlpha)),
-                                                contentAlignment = Alignment.CenterEnd
-                                            ) {
-                                                Icon(
-                                                    imageVector = Icons.Default.Delete,
-                                                    contentDescription = stringResource(R.string.delete),
-                                                    tint = MaterialTheme.colorScheme.onError.copy(alpha = bgAlpha),
-                                                    modifier = Modifier.padding(end = 24.dp)
+                                    groupedHabits.forEach { (timeOfDay, habits) ->
+                                        if (showSections && habits.isNotEmpty()) {
+                                            item(key = "header_${timeOfDay.name}") {
+                                                HabitSectionHeader(
+                                                    timeOfDay = timeOfDay,
+                                                    modifier = Modifier.padding(bottom = 4.dp, top = 8.dp)
                                                 )
                                             }
                                         }
-                                    ) {
-                                        key(recomposeKey) {
-                                            EnhancedHabitItem(
+                                        
+                                        items(
+                                            items = habits,
+                                            key = { hwc -> hwc.habit.id }
+                                        ) { habitWithCompletion ->
+                                            HabitItemRow(
                                                 habitWithCompletion = habitWithCompletion,
-                                                onHabitClick = { habit ->
-                                                    if (habit.habit.isGroupHabit()) {
-                                                        navController.navigate(Screen.GroupHabitDetail.createRoute(habit.habit.id))
-                                                    } else {
-                                                        navController.navigate(Screen.AddEditHabit.route + "?habitId=${habit.habit.id}")
-                                                    }
-                                                },
-                                                onToggleCompletion = {
-                                                    viewModel.toggleHabitCompletion(habitWithCompletion.habit.id)
-                                                },
-                                                onEdit = { habit ->
-                                                    navController.navigate(Screen.AddEditHabit.route + "?habitId=${habit.habit.id}")
-                                                },
-                                                onDelete = {
-                                                    showDeleteDialog = true
-                                                }
+                                                isFutureDate = isFutureDate,
+                                                navController = navController,
+                                                viewModel = viewModel,
+                                                scope = scope,
+                                                snackbarHostState = snackbarHostState,
+                                                habitDeletedText = habitDeletedText,
+                                                undoText = undoText,
+                                                recomposeKey = recomposeKey
                                             )
                                         }
                                     }
-
-                                    if (showDeleteDialog) {
-                                        ConfirmDialog(
-                                            title = stringResource(id = R.string.confirm_delete_habit_title),
-                                            message = stringResource(id = R.string.confirm_delete_habit_message, habitWithCompletion.habit.title),
-                                            confirmLabel = stringResource(id = R.string.delete),
-                                            cancelLabel = stringResource(id = R.string.cancel),
-                                            onConfirm = {
-                                                showDeleteDialog = false
-                                                // Мгновенно удаляем (локально + Firestore) без UNDO, чтобы элемент не возвращался при refresh
-                                                viewModel.deleteHabit(habitWithCompletion.habit.id)
-                                                // Показываем короткое уведомление об успехе
-                                                scope.launch {
-                                                    snackbarHostState.showSnackbar(
-                                                        message = habitDeletedText,
-                                                        withDismissAction = true,
-                                                        duration = SnackbarDuration.Short
-                                                    )
-                                                }
-                                            },
-                                            onDismiss = { showDeleteDialog = false }
-                                        )
-                                    }
-                                }
                                 }
                             }
                         }
@@ -534,6 +528,153 @@ fun HabitsScreen(
         ConfettiOverlay(
             showConfetti = uiState.showConfetti,
             onConfettiComplete = { viewModel.hideConfetti() }
+        )
+        
+        // Диалог ввода значения для измеримых привычек
+        if (uiState.habitIdForValueInput != null) {
+            val habitWithCompletion = uiState.habitsWithCompletion.find { it.habit.id == uiState.habitIdForValueInput }
+            if (habitWithCompletion != null) {
+                HabitValueInputDialog(
+                    habitTitle = habitWithCompletion.habit.title,
+                    currentValue = habitWithCompletion.currentValue,
+                    targetValue = habitWithCompletion.habit.targetValue,
+                    unit = habitWithCompletion.habit.unit,
+                    onConfirm = { value ->
+                        viewModel.updateHabitValue(habitWithCompletion.habit.id, value)
+                    },
+                    onDismiss = {
+                        viewModel.dismissValueInputDialog()
+                    }
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun HabitSectionHeader(
+    timeOfDay: HabitTimeOfDay,
+    modifier: Modifier = Modifier
+) {
+    val titleRes = when (timeOfDay) {
+        HabitTimeOfDay.MORNING -> R.string.time_of_day_morning
+        HabitTimeOfDay.AFTERNOON -> R.string.time_of_day_afternoon
+        HabitTimeOfDay.EVENING -> R.string.time_of_day_evening
+        HabitTimeOfDay.ANY_TIME -> R.string.time_of_day_any
+    }
+    
+    GlassmorphicSectionHeader(
+        text = stringResource(titleRes),
+        modifier = modifier
+    )
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun HabitItemRow(
+    habitWithCompletion: HabitWithCompletion,
+    isFutureDate: Boolean,
+    navController: NavController,
+    viewModel: HabitsViewModel,
+    scope: kotlinx.coroutines.CoroutineScope,
+    snackbarHostState: SnackbarHostState,
+    habitDeletedText: String,
+    undoText: String,
+    recomposeKey: Int
+) {
+    var showDeleteDialog by remember { mutableStateOf(false) }
+    val dismissState = rememberSwipeToDismissBoxState(
+        confirmValueChange = { value ->
+            if (value == SwipeToDismissBoxValue.EndToStart) {
+                showDeleteDialog = true
+            }
+            // Не позволяем автоматически закрепить состояние, пока не подтвердим
+            false
+        }
+    )
+
+    SwipeToDismissBox(
+        state = dismissState,
+        modifier = Modifier.testTag("habit-${habitWithCompletion.habit.id}"),
+        enableDismissFromStartToEnd = false,
+        backgroundContent = {
+            // Фон удаления: проявляется только при свайпе, совпадает по скруглению с карточкой
+            val shape = MaterialTheme.shapes.medium
+            val offsetPx = try { dismissState.requireOffset() } catch (_: IllegalStateException) { 0f }
+            val targetAlpha = if (abs(offsetPx) > 0f) {
+                // Наращиваем непрозрачность с прогрессом свайпа
+                (abs(offsetPx) / 600f).coerceIn(0f, 1f)
+            } else 0f
+            val bgAlpha = animateFloatAsState(targetValue = targetAlpha, label = "swipeBgAlpha").value
+            val coral = Color(0xFFD74646)
+
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(horizontal = 4.dp)
+                    .clip(shape)
+                    .background(coral.copy(alpha = bgAlpha)),
+                contentAlignment = Alignment.CenterEnd
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Delete,
+                    contentDescription = stringResource(R.string.delete),
+                    tint = MaterialTheme.colorScheme.onError.copy(alpha = bgAlpha),
+                    modifier = Modifier.padding(end = 24.dp)
+                )
+            }
+        }
+    ) {
+        key(recomposeKey) {
+            EnhancedHabitItem(
+                habitWithCompletion = habitWithCompletion,
+                onHabitClick = { habit ->
+                    if (habit.habit.isGroupHabit()) {
+                        navController.navigate(Screen.GroupHabitDetail.createRoute(habit.habit.id))
+                    } else {
+                        navController.navigate(Screen.AddEditHabit.route + "?habitId=${habit.habit.id}")
+                    }
+                },
+                onToggleCompletion = {
+                    viewModel.toggleHabitCompletion(habitWithCompletion.habit.id)
+                },
+                onToggleRestDay = {
+                    viewModel.toggleRestDay(habitWithCompletion.habit.id)
+                },
+                onEdit = { habit ->
+                    navController.navigate(Screen.AddEditHabit.route + "?habitId=${habit.habit.id}")
+                },
+                onDelete = {
+                    showDeleteDialog = true
+                },
+                isFutureDate = isFutureDate
+            )
+        }
+    }
+
+    if (showDeleteDialog) {
+        ConfirmDialog(
+            title = stringResource(id = R.string.confirm_delete_habit_title),
+            message = stringResource(id = R.string.confirm_delete_habit_message, habitWithCompletion.habit.title),
+            confirmLabel = stringResource(id = R.string.delete),
+            cancelLabel = stringResource(id = R.string.cancel),
+            onConfirm = {
+                showDeleteDialog = false
+                viewModel.requestDeleteHabit(habitWithCompletion.habit.id)
+                scope.launch {
+                    val result = snackbarHostState.showSnackbar(
+                        message = habitDeletedText,
+                        actionLabel = undoText,
+                        duration = SnackbarDuration.Short
+                    )
+                    if (result == androidx.compose.material3.SnackbarResult.ActionPerformed) {
+                        viewModel.cancelPendingDeletion()
+                    } else {
+                        viewModel.confirmPendingDeletion()
+                    }
+                }
+            },
+            onDismiss = { showDeleteDialog = false }
         )
     }
 }
@@ -562,8 +703,8 @@ fun EnhancedHabitItemPreview() {
         createdBy = "user1",
         participants = listOf("user1"),
         isActive = true,
-        createdAt = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault()).date,
-        updatedAt = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault()).date
+        createdAt = Clock.System.now().toLocalDateTime(currentSystemDefault()).date,
+        updatedAt = Clock.System.now().toLocalDateTime(currentSystemDefault()).date
     )
     
     Column {

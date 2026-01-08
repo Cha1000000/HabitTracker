@@ -5,8 +5,10 @@ import androidx.room.Index
 import androidx.room.PrimaryKey
 import com.habittracker.domain.model.HabitFrequency
 import com.habittracker.domain.model.HabitType
+import com.habittracker.domain.model.HabitGoalType
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.LocalTime
+import com.habittracker.domain.model.HabitTimeOfDay
 
 @Entity(
     tableName = "habits",
@@ -46,5 +48,10 @@ data class HabitEntity(
     val updatedAtMillis: Long = System.currentTimeMillis(),
     val deletedAtMillis: Long? = null,
     val startDate: LocalDate? = null,
-    val endDate: LocalDate? = null
+    val endDate: LocalDate? = null,
+    val followUpReminderEnabled: Boolean = true,
+    val followUpReminderDuration: LocalTime = LocalTime(2, 0),
+    val timeOfDay: HabitTimeOfDay = HabitTimeOfDay.ANY_TIME,
+    val goalType: HabitGoalType = HabitGoalType.SIMPLE,
+    val timeGroupId: String? = null
 )

@@ -1,4 +1,16 @@
 <resources>
+    <string name="daily_reminder_title">Как ваши успехи?</string>
+    <string name="daily_reminder_message">Не забудьте отметить выполненные сегодня привычки!</string>
+    
+    <!-- Settings Screen -->
+    <string name="settings_notifications_header">Уведомления</string>
+    <string name="settings_daily_reminder">Ежедневное напоминание</string>
+    <string name="settings_daily_reminder_summary">Получать напоминание о проверке привычек в выбранное время</string>
+    <string name="settings_daily_reminder_time">Время напоминания</string>
+    <string name="settings_display_header">Отображение</string>
+    <string name="settings_sort_completed_bottom">Сортировка</string>
+    <string name="settings_sort_completed_bottom_summary">Перемещать выполненные привычки вниз списка</string>
+    
     <!-- App Info -->
     <string name="app_name">HabitTracker</string>
     <string name="default_web_client_id">637297267141-flvhigsfcbgc0m20hdoh3kid6vl0k0ne.apps.googleusercontent.com</string>
@@ -19,10 +31,18 @@
     <string name="edit_challenge_title_format">Изменить %1$s</string>
     <string name="edit_challenge_title_fallback">Изменить челлендж</string>
     <string name="menu_done">Выполнено</string>
+    <string name="menu_rest_day">Сделать выходной</string>
+    <string name="menu_resume">Возобновить</string>
     <string name="back">Назад</string>
     <string name="clear">Очистить</string>
     <string name="done">Готово</string>
-    
+    <string name="create_new_habit">Создать новую привычку</string>
+    <string name="action_close">Закрыть</string>
+    <string name="habit_goal_type_simple">Отмечаемая</string>
+    <string name="habit_goal_type_simple_desc">Просто отметить, что привычка выполнена</string>
+    <string name="habit_goal_type_measurable">Измеряемая</string>
+    <string name="habit_goal_type_measurable_desc">Указывать количество.\nНапример: сколько выпито стаканов воды, или сделано отжиманий</string>
+
     <!-- Splash Screen -->
     <string name="app_name_display">Habit Tracker</string>
     <string name="splash_subtitle">Создавайте привычки вместе</string>
@@ -66,6 +86,7 @@
     
     <!-- Add/Edit Habit Screen -->
     <string name="habit_new_title">Новая привычка</string>
+    <string name="habit_edit_title">Редактировать привычку</string>
     <string name="habit_saving">Сохранение...</string>
     <string name="habit_name_label">Название</string>
     <string name="habit_description_label">Описание (необязательно)</string>
@@ -84,12 +105,21 @@
     <string name="habit_select_icon">Выберите иконку</string>
     <string name="habit_select_color">Выберите цвет</string>
     <string name="habit_click_to_change_icon">Нажмите, чтобы изменить иконку</string>
+    
+    <!-- Follow-up reminder (Add/Edit Habit Screen) -->
+    <string name="follow_up_reminder_title">Повторное напоминание</string>
+    <string name="follow_up_reminder_subtitle">Напомнить, если привычка не выполнена</string>
+    <string name="follow_up_reminder_interval_label">Интервал напоминания</string>
+    <string name="follow_up_reminder_interval_picker_title">Выберите интервал</string>
+    <string name="follow_up_reminder_after_format">Через %1$dч %2$dмин</string>
     <!-- Personal reminder settings -->
     <string name="reminder_personal_hint">Напоминание — только для меня</string>
     <string name="apply_reminder_to_all">Применить для всех</string>
     <string name="confirm_apply_reminder_title">Применить напоминание для всех?</string>
     <string name="confirm_apply_reminder_message">Текущие настройки напоминания (время и дни) будут применены всем участникам группы. Продолжить?</string>
     <string name="apply">Применить</string>
+    <string name="error_apply_reminder_all_generic">Ошибка применения настроек для всех</string>
+    <string name="error_apply_reminder_all_fallback">Ошибка применения настроек для всех</string>
     <!-- Frequency global control -->
     <string name="frequency_global_hint">Глобальная настройка — изменяет только автор</string>
     <string name="confirm_change_frequency_title">Изменить частоту для всех?</string>
@@ -290,6 +320,17 @@
     <string name="stats_time_consistency">Оценка постоянства</string>
     <string name="stats_time_average">Среднее время</string>
     <string name="stats_time_best_hour">Лучший час</string>
+    
+    <!-- Time of Day Selection -->
+    <string name="habit_time_of_day_label">Время выполнения</string>
+    <string name="time_of_day_morning">Утро</string>
+    <string name="time_of_day_afternoon">День</string>
+    <string name="time_of_day_evening">Вечер</string>
+    <string name="time_of_day_any">Любое время</string>
+    <string name="time_of_day_multi_select_hint">Можно выбрать несколько периодов</string>
+    <string name="time_of_day_will_create_multiple">Будет создано %d отдельных привычек</string>
+    <string name="time_of_day_edit_mode_hint">Время выполнения нельзя изменить при редактировании</string>
+
     <string name="stats_activity_title">Активность за 7 дней</string>
     <string name="stats_leaderboard_title">Рейтинг друзей</string>
     <string name="leaderboard_empty">У вас пока нет друзей для соревнования</string>
@@ -318,6 +359,7 @@
     <string name="error_declining_request">Ошибка отклонения запроса</string>
     <string name="error_removing_friend">Ошибка удаления друга</string>
     <string name="error_canceling_request">Ошибка отмены запроса</string>
+    <string name="error_generic">Произошла ошибка</string>
     
     <!-- Social Status -->
     <string name="online">В сети</string>
@@ -393,6 +435,7 @@
     <string name="generating_code">Генерируем...</string>
     <string name="generate_invite_code">Создать код приглашения</string>
     <string name="invite_code_after_save">У этой привычки пока нет кода приглашения</string>
+    <string name="invite_code_can_generate_after_save">Код приглашения можно создать после сохранения привычки</string>
     <string name="join_habit_by_code">Присоединиться по коду</string>
     <string name="join_habit_by_code_description">Введите код приглашения, чтобы присоединиться к групповой привычке</string>
     <string name="joining">Присоединяемся...</string>
@@ -440,6 +483,11 @@
     <string name="error_accept_invitation">Ошибка принятия приглашения</string>
     <string name="success_invitation_declined">Приглашение отклонено</string>
     <string name="error_decline_invitation">Ошибка отклонения приглашения</string>
+    <string name="error_update_habit">Ошибка обновления привычки</string>
+    
+    <!-- Dialogs -->
+    <string name="enter_value_title">Указать количество</string>
+    <string name="enter_value_message">Введите выполненное количество для привычки «%1$s»\n(Цель: %2$d %3$s)</string>
     
     <!-- Expandable FAB -->
     <string name="fab_enter_code">Ввести код приглашения</string>
@@ -633,6 +681,13 @@
     <string name="challenge_type">Тип челленджа</string>
     <string name="target_value">Целевое значение</string>
     <string name="target_value_hint">Введите целевое значение</string>
+    <string name="target_total_value">Целевое количество</string>
+    <string name="target_total_value_hint">Например: 100%1$s</string>
+    <string name="first_to_target_simple_hint">Побеждает первый, кто выполнит привычку указанное количество дней</string>
+    <string name="first_to_target_measurable_hint">Побеждает первый, кто наберёт указанное количество выполнений</string>
+    <string name="allow_backfill_completions">Отметки за прошлые дни</string>
+    <string name="allow_backfill_completions_description">Можно отмечать выполнения за прошедшие дни, если забыли отметить вовремя</string>
+    <string name="allow_backfill_completions_info">Можно отмечать выполнения за прошедшие дни</string>
     <string name="reward">Награда</string>
     <string name="reward_hint">Опишите награду для победителя</string>
     <string name="create_challenge_button">Создать челлендж</string>
@@ -729,7 +784,7 @@
     <string name="achievements_streaks">Серии</string>
     <string name="achievements_social">Социальные</string>
     <string name="achievements_challenges">Челленджи</string>
-    <string name="achievements_milestones">Вехи</string>
+    <string name="achievements_milestones">Ранг</string>
     <string name="achievements_special">Особые</string>
     <string name="achievements_near_to_unlock">Близко к получению</string>
     

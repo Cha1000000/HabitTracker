@@ -42,6 +42,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.stringResource
@@ -303,6 +304,11 @@ private fun AchievementCard(
     modifier: Modifier = Modifier
 ) {
     val isDarkTheme = isSystemInDarkTheme()
+    val isCompleted = achievement.isUnlocked
+    val isLocked = !isCompleted && achievement.progress == 0f
+    
+    // Прозрачность для заблокированных элементов
+    val contentAlpha = if (isLocked) 0.5f else 1.0f
     
     GlassmorphicCard(
         modifier = modifier,
@@ -317,13 +323,16 @@ private fun AchievementCard(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Row(
-                    verticalAlignment = Alignment.CenterVertically
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.weight(1f)
                 ) {
                     // Иконка достижения (emoji)
                     Text(
                         text = achievement.achievement.icon,
                         style = MaterialTheme.typography.headlineMedium,
-                        modifier = Modifier.padding(end = 12.dp)
+                        modifier = Modifier
+                            .padding(end = 12.dp)
+                            .alpha(contentAlpha)
                     )
                     
                     Column {
@@ -331,33 +340,38 @@ private fun AchievementCard(
                             text = achievement.getDisplayTitle(),
                             style = MaterialTheme.typography.titleMedium,
                             fontWeight = FontWeight.Bold,
-                            color = if (achievement.isUnlocked) {
+                            color = if (isCompleted) {
                                 MaterialTheme.colorScheme.onSecondaryContainer
                             } else {
-                                MaterialTheme.colorScheme.onSurface
+                                MaterialTheme.colorScheme.onSurface.copy(alpha = if (isLocked) 0.5f else 1f)
                             }
                         )
                         Text(
                             text = achievement.achievement.description,
                             style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = if (isLocked) 0.5f else 1f)
                         )
                     }
                 }
                 
-                if (achievement.isUnlocked) {
+                // Статусная иконка
+                if (isCompleted) {
                     Icon(
                         imageVector = Icons.Filled.CheckCircle,
                         contentDescription = stringResource(R.string.achievement_unlocked),
                         tint = MaterialTheme.colorScheme.primary,
-                        modifier = Modifier.size(24.dp)
+                        modifier = Modifier
+                            .padding(start = 8.dp)
+                            .size(24.dp)
                     )
-                } else {
+                } else if (isLocked) {
                     Icon(
                         imageVector = Icons.Filled.Lock,
                         contentDescription = stringResource(R.string.achievement_locked),
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
-                        modifier = Modifier.size(20.dp)
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
+                        modifier = Modifier
+                            .padding(start = 8.dp)
+                            .size(20.dp)
                     )
                 }
             }
@@ -365,7 +379,7 @@ private fun AchievementCard(
             Spacer(modifier = Modifier.height(12.dp))
             
             // Прогресс
-            if (!achievement.isUnlocked) {
+            if (!isCompleted) {
                 Column {
                     Row(
                         modifier = Modifier.fillMaxWidth(),
@@ -374,18 +388,20 @@ private fun AchievementCard(
                         Text(
                             text = stringResource(R.string.achievement_progress),
                             style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = if (isLocked) 0.5f else 1f)
                         )
                         Text(
                             text = "${(achievement.progress * 100).toInt()}%",
                             style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = if (isLocked) 0.5f else 1f)
                         )
                     }
                     Spacer(modifier = Modifier.height(4.dp))
                     GradientProgressBar(
                         progress = achievement.progress,
-                        modifier = Modifier.fillMaxWidth()
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .alpha(if (isLocked) 0.5f else 1f)
                     )
                 }
             }
@@ -394,13 +410,18 @@ private fun AchievementCard(
             if (achievement.achievement.pointsReward > 0) {
                 Spacer(modifier = Modifier.height(8.dp))
                 Row(
-                    verticalAlignment = Alignment.CenterVertically
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.alpha(contentAlpha)
                 ) {
                     Icon(
                         imageVector = Icons.Filled.Star,
                         contentDescription = null,
                         modifier = Modifier.size(16.dp),
-                        tint = Color(0xFFFFD700) // Золотой цвет
+                        tint = if (isLocked) {
+                            MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
+                        } else {
+                            Color(0xFFFFD700) // Золотой цвет
+                        }
                     )
                     Spacer(modifier = Modifier.width(4.dp))
                     Text(
@@ -409,7 +430,7 @@ private fun AchievementCard(
                             achievement.achievement.pointsReward
                         ),
                         style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = if (isLocked) 0.5f else 1f)
                     )
                 }
             }

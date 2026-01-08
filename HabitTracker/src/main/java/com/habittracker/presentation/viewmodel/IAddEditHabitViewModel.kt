@@ -2,12 +2,14 @@ package com.habittracker.presentation.viewmodel
 
 import com.habittracker.domain.model.HabitFrequency
 import com.habittracker.domain.model.HabitType
+import com.habittracker.domain.model.HabitGoalType
 import com.habittracker.domain.model.User
 import com.habittracker.presentation.state.AddEditHabitUiState
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.LocalTime
 import kotlinx.datetime.DayOfWeek
+import com.habittracker.domain.model.HabitTimeOfDay
 
 interface IAddEditHabitViewModel {
     val uiState: StateFlow<AddEditHabitUiState>
@@ -15,12 +17,19 @@ interface IAddEditHabitViewModel {
     fun onTitleChange(title: String)
     fun onDescriptionChange(description: String)
     fun onTypeChange(type: HabitType)
+    fun onGoalTypeChange(goalType: HabitGoalType)
     fun onFrequencyChange(frequency: HabitFrequency)
+    fun onTimeOfDayToggle(timeOfDay: HabitTimeOfDay)
     fun onColorChange(color: Int)
     fun onIconChange(icon: String)
     fun onReminderTimeChange(time: LocalTime?)
     fun onReminderEnabledChange(enabled: Boolean)
     fun onReminderDayToggle(day: DayOfWeek)
+    
+    // Follow-up reminder
+    fun onFollowUpReminderEnabledChange(enabled: Boolean)
+    fun onFollowUpReminderDurationChange(duration: LocalTime)
+
     // Текстовый ввод для поля «Целевое значение» (поддержка промежуточных состояний)
     fun onTargetValueInputChange(text: String)
     fun onTargetValueChange(value: Int)

@@ -8,6 +8,8 @@ import com.habittracker.presentation.utils.GroupHabitValidationResult
 import kotlinx.datetime.DayOfWeek
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.LocalTime
+import com.habittracker.domain.model.HabitGoalType
+import com.habittracker.domain.model.HabitTimeOfDay
 
 data class AddEditHabitUiState(
     // Основные поля
@@ -17,9 +19,16 @@ data class AddEditHabitUiState(
     val icon: String = "🛎",
     val color: Int = 0xFF2196F3.toInt(), // Цвет привычки как Int
     val type: HabitType = HabitType.PERSONAL,
+    val goalType: HabitGoalType = HabitGoalType.SIMPLE,
+
 
     // Настройки частоты
     val frequency: HabitFrequency = HabitFrequency.DAILY,
+    
+    // Время выполнения (множественный выбор для создания нескольких привычек)
+    val selectedTimesOfDay: Set<HabitTimeOfDay> = setOf(HabitTimeOfDay.ANY_TIME),
+    // Флаг режима редактирования (при редактировании нельзя менять количество периодов)
+    val isEditMode: Boolean = false,
     
     // Даты начала и окончания привычки
     val startDate: LocalDate? = null, // Дата начала (null = с сегодня)
@@ -32,6 +41,10 @@ data class AddEditHabitUiState(
     val reminderTime: LocalTime? = null,
     // Выбранные дни недели для напоминаний (используются для WEEKLY/TWICE_A_WEEK/CUSTOM)
     val reminderDaysInput: Set<DayOfWeek> = emptySet(),
+    
+    // Повторное напоминание (follow-up)
+    val followUpReminderEnabled: Boolean = true,
+    val followUpReminderDuration: LocalTime = LocalTime(2, 0), // По умолчанию 2 часа
 
     // Целевые значения
     val targetValue: Int = 1,

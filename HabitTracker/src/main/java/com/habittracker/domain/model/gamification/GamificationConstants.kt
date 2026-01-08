@@ -16,19 +16,27 @@ object GamificationConstants {
     const val POINTS_STREAK_7_DAYS = 50
     const val POINTS_STREAK_30_DAYS = 200
 
-    // --- Формула для уровней ---
+    // --- Формула для уровней (Линейная) ---
+    const val POINTS_PER_LEVEL = 1000
+
+    /**
+     * Возвращает минимальное количество очков, необходимых для достижения указанного уровня.
+     * Уровень 1: 0 очков
+     * Уровень 2: 1000 очков
+     * Уровень 3: 2000 очков
+     */
     fun pointsForLevel(level: Int): Int {
-        return 1000 * level * (level + 1) / 2
+        if (level <= 1) return 0
+        return (level - 1) * POINTS_PER_LEVEL
     }
 
+    /**
+     * Рассчитывает текущий уровень на основе очков.
+     * 0-999 -> 1
+     * 1000-1999 -> 2
+     */
     fun getLevelFromPoints(points: Int): Int {
         if (points < 0) return 1
-        var level = 1
-        while (true) {
-            if (points < pointsForLevel(level + 1)) {
-                return level
-            }
-            level++
-        }
+        return (points / POINTS_PER_LEVEL) + 1
     }
 }

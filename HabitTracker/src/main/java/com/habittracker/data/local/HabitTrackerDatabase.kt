@@ -54,7 +54,7 @@ import com.habittracker.data.local.entity.UserEntity
         NotificationReadStatusEntity::class,
         GroupHabitNotificationEntity::class
     ],
-    version = 7,
+    version = 12,
     exportSchema = false
 )
 @TypeConverters(Converters::class)
@@ -132,6 +132,41 @@ abstract class HabitTrackerDatabase : RoomDatabase() {
             }
         }
 
+        private val MIGRATION_7_8 = object : Migration(7, 8) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE habits ADD COLUMN followUpReminderEnabled INTEGER NOT NULL DEFAULT 1")
+                // Store LocalTime as String (HH:mm) or update type converter if it stores as something else.
+                // Assuming standard ISO-8601 string format for LocalTime in this project based on other fields if they use standard converter.
+                // Looking at HabitEntity, reminderTime is LocalTime. Let's check Converters later if needed, usually string.
+                // Default '02:00'
+                db.execSQL("ALTER TABLE habits ADD COLUMN followUpReminderDuration TEXT NOT NULL DEFAULT '02:00'")
+            }
+        }
+
+        private val MIGRATION_8_9 = object : Migration(8, 9) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE habit_entries ADD COLUMN isRestDay INTEGER NOT NULL DEFAULT 0")
+            }
+        }
+
+        private val MIGRATION_9_10 = object : Migration(9, 10) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE habits ADD COLUMN timeOfDay TEXT NOT NULL DEFAULT 'ANY_TIME'")
+            }
+        }
+
+        private val MIGRATION_10_11 = object : Migration(10, 11) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE habits ADD COLUMN goalType TEXT NOT NULL DEFAULT 'SIMPLE'")
+            }
+        }
+
+        private val MIGRATION_11_12 = object : Migration(11, 12) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE habits ADD COLUMN timeGroupId TEXT DEFAULT NULL")
+            }
+        }
+
         @Volatile
         private var INSTANCE: HabitTrackerDatabase? = null
 
@@ -148,7 +183,16 @@ abstract class HabitTrackerDatabase : RoomDatabase() {
                     builder.fallbackToDestructiveMigration()
                 }
 
-                builder.addMigrations(MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7)
+                builder.addMigrations(
+                    MIGRATION_4_5, 
+                    MIGRATION_5_6, 
+                    MIGRATION_6_7, 
+                    MIGRATION_7_8, 
+                    MIGRATION_8_9,
+                    MIGRATION_9_10,
+                    MIGRATION_10_11,
+                    MIGRATION_11_12
+                )
 
                 val instance = builder.build()
 

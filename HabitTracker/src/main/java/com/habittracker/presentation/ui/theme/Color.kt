@@ -28,6 +28,7 @@ val TahoeViolet = Color(0xFF4338CA)          // Индиго-фиолетовы�
 val TahoeLavender = Color(0xFF6366F1)        // Индиго (больше синего, чем фиолетового)
 val TahoeLightPurple = Color(0xFF818CF8)     // Светлый индиго
 val TahoePalePurple = Color(0xFFA5B4FC)      // Очень светлый индиго
+val TahoePurple = Color(0xFF7C3AED)          // Фиолетовый (для UI элементов)
 
 // Light Theme Colors (цвета для светлой темы)
 val TahoeLightBackground = Color(0xFFF0F9FF)  // Очень светлый голубовато-белый фон

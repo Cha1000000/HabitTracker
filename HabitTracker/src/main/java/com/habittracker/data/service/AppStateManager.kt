@@ -11,6 +11,12 @@ class AppStateManager @Inject constructor() {
     
     @Volatile
     private var currentScreen: String? = null
+
+    @Volatile
+    private var hasBottomSystemNavigationBar: Boolean = false
+
+    @Volatile
+    private var bottomSystemNavigationBarHeightPx: Int = 0
     
     /**
      * Устанавливает текущий активный экран
@@ -18,7 +24,15 @@ class AppStateManager @Inject constructor() {
     fun setCurrentScreen(screenRoute: String?) {
         currentScreen = screenRoute
     }
-    
+
+    fun setHasBottomSystemNavigationBar(value: Boolean) {
+        hasBottomSystemNavigationBar = value
+    }
+
+    fun setBottomSystemNavigationBarHeightPx(value: Int) {
+        bottomSystemNavigationBarHeightPx = value
+    }
+
     /**
      * Проверяет, открыт ли экран привычек (главный экран)
      */

@@ -27,6 +27,8 @@ class NotificationHelper @Inject constructor(
         const val HABIT_REMINDER_CHANNEL_DESCRIPTION = "Уведомления для напоминания о выполнении привычек"
         
         private const val NOTIFICATION_REQUEST_CODE = 1001
+        private const val DAILY_REMINDER_REQUEST_CODE = 1002
+        private const val DAILY_REMINDER_NOTIFICATION_ID = 9999
     }
 
     private val notificationManager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
@@ -61,7 +63,8 @@ class NotificationHelper @Inject constructor(
     fun showHabitReminderNotification(
         habitId: String,
         habitTitle: String,
-        habitIcon: String = "🎯"
+        habitIcon: String = "🎯",
+        isFollowUp: Boolean = false
     ) {
         val intent = Intent(context, MainActivity::class.java).apply {
             flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
@@ -70,18 +73,36 @@ class NotificationHelper @Inject constructor(
 
         val pendingIntent = PendingIntent.getActivity(
             context,
-            NOTIFICATION_REQUEST_CODE,
+            if (isFollowUp) NOTIFICATION_REQUEST_CODE + 1000 else NOTIFICATION_REQUEST_CODE, // Unique request code
             intent,
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
 
+        val contentTitle = if (isFollowUp) {
+            "$habitIcon Не забудьте про привычку!"
+        } else {
+            "$habitIcon Время для привычки!"
+        }
+
+        val contentText = if (isFollowUp) {
+            "Вы еще не отметили выполнение: $habitTitle"
+        } else {
+            habitTitle
+        }
+        
+        val bigText = if (isFollowUp) {
+            "Кажется, вы забыли отметить привычку: $habitTitle. Самое время сделать это!"
+        } else {
+            "Пора выполнить привычку: $habitTitle"
+        }
+
         val notification = NotificationCompat.Builder(context, HABIT_REMINDER_CHANNEL_ID)
             .setSmallIcon(R.drawable.ic_notification)
-            .setContentTitle("$habitIcon Время для привычки!")
-            .setContentText(habitTitle)
+            .setContentTitle(contentTitle)
+            .setContentText(contentText)
             .setStyle(
                 NotificationCompat.BigTextStyle()
-                    .bigText("Пора выполнить привычку: $habitTitle")
+                    .bigText(bigText)
             )
             .setPriority(NotificationCompat.PRIORITY_DEFAULT)
             .setContentIntent(pendingIntent)
@@ -89,8 +110,52 @@ class NotificationHelper @Inject constructor(
             .setCategory(NotificationCompat.CATEGORY_REMINDER)
             .build()
 
-        notificationManager.notify(habitId.hashCode(), notification)
-        Log.d("NotificationHelper", "Уведомление показано для привычки $habitId")
+        // Use a different notification ID for follow-up to avoid overwriting (or maybe we WANT to overwrite?)
+        // If we overwrite, the previous "Time for habit" disappears. That's probably fine/better.
+        // But if the user didn't dismiss the first one, maybe we want to stack them?
+        // Let's stack them for now to be more annoying (it is a reminder after all).
+        // Using habitId.hashCode() + offset for follow-up.
+        val notificationId = if (isFollowUp) habitId.hashCode() + 1 else habitId.hashCode()
+        
+        notificationManager.notify(notificationId, notification)
+        Log.d("NotificationHelper", "Уведомление показано для привычки $habitId (followUp=$isFollowUp)")
+    }
+
+    /**
+     * Показывает ежедневное напоминание
+     */
+    fun showDailyReminderNotification(
+        title: String,
+        message: String
+    ) {
+        val intent = Intent(context, MainActivity::class.java).apply {
+            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+            putExtra("navigate_to", "habits")
+        }
+
+        val pendingIntent = PendingIntent.getActivity(
+            context,
+            DAILY_REMINDER_REQUEST_CODE,
+            intent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+
+        val notification = NotificationCompat.Builder(context, HABIT_REMINDER_CHANNEL_ID)
+            .setSmallIcon(R.drawable.ic_notification)
+            .setContentTitle(title)
+            .setContentText(message)
+            .setStyle(
+                NotificationCompat.BigTextStyle()
+                    .bigText(message)
+            )
+            .setPriority(NotificationCompat.PRIORITY_DEFAULT)
+            .setContentIntent(pendingIntent)
+            .setAutoCancel(true)
+            .setCategory(NotificationCompat.CATEGORY_REMINDER)
+            .build()
+
+        notificationManager.notify(DAILY_REMINDER_NOTIFICATION_ID, notification)
+        Log.d("NotificationHelper", "Ежедневное напоминание показано")
     }
 
     /**

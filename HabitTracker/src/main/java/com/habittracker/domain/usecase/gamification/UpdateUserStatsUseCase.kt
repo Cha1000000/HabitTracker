@@ -1,7 +1,6 @@
 package com.habittracker.domain.usecase.gamification
 
-import com.habittracker.domain.model.Gamification
-import com.habittracker.domain.model.User
+import com.habittracker.domain.model.gamification.GamificationConstants
 import com.habittracker.domain.repository.UserRepository
 import javax.inject.Inject
 
@@ -19,7 +18,7 @@ open class UpdateUserStatsUseCase @Inject constructor(
         val user = userRepository.getUserById(userId) ?: return
 
         val newPoints = user.points + pointsToAdd
-        val newLevel = Gamification.Levels.getLevelFromPoints(newPoints)
+        val newLevel = GamificationConstants.getLevelFromPoints(newPoints)
 
         val updatedUser = user.copy(
             points = newPoints,

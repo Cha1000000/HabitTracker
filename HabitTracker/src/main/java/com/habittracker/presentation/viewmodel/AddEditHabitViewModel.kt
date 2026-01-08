@@ -10,7 +10,9 @@ import androidx.lifecycle.viewModelScope
 import com.habittracker.R
 import com.habittracker.domain.model.Habit
 import com.habittracker.domain.model.HabitFrequency
+import com.habittracker.domain.model.HabitGoalType
 import com.habittracker.domain.model.HabitParticipantSettings
+import com.habittracker.domain.model.HabitTimeOfDay
 import com.habittracker.domain.model.HabitType
 import com.habittracker.domain.model.HabitValidation
 import com.habittracker.domain.model.HabitValidation.HabitField
@@ -81,6 +83,7 @@ class AddEditHabitViewModel @Inject constructor(
     init {
         val habitId: String? = savedStateHandle["habitId"]
         val startDateParam: String? = savedStateHandle["startDate"]
+        val goalTypeParam: String? = savedStateHandle["goalType"]
 
         if (habitId != null) {
             _uiState.update { it.copy(isLoading = true) }
@@ -95,12 +98,23 @@ class AddEditHabitViewModel @Inject constructor(
                     null
                 }
             }
+            
+            // Парсим тип цели
+            val initialGoalType = goalTypeParam?.let { typeStr ->
+                try {
+                    HabitGoalType.valueOf(typeStr)
+                } catch (_: Exception) {
+                    Log.w("AddEditHabitViewModel", "Failed to parse goalType from navigation: $typeStr")
+                    HabitGoalType.SIMPLE
+                }
+            } ?: HabitGoalType.SIMPLE
 
             _uiState.update { it.copy(
                 isLoading = false,
                 isInitialized = true,
                 maxParticipantsInput = it.maxParticipants.toString(),
-                startDate = initialStartDate // Устанавливаем дату начала из параметра
+                startDate = initialStartDate, // Устанавливаем дату начала из параметра
+                goalType = initialGoalType
             ) }
 
             if (initialStartDate != null) {
@@ -140,13 +154,15 @@ class AddEditHabitViewModel @Inject constructor(
                 } else {
                     _uiState.update { it.copy(
                         isLoading = false,
-                        error = res.exceptionOrNull()?.localizedMessage ?: "Ошибка применения настроек для всех"
+                        error = res.exceptionOrNull()?.localizedMessage
+                            ?: getApplication<Application>().getString(R.string.error_apply_reminder_all_generic)
                     ) }
                 }
             } catch (e: Exception) {
                 _uiState.update { it.copy(
                     isLoading = false,
-                    error = e.localizedMessage ?: "Ошибка применения настроек для всех"
+                    error = e.localizedMessage
+                        ?: getApplication<Application>().getString(R.string.error_apply_reminder_all_fallback)
                 ) }
             }
         }
@@ -206,10 +222,13 @@ class AddEditHabitViewModel @Inject constructor(
                             icon = habit.icon,
                             color = habit.color.toColorInt(), // Безопасный парсинг hex-строки в Int
                             type = habit.type,
+                            goalType = habit.goalType,
                             frequency = habit.frequency,
                             reminderEnabled = habit.reminderEnabled,
                             reminderTime = habit.reminderTime,
                             reminderDaysInput = habit.reminderDays,
+                            followUpReminderEnabled = habit.followUpReminderEnabled,
+                            followUpReminderDuration = habit.followUpReminderDuration,
                             targetValue = habit.targetValue,
                             targetValueInput = habit.targetValue.toString(),
                             unit = habit.unit,
@@ -224,7 +243,9 @@ class AddEditHabitViewModel @Inject constructor(
                             startDate = habit.startDate,
                             endDate = habit.endDate,
                             // Дату начала можно редактировать только если привычка ещё не была выполнена
-                            canEditStartDate = !hasBeenCompleted
+                            canEditStartDate = !hasBeenCompleted,
+                            selectedTimesOfDay = setOf(habit.timeOfDay),
+                            isEditMode = true
                         )
                     }
                     // Переопределяем/гарантируем персональные настройки через use case
@@ -255,12 +276,6 @@ class AddEditHabitViewModel @Inject constructor(
                         Log.d("AddEditHabitViewModel", "ensureMySettingsForHabitUseCase failed (non-fatal): ${e.message}")
                     }
 
-                    // Финальная нормализация UI: если есть время, но флаг выключен — включим флаг (устранение артефактов старых данных)
-                    val s = _uiState.value
-                    if (s.reminderTime != null && !s.reminderEnabled) {
-                        _uiState.update { it.copy(reminderEnabled = true) }
-                    }
-
                     Log.d(
                         "AddEditHabitViewModel",
                         "[loadHabit] ui: enabled=${_uiState.value.reminderEnabled}, time=${_uiState.value.reminderTime}, days=${_uiState.value.reminderDaysInput}"
@@ -287,7 +302,7 @@ class AddEditHabitViewModel @Inject constructor(
                 val currentState = uiState.value
 
                 if (isNew) {
-                    // Создаем новую привычку
+                    // Создаем новую привычку (или несколько, если выбрано несколько периодов времени)
                     val creatorId = authRepository.getCurrentUserId() 
                         ?: throw IllegalStateException("User must be authenticated to create habits")
 
@@ -305,61 +320,73 @@ class AddEditHabitViewModel @Inject constructor(
                             .toLocalDateTime(TimeZone.currentSystemDefault())
                             .date
 
-                    Log.d("AddEditHabitViewModel", "Creating habit with startDate=$effectiveStartDate (UI state startDate=${currentState.startDate})")
+                    val selectedTimes = currentState.selectedTimesOfDay.toList()
+                    // Генерируем timeGroupId только если выбрано несколько периодов
+                    val timeGroupId = if (selectedTimes.size > 1) UUID.randomUUID().toString() else null
+                    
+                    Log.d("AddEditHabitViewModel", "Creating ${selectedTimes.size} habit(s) with startDate=$effectiveStartDate, timeGroupId=$timeGroupId")
 
-                    val newHabit = Habit(
-                        id = UUID.randomUUID().toString(),
-                        title = currentState.title,
-                        description = currentState.description,
-                        icon = currentState.icon,
-                        color = "#%06X".format(0xFFFFFF and currentState.color), // Конвертируем Int (ARGB) в hex-строку RGB
-                        type = currentState.type,
-                        frequency = currentState.frequency,
-                        reminderTime = if (currentState.reminderEnabled) currentState.reminderTime else null,
-                        reminderEnabled = currentState.reminderEnabled,
-                        reminderDays = currentState.reminderDaysInput,
-                        targetValue = currentState.targetValue,
-                        unit = currentState.unit,
-                        createdBy = creatorId,
-                        participants = participantsIds, // Создатель всегда включен в участники
-                        maxParticipants = currentState.maxParticipants,
-                        inviteCode = currentState.inviteCode,
-                        isPublic = currentState.isPublic,
-                        isActive = true,
-                        createdAt = today,
-                        updatedAt = today,
-                        startDate = effectiveStartDate, // Всегда сохраняем дату начала
-                        endDate = currentState.endDate
-                    )
-                    Log.d("AddEditHabitViewModel", "Calling addHabitUseCase for habit: ${newHabit.id}")
-                    Log.d("AddEditHabitViewModel", "Habit details: title='${newHabit.title}', participants=${newHabit.participants}")
-                    Log.d("AddEditHabitViewModel", "Habit dates: startDate=${newHabit.startDate}, endDate=${newHabit.endDate}")
-                    addHabitUseCase(newHabit)
-                    Log.d("AddEditHabitViewModel", "Habit saved successfully: ${newHabit.id}")
-                    // Важно: установить текущую привычку для дальнейших операций (например, отправки приглашений)
-                    currentHabit = newHabit
-                    // Обновляем habitId в uiState для корректной работы методов после сохранения
-                    _uiState.update { it.copy(habitId = newHabit.id) }
-
-                    // Планируем напоминание для новой привычки
-                    if (newHabit.reminderTime != null) {
-                        // Инициализируем персональные настройки для создателя из дефолтов привычки
-                        try {
-                            updateMyHabitReminderSettingsUseCase(
-                                HabitParticipantSettings(
-                                    habitId = newHabit.id,
-                                    userId = creatorId,
-                                    reminderTime = newHabit.reminderTime,
-                                    reminderEnabled = true,
-                                    reminderDays = newHabit.reminderDays
+                    var firstHabit: Habit? = null
+                    
+                    // Создаём отдельную привычку для каждого выбранного периода времени
+                    for (timeOfDay in selectedTimes) {
+                        val newHabit = Habit(
+                            id = UUID.randomUUID().toString(),
+                            title = currentState.title,
+                            description = currentState.description,
+                            icon = currentState.icon,
+                            color = "#%06X".format(0xFFFFFF and currentState.color),
+                            type = currentState.type,
+                            goalType = currentState.goalType,
+                            frequency = currentState.frequency,
+                            reminderTime = if (currentState.reminderEnabled) currentState.reminderTime else null,
+                            reminderEnabled = currentState.reminderEnabled,
+                            reminderDays = currentState.reminderDaysInput,
+                            targetValue = currentState.targetValue,
+                            unit = currentState.unit,
+                            createdBy = creatorId,
+                            participants = participantsIds,
+                            maxParticipants = currentState.maxParticipants,
+                            inviteCode = currentState.inviteCode,
+                            isPublic = currentState.isPublic,
+                            isActive = true,
+                            createdAt = today,
+                            updatedAt = today,
+                            startDate = effectiveStartDate,
+                            endDate = currentState.endDate,
+                            timeOfDay = timeOfDay,
+                            timeGroupId = timeGroupId
+                        )
+                        
+                        Log.d("AddEditHabitViewModel", "Calling addHabitUseCase for habit: ${newHabit.id}, timeOfDay=$timeOfDay")
+                        addHabitUseCase(newHabit)
+                        Log.d("AddEditHabitViewModel", "Habit saved successfully: ${newHabit.id}")
+                        
+                        if (firstHabit == null) firstHabit = newHabit
+                        
+                        // Планируем напоминание для каждой привычки
+                        if (newHabit.reminderTime != null) {
+                            try {
+                                updateMyHabitReminderSettingsUseCase(
+                                    HabitParticipantSettings(
+                                        habitId = newHabit.id,
+                                        userId = creatorId,
+                                        reminderTime = newHabit.reminderTime,
+                                        reminderEnabled = true,
+                                        reminderDays = newHabit.reminderDays
+                                    )
                                 )
-                            )
-                        } catch (e: Exception) {
-                            Log.w("AddEditHabitViewModel", "updateMyHabitReminderSettingsUseCase failed for new habit: ${e.message}", e)
+                            } catch (e: Exception) {
+                                Log.w("AddEditHabitViewModel", "updateMyHabitReminderSettingsUseCase failed for habit ${newHabit.id}: ${e.message}", e)
+                            }
+                            scheduleHabitReminderUseCase(newHabit)
+                            Log.d("AddEditHabitViewModel", "Reminder scheduled for habit ${newHabit.id}")
                         }
-                        scheduleHabitReminderUseCase(newHabit)
-                        Log.d("AddEditHabitViewModel", "Reminder scheduled for new habit")
                     }
+                    
+                    // Устанавливаем первую созданную привычку как текущую для дальнейших операций
+                    currentHabit = firstHabit
+                    _uiState.update { it.copy(habitId = firstHabit?.id) }
                 } else {
                     // Обновляем существующую привычку
                     val safeParticipants: List<String> = if (currentState.participants.isNotEmpty()) {
@@ -394,7 +421,25 @@ class AddEditHabitViewModel @Inject constructor(
                         icon = currentState.icon,
                         color = "#%06X".format(0xFFFFFF and currentState.color), // Конвертируем Int (ARGB) в hex-строку RGB
                         type = currentState.type,
+                        goalType = currentState.goalType,
                         frequency = effectiveFrequency,
+                        reminderTime = if (currentHabit!!.type == HabitType.PERSONAL) {
+                            if (currentState.reminderEnabled) currentState.reminderTime else null
+                        } else {
+                            currentHabit!!.reminderTime
+                        },
+                        reminderEnabled = if (currentHabit!!.type == HabitType.PERSONAL) {
+                            currentState.reminderEnabled
+                        } else {
+                            currentHabit!!.reminderEnabled
+                        },
+                        reminderDays = if (currentHabit!!.type == HabitType.PERSONAL) {
+                            currentState.reminderDaysInput
+                        } else {
+                            currentHabit!!.reminderDays
+                        },
+                        followUpReminderEnabled = currentState.followUpReminderEnabled,
+                        followUpReminderDuration = currentState.followUpReminderDuration,
                         targetValue = currentState.targetValue,
                         unit = currentState.unit,
                         maxParticipants = currentState.maxParticipants,
@@ -403,7 +448,9 @@ class AddEditHabitViewModel @Inject constructor(
                         participants = safeParticipants,
                         updatedAt = today,
                         startDate = effectiveStartDate, // Всегда сохраняем валидную дату начала
-                        endDate = currentState.endDate
+                        endDate = currentState.endDate,
+                        // При редактировании сохраняем существующий timeOfDay (нельзя менять)
+                        timeOfDay = currentHabit!!.timeOfDay
                     )
                     updateHabitUseCase(updatedHabit)
 
@@ -473,6 +520,10 @@ class AddEditHabitViewModel @Inject constructor(
         _uiState.update { it.copy(type = type, hasUnsavedChanges = true) }
     }
 
+    override fun onGoalTypeChange(goalType: HabitGoalType) {
+        _uiState.update { it.copy(goalType = goalType, hasUnsavedChanges = true) }
+    }
+
     
     override fun onFrequencyChange(frequency: HabitFrequency) {
         // Если редактируем существующую групповую привычку и пользователь не автор — блокируем смену частоты
@@ -499,7 +550,25 @@ class AddEditHabitViewModel @Inject constructor(
                 HabitFrequency.WEEKENDS -> setOf(DayOfWeek.SATURDAY, DayOfWeek.SUNDAY)
                 HabitFrequency.CUSTOM -> state.reminderDaysInput
             }
-            state.copy(frequency = frequency, reminderDaysInput = presetDays)
+            state.copy(frequency = frequency, reminderDaysInput = presetDays, hasUnsavedChanges = true)
+        }
+    }
+
+    override fun onTimeOfDayToggle(timeOfDay: HabitTimeOfDay) {
+        _uiState.update { state ->
+            // В режиме редактирования нельзя менять периоды времени
+            if (state.isEditMode) return@update state
+            
+            val currentSelection = state.selectedTimesOfDay.toMutableSet()
+            if (currentSelection.contains(timeOfDay)) {
+                // Нельзя снять последний выбранный период
+                if (currentSelection.size > 1) {
+                    currentSelection.remove(timeOfDay)
+                }
+            } else {
+                currentSelection.add(timeOfDay)
+            }
+            state.copy(selectedTimesOfDay = currentSelection, hasUnsavedChanges = true)
         }
     }
     
@@ -645,6 +714,29 @@ class AddEditHabitViewModel @Inject constructor(
 
     override fun onReminderEnabledChange(enabled: Boolean) {
         _uiState.update { s -> s.copy(reminderEnabled = enabled, hasUnsavedChanges = true) }
+    }
+
+    override fun onFollowUpReminderEnabledChange(enabled: Boolean) {
+        _uiState.update { 
+            it.copy(
+                followUpReminderEnabled = enabled, 
+                hasUnsavedChanges = true
+            ) 
+        }
+    }
+
+    override fun onFollowUpReminderDurationChange(duration: LocalTime) {
+        val safeDuration = if (duration.hour == 0 && duration.minute == 0) {
+            LocalTime(0, 5)
+        } else {
+            duration
+        }
+        _uiState.update { 
+            it.copy(
+                followUpReminderDuration = safeDuration, 
+                hasUnsavedChanges = true
+            ) 
+        }
     }
 
     override fun onReminderDayToggle(day: DayOfWeek) {
@@ -1103,7 +1195,8 @@ class AddEditHabitViewModel @Inject constructor(
             updatedAt = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault()).date,
             inviteCode = currentState.inviteCode,
             startDate = currentState.startDate,
-            endDate = currentState.endDate
+            endDate = currentState.endDate,
+            timeOfDay = currentState.selectedTimesOfDay.firstOrNull() ?: HabitTimeOfDay.ANY_TIME
         )
     }
 

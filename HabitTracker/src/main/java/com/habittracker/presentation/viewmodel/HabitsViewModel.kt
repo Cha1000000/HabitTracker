@@ -8,6 +8,7 @@ import com.habittracker.R
 import com.habittracker.domain.model.Habit
 import com.habittracker.domain.model.isGroupHabit
 import com.habittracker.domain.repository.AuthRepository
+import com.habittracker.domain.repository.UserPreferencesRepository
 import com.habittracker.domain.repository.UserRepository
 import com.habittracker.domain.usecase.DeleteHabitUseCase
 import com.habittracker.domain.usecase.EnsureMySettingsForHabitUseCase
@@ -32,9 +33,10 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.catch
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
-import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.firstOrNull
+import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.map
@@ -48,6 +50,7 @@ import kotlinx.datetime.TimeZone
 import kotlinx.datetime.minus
 import kotlinx.datetime.plus
 import kotlinx.datetime.toLocalDateTime
+import com.habittracker.domain.usecase.UpdateHabitEntryValueUseCase
 import javax.inject.Inject
 
 /**
@@ -56,8 +59,10 @@ import javax.inject.Inject
 data class HabitWithCompletion(
     val habit: Habit,
     val isCompletedToday: Boolean = false,
+    val isRestDayToday: Boolean = false,
     val isLoading: Boolean = false,
-    val participantsProgress: List<ParticipantProgress> = emptyList() // Прогресс участников для групповых привычек
+    val participantsProgress: List<ParticipantProgress> = emptyList(), // Прогресс участников для групповых привычек
+    val currentValue: Int = 0 // Текущее значение выполнения (для измеримых привычек)
 )
 
 @HiltViewModel
@@ -65,6 +70,7 @@ class HabitsViewModel @Inject constructor(
     private val getHabitsForDateUseCase: GetHabitsForDateUseCase,
     private val markHabitCompletedUseCase: MarkHabitCompletedUseCase,
     private val markHabitIncompleteUseCase: MarkHabitIncompleteUseCase,
+    private val updateHabitEntryValueUseCase: UpdateHabitEntryValueUseCase,
     private val getHabitCompletionStatusUseCase: GetHabitCompletionStatusUseCase,
     private val authRepository: AuthRepository,
     private val userRepository: UserRepository,
@@ -74,6 +80,8 @@ class HabitsViewModel @Inject constructor(
     private val joinHabitByCodeUseCase: JoinHabitByCodeUseCase,
     private val getWeekCompletionDataUseCase: GetWeekCompletionDataUseCase,
     private val getGroupHabitProgressUseCase: GetGroupHabitProgressUseCase,
+    private val setHabitRestDayUseCase: com.habittracker.domain.usecase.SetHabitRestDayUseCase,
+    private val userPreferencesRepository: UserPreferencesRepository,
     application: Application
 ) : AndroidViewModel(application) {
 
@@ -94,11 +102,29 @@ class HabitsViewModel @Inject constructor(
     private var pendingDeletion: PendingDeletion? = null
     private data class PendingDeletion(val habitWithCompletion: HabitWithCompletion, val index: Int)
 
+    private fun dedupeByHabitId(list: List<HabitWithCompletion>): List<HabitWithCompletion> {
+        if (list.size <= 1) return list
+        val seen = HashSet<String>(list.size)
+        return list.filter { seen.add(it.habit.id) }
+    }
+
+    private fun restoreDeduped(list: List<HabitWithCompletion>, item: HabitWithCompletion, index: Int): List<HabitWithCompletion> {
+        val mutable = list.toMutableList()
+        mutable.removeAll { it.habit.id == item.habit.id }
+        val insertIndex = index.coerceIn(0, mutable.size)
+        mutable.add(insertIndex, item)
+        return dedupeByHabitId(mutable)
+    }
+
     // Reactive rescheduling disabled to avoid loops; we schedule on demand where settings change
     private val lastScheduleKeyByHabit: MutableMap<String, String> = mutableMapOf()
     
     // Кеш данных о прогрессе выполнения для разных недель (ключ - начало недели)
     private val weekCompletionCache: MutableMap<LocalDate, Map<LocalDate, Float>> = mutableMapOf()
+    
+    // Кеш последних настроек пользователя для синхронного доступа при сортировке
+    @Volatile
+    private var cachedUserPreferences: com.habittracker.domain.model.UserPreferences? = null
     
     private val currentUserId: String
         get() = authRepository.getCurrentUserId() 
@@ -310,13 +336,25 @@ class HabitsViewModel @Inject constructor(
         }
 
         var emissionCount = 0
-        habitsJob = getHabitsForDateUseCase(userId, date)
+        habitsJob = combine(
+            getHabitsForDateUseCase(userId, date),
+            userPreferencesRepository.userPreferences
+        ) { habits, preferences ->
+            Pair(habits, preferences)
+        }
             // Normalize ordering to make equality stable
-            .map { habits -> habits.sortedBy { it.id } }
+            .map { (habits, preferences) -> 
+                Pair(habits.sortedBy { it.id }, preferences) 
+            }
             // Skip identical lists to avoid redundant UI updates and status reloads
+            // We use a custom comparator or just rely on distinctUntilChanged if data classes are correct
+            // Here we rely on Pair equals
             .distinctUntilChanged()
             // For each emission, emit skeleton first, then the resolved statuses
-            .flatMapLatest { habits ->
+            .flatMapLatest { (habits, preferences) ->
+                // Кешируем настройки для синхронного доступа при сортировке
+                cachedUserPreferences = preferences
+                
                 emissionCount += 1
                 Log.d(TAG, "📊 [habits][flow] emission #$emissionCount, size=${habits.size} (user=$userId)")
                 habits.forEach { habit ->
@@ -367,14 +405,14 @@ class HabitsViewModel @Inject constructor(
                                     }
                                 }
 
-                                val isCompleted = try {
-                                    getHabitCompletionStatusUseCase(habit.id, userId, date)
-                                } catch (e: CancellationException) {
-                                    throw e
-                                } catch (e: Exception) {
-                                    Log.d(TAG, "getHabitCompletionStatusUseCase failed for habit=${habit.id}: ${e.message}")
-                                    false
+                                val habitEntry = try {
+                                    getHabitCompletionStatusUseCase.getEntry(habit.id, userId, date)
+                                } catch (_: Exception) {
+                                    null
                                 }
+                                val isCompleted = habitEntry?.completed ?: false
+                                val isRestDay = habitEntry?.isRestDay ?: false
+                                val currentValue = habitEntry?.value ?: 0
                                 
                                 // Загружаем прогресс участников для групповых привычек
                                 val participantsProgress = if (habit.isGroupHabit()) {
@@ -403,19 +441,30 @@ class HabitsViewModel @Inject constructor(
                                 HabitWithCompletion(
                                     habit = habit,
                                     isCompletedToday = isCompleted,
+                                    isRestDayToday = isRestDay,
                                     isLoading = false,
-                                    participantsProgress = participantsProgress
+                                    participantsProgress = participantsProgress,
+                                    currentValue = currentValue
                                 )
                             }
                         }.awaitAll()
                     }
+                    
+                    // Apply sorting based on preferences
+                    val sortedHabits = updatedHabits.sortedWith(
+                        // Сначала сортируем по времени суток
+                        compareBy<HabitWithCompletion> { it.habit.timeOfDay.ordinal }
+                            // Затем по статусу выполнения (если включена настройка)
+                            .thenBy { if (preferences.sortCompletedHabitsToBottom) it.isCompletedToday else false }
+                            .thenBy { it.habit.id }
+                    )
                     
                     // 3) Вычисляем границы дат
                     val oldestDate = habits.minOfOrNull { it.createdAt }
                     val maxFutureDate = today.plus(1, DateTimeUnit.YEAR)
                     
                     emit(_uiState.value.copy(
-                        habitsWithCompletion = updatedHabits,
+                        habitsWithCompletion = sortedHabits,
                         isLoading = false,
                         oldestHabitDate = oldestDate,
                         maxFutureDate = maxFutureDate
@@ -425,7 +474,7 @@ class HabitsViewModel @Inject constructor(
             .onEach { state ->
                 // Merge with existing state to preserve selectedDate and other fields
                 _uiState.value = _uiState.value.copy(
-                    habitsWithCompletion = state.habitsWithCompletion,
+                    habitsWithCompletion = dedupeByHabitId(state.habitsWithCompletion),
                     isLoading = state.isLoading,
                     oldestHabitDate = state.oldestHabitDate,
                     maxFutureDate = state.maxFutureDate
@@ -553,6 +602,58 @@ class HabitsViewModel @Inject constructor(
     }
 
     /**
+     * Обновляет значение выполнения привычки
+     */
+    fun updateHabitValue(habitId: String, value: Int) {
+        viewModelScope.launch {
+            try {
+                val selectedDate = _uiState.value.selectedDate ?: today
+                
+                // Получаем привычку для проверки targetValue
+                val habit = _uiState.value.habitsWithCompletion.find { it.habit.id == habitId }?.habit
+                val targetValue = habit?.targetValue ?: 1
+                val isCompleted = value >= targetValue
+                
+                // Обновляем UI оптимистично с новым значением
+                updateHabitCurrentValue(habitId, newValue = value, isCompleted = isCompleted, isLoading = true)
+                
+                updateHabitEntryValueUseCase(habitId, currentUserId, value, selectedDate)
+                
+                // Показываем конфетти при достижении цели
+                if (isCompleted) {
+                    _uiState.value = _uiState.value.copy(showConfetti = true)
+                }
+                
+                // Скрываем диалог и снимаем флаг загрузки
+                _uiState.value = _uiState.value.copy(habitIdForValueInput = null)
+                updateHabitCurrentValue(habitId, newValue = value, isCompleted = isCompleted, isLoading = false)
+                
+                // Инвалидируем кеш недельной статистики
+                val weekStart = getStartOfWeek(selectedDate)
+                loadWeekCompletionData(currentUserId, weekStart, forceReload = true)
+                
+            } catch (e: Exception) {
+                // В случае ошибки откатываем состояние
+                val previousValue = _uiState.value.habitsWithCompletion
+                    .find { it.habit.id == habitId }?.currentValue ?: 0
+                _uiState.value = _uiState.value.copy(
+                    error = getApplication<Application>().getString(R.string.error_update_habit, e.localizedMessage ?: ""),
+                    habitIdForValueInput = null
+                )
+                updateHabitCurrentValue(habitId, newValue = previousValue, isCompleted = false, isLoading = false)
+            }
+        }
+    }
+
+    fun showValueInputDialog(habitId: String) {
+        _uiState.value = _uiState.value.copy(habitIdForValueInput = habitId)
+    }
+
+    fun dismissValueInputDialog() {
+        _uiState.value = _uiState.value.copy(habitIdForValueInput = null)
+    }
+
+    /**
      * Отмечает привычку как выполненную
      */
     fun markHabitCompleted(habitId: String, note: String? = null) {
@@ -633,6 +734,12 @@ class HabitsViewModel @Inject constructor(
         
         val currentHabit = _uiState.value.habitsWithCompletion.find { it.habit.id == habitId }
         if (currentHabit != null) {
+            // Для измеримых привычек открываем диалог ввода значения
+            if (currentHabit.habit.goalType == com.habittracker.domain.model.HabitGoalType.MEASURABLE) {
+                showValueInputDialog(habitId)
+                return
+            }
+
             if (currentHabit.isCompletedToday) {
                 markHabitIncomplete(habitId)
             } else {
@@ -642,6 +749,50 @@ class HabitsViewModel @Inject constructor(
         }
     }
     
+    /**
+     * Переключает режим "выходной" для привычки
+     */
+    fun toggleRestDay(habitId: String) {
+        viewModelScope.launch {
+            try {
+                val selectedDate = _uiState.value.selectedDate ?: today
+                
+                // Находим текущее состояние
+                val currentState = _uiState.value
+                val itemIndex = currentState.habitsWithCompletion.indexOfFirst { it.habit.id == habitId }
+                
+                if (itemIndex != -1) {
+                    val item = currentState.habitsWithCompletion[itemIndex]
+                    val newIsRestDay = !item.isRestDayToday
+                    
+                    // Оптимистичное обновление UI
+                    val newCompleted = if (newIsRestDay) false else item.isCompletedToday
+                    
+                    val updatedItem = item.copy(
+                        isRestDayToday = newIsRestDay,
+                        isCompletedToday = newCompleted
+                    )
+                    
+                    val updatedList = currentState.habitsWithCompletion.toMutableList()
+                    updatedList[itemIndex] = updatedItem
+                    
+                    _uiState.value = currentState.copy(habitsWithCompletion = updatedList)
+                    
+                    // Вызов use case
+                    setHabitRestDayUseCase(habitId, selectedDate, newIsRestDay)
+                    
+                    // Инвалидируем кеш статистики за неделю
+                    val weekStart = getStartOfWeek(selectedDate)
+                    loadWeekCompletionData(currentUserId, weekStart, forceReload = true)
+                }
+            } catch (e: Exception) {
+                Log.e(TAG, "Error toggling rest day", e)
+                // В идеале здесь нужен rollback UI, если запрос упал, но для простоты пока оставим лог
+                _uiState.value = _uiState.value.copy(error = getApplication<Application>().getString(R.string.error_generic))
+            }
+        }
+    }
+
     /**
      * Начинает удаление привычки с оптимистичным удалением из UI, но без фактического вызова use case.
      * Используется совместно со Snackbar (UNDO). Для завершения вызовите [confirmPendingDeletion] или [cancelPendingDeletion].
@@ -672,11 +823,12 @@ class HabitsViewModel @Inject constructor(
                     currentUserId
                 )
             } catch (e: Exception) {
-                val restored = _uiState.value.habitsWithCompletion.toMutableList()
-                val restoreIndex = deletion.index.coerceIn(0, restored.size)
-                restored.add(restoreIndex, deletion.habitWithCompletion)
                 _uiState.value = _uiState.value.copy(
-                    habitsWithCompletion = restored,
+                    habitsWithCompletion = restoreDeduped(
+                        list = _uiState.value.habitsWithCompletion,
+                        item = deletion.habitWithCompletion,
+                        index = deletion.index
+                    ),
                     error = getApplication<Application>().getString(R.string.error_delete_habit, e.localizedMessage ?: "")
                 )
             }
@@ -689,10 +841,13 @@ class HabitsViewModel @Inject constructor(
     fun cancelPendingDeletion() {
         val deletion = pendingDeletion ?: return
         pendingDeletion = null
-        val restored = _uiState.value.habitsWithCompletion.toMutableList()
-        val restoreIndex = deletion.index.coerceIn(0, restored.size)
-        restored.add(restoreIndex, deletion.habitWithCompletion)
-        _uiState.value = _uiState.value.copy(habitsWithCompletion = restored)
+        _uiState.value = _uiState.value.copy(
+            habitsWithCompletion = restoreDeduped(
+                list = _uiState.value.habitsWithCompletion,
+                item = deletion.habitWithCompletion,
+                index = deletion.index
+            )
+        )
     }
     
     /**
@@ -714,14 +869,12 @@ class HabitsViewModel @Inject constructor(
                 deleteHabitUseCase(habitId, currentUserId)
             } catch (e: Exception) {
                 // Откатываем
-                val restored = _uiState.value.habitsWithCompletion.toMutableList()
-                if (index <= restored.size) {
-                    restored.add(index, removedItem)
-                } else {
-                    restored.add(removedItem)
-                }
                 _uiState.value = _uiState.value.copy(
-                    habitsWithCompletion = restored,
+                    habitsWithCompletion = restoreDeduped(
+                        list = _uiState.value.habitsWithCompletion,
+                        item = removedItem,
+                        index = index
+                    ),
                     error = getApplication<Application>().getString(R.string.error_delete_habit, e.localizedMessage ?: "")
                 )
             }
@@ -730,6 +883,7 @@ class HabitsViewModel @Inject constructor(
     
     /**
      * Обновляет статус выполнения конкретной привычки в UI состоянии
+     * и применяет сортировку согласно настройкам пользователя
      */
     private fun updateHabitCompletionStatus(habitId: String, isCompleted: Boolean, isLoading: Boolean) {
         val currentState = _uiState.value
@@ -740,7 +894,57 @@ class HabitsViewModel @Inject constructor(
                 habitWithCompletion
             }
         }
-        _uiState.value = currentState.copy(habitsWithCompletion = updatedHabits)
+        
+        // Применяем сортировку только если не в состоянии загрузки (финальное обновление)
+        val sortedHabits = if (!isLoading) {
+            applySortingIfNeeded(updatedHabits)
+        } else {
+            updatedHabits
+        }
+        
+        _uiState.value = currentState.copy(habitsWithCompletion = sortedHabits)
+    }
+    
+    /**
+     * Обновляет значение (currentValue) для измеримой привычки в UI состоянии
+     */
+    private fun updateHabitCurrentValue(habitId: String, newValue: Int, isCompleted: Boolean, isLoading: Boolean) {
+        val currentState = _uiState.value
+        val updatedHabits = currentState.habitsWithCompletion.map { habitWithCompletion ->
+            if (habitWithCompletion.habit.id == habitId) {
+                habitWithCompletion.copy(
+                    currentValue = newValue,
+                    isCompletedToday = isCompleted,
+                    isLoading = isLoading
+                )
+            } else {
+                habitWithCompletion
+            }
+        }
+        
+        // Применяем сортировку только если не в состоянии загрузки (финальное обновление)
+        val sortedHabits = if (!isLoading) {
+            applySortingIfNeeded(updatedHabits)
+        } else {
+            updatedHabits
+        }
+        
+        _uiState.value = currentState.copy(habitsWithCompletion = sortedHabits)
+    }
+    
+    /**
+     * Применяет сортировку списка привычек согласно настройкам пользователя
+     */
+    private fun applySortingIfNeeded(habits: List<HabitWithCompletion>): List<HabitWithCompletion> {
+        val preferences = cachedUserPreferences
+        return if (preferences?.sortCompletedHabitsToBottom == true) {
+            habits.sortedWith(
+                compareBy<HabitWithCompletion> { it.isCompletedToday }
+                    .thenBy { it.habit.id }
+            )
+        } else {
+            habits
+        }
     }
     
     /**

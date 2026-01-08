@@ -33,7 +33,8 @@ data class ChallengeRules(
     val type: ChallengeType = ChallengeType.COMPLETION_RATE,
     val targetValue: Int = 100, // целевое значение (проценты, дни и т.д.)
     val allowMissedDays: Int = 0, // сколько дней можно пропустить
-    val requireConsecutive: Boolean = false // требуется ли последовательность
+    val requireConsecutive: Boolean = false, // требуется ли последовательность
+    val allowBackfillCompletions: Boolean = false // можно ли отмечать выполнения за прошедшие дни
 )
 
 @Serializable
@@ -66,7 +67,8 @@ data class ChallengeParticipantStats(
     val totalDays: Int,
     val currentStreak: Int,
     val completionRate: Float,
-    val position: Int // позиция в рейтинге
+    val position: Int, // позиция в рейтинге
+    val totalValue: Int = 0 // суммарное значение для измеряемых привычек
 )
 
 // Extension functions для работы с челленджами
@@ -81,7 +83,7 @@ fun Challenge.getDurationInDays(): Int {
 }
 
 fun Challenge.getDaysRemaining(): Int {
-    val today = kotlinx.datetime.Clock.System.now()
+    val today = Clock.System.now()
         .toLocalDateTime(TimeZone.currentSystemDefault()).date
     return if (today <= endDate) {
         (endDate.toEpochDays() - today.toEpochDays()).toInt()
@@ -89,7 +91,7 @@ fun Challenge.getDaysRemaining(): Int {
 }
 
 fun Challenge.getDaysElapsed(): Int {
-    val today = kotlinx.datetime.Clock.System.now()
+    val today = Clock.System.now()
         .toLocalDateTime(TimeZone.currentSystemDefault()).date
     return when {
         today < startDate -> 0
@@ -129,26 +131,26 @@ fun Challenge.getStatusText(): String = when (status) {
 }
 
 fun Challenge.getRulesText(): String = when (rules.type) {
-    ChallengeType.COMPLETION_RATE -> "Достичь ${rules.targetValue}% выполнения"
-    ChallengeType.STREAK -> "Серия из ${rules.targetValue} дней"
-    ChallengeType.TOTAL_DAYS -> "Выполнить ${rules.targetValue} дней"
-    ChallengeType.FIRST_TO_TARGET -> "Первый достигший цели"
+    ChallengeType.COMPLETION_RATE -> "Лучший процент выполнения"
+    ChallengeType.STREAK -> "Самая длинная серия"
+    ChallengeType.TOTAL_DAYS -> "Больше всего дней выполнения"
+    ChallengeType.FIRST_TO_TARGET -> "Первый к цели: ${rules.targetValue} дней"
 }
 
 fun Challenge.shouldStartToday(): Boolean {
-    val today = kotlinx.datetime.Clock.System.now()
+    val today = Clock.System.now()
         .toLocalDateTime(TimeZone.currentSystemDefault()).date
     return status == ChallengeStatus.PENDING && startDate == today
 }
 
 fun Challenge.shouldEndToday(): Boolean {
-    val today = kotlinx.datetime.Clock.System.now()
+    val today = Clock.System.now()
         .toLocalDateTime(TimeZone.currentSystemDefault()).date
     return status == ChallengeStatus.ACTIVE && endDate == today
 }
 
 fun Challenge.getTimeUntilStart(): String {
-    val today = kotlinx.datetime.Clock.System.now()
+    val today = Clock.System.now()
         .toLocalDateTime(TimeZone.currentSystemDefault()).date
     val daysUntil = (startDate.toEpochDays() - today.toEpochDays()).toInt()
     

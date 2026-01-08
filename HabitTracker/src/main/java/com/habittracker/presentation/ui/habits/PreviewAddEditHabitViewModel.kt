@@ -24,6 +24,8 @@ import kotlinx.datetime.LocalDate
 import kotlinx.datetime.LocalTime
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toLocalDateTime
+import com.habittracker.domain.model.HabitTimeOfDay
+import com.habittracker.domain.model.HabitGoalType
 import javax.inject.Inject
 
 /**
@@ -100,6 +102,11 @@ class PreviewAddEditHabitViewModel @Inject constructor(
         updateValidationState()
     }
 
+    override fun onGoalTypeChange(goalType: HabitGoalType) {
+        _uiState.update { it.copy(goalType = goalType, hasUnsavedChanges = true) }
+        updateValidationState()
+    }
+
     override fun onFrequencyChange(frequency: HabitFrequency) {
         _uiState.update { state ->
             val presetDays: Set<DayOfWeek> = when (frequency) {
@@ -121,6 +128,20 @@ class PreviewAddEditHabitViewModel @Inject constructor(
         updateValidationState()
     }
 
+    override fun onTimeOfDayToggle(timeOfDay: HabitTimeOfDay) {
+        _uiState.update { state ->
+            if (state.isEditMode) return@update state
+            val currentSelection = state.selectedTimesOfDay.toMutableSet()
+            if (currentSelection.contains(timeOfDay)) {
+                if (currentSelection.size > 1) currentSelection.remove(timeOfDay)
+            } else {
+                currentSelection.add(timeOfDay)
+            }
+            state.copy(selectedTimesOfDay = currentSelection, hasUnsavedChanges = true)
+        }
+        updateValidationState()
+    }
+
     override fun onReminderTimeChange(time: LocalTime?) {
         _uiState.update { it.copy(reminderTime = time, hasUnsavedChanges = true) }
         updateValidationState()
@@ -129,6 +150,9 @@ class PreviewAddEditHabitViewModel @Inject constructor(
     override fun onReminderEnabledChange(enabled: Boolean) {
         // Не используется в новом интерфейсе
     }
+
+    override fun onFollowUpReminderEnabledChange(enabled: Boolean) {}
+    override fun onFollowUpReminderDurationChange(duration: LocalTime) {}
 
     override fun applyReminderToAllParticipants() {
         // no-op in preview
@@ -238,7 +262,7 @@ class PreviewAddEditHabitViewModel @Inject constructor(
                 it.copy(
                     isLoading = false, 
                     isHabitSaved = true,
-                    successMessage = "Привычка сохранена (превью)",
+                    successMessage = null,
                     hasUnsavedChanges = false
                 ) 
             }
@@ -267,7 +291,7 @@ class PreviewAddEditHabitViewModel @Inject constructor(
         _uiState.update { 
             it.copy(
                 inviteCode = "PREVIEW123",
-                successMessage = "Код приглашения создан (превью)"
+                successMessage = null
             ) 
         }
     }
@@ -276,14 +300,14 @@ class PreviewAddEditHabitViewModel @Inject constructor(
         _uiState.update { 
             it.copy(
                 inviteCode = null,
-                successMessage = "Код приглашения отключен (превью)"
+                successMessage = null
             ) 
         }
     }
 
     override fun shareInviteCode(inviteCode: String) {
         // В превью просто показываем сообщение
-        _uiState.update { it.copy(successMessage = "Код '$inviteCode' скопирован (превью)") }
+        _uiState.update { it.copy(successMessage = null) }
     }
 
     override fun loadAvailableFriends() {
@@ -304,7 +328,7 @@ class PreviewAddEditHabitViewModel @Inject constructor(
             _uiState.update { 
                 it.copy(
                     isLoading = false,
-                    successMessage = "Приглашения отправлены (превью)",
+                    successMessage = null,
                     selectedFriendsToInvite = emptyList(),
                     showFriendSelector = false
                 ) 
@@ -318,7 +342,7 @@ class PreviewAddEditHabitViewModel @Inject constructor(
         if (canSendNow) {
             sendInvitations()
         } else {
-            _uiState.update { it.copy(sendInvitesAfterSave = true, successMessage = "Сохраните привычку, чтобы отправить приглашения (превью)") }
+            _uiState.update { it.copy(sendInvitesAfterSave = true, successMessage = null) }
         }
     }
 
@@ -361,7 +385,8 @@ class PreviewAddEditHabitViewModel @Inject constructor(
             isPublic = false, // простое значение по умолчанию
             isActive = true,
             createdAt = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault()).date,
-            updatedAt = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault()).date
+            updatedAt = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault()).date,
+            timeOfDay = currentState.selectedTimesOfDay.firstOrNull() ?: HabitTimeOfDay.ANY_TIME
         )
     }
 

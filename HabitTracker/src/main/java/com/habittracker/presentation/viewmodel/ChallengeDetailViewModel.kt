@@ -138,6 +138,23 @@ class ChallengeDetailViewModel @Inject constructor(
                     startDate = challenge.startDate,
                     endDate = challenge.endDate
                 )
+                
+                // Получаем суммарное значение для измеряемых привычек
+                val totalValue = if (user.id == currentUserId) {
+                    challengeRepository.getTotalValueForUserInChallenge(
+                        habitId = challenge.habitId,
+                        userId = user.id,
+                        startDate = challenge.startDate,
+                        endDate = challenge.endDate
+                    )
+                } else {
+                    challengeRepository.getTotalValueFromFirestore(
+                        habitId = challenge.habitId,
+                        userId = user.id,
+                        startDate = challenge.startDate,
+                        endDate = challenge.endDate
+                    )
+                }
 
                 val completionRate = if (totalDays > 0) {
                     completedDays.toFloat() / totalDays.toFloat()
@@ -151,7 +168,8 @@ class ChallengeDetailViewModel @Inject constructor(
                     totalDays = totalDays,
                     currentStreak = currentStreak,
                     completionRate = completionRate,
-                    position = 0 // Will be set after sorting
+                    position = 0, // Will be set after sorting
+                    totalValue = totalValue
                 )
             } catch (e: Exception) {
                 // If we can't get stats, use defaults
@@ -161,7 +179,8 @@ class ChallengeDetailViewModel @Inject constructor(
                     totalDays = totalDays,
                     currentStreak = 0,
                     completionRate = 0f,
-                    position = participants.size
+                    position = participants.size,
+                    totalValue = 0
                 )
             }
         }

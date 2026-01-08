@@ -17,5 +17,6 @@ data class HabitsUiState(
     val oldestHabitDate: LocalDate? = null, // Дата создания самой старой привычки (минимальная граница)
     val maxFutureDate: LocalDate? = null, // Максимальная дата в будущем (сегодня + 1 год)
     val currentUserAvatarUrl: String? = null, // URL аватарки текущего пользователя для TopAppBar
-    val showConfetti: Boolean = false // Флаг для показа конфетти при выполнении привычки
+    val showConfetti: Boolean = false, // Флаг для показа конфетти при выполнении привычки
+    val habitIdForValueInput: String? = null // ID привычки для которой открыт диалог ввода значения
 )

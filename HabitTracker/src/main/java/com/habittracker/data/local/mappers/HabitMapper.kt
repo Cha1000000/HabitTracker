@@ -35,7 +35,12 @@ fun HabitEntity.toDomain(): Habit {
         updatedAtMillis = updatedAtMillis,
         deletedAtMillis = deletedAtMillis,
         startDate = startDate,
-        endDate = endDate
+        endDate = endDate,
+        followUpReminderEnabled = followUpReminderEnabled,
+        followUpReminderDuration = followUpReminderDuration,
+        timeOfDay = timeOfDay,
+        goalType = goalType,
+        timeGroupId = timeGroupId
     )
 }
 
@@ -64,7 +69,12 @@ fun Habit.toEntity(): HabitEntity {
         updatedAtMillis = updatedAtMillis,
         deletedAtMillis = deletedAtMillis,
         startDate = startDate,
-        endDate = endDate
+        endDate = endDate,
+        followUpReminderEnabled = followUpReminderEnabled,
+        followUpReminderDuration = followUpReminderDuration,
+        timeOfDay = timeOfDay,
+        goalType = goalType,
+        timeGroupId = timeGroupId
     )
 }
 

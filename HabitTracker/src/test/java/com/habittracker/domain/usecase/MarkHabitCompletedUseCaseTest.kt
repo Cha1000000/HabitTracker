@@ -174,6 +174,7 @@ class FakeHabitEntryRepository : HabitEntryRepository {
     override suspend fun getEntriesWithUsersForHabitAndDate(habitId: String, date: LocalDate): List<HabitEntryWithUser> = emptyList()
     override suspend fun getCompletionRateForHabit(habitId: String, userId: String, startDate: LocalDate, endDate: LocalDate): Float = 0.0f
     override suspend fun markHabitIncomplete(habitId: String, userId: String, date: LocalDate) {}
+    override suspend fun setRestDay(habitId: String, userId: String, date: LocalDate, isRestDay: Boolean) {}
 }
 
 class FakeUpdateUserPointsUseCase(

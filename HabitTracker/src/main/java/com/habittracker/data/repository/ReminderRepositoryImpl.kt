@@ -5,6 +5,7 @@ import androidx.work.Data
 import androidx.work.ExistingWorkPolicy
 import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.WorkManager
+import com.habittracker.data.worker.HabitFollowUpWorker
 import com.habittracker.data.worker.HabitReminderWorker
 import com.habittracker.domain.model.Habit
 import com.habittracker.domain.model.HabitFrequency
@@ -32,6 +33,7 @@ class ReminderRepositoryImpl @Inject constructor(
 
     companion object {
         private const val REMINDER_WORK_PREFIX = "habit_reminder_"
+        private const val FOLLOWUP_WORK_PREFIX = "habit_followup_"
     }
 
     override suspend fun scheduleReminder(habit: Habit) {
@@ -39,6 +41,17 @@ class ReminderRepositoryImpl @Inject constructor(
 
         // Отменяем существующее напоминание
         cancelReminder(habit.id)
+        
+        // Проверяем, что привычка активна (не истёк срок действия)
+        val today = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault()).date
+        if (habit.endDate != null && habit.endDate < today) {
+            Log.d("ReminderRepositoryImpl", "Habit ${habit.id} has expired (endDate=${habit.endDate}), not scheduling reminders")
+            return
+        }
+        if (habit.startDate != null && habit.startDate > today) {
+            Log.d("ReminderRepositoryImpl", "Habit ${habit.id} hasn't started yet (startDate=${habit.startDate}), not scheduling reminders")
+            return
+        }
         
         // Вычисляем задержку до первого напоминания с учетом частоты и выбранных дней
         val delay = calculateDelayForNextOccurrence(habit)
@@ -56,6 +69,7 @@ class ReminderRepositoryImpl @Inject constructor(
             .setInitialDelay(delay, TimeUnit.MILLISECONDS)
             .setInputData(inputData)
             .addTag(getWorkTag(habit.id))
+            .addTag("habit_reminder")
             .build()
 
         // Планируем работу
@@ -64,6 +78,26 @@ class ReminderRepositoryImpl @Inject constructor(
             ExistingWorkPolicy.REPLACE,
             workRequest
         )
+
+        // Планируем повторное напоминание (follow-up), если включено
+        val followUpDurationMillis = (habit.followUpReminderDuration.hour * 60 + habit.followUpReminderDuration.minute) * 60 * 1000L
+        if (habit.followUpReminderEnabled && followUpDurationMillis > 0L) {
+            val followUpDelay = delay + followUpDurationMillis
+            
+            val followUpWorkRequest = OneTimeWorkRequestBuilder<HabitFollowUpWorker>()
+                .setInitialDelay(followUpDelay, TimeUnit.MILLISECONDS)
+                .setInputData(inputData) // Используем те же данные
+                .addTag(getWorkTag(habit.id))
+                .addTag("habit_reminder")
+                .build()
+                
+            workManager.enqueueUniqueWork(
+                getFollowUpWorkName(habit.id),
+                ExistingWorkPolicy.REPLACE,
+                followUpWorkRequest
+            )
+            Log.d("ReminderRepositoryImpl", "Scheduled follow-up reminder for habit ${habit.id} with total delay $followUpDelay")
+        }
 
         Log.d("ReminderRepositoryImpl", "Scheduled reminder for habit ${habit.id} with delay $delay")
 
@@ -74,6 +108,7 @@ class ReminderRepositoryImpl @Inject constructor(
     override suspend fun cancelReminder(habitId: String) {
         Log.d("ReminderRepositoryImpl", "cancelReminder: $habitId")
         workManager.cancelUniqueWork(getWorkName(habitId))
+        workManager.cancelUniqueWork(getFollowUpWorkName(habitId))
         workManager.cancelAllWorkByTag(getWorkTag(habitId))
     }
 
@@ -102,6 +137,12 @@ class ReminderRepositoryImpl @Inject constructor(
             repeat(horizonDays) { dayOffset ->
                 if (dayOffset > 0) {
                     val targetDate = now.date.plus(dayOffset, DateTimeUnit.DAY)
+                    
+                    // Не планируем напоминания после даты окончания привычки
+                    if (habit.endDate != null && targetDate > habit.endDate) {
+                        return@repeat
+                    }
+                    
                     val dow = targetDate.dayOfWeek.value // 1..7
                     if (allowedDays.contains(dow)) {
                         scheduleReminderForDay(habit, dayOffset, initialDelay)
@@ -167,6 +208,21 @@ class ReminderRepositoryImpl @Inject constructor(
             .build()
 
         workManager.enqueue(workRequest)
+        
+        // Планируем повторное напоминание (follow-up)
+        val followUpDurationMillis = (habit.followUpReminderDuration.hour * 60 + habit.followUpReminderDuration.minute) * 60 * 1000L
+        if (habit.followUpReminderEnabled && followUpDurationMillis > 0L) {
+            val followUpTotalDelay = totalDelay + followUpDurationMillis
+            
+            val followUpWorkRequest = OneTimeWorkRequestBuilder<HabitFollowUpWorker>()
+                .setInitialDelay(followUpTotalDelay, TimeUnit.MILLISECONDS)
+                .setInputData(inputData)
+                .addTag(getWorkTag(habit.id))
+                .addTag("habit_reminder")
+                .build()
+                
+            workManager.enqueue(followUpWorkRequest)
+        }
     }
 
     /**
@@ -180,6 +236,12 @@ class ReminderRepositoryImpl @Inject constructor(
         repeat(14) { dayOffset ->
             if (dayOffset > 0) {
                 val targetDate = now.date.plus(dayOffset, DateTimeUnit.DAY)
+                
+                // Не планируем напоминания после даты окончания привычки
+                if (habit.endDate != null && targetDate > habit.endDate) {
+                    return@repeat
+                }
+                
                 val dayOfWeek = targetDate.dayOfWeek.value // 1=понедельник, 7=воскресенье
                 
                 // Проверяем, что это будний день (пн-пт)
@@ -201,6 +263,12 @@ class ReminderRepositoryImpl @Inject constructor(
         repeat(14) { dayOffset ->
             if (dayOffset > 0) {
                 val targetDate = now.date.plus(dayOffset, DateTimeUnit.DAY)
+                
+                // Не планируем напоминания после даты окончания привычки
+                if (habit.endDate != null && targetDate > habit.endDate) {
+                    return@repeat
+                }
+                
                 val dayOfWeek = targetDate.dayOfWeek.value // 1=понедельник, 7=воскресенье
                 
                 // Проверяем, что это выходной день (сб-вс)
@@ -223,6 +291,13 @@ class ReminderRepositoryImpl @Inject constructor(
 
         for (dayOffset in 0..28) {
             val targetDate = now.date.plus(dayOffset, DateTimeUnit.DAY)
+            
+            // Не планируем напоминания после даты окончания привычки
+            if (habit.endDate != null && targetDate > habit.endDate) {
+                Log.d("ReminderRepositoryImpl", "Target date $targetDate is after endDate ${habit.endDate}, stopping search")
+                break
+            }
+            
             val dow = targetDate.dayOfWeek.value
             val targetDateTime = LocalDateTime(targetDate, reminderTime)
             val targetInstant = targetDateTime.toInstant(TimeZone.currentSystemDefault())
@@ -262,6 +337,8 @@ class ReminderRepositoryImpl @Inject constructor(
     }
 
     private fun getWorkName(habitId: String): String = "${REMINDER_WORK_PREFIX}$habitId"
+    
+    private fun getFollowUpWorkName(habitId: String): String = "${FOLLOWUP_WORK_PREFIX}$habitId"
     
     private fun getWorkTag(habitId: String): String = "habit_reminder_$habitId"
 }

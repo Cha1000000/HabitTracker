@@ -71,6 +71,7 @@ import com.habittracker.domain.model.Challenge
 import com.habittracker.domain.model.ChallengeParticipantStats
 import com.habittracker.domain.model.ChallengeStatus
 import com.habittracker.domain.model.Habit
+import com.habittracker.domain.model.HabitGoalType
 import com.habittracker.domain.model.User
 import com.habittracker.domain.model.getDaysElapsed
 import com.habittracker.domain.model.getDaysRemaining
@@ -583,6 +584,15 @@ private fun ChallengeDetailContent(
                             value = "Последовательное выполнение"
                         )
                     }
+                    
+                    if (challenge.rules.allowBackfillCompletions) {
+                        Spacer(modifier = Modifier.height(8.dp))
+                        RuleItem(
+                            icon = Icons.Default.Schedule,
+                            label = "Дополнительно",
+                            value = stringResource(R.string.allow_backfill_completions_info)
+                        )
+                    }
                 }
             }
         }
@@ -662,7 +672,9 @@ private fun ChallengeDetailContent(
                     canRemoveParticipant = canRemove,
                     onResendInvitation = { onResendInvitation(user.id) },
                     onRemoveParticipant = { onRemoveParticipant(user) },
-                    isDarkTheme = isDarkTheme
+                    isDarkTheme = isDarkTheme,
+                    isMeasurableHabit = habit?.goalType == HabitGoalType.MEASURABLE,
+                    habitUnit = habit?.unit ?: ""
                 )
             }
         }
@@ -711,7 +723,9 @@ private fun ParticipantCard(
     canRemoveParticipant: Boolean,
     onResendInvitation: () -> Unit,
     onRemoveParticipant: () -> Unit,
-    isDarkTheme: Boolean
+    isDarkTheme: Boolean,
+    isMeasurableHabit: Boolean = false,
+    habitUnit: String = ""
 ) {
     GlassmorphicCard(
         modifier = Modifier.fillMaxWidth(),
@@ -824,8 +838,16 @@ private fun ParticipantCard(
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         if (hasAccepted) {
                             if (stats != null) {
+                                val statsText = if (isMeasurableHabit) {
+                                    // Для измеряемых привычек показываем суммарное значение
+                                    val unitText = if (habitUnit.isNotBlank()) " $habitUnit" else ""
+                                    "${stats.totalValue}$unitText • ${stats.completedDays}/${stats.totalDays} дней"
+                                } else {
+                                    // Для простых привычек показываем дни и процент
+                                    "${stats.completedDays}/${stats.totalDays} дней • ${(stats.completionRate * 100).toInt()}%"
+                                }
                                 Text(
-                                    text = "${stats.completedDays}/${stats.totalDays} дней • ${(stats.completionRate * 100).toInt()}%",
+                                    text = statsText,
                                     style = MaterialTheme.typography.bodySmall,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant
                                 )

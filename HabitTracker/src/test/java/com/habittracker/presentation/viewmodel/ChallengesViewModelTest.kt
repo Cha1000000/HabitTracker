@@ -157,6 +157,18 @@ class ChallengesViewModelTest {
         override suspend fun declineChallengeInvitation(challengeId: String, userId: String) {}
         override suspend fun cancelChallenge(challengeId: String) {}
         override suspend fun addParticipantsToChallenge(challengeId: String, participantIds: List<String>) {}
+        override suspend fun getTotalValueForUserInChallenge(
+            habitId: String,
+            userId: String,
+            startDate: LocalDate,
+            endDate: LocalDate
+        ): Int = 0
+        override suspend fun getTotalValueFromFirestore(
+            habitId: String,
+            userId: String,
+            startDate: LocalDate,
+            endDate: LocalDate
+        ): Int = 0
     }
 
     private fun createViewModel(

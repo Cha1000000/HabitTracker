@@ -28,14 +28,30 @@ class GetHabitCompletionStatusUseCase @Inject constructor(
         userId: String,
         date: LocalDate = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault()).date
     ): Boolean {
+        return getEntry(habitId, userId, date)?.completed ?: false
+    }
+
+    /**
+     * Получает полную запись привычки (или null, если записи нет)
+     * Приоритет отдаётся локальным данным, так как они всегда актуальны после сохранения,
+     * а синхронизация с Firestore происходит асинхронно.
+     */
+    suspend fun getEntry(
+        habitId: String,
+        userId: String,
+        date: LocalDate
+    ): com.habittracker.domain.model.HabitEntry? {
+        // Приоритет локальным данным - они всегда актуальны после локального сохранения
+        val localEntry = habitEntryRepository.getEntry(habitId, userId, date)
+        if (localEntry != null) {
+            return localEntry
+        }
+        
+        // Если локально нет данных, пробуем получить из Firestore
         return try {
-            // Сначала пытаемся получить из Firestore
-            val firestoreEntry = firestoreRepository.getHabitEntry(habitId, userId, date)
-            firestoreEntry?.completed ?: false
+            firestoreRepository.getHabitEntry(habitId, userId, date)
         } catch (e: Exception) {
-            // При ошибке используем локальные данные
-            val localEntry = habitEntryRepository.getEntry(habitId, userId, date)
-            localEntry?.completed ?: false
+            null
         }
     }
 }

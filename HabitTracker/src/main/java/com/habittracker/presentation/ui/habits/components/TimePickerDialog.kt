@@ -38,7 +38,8 @@ import androidx.compose.ui.res.stringResource
 fun TimePickerDialog(
     initialTime: LocalTime,
     onTimeSelected: (LocalTime) -> Unit,
-    onDismiss: () -> Unit
+    onDismiss: () -> Unit,
+    title: String = stringResource(R.string.habit_select_time)
 ) {
     val isDarkTheme = isSystemInDarkTheme()
 
@@ -71,7 +72,7 @@ fun TimePickerDialog(
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 Text(
-                    text = stringResource(R.string.habit_select_time),
+                    text = title,
                     style = MaterialTheme.typography.titleLarge,
                     color = if (isDarkTheme) Color.White else MaterialTheme.colorScheme.onBackground,
                     fontWeight = FontWeight.Bold

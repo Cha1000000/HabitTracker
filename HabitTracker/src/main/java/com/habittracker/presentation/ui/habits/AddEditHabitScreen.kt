@@ -1,6 +1,5 @@
 package com.habittracker.presentation.ui.habits
 
-import android.util.Log
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
@@ -26,6 +25,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Bedtime
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.DateRange
@@ -34,8 +34,11 @@ import androidx.compose.material.icons.filled.Group
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.PersonAdd
+import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material.icons.filled.Timeline
 import androidx.compose.material.icons.filled.Title
+import androidx.compose.material.icons.filled.WbSunny
+import androidx.compose.material.icons.filled.WbTwilight
 import androidx.compose.material3.AssistChip
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -86,6 +89,7 @@ import androidx.navigation.NavController
 import androidx.navigation.compose.rememberNavController
 import com.habittracker.R
 import com.habittracker.domain.model.HabitFrequency
+import com.habittracker.domain.model.HabitTimeOfDay
 import com.habittracker.domain.model.HabitType
 import com.habittracker.presentation.state.AddEditHabitUiState
 import com.habittracker.presentation.ui.components.FieldValidationFeedback
@@ -355,6 +359,8 @@ private fun GroupSettings(
                 }
             }
 
+            val inviteCodeAfterSaveHint = stringResource(R.string.invite_code_can_generate_after_save)
+
             InviteCodeCard(
                 inviteCode = uiState.inviteCode,
                 isPublic = uiState.isPublic,
@@ -364,7 +370,7 @@ private fun GroupSettings(
                         viewModel.generateInviteCode()
                     } else {
                         // Для новой привычки показываем информационное сообщение
-                        (viewModel as? AddEditHabitViewModel)?.showMessage("Код приглашения можно создать после сохранения привычки")
+                        (viewModel as? AddEditHabitViewModel)?.showMessage(inviteCodeAfterSaveHint)
                     }
                 },
                 onTogglePublic = { viewModel.onIsPublicChange(it) },
@@ -459,6 +465,154 @@ private fun GroupSettings(
     }
 }
 
+@Composable
+private fun TimeOfDaySelector(
+    selectedTimes: Set<HabitTimeOfDay>,
+    onTimeToggle: (HabitTimeOfDay) -> Unit,
+    isEditMode: Boolean,
+    modifier: Modifier = Modifier
+) {
+    val isDarkTheme = isSystemInDarkTheme()
+    
+    GlassmorphicCard(
+        modifier = modifier.fillMaxWidth(),
+        isDarkTheme = isDarkTheme,
+        cornerRadius = 16.dp,
+        glassAlpha = if (isDarkTheme) 0.15f else 0.85f,
+        borderAlpha = if (isDarkTheme) 0.3f else 0.15f,
+        elevation = 2.dp
+    ) {
+        Column(
+            modifier = Modifier.padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            GlassmorphicSectionHeader(
+                text = stringResource(R.string.habit_time_of_day_label),
+                isDarkTheme = isDarkTheme
+            )
+            
+            // Подсказка о множественном выборе (только при создании)
+            if (!isEditMode) {
+                Text(
+                    text = stringResource(R.string.time_of_day_multi_select_hint),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+            
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    TimeOfDayChip(
+                        timeOfDay = HabitTimeOfDay.MORNING,
+                        isSelected = selectedTimes.contains(HabitTimeOfDay.MORNING),
+                        onSelect = onTimeToggle,
+                        enabled = !isEditMode,
+                        modifier = Modifier.weight(1f)
+                    )
+                    TimeOfDayChip(
+                        timeOfDay = HabitTimeOfDay.AFTERNOON,
+                        isSelected = selectedTimes.contains(HabitTimeOfDay.AFTERNOON),
+                        onSelect = onTimeToggle,
+                        enabled = !isEditMode,
+                        modifier = Modifier.weight(1f)
+                    )
+                }
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    TimeOfDayChip(
+                        timeOfDay = HabitTimeOfDay.EVENING,
+                        isSelected = selectedTimes.contains(HabitTimeOfDay.EVENING),
+                        onSelect = onTimeToggle,
+                        enabled = !isEditMode,
+                        modifier = Modifier.weight(1f)
+                    )
+                    TimeOfDayChip(
+                        timeOfDay = HabitTimeOfDay.ANY_TIME,
+                        isSelected = selectedTimes.contains(HabitTimeOfDay.ANY_TIME),
+                        onSelect = onTimeToggle,
+                        enabled = !isEditMode,
+                        modifier = Modifier.weight(1f)
+                    )
+                }
+            }
+            
+            // Информация о количестве создаваемых привычек
+            if (!isEditMode && selectedTimes.size > 1) {
+                Text(
+                    text = stringResource(R.string.time_of_day_will_create_multiple, selectedTimes.size),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.primary
+                )
+            }
+            
+            // Предупреждение при редактировании
+            if (isEditMode) {
+                Text(
+                    text = stringResource(R.string.time_of_day_edit_mode_hint),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun TimeOfDayChip(
+    timeOfDay: HabitTimeOfDay,
+    isSelected: Boolean,
+    onSelect: (HabitTimeOfDay) -> Unit,
+    enabled: Boolean = true,
+    modifier: Modifier = Modifier
+) {
+    val isDarkTheme = isSystemInDarkTheme()
+    val label = when (timeOfDay) {
+        HabitTimeOfDay.MORNING -> stringResource(R.string.time_of_day_morning)
+        HabitTimeOfDay.AFTERNOON -> stringResource(R.string.time_of_day_afternoon)
+        HabitTimeOfDay.EVENING -> stringResource(R.string.time_of_day_evening)
+        HabitTimeOfDay.ANY_TIME -> stringResource(R.string.time_of_day_any)
+    }
+    
+    val icon = when (timeOfDay) {
+        HabitTimeOfDay.MORNING -> Icons.Default.WbTwilight
+        HabitTimeOfDay.AFTERNOON -> Icons.Default.WbSunny
+        HabitTimeOfDay.EVENING -> Icons.Default.Bedtime
+        HabitTimeOfDay.ANY_TIME -> Icons.Default.Schedule
+    }
+
+    FilterChip(
+        selected = isSelected,
+        onClick = { if (enabled) onSelect(timeOfDay) },
+        enabled = enabled,
+        label = { 
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    text = label, 
+                    style = MaterialTheme.typography.bodyMedium,
+                    modifier = Modifier.weight(1f, fill = false),
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+            }
+        },
+        leadingIcon = {
+            Icon(
+                imageVector = icon,
+                contentDescription = null,
+                modifier = Modifier.size(18.dp)
+            )
+        },
+        modifier = modifier.height(40.dp),
+        colors = FilterChipDefaults.filterChipColors(
+            selectedContainerColor = if (isDarkTheme) 
+                MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.6f) else 
+                MaterialTheme.colorScheme.primaryContainer,
+            selectedLabelColor = MaterialTheme.colorScheme.onPrimaryContainer,
+            selectedLeadingIconColor = MaterialTheme.colorScheme.onPrimaryContainer
+        ),
+        shape = CircleShape
+    )
+}
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun FrequencySelector(
@@ -544,14 +698,6 @@ fun AddEditHabitScreen(
     var shouldRequestNotificationPermission by remember { mutableStateOf(false) }
     val hasPermission = hasNotificationPermission()
     val snackbarHostState = remember { SnackbarHostState() }
-
-    // Диагностируем текущее состояние напоминаний на уровне UI-композиции
-    LaunchedEffect(uiState.reminderEnabled, uiState.reminderTime) {
-        Log.d(
-            "AddEditHabitScreen",
-            "[compose] reminder: enabled=${uiState.reminderEnabled}, time=${uiState.reminderTime}"
-        )
-    }
 
     LaunchedEffect(uiState.isHabitSaved) {
         if (uiState.isHabitSaved) {
@@ -700,7 +846,7 @@ fun AddEditHabitScreen(
                             if (uiState.habitId == null) {
                                 stringResource(R.string.habit_new_title)
                             } else {
-                                "Редактировать привычку"
+                                stringResource(R.string.habit_edit_title)
                             }
                         )
                     },
@@ -766,7 +912,8 @@ fun AddEditHabitScreen(
                     .fillMaxSize()
                     .padding(paddingValues)
                     .padding(horizontal = 12.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp)
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+                contentPadding = PaddingValues(bottom = 140.dp)
             ) {
                 item {
                     // Выбор иконки и цвета
@@ -988,38 +1135,49 @@ fun AddEditHabitScreen(
                             )
                         }
 
-                        else -> { /* no-op */
-                        }
+                        else -> Unit
                     }
                 }
 
                 item {
-                    // Целевое значение
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        GlassmorphicTextField(
-                            value = uiState.targetValueInput,
-                            onValueChange = { input ->
-                                viewModel.onTargetValueInputChange(input)
-                            },
-                            label = { Text(stringResource(R.string.habit_target_value_label)) },
-                            modifier = Modifier.weight(1f),
-                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                            singleLine = true,
-                            leadingIcon = { Icon(Icons.Default.Timeline, null) },
-                        )
+                    // Время выполнения (TimeOfDay) - множественный выбор при создании
+                    TimeOfDaySelector(
+                        selectedTimes = uiState.selectedTimesOfDay,
+                        onTimeToggle = { viewModel.onTimeOfDayToggle(it) },
+                        isEditMode = uiState.isEditMode,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                }
 
-                        GlassmorphicTextField(
-                            value = uiState.unit,
-                            onValueChange = { viewModel.onUnitChange(it) },
-                            label = { Text(stringResource(R.string.habit_unit_label)) },
-                            modifier = Modifier.width(100.dp),
-                            singleLine = true,
-                        )
+                if (uiState.goalType == com.habittracker.domain.model.HabitGoalType.MEASURABLE) {
+                    item {
+                        // Целевое значение
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            GlassmorphicTextField(
+                                value = uiState.targetValueInput,
+                                onValueChange = { input ->
+                                    viewModel.onTargetValueInputChange(input)
+                                },
+                                label = { Text(stringResource(R.string.habit_target_value_label)) },
+                                modifier = Modifier.weight(1f),
+                                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                                singleLine = true,
+                                leadingIcon = { Icon(Icons.Default.Timeline, null) },
+                            )
+
+                            GlassmorphicTextField(
+                                value = uiState.unit,
+                                onValueChange = { viewModel.onUnitChange(it) },
+                                label = { Text(stringResource(R.string.habit_unit_label)) },
+                                modifier = Modifier.width(100.dp),
+                                singleLine = true,
+                            )
+                        }
+                        FieldValidationFeedback(uiState.targetValueError)
                     }
-                    FieldValidationFeedback(uiState.targetValueError)
                 }
 
                 // Секция выбора дат привычки
@@ -1261,6 +1419,74 @@ fun AddEditHabitScreen(
                                             )
                                             Text(stringResource(R.string.apply_reminder_to_all))
                                         }
+                                    }
+                                }
+                            }
+
+                            if (uiState.reminderEnabled) {
+                                Spacer(modifier = Modifier.height(16.dp))
+
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.SpaceBetween
+                                ) {
+                                    Column(modifier = Modifier.weight(1f)) {
+                                        Text(
+                                            text = stringResource(R.string.follow_up_reminder_title),
+                                            style = MaterialTheme.typography.bodyLarge,
+                                            color = MaterialTheme.colorScheme.onSurface
+                                        )
+                                        Text(
+                                            text = stringResource(R.string.follow_up_reminder_subtitle),
+                                            style = MaterialTheme.typography.bodySmall,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                                        )
+                                    }
+
+                                    GlassmorphicSwitch(
+                                        checked = uiState.followUpReminderEnabled,
+                                        onCheckedChange = { viewModel.onFollowUpReminderEnabledChange(it) },
+                                        isDarkTheme = isDarkTheme
+                                    )
+                                }
+
+                                if (uiState.followUpReminderEnabled) {
+                                    Spacer(modifier = Modifier.height(12.dp))
+
+                                    var showFollowUpTimePicker by remember { mutableStateOf(false) }
+
+                                    GlassmorphicTextField(
+                                        value = stringResource(
+                                            R.string.follow_up_reminder_after_format,
+                                            uiState.followUpReminderDuration.hour,
+                                            uiState.followUpReminderDuration.minute
+                                        ),
+                                        onValueChange = {},
+                                        label = { Text(stringResource(R.string.follow_up_reminder_interval_label)) },
+                                        readOnly = true,
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .clickable { showFollowUpTimePicker = true },
+                                        trailingIcon = {
+                                            Icon(
+                                                Icons.Default.Notifications,
+                                                contentDescription = null,
+                                                modifier = Modifier.clickable { showFollowUpTimePicker = true }
+                                            )
+                                        }
+                                    )
+
+                                    if (showFollowUpTimePicker) {
+                                        TimePickerDialog(
+                                            initialTime = uiState.followUpReminderDuration,
+                                            onTimeSelected = {
+                                                viewModel.onFollowUpReminderDurationChange(it)
+                                                showFollowUpTimePicker = false
+                                            },
+                                            onDismiss = { showFollowUpTimePicker = false },
+                                            title = stringResource(R.string.follow_up_reminder_interval_picker_title)
+                                        )
                                     }
                                 }
                             }

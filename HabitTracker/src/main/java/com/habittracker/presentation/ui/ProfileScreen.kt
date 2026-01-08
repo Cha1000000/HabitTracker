@@ -71,6 +71,8 @@ import com.habittracker.R
 import com.habittracker.presentation.navigation.Screen
 import com.habittracker.presentation.ui.habits.components.GlassmorphicButton
 import com.habittracker.presentation.ui.habits.components.GlassmorphicCard
+import com.habittracker.presentation.ui.habits.components.GlassmorphicOutlinedButton
+import com.habittracker.presentation.ui.habits.components.GlassmorphicTextField
 import com.habittracker.presentation.ui.habits.components.TahoeGradientBackground
 import com.habittracker.presentation.viewmodel.AuthEvent
 import com.habittracker.presentation.viewmodel.AuthState
@@ -298,7 +300,7 @@ fun ProfileScreen(
                             style = MaterialTheme.typography.labelMedium
                         )
                         if (uiState.isEditingName) {
-                            OutlinedTextField(
+                            GlassmorphicTextField(
                                 value = uiState.editableName,
                                 onValueChange = profileViewModel::onNameChange,
                                 singleLine = true,
@@ -329,7 +331,7 @@ fun ProfileScreen(
                 if (!uiState.isOwnProfile) {
                     when {
                         uiState.isFriend -> {
-                            OutlinedButton(
+                            GlassmorphicOutlinedButton(
                                 onClick = { profileViewModel.removeFriend() },
                                 enabled = !uiState.isActionInProgress,
                                 modifier = Modifier.fillMaxWidth()
@@ -339,7 +341,7 @@ fun ProfileScreen(
                         }
 
                         uiState.isRequestSent -> {
-                            Button(
+                            GlassmorphicButton(
                                 onClick = { },
                                 enabled = false,
                                 modifier = Modifier.fillMaxWidth()
@@ -349,7 +351,7 @@ fun ProfileScreen(
                         }
 
                         else -> {
-                            Button(
+                            GlassmorphicButton(
                                 onClick = { profileViewModel.addFriend() },
                                 enabled = !uiState.isActionInProgress,
                                 modifier = Modifier.fillMaxWidth()

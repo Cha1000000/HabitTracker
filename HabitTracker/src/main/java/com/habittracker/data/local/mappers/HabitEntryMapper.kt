@@ -16,6 +16,7 @@ fun HabitEntryEntity.toDomain(): HabitEntry = HabitEntry(
     completedAt = completedAt,
     value = value,
     note = note,
+    isRestDay = isRestDay,
     createdAt = createdAt,
     updatedAt = updatedAt
 )
@@ -28,6 +29,7 @@ fun HabitEntry.toEntity(): HabitEntryEntity = HabitEntryEntity(
     completedAt = completedAt,  
     value = value,
     note = note,
+    isRestDay = isRestDay,
     createdAt = createdAt,
     updatedAt = updatedAt
 )

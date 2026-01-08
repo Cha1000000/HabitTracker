@@ -11,10 +11,8 @@ import com.habittracker.domain.model.Habit
 import com.habittracker.domain.model.HabitEntry
 import com.habittracker.domain.model.HabitInvitation
 import com.habittracker.domain.model.HabitParticipantSettings
-import com.habittracker.domain.model.HabitType
 import com.habittracker.domain.model.User
 import kotlinx.datetime.Instant
-import kotlinx.datetime.LocalDate
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toLocalDateTime
 
@@ -71,6 +69,8 @@ object SyncPayloads {
             habit.deletedAtMillis?.let { put("deletedAtMillis", it) }
             habit.startDate?.let { put("startDate", it.toString()) }
             habit.endDate?.let { put("endDate", it.toString()) }
+            put("timeOfDay", habit.timeOfDay.name)
+            put("goalType", habit.goalType.name)
         }
     )
 
@@ -84,29 +84,10 @@ object SyncPayloads {
             "completedAt" to entry.completedAt?.toString(),
             "value" to entry.value,
             "note" to entry.note,
+            "isRestDay" to entry.isRestDay,
             "createdAt" to entry.createdAt.toString(),
             "updatedAt" to entry.updatedAt.toString()
         )
-    )
-
-    // Частичное обновление Habit (используется SetOptions.merge в SyncManager)
-    fun habitPartialUpdateToJson(
-        participants: List<String>? = null,
-        type: HabitType? = null,
-        createdBy: String? = null,
-        isActive: Boolean? = null,
-        updatedAt: LocalDate
-    ): String = gson.toJson(
-        buildMap<String, Any?> {
-            put("updatedAt", updatedAt.toString())
-            if (participants != null) put("participants", participants)
-            if (type != null) put("type", type.name)
-            if (createdBy != null) put("createdBy", createdBy)
-            if (isActive != null) {
-                // isActive-only стандарт
-                put("isActive", isActive)
-            }
-        }
     )
 
     // Friend request payload
@@ -173,7 +154,8 @@ object SyncPayloads {
                 "type" to challenge.rules.type.name,
                 "targetValue" to challenge.rules.targetValue,
                 "allowMissedDays" to challenge.rules.allowMissedDays,
-                "requireConsecutive" to challenge.rules.requireConsecutive
+                "requireConsecutive" to challenge.rules.requireConsecutive,
+                "allowBackfillCompletions" to challenge.rules.allowBackfillCompletions
             ),
             "reward" to challenge.reward,
             "status" to challenge.status.name,

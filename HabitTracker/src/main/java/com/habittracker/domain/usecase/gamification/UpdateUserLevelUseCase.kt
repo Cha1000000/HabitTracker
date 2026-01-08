@@ -2,6 +2,8 @@ package com.habittracker.domain.usecase.gamification
 
 import com.habittracker.domain.model.User
 import com.habittracker.domain.model.UserLevelInfo
+import com.habittracker.domain.model.gamification.GamificationConstants
+import com.habittracker.domain.model.getLevelTitle
 import com.habittracker.domain.repository.SocialRepository
 import com.habittracker.domain.repository.UserRepository
 import javax.inject.Inject
@@ -15,12 +17,6 @@ class UpdateUserLevelUseCase @Inject constructor(
 ) {
 
     companion object {
-        // Формула расчета очков для уровня: level * 1000
-        // Уровень 1: 0-999 очков
-        // Уровень 2: 1000-1999 очков
-        // Уровень 3: 2000-2999 очков и т.д.
-        const val POINTS_PER_LEVEL = 1000
-        
         // Максимальный уровень
         const val MAX_LEVEL = 100
     }
@@ -32,7 +28,7 @@ class UpdateUserLevelUseCase @Inject constructor(
         val user = userRepository.getUserById(userId)
             ?: return LevelUpdateResult.UserNotFound
 
-        val newLevel = calculateLevelFromPoints(user.points)
+        val newLevel = GamificationConstants.getLevelFromPoints(user.points)
         val oldLevel = user.level
 
         if (newLevel != oldLevel) {
@@ -66,7 +62,7 @@ class UpdateUserLevelUseCase @Inject constructor(
             ?: return PointsUpdateResult.UserNotFound
 
         val newPoints = (user.points + points).coerceAtLeast(0)
-        val newLevel = calculateLevelFromPoints(newPoints)
+        val newLevel = GamificationConstants.getLevelFromPoints(newPoints)
         val oldLevel = user.level
 
         val updatedUser = user.copy(
@@ -96,7 +92,7 @@ class UpdateUserLevelUseCase @Inject constructor(
      * Рассчитать уровень на основе очков
      */
     fun calculateLevelFromPoints(points: Int): Int {
-        val calculatedLevel = (points / POINTS_PER_LEVEL) + 1
+        val calculatedLevel = GamificationConstants.getLevelFromPoints(points)
         return calculatedLevel.coerceIn(1, MAX_LEVEL)
     }
 
@@ -107,7 +103,7 @@ class UpdateUserLevelUseCase @Inject constructor(
         return if (currentLevel >= MAX_LEVEL) {
             0 // Максимальный уровень достигнут
         } else {
-            currentLevel * POINTS_PER_LEVEL
+            GamificationConstants.pointsForLevel(currentLevel + 1)
         }
     }
 
@@ -117,12 +113,19 @@ class UpdateUserLevelUseCase @Inject constructor(
     suspend fun getUserLevelInfo(userId: String): UserLevelInfo? {
         val user = userRepository.getUserById(userId) ?: return null
 
-        val currentLevel = user.level
         val currentPoints = user.points
+        // Recalculate level based on points to ensure consistency if DB is outdated
+        val calculatedLevel = calculateLevelFromPoints(currentPoints)
+        
+        // If DB level is different, we use the calculated one for display, 
+        // but ideally we should update the DB too. 
+        // For now, let's use the calculated one for accurate UI.
+        val currentLevel = calculatedLevel
+
         val pointsForNextLevel = getPointsForNextLevel(currentLevel)
-        val pointsToNextLevel = pointsForNextLevel - currentPoints
+        val pointsToNextLevel = (pointsForNextLevel - currentPoints).coerceAtLeast(0)
         val progress = calculateProgressToNextLevel(currentPoints, currentLevel)
-        val levelTitle = getLevelTitle(currentLevel)
+        val levelTitle = user.getLevelTitle() // Use extension function from User
         val isMaxLevel = currentLevel >= MAX_LEVEL
 
         return UserLevelInfo(
@@ -142,10 +145,10 @@ class UpdateUserLevelUseCase @Inject constructor(
     private fun calculateProgressToNextLevel(currentPoints: Int, currentLevel: Int): Float {
         if (currentLevel >= MAX_LEVEL) return 1f
 
-        val pointsForCurrentLevel: Int = (currentLevel - 1) * POINTS_PER_LEVEL
-        val pointsForNextLevel: Int = currentLevel * POINTS_PER_LEVEL
-        val currentLevelPoints: Int = currentPoints - pointsForCurrentLevel
-        val pointsNeeded: Int = pointsForNextLevel - pointsForCurrentLevel
+        val pointsForCurrentLevel = GamificationConstants.pointsForLevel(currentLevel)
+        val pointsForNextLevel = GamificationConstants.pointsForLevel(currentLevel + 1)
+        val currentLevelPoints = currentPoints - pointsForCurrentLevel
+        val pointsNeeded = pointsForNextLevel - pointsForCurrentLevel
 
         return if (pointsNeeded > 0) {
             (currentLevelPoints.toFloat() / pointsNeeded.toFloat()).coerceIn(0f, 1f)
@@ -161,7 +164,7 @@ class UpdateUserLevelUseCase @Inject constructor(
         try {
             user.fcmToken?.let { token ->
                 val title = "🎉 Поздравляем!"
-                val body = "Вы достигли ${newLevel} уровня! ${getLevelTitle(newLevel)}"
+                val body = "Вы достигли ${newLevel} уровня! ${user.copy(level = newLevel).getLevelTitle()}"
                 val data = mapOf(
                     "type" to "level_up",
                     "level" to newLevel.toString(),
@@ -173,17 +176,6 @@ class UpdateUserLevelUseCase @Inject constructor(
         } catch (e: Exception) {
             // Логируем ошибку, но не прерываем основной процесс
             println("Failed to send level up notification: ${e.message}")
-        }
-    }
-
-    fun getLevelTitle(level: Int): String {
-        return when (level) {
-            1 -> "Новичок"
-            2 -> "Ученик"
-            3 -> "Практик"
-            4 -> "Мастер"
-            5 -> "Эксперт"
-            else -> "Легенда"
         }
     }
 }

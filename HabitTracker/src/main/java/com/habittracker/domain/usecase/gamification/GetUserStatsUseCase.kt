@@ -6,6 +6,7 @@ import com.habittracker.domain.model.Habit
 import com.habittracker.domain.model.HabitEntry
 import com.habittracker.domain.model.UserLevelInfo
 import com.habittracker.domain.model.gamification.ChallengeStats
+import com.habittracker.domain.model.gamification.GamificationConstants
 import com.habittracker.domain.model.gamification.HabitStats
 import com.habittracker.domain.model.gamification.SocialStats
 import com.habittracker.domain.model.gamification.StreakStats
@@ -68,6 +69,10 @@ class GetUserStatsUseCase @Inject constructor(
             challengesWon = challenges.count { it.winnerId == userId }
         )
 
+        // Calculate level info dynamically to ensure consistency
+        val calculatedLevel = GamificationConstants.getLevelFromPoints(user.points)
+        val nextLevelPoints = GamificationConstants.pointsForLevel(calculatedLevel + 1)
+
         return UserStats(
             user = user,
             habitStats = habitStats,
@@ -76,13 +81,13 @@ class GetUserStatsUseCase @Inject constructor(
             timeStats = timeStats,
             socialStats = socialStats,
             levelInfo = UserLevelInfo(
-                currentLevel = user.level,
+                currentLevel = calculatedLevel,
                 currentPoints = user.points,
-                pointsForNextLevel = user.level * 1000,
-                pointsToNextLevel = ((user.level * 1000) - user.points).coerceAtLeast(0),
+                pointsForNextLevel = nextLevelPoints,
+                pointsToNextLevel = (nextLevelPoints - user.points).coerceAtLeast(0),
                 progress = user.getLevelProgress(),
                 levelTitle = user.getLevelTitle(),
-                isMaxLevel = user.level >= 100
+                isMaxLevel = calculatedLevel >= 100
             )
         )
     }
@@ -320,14 +325,41 @@ class GetUserStatsUseCase @Inject constructor(
         var currentDate = today
 
         for (entry in habitEntries) {
-            if (entry.date == currentDate && entry.completed) {
-                streak++
-                currentDate = currentDate.minus(1, DateTimeUnit.DAY)
+            if (entry.date == currentDate) {
+                if (entry.completed) {
+                    streak++
+                    currentDate = currentDate.minus(1, DateTimeUnit.DAY)
+                } else if (entry.isRestDay) {
+                    // Skip rest day, continue checking previous day, do not increment streak
+                    currentDate = currentDate.minus(1, DateTimeUnit.DAY)
+                } else {
+                    // Not completed and not rest day - streak broken if it's today (unless we allow today to be incomplete yet)
+                    // Logic typically: if today is not completed, streak might still be valid from yesterday.
+                    // But this function iterates back.
+                    // If entry.date == currentDate:
+                    // If it is NOT completed and NOT rest day:
+                    // If currentDate is TODAY, streak doesn't necessarily break (user can still do it).
+                    // But if this is for "current streak including today if done", usually we count from yesterday if today is not done.
+                    
+                    // Let's look at existing logic:
+                    // if (entry.date == currentDate && entry.completed) { ... } else if (entry.date < currentDate) { break }
+                    
+                    // Revised logic to handle Rest Day:
+                    break
+                }
             } else if (entry.date < currentDate) {
-                break
+                 // Gap in dates?
+                 // Original logic:
+                 // if (entry.date == currentDate && entry.completed) { ... } else if (entry.date < currentDate) { break }
+                 // This implies if we miss a date in iteration (entry.date < currentDate), it breaks.
+                 break
             }
         }
-
+        
+        // Wait, the original logic was simple iteration.
+        // Let's stick to the pattern in HabitEntry.kt which I updated.
+        // But here we filter by habitId first.
+        
         return streak
     }
 

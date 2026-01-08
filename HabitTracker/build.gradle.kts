@@ -27,7 +27,7 @@ ksp {
 }
 
 // Единый источник versionName для использования и в defaultConfig, и в имени APK
-val appVersionName = "1.3.0"
+val appVersionName = "1.3.4"
 
 android {
     namespace = "com.habittracker"
@@ -37,10 +37,10 @@ android {
         applicationId = "com.habittracker"
         minSdk = 26
         targetSdk = 35
-        versionCode = 2
+        versionCode = 3
         versionName = appVersionName
 
-        testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+        testInstrumentationRunner = "com.habittracker.HiltTestRunner"
         vectorDrawables {
             useSupportLibrary = true
         }
@@ -249,6 +249,9 @@ dependencies {
     // WorkManager
     implementation(libs.androidx.work.runtime.ktx)
     
+    // DataStore
+    implementation(libs.androidx.datastore.preferences)
+    
     // DateTime
     implementation(libs.kotlinx.datetime)
     
@@ -288,6 +291,9 @@ dependencies {
     androidTestImplementation(platform(libs.androidx.compose.bom))
     androidTestImplementation(libs.androidx.ui.test.junit4)
     androidTestImplementation(libs.mockk.android)
+    androidTestImplementation(libs.hilt.android.testing)
+    androidTestImplementation(libs.androidx.work.testing)
+    kspAndroidTest(libs.hilt.android.compiler)
 
     debugImplementation(libs.androidx.ui.tooling)
     debugImplementation(libs.androidx.ui.test.manifest)

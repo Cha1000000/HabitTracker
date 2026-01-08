@@ -29,7 +29,9 @@ import kotlinx.datetime.DateTimeUnit
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.minus
+import kotlinx.datetime.plus
 import kotlinx.datetime.toLocalDateTime
+import kotlinx.datetime.todayIn
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertTrue
@@ -123,6 +125,20 @@ class ChallengeUseCasesTest {
         override suspend fun declineChallengeInvitation(challengeId: String, userId: String) {}
         override suspend fun cancelChallenge(challengeId: String) {}
         override suspend fun addParticipantsToChallenge(challengeId: String, participantIds: List<String>) {}
+        
+        override suspend fun getTotalValueForUserInChallenge(
+            habitId: String,
+            userId: String,
+            startDate: LocalDate,
+            endDate: LocalDate
+        ): Int = 0
+        
+        override suspend fun getTotalValueFromFirestore(
+            habitId: String,
+            userId: String,
+            startDate: LocalDate,
+            endDate: LocalDate
+        ): Int = 0
     }
 
     private class FakeHabitRepository : HabitRepository {
@@ -160,6 +176,7 @@ class ChallengeUseCasesTest {
         override suspend fun getCompletionRateForHabit(habitId: String, userId: String, startDate: LocalDate, endDate: LocalDate): Float = 0f
         override suspend fun markHabitCompleted(habitId: String, userId: String, date: LocalDate, note: String?) {}
         override suspend fun markHabitIncomplete(habitId: String, userId: String, date: LocalDate) {}
+        override suspend fun setRestDay(habitId: String, userId: String, date: LocalDate, isRestDay: Boolean) {}
     }
 
     private class FakeSocialRepository : SocialRepository {
@@ -253,8 +270,9 @@ class ChallengeUseCasesTest {
         habitRepo.insertHabit(habit)
 
         val useCase = CreateChallengeUseCase(challengeRepo, habitRepo, socialRepo)
-        val start = LocalDate(2025, 1, 1)
-        val end = LocalDate(2025, 12, 31)
+        val today = Clock.System.todayIn(TimeZone.currentSystemDefault())
+        val start = today
+        val end = today.plus(7, DateTimeUnit.DAY)
         val result = useCase(
             habitId = habit.id,
             title = "Challenge",
@@ -267,7 +285,7 @@ class ChallengeUseCasesTest {
             reward = ""
         )
 
-        assertTrue(result.isSuccess)
+        assertTrue(result.exceptionOrNull()?.message ?: "Expected success", result.isSuccess)
         val ch = result.getOrNull()!!
         assertEquals("h1", ch.habitId)
         assertNotNull(ch.createdAt)
@@ -341,7 +359,8 @@ class ChallengeUseCasesTest {
         val challengeRepo = FakeChallengeRepository()
         val habitEntryRepo = FakeHabitEntryRepository()
         val socialRepo = FakeSocialRepository()
-        val resultsUseCase = GetChallengeResultsUseCase(challengeRepo, habitEntryRepo, socialRepo)
+        val habitRepo = FakeHabitRepository()
+        val resultsUseCase = GetChallengeResultsUseCase(challengeRepo, habitEntryRepo, habitRepo, socialRepo)
 
         // закончился вчера
         val yesterday = kotlinx.datetime.Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault()).date.minus(1, DateTimeUnit.DAY)
