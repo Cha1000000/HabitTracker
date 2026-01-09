@@ -38,6 +38,12 @@ open class UpdateUserPointsUseCase @Inject constructor(
                     30 -> GamificationConstants.POINTS_STREAK_30_DAYS
                     else -> 0
                 }
+                is GamificationEvent.StreakBonusRevoked -> when (event.days) {
+                    3 -> -GamificationConstants.POINTS_STREAK_3_DAYS
+                    7 -> -GamificationConstants.POINTS_STREAK_7_DAYS
+                    30 -> -GamificationConstants.POINTS_STREAK_30_DAYS
+                    else -> 0
+                }
             }
 
             if (pointsChange != 0) {

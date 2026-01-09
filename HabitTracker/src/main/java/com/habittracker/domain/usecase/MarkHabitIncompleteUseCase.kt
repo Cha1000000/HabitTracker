@@ -18,6 +18,9 @@ import kotlinx.datetime.atStartOfDayIn
 import kotlinx.datetime.toLocalDateTime
 import javax.inject.Inject
 
+import com.habittracker.domain.usecase.gamification.CalculatePointsUseCase
+import kotlinx.coroutines.flow.first
+
 /**
  * Use case для отметки привычки как невыполненной.
  * Room-first: локальная запись в Room, затем постановка UPSERT в Outbox и триггер one-time sync.
@@ -25,6 +28,7 @@ import javax.inject.Inject
 class MarkHabitIncompleteUseCase @Inject constructor(
     private val habitEntryRepository: HabitEntryRepository,
     private val updateUserPointsUseCase: UpdateUserPointsUseCase,
+    private val calculatePointsUseCase: CalculatePointsUseCase,
     private val syncManager: SyncManager,
     private val syncWorkScheduler: SyncWorkScheduler,
     private val coroutineScope: CoroutineScope
@@ -46,6 +50,23 @@ class MarkHabitIncompleteUseCase @Inject constructor(
         // Проверяем, была ли привычка выполнена в этот день
         val existingEntry = habitEntryRepository.getEntry(habitId, userId, date)
         val wasCompleted = existingEntry?.completed == true
+        
+        // Если была выполнена, вычисляем стрик ПЕРЕД отменой, чтобы понять, нужно ли отнимать бонус
+        var streakRevocationEvent: GamificationEvent? = null
+        if (wasCompleted) {
+            try {
+                // Получаем все записи (включая текущую выполненную)
+                val entries = habitEntryRepository.getEntriesForUserAndHabit(userId, habitId).first()
+                val streak = calculatePointsUseCase.calculateCurrentStreak(habitId, entries, date)
+                
+                // Если текущий стрик был бонусным, готовим событие отмены
+                if (streak == 3 || streak == 7 || streak == 30) {
+                    streakRevocationEvent = GamificationEvent.StreakBonusRevoked(streak)
+                }
+            } catch (e: Exception) {
+                Log.w("MarkHabitIncomplete", "Streak calculation failed: ${e.message}")
+            }
+        }
         
         val habitEntry = HabitEntry(
             habitId = habitId,
@@ -79,6 +100,12 @@ class MarkHabitIncompleteUseCase @Inject constructor(
         if (wasCompleted) {
             backgroundTasksScope.launch {
                 updateUserPointsUseCase(userId, GamificationEvent.HabitUncompleted)
+                
+                // Если был зафиксирован бонусный стрик, отменяем и его
+                streakRevocationEvent?.let { event ->
+                    updateUserPointsUseCase(userId, event)
+                    Log.d("MarkHabitIncomplete", "Revoked streak bonus: ${(event as GamificationEvent.StreakBonusRevoked).days} days")
+                }
             }
         }
     }

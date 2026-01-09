@@ -9,6 +9,7 @@ sealed class GamificationEvent {
     object HabitCompleted : GamificationEvent()
     object HabitUncompleted : GamificationEvent() // Снятие отметки выполнения
     data class StreakBonus(val days: Int) : GamificationEvent() // Бонус за серию (3, 7, 30 дней)
+    data class StreakBonusRevoked(val days: Int) : GamificationEvent() // Отмена бонуса за серию
     object PerfectDay : GamificationEvent() // Все привычки на день выполнены
 
     // События, связанные с челленджами
