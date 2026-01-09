@@ -23,22 +23,6 @@ import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.Bedtime
-import androidx.compose.material.icons.filled.Check
-import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.DateRange
-import androidx.compose.material.icons.filled.Description
-import androidx.compose.material.icons.filled.Group
-import androidx.compose.material.icons.filled.Notifications
-import androidx.compose.material.icons.filled.Person
-import androidx.compose.material.icons.filled.PersonAdd
-import androidx.compose.material.icons.filled.Schedule
-import androidx.compose.material.icons.filled.Timeline
-import androidx.compose.material.icons.filled.Title
-import androidx.compose.material.icons.filled.WbSunny
-import androidx.compose.material.icons.filled.WbTwilight
 import androidx.compose.material3.AssistChip
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -114,6 +98,7 @@ import com.habittracker.presentation.ui.habits.components.TimePickerDialog
 import com.habittracker.presentation.ui.permission.NotificationPermissionHandler
 import com.habittracker.presentation.ui.permission.hasNotificationPermission
 import com.habittracker.presentation.ui.theme.TahoeElectricBlue
+import com.habittracker.presentation.ui.theme.TahoeIcons
 import com.habittracker.presentation.ui.theme.TahoeLightBlue
 import com.habittracker.presentation.utils.GroupHabitConstants
 import com.habittracker.presentation.viewmodel.AddEditHabitViewModel
@@ -241,8 +226,8 @@ private fun HabitTypeSelector(
                     leadingIcon = {
                         Icon(
                             imageVector = when (type) {
-                                HabitType.PERSONAL -> Icons.Default.Person
-                                HabitType.GROUP -> Icons.Default.Group
+                                HabitType.PERSONAL -> TahoeIcons.Person
+                                HabitType.GROUP -> TahoeIcons.Group
                             },
                             contentDescription = null
                         )
@@ -284,7 +269,7 @@ private fun GroupSettings(
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 Icon(
-                    Icons.Default.Group,
+                    TahoeIcons.Group,
                     contentDescription = null,
                     tint = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -386,7 +371,7 @@ private fun GroupSettings(
                 enabled = !uiState.isLoading && !uiState.isHabitSaved
             ) {
                 Icon(
-                    Icons.Default.PersonAdd,
+                    TahoeIcons.PersonAdd,
                     contentDescription = null,
                     modifier = Modifier.padding(end = 8.dp)
                 )
@@ -414,7 +399,7 @@ private fun GroupSettings(
                             label = { Text(friend.name) },
                             trailingIcon = {
                                 Icon(
-                                    Icons.Default.Close,
+                                    TahoeIcons.Close,
                                     contentDescription = stringResource(R.string.remove),
                                     modifier = Modifier.size(16.dp)
                                 )
@@ -573,10 +558,10 @@ private fun TimeOfDayChip(
     }
     
     val icon = when (timeOfDay) {
-        HabitTimeOfDay.MORNING -> Icons.Default.WbTwilight
-        HabitTimeOfDay.AFTERNOON -> Icons.Default.WbSunny
-        HabitTimeOfDay.EVENING -> Icons.Default.Bedtime
-        HabitTimeOfDay.ANY_TIME -> Icons.Default.Schedule
+        HabitTimeOfDay.MORNING -> TahoeIcons.Morning
+        HabitTimeOfDay.AFTERNOON -> TahoeIcons.Afternoon
+        HabitTimeOfDay.EVENING -> TahoeIcons.Evening
+        HabitTimeOfDay.ANY_TIME -> TahoeIcons.Schedule
     }
 
     FilterChip(
@@ -856,7 +841,7 @@ fun AddEditHabitScreen(
                             enabled = !uiState.isLoading && !uiState.isHabitSaved
                         ) {
                             Icon(
-                                imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                                imageVector = TahoeIcons.Back,
                                 contentDescription = stringResource(R.string.cd_back)
                             )
                         }
@@ -898,7 +883,7 @@ fun AddEditHabitScreen(
                             }
                     ) {
                         Icon(
-                            Icons.Filled.Check,
+                            TahoeIcons.Check,
                             contentDescription = stringResource(R.string.cd_save),
                             modifier = Modifier.size(24.dp)
                         )
@@ -985,7 +970,7 @@ fun AddEditHabitScreen(
                         label = { Text(stringResource(R.string.habit_name_label)) },
                         modifier = Modifier.fillMaxWidth(),
                         singleLine = true,
-                        leadingIcon = { Icon(Icons.Default.Title, null) },
+                        leadingIcon = { Icon(TahoeIcons.Title, null) },
                     )
                     FieldValidationFeedback(
                         errorMessage = uiState.titleError
@@ -1001,7 +986,7 @@ fun AddEditHabitScreen(
                         label = { Text(stringResource(R.string.habit_description_label)) },
                         modifier = Modifier.fillMaxWidth(),
                         singleLine = false,
-                        leadingIcon = { Icon(Icons.Default.Description, null) },
+                        leadingIcon = { Icon(TahoeIcons.Info, null) },
                     )
                     FieldValidationFeedback(uiState.descriptionError)
                 }
@@ -1165,7 +1150,7 @@ fun AddEditHabitScreen(
                                 modifier = Modifier.weight(1f),
                                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                                 singleLine = true,
-                                leadingIcon = { Icon(Icons.Default.Timeline, null) },
+                                leadingIcon = { Icon(TahoeIcons.Timeline, null) },
                             )
 
                             GlassmorphicTextField(
@@ -1200,7 +1185,7 @@ fun AddEditHabitScreen(
                                 modifier = Modifier.fillMaxWidth()
                             ) {
                                 Icon(
-                                    Icons.Default.DateRange,
+                                    TahoeIcons.Calendar,
                                     contentDescription = null,
                                     tint = if (isDarkTheme) TahoeLightBlue else MaterialTheme.colorScheme.primary,
                                     modifier = Modifier.padding(end = 16.dp)
@@ -1277,7 +1262,7 @@ fun AddEditHabitScreen(
                                 modifier = Modifier.fillMaxWidth()
                             ) {
                                 Icon(
-                                    Icons.Default.Notifications,
+                                    TahoeIcons.Notifications,
                                     contentDescription = null,
                                     tint = if (isDarkTheme) TahoeLightBlue else MaterialTheme.colorScheme.primary,
                                     modifier = Modifier.padding(end = 16.dp)
@@ -1394,7 +1379,7 @@ fun AddEditHabitScreen(
                                         modifier = Modifier.weight(1f)
                                     ) {
                                         Icon(
-                                            imageVector = Icons.Default.Person,
+                                            imageVector = TahoeIcons.Person,
                                             contentDescription = null,
                                             tint = MaterialTheme.colorScheme.onSurfaceVariant,
                                             modifier = Modifier
@@ -1413,7 +1398,7 @@ fun AddEditHabitScreen(
                                             enabled = !uiState.isLoading && !uiState.isHabitSaved,
                                         ) {
                                             Icon(
-                                                imageVector = Icons.Default.Group,
+                                                imageVector = TahoeIcons.Group,
                                                 contentDescription = null,
                                                 modifier = Modifier.padding(end = 6.dp)
                                             )
@@ -1470,7 +1455,7 @@ fun AddEditHabitScreen(
                                             .clickable { showFollowUpTimePicker = true },
                                         trailingIcon = {
                                             Icon(
-                                                Icons.Default.Notifications,
+                                                TahoeIcons.Notifications,
                                                 contentDescription = null,
                                                 modifier = Modifier.clickable { showFollowUpTimePicker = true }
                                             )

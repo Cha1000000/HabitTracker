@@ -1,0 +1,16 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24">
+    <!-- Stats Icon: Medium, Low, High bars (like a chart 📊) -->
+    <path
+        android:fillColor="#FF000000"
+        android:pathData="M6,9c-1.1,0 -2,0.9 -2,2v7c0,1.1 0.9,2 2,2s2,-0.9 2,-2v-7C8,9.9 7.1,9 6,9z"/>
+    <path
+        android:fillColor="#FF000000"
+        android:pathData="M12,13c-1.1,0 -2,0.9 -2,2v3c0,1.1 0.9,2 2,2s2,-0.9 2,-2v-3C14,13.9 13.1,13 12,13z"/>
+    <path
+        android:fillColor="#FF000000"
+        android:pathData="M18,5c-1.1,0 -2,0.9 -2,2v11c0,1.1 0.9,2 2,2s2,-0.9 2,-2V7C20,5.9 19.1,5 18,5z"/>
+</vector>

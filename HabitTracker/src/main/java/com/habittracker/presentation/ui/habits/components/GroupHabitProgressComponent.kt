@@ -18,8 +18,6 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Check
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
@@ -41,6 +39,7 @@ import com.habittracker.domain.model.HabitFrequency
 import com.habittracker.domain.model.HabitType
 import com.habittracker.domain.model.isGroupHabit
 import com.habittracker.presentation.ui.components.UserAvatar
+import com.habittracker.presentation.ui.theme.TahoeIcons
 import kotlinx.datetime.Clock
 import kotlinx.datetime.LocalTime
 import kotlinx.datetime.TimeZone
@@ -165,7 +164,7 @@ private fun ParticipantStatusItem(
                 contentAlignment = Alignment.Center
             ) {
                 Icon(
-                    imageVector = Icons.Default.Check,
+                    imageVector = TahoeIcons.Check,
                     contentDescription = stringResource(R.string.completed_today),
                     tint = Color.White,
                     modifier = Modifier.size(10.dp)

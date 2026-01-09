@@ -20,20 +20,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.Check
-import androidx.compose.material.icons.filled.Clear
-import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.MoreVert
-import androidx.compose.material.icons.filled.People
-import androidx.compose.material.icons.filled.PersonAdd
-import androidx.compose.material.icons.filled.PersonRemove
-import androidx.compose.material.icons.filled.Search
-import androidx.compose.material.icons.outlined.People
-import androidx.compose.material.icons.outlined.PersonAdd
-import androidx.compose.material.icons.outlined.Search
-import androidx.compose.material.icons.outlined.SearchOff
+import com.habittracker.presentation.ui.theme.TahoeIcons
 import androidx.compose.material3.Badge
 import androidx.compose.material3.BadgedBox
 import androidx.compose.material3.CircularProgressIndicator
@@ -119,7 +106,7 @@ fun FriendsScreen(
                     navigationIcon = {
                         IconButton(onClick = onNavigateBack) {
                             Icon(
-                                imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                                imageVector = TahoeIcons.Back,
                                 contentDescription = stringResource(id = R.string.cd_back)
                             )
                         }
@@ -166,7 +153,7 @@ fun FriendsScreen(
                     },
                     icon = {
                         when (index) {
-                            0 -> Icon(Icons.Outlined.People, contentDescription = null)
+                            0 -> Icon(TahoeIcons.PeopleOutlined, contentDescription = null)
                             1 -> BadgedBox(
                                 badge = {
                                     if (uiState.incomingRequests.isNotEmpty()) {
@@ -174,9 +161,9 @@ fun FriendsScreen(
                                     }
                                 }
                             ) {
-                                Icon(Icons.Outlined.PersonAdd, contentDescription = null)
+                                Icon(TahoeIcons.PersonAddOutlined, contentDescription = null)
                             }
-                            2 -> Icon(Icons.Outlined.Search, contentDescription = null)
+                            2 -> Icon(TahoeIcons.Search, contentDescription = null)
                         }
                     }
                 )
@@ -279,7 +266,7 @@ private fun FriendsTab(
         if (friends.isEmpty()) {
             item {
                 EmptyStateCard(
-                    icon = Icons.Outlined.People,
+                    icon = TahoeIcons.PeopleOutlined,
                     title = stringResource(id = R.string.no_friends),
                     subtitle = stringResource(id = R.string.friends_empty_hint_search)
                 )
@@ -361,7 +348,7 @@ private fun RequestsTab(
         if (incomingRequests.isEmpty() && outgoingRequests.isEmpty()) {
             item {
                 EmptyStateCard(
-                    icon = Icons.Outlined.PersonAdd,
+                    icon = TahoeIcons.PersonAddOutlined,
                     title = stringResource(id = R.string.no_requests_title),
                     subtitle = stringResource(id = R.string.no_requests_subtitle)
                 )
@@ -394,12 +381,12 @@ private fun SearchTab(
             modifier = Modifier.fillMaxWidth(),
             placeholder = { Text(stringResource(id = R.string.search_placeholder_friends)) },
             leadingIcon = {
-                Icon(Icons.Default.Search, contentDescription = null)
+                Icon(TahoeIcons.Search, contentDescription = null)
             },
             trailingIcon = {
                 if (searchQuery.isNotEmpty()) {
                     IconButton(onClick = { onSearchQueryChange("") }) {
-                        Icon(Icons.Default.Clear, contentDescription = stringResource(id = R.string.clear))
+                        Icon(TahoeIcons.Clear, contentDescription = stringResource(id = R.string.clear))
                     }
                 }
             },
@@ -429,13 +416,13 @@ private fun SearchTab(
             }
         } else if (searchQuery.isNotEmpty()) {
             EmptyStateCard(
-                icon = Icons.Outlined.SearchOff,
+                icon = TahoeIcons.SearchOff,
                 title = stringResource(id = R.string.search_nothing_found_title),
                 subtitle = stringResource(id = R.string.search_try_different_query)
             )
         } else {
             EmptyStateCard(
-                icon = Icons.Outlined.Search,
+                icon = TahoeIcons.Search,
                 title = stringResource(id = R.string.search_friends),
                 subtitle = stringResource(id = R.string.search_enter_name_prompt)
             )
@@ -479,14 +466,14 @@ private fun FriendsHeader(
             ) {
                 // Статистика друзей
                 StatCard(
-                    icon = Icons.Default.People,
+                    icon = TahoeIcons.Friends,
                     count = friendsCount,
                     label = stringResource(id = R.string.friends_count_label)
                 )
                 
                 // Статистика запросов
                 StatCard(
-                    icon = Icons.Default.PersonAdd,
+                    icon = TahoeIcons.PersonAdd,
                     count = pendingRequestsCount,
                     label = stringResource(id = R.string.requests_label)
                 )
@@ -500,19 +487,28 @@ private fun FriendsHeader(
  */
 @Composable
 private fun StatCard(
-    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    icon: Any,
     count: Int,
     label: String
 ) {
     Column(
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        Icon(
-            imageVector = icon,
-            contentDescription = null,
-            tint = MaterialTheme.colorScheme.primary,
-            modifier = Modifier.size(24.dp)
-        )
+        if (icon is androidx.compose.ui.graphics.vector.ImageVector) {
+            Icon(
+                imageVector = icon,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.size(24.dp)
+            )
+        } else if (icon is Int) {
+            Icon(
+                painter = androidx.compose.ui.res.painterResource(id = icon),
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.size(24.dp)
+            )
+        }
         Spacer(modifier = Modifier.height(4.dp))
         Text(
             text = count.toString(),
@@ -612,7 +608,7 @@ private fun FriendCard(
                 } else {
                     IconButton(onClick = { showMenu = true }, enabled = true) {
                         Icon(
-                            Icons.Default.MoreVert,
+                            TahoeIcons.More,
                             contentDescription = stringResource(id = R.string.cd_more)
                         )
                     }
@@ -628,7 +624,7 @@ private fun FriendCard(
                             },
                             leadingIcon = {
                                 Icon(
-                                    Icons.Default.PersonRemove,
+                                    TahoeIcons.Delete,
                                     contentDescription = null,
                                     tint = MaterialTheme.colorScheme.error
                                 )
@@ -646,7 +642,7 @@ private fun FriendCard(
  */
 @Composable
 private fun EmptyStateCard(
-    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    icon: Any,
     title: String,
     subtitle: String
 ) {
@@ -664,12 +660,21 @@ private fun EmptyStateCard(
                 .fillMaxWidth(),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            Icon(
-                imageVector = icon,
-                contentDescription = null,
-                modifier = Modifier.size(64.dp),
-                tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f)
-            )
+            if (icon is androidx.compose.ui.graphics.vector.ImageVector) {
+                Icon(
+                    imageVector = icon,
+                    contentDescription = null,
+                    modifier = Modifier.size(64.dp),
+                    tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f)
+                )
+            } else if (icon is Int) {
+                Icon(
+                    painter = androidx.compose.ui.res.painterResource(id = icon),
+                    contentDescription = null,
+                    modifier = Modifier.size(64.dp),
+                    tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f)
+                )
+            }
             
             Spacer(modifier = Modifier.height(16.dp))
             
@@ -756,7 +761,7 @@ private fun IncomingRequestCard(
                     modifier = Modifier.weight(1f)
                 ) {
                     Icon(
-                        Icons.Default.Check,
+                        TahoeIcons.Check,
                         contentDescription = null,
                         modifier = Modifier.size(16.dp)
                     )
@@ -770,7 +775,7 @@ private fun IncomingRequestCard(
                     modifier = Modifier.weight(1f)
                 ) {
                     Icon(
-                        Icons.Default.Close,
+                        TahoeIcons.Close,
                         contentDescription = null,
                         modifier = Modifier.size(16.dp)
                     )
@@ -893,7 +898,7 @@ private fun SearchResultCard(
                 onClick = onSendRequest
             ) {
                 Icon(
-                    Icons.Default.PersonAdd,
+                    TahoeIcons.PersonAdd,
                     contentDescription = null,
                     modifier = Modifier.size(16.dp)
                 )

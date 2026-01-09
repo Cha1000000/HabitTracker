@@ -24,8 +24,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.EmojiEvents
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
@@ -49,6 +47,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.zIndex
 import com.habittracker.R
+import com.habittracker.presentation.ui.theme.TahoeIcons
 import kotlinx.coroutines.delay
 
 /**
@@ -194,7 +193,7 @@ private fun AchievementToastContent(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Icon(
-                            imageVector = Icons.Default.EmojiEvents,
+                            imageVector = TahoeIcons.Achievements,
                             contentDescription = null,
                             tint = Color(0xFFFFD700),
                             modifier = Modifier.size(16.dp)

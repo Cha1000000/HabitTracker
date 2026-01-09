@@ -12,11 +12,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Email
-import androidx.compose.material.icons.filled.Lock
-import androidx.compose.material.icons.filled.Visibility
-import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -46,6 +41,7 @@ import com.habittracker.presentation.ui.habits.components.GlassmorphicButton
 import com.habittracker.presentation.ui.habits.components.GlassmorphicCard
 import com.habittracker.presentation.ui.habits.components.GlassmorphicTextField
 import com.habittracker.presentation.ui.habits.components.TahoeGradientBackground
+import com.habittracker.presentation.ui.theme.TahoeIcons
 import com.habittracker.presentation.viewmodel.AuthEvent
 import com.habittracker.presentation.viewmodel.AuthViewModel
 
@@ -110,7 +106,7 @@ fun RegisterScreen(
                         placeholder = { Text("example@email.com") },
                         leadingIcon = { 
                             Icon(
-                                imageVector = Icons.Default.Email, 
+                                imageVector = TahoeIcons.Email, 
                                 contentDescription = null
                             ) 
                         },
@@ -130,14 +126,14 @@ fun RegisterScreen(
                         placeholder = { Text("Минимум 6 символов") },
                         leadingIcon = { 
                             Icon(
-                                imageVector = Icons.Default.Lock, 
+                                imageVector = TahoeIcons.Lock, 
                                 contentDescription = null
                             ) 
                         },
                         trailingIcon = {
                             IconButton(onClick = { passwordVisible = !passwordVisible }) {
                                 Icon(
-                                    imageVector = if (passwordVisible) Icons.Default.Visibility else Icons.Default.VisibilityOff,
+                                    imageVector = if (passwordVisible) TahoeIcons.Visibility else TahoeIcons.VisibilityOff,
                                     contentDescription = if (passwordVisible) "Скрыть пароль" else "Показать пароль"
                                 )
                             }

@@ -8,10 +8,6 @@ import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Check
-import androidx.compose.material.icons.filled.Error
-import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -24,6 +20,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.habittracker.R
+import com.habittracker.presentation.ui.theme.TahoeIcons
 import com.habittracker.presentation.utils.GroupHabitValidationResult
 import com.habittracker.presentation.utils.ValidationResult
 
@@ -78,12 +75,12 @@ fun ValidationMessage(
         ValidationMessageType.ERROR -> Triple(
             MaterialTheme.colorScheme.errorContainer,
             MaterialTheme.colorScheme.onErrorContainer,
-            Icons.Default.Error
+            TahoeIcons.Error
         )
         ValidationMessageType.WARNING -> Triple(
             Color(0xFFFFF3CD), // Light yellow
             Color(0xFF856404), // Dark yellow
-            Icons.Default.Warning
+            TahoeIcons.Warning
         )
     }
     
@@ -182,17 +179,17 @@ fun LiveValidationIndicator(
     val (color, icon, text) = when {
         isValid && !hasWarnings -> Triple(
             MaterialTheme.colorScheme.primary,
-            Icons.Default.Check,
+            TahoeIcons.Check,
             stringResource(R.string.validation_all_good)
         )
         isValid && hasWarnings -> Triple(
             Color(0xFFFF9800), // Orange
-            Icons.Default.Warning,
+            TahoeIcons.Warning,
             stringResource(R.string.validation_has_warnings)
         )
         else -> Triple(
             MaterialTheme.colorScheme.error,
-            Icons.Default.Error,
+            TahoeIcons.Error,
             stringResource(R.string.validation_has_errors)
         )
     }

@@ -11,10 +11,6 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.automirrored.filled.Sort
-import androidx.compose.material.icons.filled.AccessTime
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -48,6 +44,7 @@ import com.habittracker.presentation.ui.habits.components.GlassmorphicDialog
 import com.habittracker.presentation.ui.habits.components.GlassmorphicSectionHeader
 import com.habittracker.presentation.ui.habits.components.GlassmorphicSwitch
 import com.habittracker.presentation.ui.habits.components.TahoeGradientBackground
+import com.habittracker.presentation.ui.theme.TahoeIcons
 import com.habittracker.presentation.viewmodel.HabitSettingsViewModel
 import kotlinx.datetime.LocalTime
 
@@ -69,7 +66,7 @@ fun HabitSettingsScreen(
                     navigationIcon = {
                         IconButton(onClick = { navController.popBackStack() }) {
                             Icon(
-                                imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                                imageVector = TahoeIcons.Back,
                                 contentDescription = stringResource(R.string.action_back)
                             )
                         }
@@ -107,7 +104,7 @@ fun HabitSettingsScreen(
                             SettingsClickableItem(
                                 title = stringResource(R.string.settings_daily_reminder_time),
                                 value = userPreferences?.dailyReminderTime.toString(),
-                                icon = Icons.Default.AccessTime,
+                                icon = TahoeIcons.Time,
                                 onClick = { showTimePicker = true }
                             )
                         }
@@ -129,7 +126,7 @@ fun HabitSettingsScreen(
                             summary = stringResource(R.string.settings_sort_completed_bottom_summary),
                             checked = userPreferences?.sortCompletedHabitsToBottom == true,
                             onCheckedChange = { viewModel.updateSortCompletedHabitsToBottom(it) },
-                            icon = Icons.AutoMirrored.Filled.Sort
+                            icon = TahoeIcons.Filter
                         )
                     }
                 }

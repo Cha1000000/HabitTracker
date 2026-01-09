@@ -38,6 +38,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.res.painterResource
 import com.habittracker.presentation.ui.theme.GlassBlack10
 import com.habittracker.presentation.ui.theme.GlassWhite20
 import com.habittracker.presentation.ui.theme.TahoeDeepBlue
@@ -113,7 +114,7 @@ fun TahoeDockBar(
 @Composable
 fun TahoeDockItem(
     modifier: Modifier = Modifier,
-    icon: ImageVector,
+    icon: Any, // ImageVector or Int (DrawableRes)
     label: String? = null,
     badge: Int? = null,
     selected: Boolean = false,
@@ -181,6 +182,16 @@ fun TahoeDockItem(
                 .padding(top = 6.dp),
             contentAlignment = Alignment.Center
         ) {
+            val tint = if (selected) {
+                if (isDarkTheme) TahoeSkyBlue else TahoeElectricBlue
+            } else {
+                if (isDarkTheme) {
+                    Color.White.copy(alpha = 0.9f)
+                } else {
+                    MaterialTheme.colorScheme.onSurface.copy(alpha = 0.8f)
+                }
+            }
+
             if (badge != null && badge > 0) {
                 BadgedBox(
                     badge = {
@@ -195,36 +206,38 @@ fun TahoeDockItem(
                         }
                     }
                 ) {
+                    if (icon is ImageVector) {
+                        Icon(
+                            imageVector = icon,
+                            contentDescription = label,
+                            modifier = Modifier.size(24.dp),
+                            tint = tint
+                        )
+                    } else if (icon is Int) {
+                        Icon(
+                            painter = painterResource(id = icon),
+                            contentDescription = label,
+                            modifier = Modifier.size(24.dp),
+                            tint = tint
+                        )
+                    }
+                }
+            } else {
+                if (icon is ImageVector) {
                     Icon(
                         imageVector = icon,
                         contentDescription = label,
                         modifier = Modifier.size(24.dp),
-                        tint = if (selected) {
-                            if (isDarkTheme) TahoeSkyBlue else TahoeElectricBlue
-                        } else {
-                            if (isDarkTheme) {
-                                Color.White.copy(alpha = 0.9f)
-                            } else {
-                                MaterialTheme.colorScheme.onSurface.copy(alpha = 0.8f)
-                            }
-                        }
+                        tint = tint
+                    )
+                } else if (icon is Int) {
+                    Icon(
+                        painter = painterResource(id = icon),
+                        contentDescription = label,
+                        modifier = Modifier.size(24.dp),
+                        tint = tint
                     )
                 }
-            } else {
-                Icon(
-                    imageVector = icon,
-                    contentDescription = label,
-                    modifier = Modifier.size(24.dp),
-                    tint = if (selected) {
-                        if (isDarkTheme) TahoeSkyBlue else TahoeElectricBlue
-                    } else {
-                        if (isDarkTheme) {
-                            Color.White.copy(alpha = 0.9f)
-                        } else {
-                            MaterialTheme.colorScheme.onSurface.copy(alpha = 0.8f)
-                        }
-                    }
-                )
             }
         }
         

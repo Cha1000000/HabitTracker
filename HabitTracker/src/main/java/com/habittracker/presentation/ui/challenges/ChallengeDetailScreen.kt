@@ -18,21 +18,6 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.automirrored.filled.Send
-import androidx.compose.material.icons.filled.Cancel
-import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material.icons.filled.Error
-import androidx.compose.material.icons.filled.EventBusy
-import androidx.compose.material.icons.filled.Flag
-import androidx.compose.material.icons.filled.Group
-import androidx.compose.material.icons.filled.HourglassEmpty
-import androidx.compose.material.icons.filled.LocalFireDepartment
-import androidx.compose.material.icons.filled.MoreVert
-import androidx.compose.material.icons.filled.Schedule
-import androidx.compose.material.icons.filled.Star
-import androidx.compose.material.icons.filled.Timeline
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CircularProgressIndicator
@@ -83,6 +68,7 @@ import com.habittracker.presentation.ui.habits.components.GlassmorphicCard
 import com.habittracker.presentation.ui.habits.components.GlassmorphicDialog
 import com.habittracker.presentation.ui.habits.components.GradientProgressBar
 import com.habittracker.presentation.ui.habits.components.TahoeGradientBackground
+import com.habittracker.presentation.ui.theme.TahoeIcons
 import com.habittracker.presentation.viewmodel.ChallengeDetailViewModel
 import kotlinx.datetime.Clock
 import kotlinx.datetime.TimeZone
@@ -120,7 +106,7 @@ fun ChallengeDetailScreen(
                     navigationIcon = {
                         IconButton(onClick = onNavigateBack) {
                             Icon(
-                                imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                                imageVector = TahoeIcons.Back,
                                 contentDescription = stringResource(R.string.back)
                             )
                         }
@@ -135,7 +121,7 @@ fun ChallengeDetailScreen(
                             var showMenu by remember { mutableStateOf(false) }
                             IconButton(onClick = { showMenu = true }) {
                                 Icon(
-                                    imageVector = Icons.Default.MoreVert,
+                                    imageVector = TahoeIcons.More,
                                     contentDescription = "Меню"
                                 )
                             }
@@ -153,7 +139,7 @@ fun ChallengeDetailScreen(
                                                 viewModel.showCancelConfirmDialog()
                                             },
                                             leadingIcon = {
-                                                Icon(Icons.Default.Cancel, contentDescription = null)
+                                                Icon(TahoeIcons.Cancel, contentDescription = null)
                                             }
                                         )
                                     }
@@ -164,7 +150,7 @@ fun ChallengeDetailScreen(
                                             viewModel.showDeleteConfirmDialog()
                                         },
                                         leadingIcon = {
-                                            Icon(Icons.Default.Delete, contentDescription = null)
+                                            Icon(TahoeIcons.Delete, contentDescription = null)
                                         }
                                     )
                                 } else if (isActiveOrPending) {
@@ -176,7 +162,7 @@ fun ChallengeDetailScreen(
                                             viewModel.showLeaveConfirmDialog()
                                         },
                                         leadingIcon = {
-                                            Icon(Icons.Default.EventBusy, contentDescription = null)
+                                            Icon(TahoeIcons.EventBusy, contentDescription = null)
                                         }
                                     )
                                 }
@@ -210,7 +196,7 @@ fun ChallengeDetailScreen(
                     ) {
                         Column(horizontalAlignment = Alignment.CenterHorizontally) {
                             Icon(
-                                imageVector = Icons.Default.Error,
+                                imageVector = TahoeIcons.Error,
                                 contentDescription = null,
                                 modifier = Modifier.size(48.dp),
                                 tint = MaterialTheme.colorScheme.error
@@ -524,7 +510,7 @@ private fun ChallengeDetailContent(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Icon(
-                            imageVector = Icons.Default.Schedule,
+                            imageVector = TahoeIcons.Schedule,
                             contentDescription = null,
                             modifier = Modifier.size(24.dp),
                             tint = MaterialTheme.colorScheme.primary
@@ -562,7 +548,7 @@ private fun ChallengeDetailContent(
                     Spacer(modifier = Modifier.height(8.dp))
                     
                     RuleItem(
-                        icon = Icons.Default.Flag,
+                        icon = TahoeIcons.Goal,
                         label = "Цель",
                         value = challenge.getRulesText()
                     )
@@ -570,7 +556,7 @@ private fun ChallengeDetailContent(
                     if (challenge.rules.allowMissedDays > 0) {
                         Spacer(modifier = Modifier.height(8.dp))
                         RuleItem(
-                            icon = Icons.Default.EventBusy,
+                            icon = TahoeIcons.EventBusy,
                             label = "Допустимые пропуски",
                             value = "${challenge.rules.allowMissedDays} дней"
                         )
@@ -579,7 +565,7 @@ private fun ChallengeDetailContent(
                     if (challenge.rules.requireConsecutive) {
                         Spacer(modifier = Modifier.height(8.dp))
                         RuleItem(
-                            icon = Icons.Default.Timeline,
+                            icon = TahoeIcons.Timeline,
                             label = "Требование",
                             value = "Последовательное выполнение"
                         )
@@ -588,7 +574,7 @@ private fun ChallengeDetailContent(
                     if (challenge.rules.allowBackfillCompletions) {
                         Spacer(modifier = Modifier.height(8.dp))
                         RuleItem(
-                            icon = Icons.Default.Schedule,
+                            icon = TahoeIcons.Schedule,
                             label = "Дополнительно",
                             value = stringResource(R.string.allow_backfill_completions_info)
                         )
@@ -619,7 +605,7 @@ private fun ChallengeDetailContent(
                         contentPadding = PaddingValues(horizontal = 12.dp, vertical = 4.dp)
                     ) {
                         Icon(
-                            imageVector = Icons.Default.Group,
+                            imageVector = TahoeIcons.Group,
                             contentDescription = null,
                             modifier = Modifier.size(16.dp)
                         )
@@ -818,7 +804,7 @@ private fun ParticipantCard(
                         ) {
                             if (isChallengeCreator) {
                                 Icon(
-                                    imageVector = Icons.Default.Star,
+                                    imageVector = TahoeIcons.Star,
                                     contentDescription = "Создатель",
                                     modifier = Modifier.size(16.dp),
                                     tint = MaterialTheme.colorScheme.primary
@@ -854,7 +840,7 @@ private fun ParticipantCard(
                             }
                         } else {
                             Icon(
-                                imageVector = Icons.Default.HourglassEmpty,
+                                imageVector = TahoeIcons.HourglassEmpty,
                                 contentDescription = null,
                                 modifier = Modifier.size(14.dp),
                                 tint = MaterialTheme.colorScheme.outline
@@ -873,7 +859,7 @@ private fun ParticipantCard(
                 if (hasAccepted && stats != null && stats.currentStreak > 0) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Icon(
-                            imageVector = Icons.Default.LocalFireDepartment,
+                            imageVector = TahoeIcons.Fire,
                             contentDescription = null,
                             modifier = Modifier.size(16.dp),
                             tint = MaterialTheme.colorScheme.error
@@ -896,7 +882,7 @@ private fun ParticipantCard(
                         modifier = Modifier.size(32.dp)
                     ) {
                         Icon(
-                            imageVector = Icons.Default.Delete,
+                            imageVector = TahoeIcons.Delete,
                             contentDescription = "Удалить участника",
                             modifier = Modifier.size(18.dp),
                             tint = MaterialTheme.colorScheme.error
@@ -914,7 +900,7 @@ private fun ParticipantCard(
                     contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp)
                 ) {
                     Icon(
-                        imageVector = Icons.AutoMirrored.Filled.Send,
+                        imageVector = TahoeIcons.Send,
                         contentDescription = null,
                         modifier = Modifier.size(16.dp)
                     )

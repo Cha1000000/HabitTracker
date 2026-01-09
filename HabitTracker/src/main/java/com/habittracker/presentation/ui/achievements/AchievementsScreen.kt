@@ -15,15 +15,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.CheckCircle
-import androidx.compose.material.icons.filled.EmojiEvents
-import androidx.compose.material.icons.filled.Group
-import androidx.compose.material.icons.filled.Lock
-import androidx.compose.material.icons.filled.Schedule
-import androidx.compose.material.icons.filled.Star
-import androidx.compose.material.icons.filled.Whatshot
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -64,6 +55,7 @@ import com.habittracker.domain.model.getDisplayTitle
 import com.habittracker.presentation.ui.habits.components.GlassmorphicCard
 import com.habittracker.presentation.ui.habits.components.GradientProgressBar
 import com.habittracker.presentation.ui.habits.components.TahoeGradientBackground
+import com.habittracker.presentation.ui.theme.TahoeIcons
 import com.habittracker.presentation.viewmodel.AchievementsViewModel
 import kotlinx.datetime.Instant
 
@@ -126,7 +118,7 @@ fun AchievementsScreen(
                 navigationIcon = {
                     IconButton(onClick = onNavigateBack) {
                         Icon(
-                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                            imageVector = TahoeIcons.Back,
                             contentDescription = stringResource(R.string.cd_back)
                         )
                     }
@@ -208,7 +200,7 @@ fun AchievementsScreen(
                             modifier = Modifier.padding(32.dp)
                         ) {
                             Icon(
-                                imageVector = Icons.Filled.Lock,
+                                imageVector = TahoeIcons.Lock,
                                 contentDescription = null,
                                 modifier = Modifier.size(48.dp),
                                 tint = MaterialTheme.colorScheme.error
@@ -240,7 +232,7 @@ fun AchievementsScreen(
                             modifier = Modifier.padding(32.dp)
                         ) {
                             Icon(
-                                imageVector = Icons.Filled.EmojiEvents,
+                                imageVector = TahoeIcons.Achievements,
                                 contentDescription = null,
                                 modifier = Modifier.size(48.dp),
                                 tint = MaterialTheme.colorScheme.onSurfaceVariant
@@ -357,7 +349,7 @@ private fun AchievementCard(
                 // Статусная иконка
                 if (isCompleted) {
                     Icon(
-                        imageVector = Icons.Filled.CheckCircle,
+                        imageVector = TahoeIcons.CheckCircle,
                         contentDescription = stringResource(R.string.achievement_unlocked),
                         tint = MaterialTheme.colorScheme.primary,
                         modifier = Modifier
@@ -366,7 +358,7 @@ private fun AchievementCard(
                     )
                 } else if (isLocked) {
                     Icon(
-                        imageVector = Icons.Filled.Lock,
+                        imageVector = TahoeIcons.Lock,
                         contentDescription = stringResource(R.string.achievement_locked),
                         tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
                         modifier = Modifier
@@ -414,7 +406,7 @@ private fun AchievementCard(
                     modifier = Modifier.alpha(contentAlpha)
                 ) {
                     Icon(
-                        imageVector = Icons.Filled.Star,
+                        imageVector = TahoeIcons.Star,
                         contentDescription = null,
                         modifier = Modifier.size(16.dp),
                         tint = if (isLocked) {
@@ -441,12 +433,12 @@ private fun AchievementCard(
 @Composable
 private fun getCategoryIcon(category: AchievementCategory): ImageVector {
     return when (category) {
-        AchievementCategory.HABITS -> Icons.Filled.CheckCircle
-        AchievementCategory.STREAKS -> Icons.Filled.Whatshot
-        AchievementCategory.SOCIAL -> Icons.Filled.Group
-        AchievementCategory.CHALLENGES -> Icons.Filled.EmojiEvents
-        AchievementCategory.MILESTONES -> Icons.Filled.Star
-        AchievementCategory.SPECIAL -> Icons.Filled.Schedule
+        AchievementCategory.HABITS -> TahoeIcons.CheckCircle
+        AchievementCategory.STREAKS -> TahoeIcons.Fire
+        AchievementCategory.SOCIAL -> TahoeIcons.Group
+        AchievementCategory.CHALLENGES -> TahoeIcons.Achievements
+        AchievementCategory.MILESTONES -> TahoeIcons.Star
+        AchievementCategory.SPECIAL -> TahoeIcons.Schedule
     }
 }
 

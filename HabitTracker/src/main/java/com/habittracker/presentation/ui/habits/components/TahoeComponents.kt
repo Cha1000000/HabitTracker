@@ -41,12 +41,6 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.CalendarToday
-import androidx.compose.material.icons.filled.ChevronLeft
-import androidx.compose.material.icons.filled.ChevronRight
-import androidx.compose.material.icons.filled.Clear
-import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -116,6 +110,7 @@ import com.habittracker.presentation.ui.theme.GlassWhite40
 import com.habittracker.presentation.ui.theme.TahoeAqua
 import com.habittracker.presentation.ui.theme.TahoeDeepBlue
 import com.habittracker.presentation.ui.theme.TahoeElectricBlue
+import com.habittracker.presentation.ui.theme.TahoeIcons
 import com.habittracker.presentation.ui.theme.TahoeIndigoAccent
 import com.habittracker.presentation.ui.theme.TahoeLavender
 import com.habittracker.presentation.ui.theme.TahoeLightAccent
@@ -955,7 +950,7 @@ fun GlassmorphicSearchBar(
             },
             leadingIcon = {
                 Icon(
-                    Icons.Default.Search,
+                    TahoeIcons.Search,
                     contentDescription = "Search",
                     tint = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.size(20.dp)
@@ -968,7 +963,7 @@ fun GlassmorphicSearchBar(
                         modifier = Modifier.size(36.dp)
                     ) {
                         Icon(
-                            Icons.Default.Clear,
+                            TahoeIcons.Clear,
                             contentDescription = "Clear",
                             tint = MaterialTheme.colorScheme.onSurfaceVariant,
                             modifier = Modifier.size(18.dp)
@@ -1541,7 +1536,7 @@ fun TahoeBackToTodayButton(
         isDarkTheme = isDarkTheme
     ) {
         Icon(
-            imageVector = Icons.Default.ChevronRight,
+            imageVector = TahoeIcons.ChevronRight,
             contentDescription = null,
             modifier = Modifier.size(16.dp)
         )
@@ -1628,7 +1623,7 @@ fun TahoeDatePicker(
             colors = textFieldColors,
             trailingIcon = {
                 Icon(
-                    imageVector = Icons.Default.CalendarToday,
+                    imageVector = TahoeIcons.Calendar,
                     contentDescription = stringResource(R.string.select_date),
                     tint = if (isEnabled) {
                         MaterialTheme.colorScheme.primary
@@ -1863,7 +1858,7 @@ private fun TahoeMonthSelector(
     ) {
         IconButton(onClick = onPreviousMonth) {
             Icon(
-                imageVector = Icons.Default.ChevronLeft,
+                imageVector = TahoeIcons.ChevronLeft,
                 contentDescription = "Previous month",
                 tint = if (isDarkTheme) Color(0xFF90CAF9) else Color(0xFF1976D2)
             )
@@ -1878,7 +1873,7 @@ private fun TahoeMonthSelector(
         
         IconButton(onClick = onNextMonth) {
             Icon(
-                imageVector = Icons.Default.ChevronRight,
+                imageVector = TahoeIcons.ChevronRight,
                 contentDescription = "Next month",
                 tint = if (isDarkTheme) Color(0xFF90CAF9) else Color(0xFF1976D2)
             )

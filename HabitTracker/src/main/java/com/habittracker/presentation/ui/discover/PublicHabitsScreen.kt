@@ -24,17 +24,6 @@ import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.Icons.AutoMirrored.Filled
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.automirrored.filled.TrendingUp
-import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.CalendarToday
-import androidx.compose.material.icons.filled.Flag
-import androidx.compose.material.icons.filled.Group
-import androidx.compose.material.icons.filled.GroupAdd
-import androidx.compose.material.icons.filled.QrCode
-import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -65,6 +54,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -80,6 +70,7 @@ import com.habittracker.presentation.ui.habits.components.GlassmorphicSearchBar
 import com.habittracker.presentation.ui.habits.components.JoinByCodeDialog
 import com.habittracker.presentation.ui.habits.components.TahoeFilterChip
 import com.habittracker.presentation.ui.habits.components.TahoeGradientBackground
+import com.habittracker.presentation.ui.theme.TahoeIcons
 import com.habittracker.presentation.viewmodel.PublicHabitsViewModel
 
 @Composable
@@ -135,7 +126,7 @@ fun PublicHabitsScreen(
                     navigationIcon = {
                         IconButton(onClick = { navController.navigateUp() }) {
                             Icon(
-                                Filled.ArrowBack,
+                                TahoeIcons.Back,
                                 contentDescription = stringResource(R.string.cd_back)
                             )
                         }
@@ -189,7 +180,7 @@ fun PublicHabitsScreen(
                     modifier = Modifier.size(48.dp)
                 ) {
                     Icon(
-                        Icons.Default.QrCode,
+                        TahoeIcons.QrCode,
                         contentDescription = stringResource(R.string.fab_enter_code),
                         modifier = Modifier.size(24.dp)
                     )
@@ -240,11 +231,20 @@ fun PublicHabitsScreen(
                         contentColor = MaterialTheme.colorScheme.primary
                     )
                 ) {
-                    Icon(
-                        imageVector = if (uiState.sortByPopularity) Filled.TrendingUp else Icons.Default.Schedule,
-                        contentDescription = null,
-                        modifier = Modifier.size(16.dp)
-                    )
+                    val sortIcon = if (uiState.sortByPopularity) TahoeIcons.Stats else TahoeIcons.Schedule
+                    if (sortIcon is ImageVector) {
+                        Icon(
+                            imageVector = sortIcon,
+                            contentDescription = null,
+                            modifier = Modifier.size(16.dp)
+                        )
+                    } else if (sortIcon is Int) {
+                        Icon(
+                            painter = painterResource(id = sortIcon),
+                            contentDescription = null,
+                            modifier = Modifier.size(16.dp)
+                        )
+                    }
                     Spacer(Modifier.width(4.dp))
                     Text(
                         text = stringResource(
@@ -374,7 +374,7 @@ fun PublicHabitCard(
                     horizontalArrangement = Arrangement.Center
                 ) {
                     Icon(
-                        Icons.Default.Schedule,
+                        TahoeIcons.Schedule,
                         contentDescription = null,
                         modifier = Modifier.size(14.dp),
                         tint = MaterialTheme.colorScheme.onSurfaceVariant
@@ -400,7 +400,7 @@ fun PublicHabitCard(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Icon(
-                        Icons.Default.Group,
+                        TahoeIcons.Group,
                         contentDescription = null,
                         modifier = Modifier.size(14.dp),
                         tint = MaterialTheme.colorScheme.primary
@@ -482,13 +482,13 @@ fun HabitPreviewBottomSheet(
                 horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 InfoCard(
-                    icon = Icons.Default.Group,
+                    icon = TahoeIcons.Group,
                     title = stringResource(R.string.public_habits_participants_title),
                     value = "${habit.participants.size}/${habit.maxParticipants}",
                     modifier = Modifier.weight(1f)
                 )
                 InfoCard(
-                    icon = Icons.Default.Schedule,
+                    icon = TahoeIcons.Schedule,
                     title = stringResource(R.string.public_habits_frequency_title),
                     value = getFrequencyText(habit),
                     modifier = Modifier.weight(1f)
@@ -502,13 +502,13 @@ fun HabitPreviewBottomSheet(
                 horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 InfoCard(
-                    icon = Icons.Default.CalendarToday,
+                    icon = TahoeIcons.Calendar,
                     title = stringResource(R.string.public_habits_created_title),
                     value = formatDate(habit.createdAt),
                     modifier = Modifier.weight(1f)
                 )
                 InfoCard(
-                    icon = Icons.Default.Flag,
+                    icon = TahoeIcons.Goal,
                     title = stringResource(R.string.public_habits_goal_title),
                     value = "${habit.targetValue} ${habit.unit}",
                     modifier = Modifier.weight(1f)
@@ -524,7 +524,7 @@ fun HabitPreviewBottomSheet(
                 enabled = habit.participants.size < habit.maxParticipants,
                 shape = RoundedCornerShape(12.dp)
             ) {
-                Icon(Icons.Default.GroupAdd, contentDescription = null)
+                Icon(TahoeIcons.PersonAdd, contentDescription = null)
                 Spacer(Modifier.width(8.dp))
                 Text(
                     stringResource(
@@ -544,7 +544,7 @@ fun HabitPreviewBottomSheet(
  */
 @Composable
 fun InfoCard(
-    icon: ImageVector,
+    icon: Any, // ImageVector or Int
     title: String,
     value: String,
     modifier: Modifier = Modifier
@@ -561,12 +561,21 @@ fun InfoCard(
                 .padding(12.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            Icon(
-                icon,
-                contentDescription = null,
-                modifier = Modifier.size(20.dp),
-                tint = MaterialTheme.colorScheme.primary
-            )
+            if (icon is ImageVector) {
+                Icon(
+                    icon,
+                    contentDescription = null,
+                    modifier = Modifier.size(20.dp),
+                    tint = MaterialTheme.colorScheme.primary
+                )
+            } else if (icon is Int) {
+                Icon(
+                    painter = painterResource(id = icon),
+                    contentDescription = null,
+                    modifier = Modifier.size(20.dp),
+                    tint = MaterialTheme.colorScheme.primary
+                )
+            }
             Spacer(Modifier.height(4.dp))
             Text(
                 text = title,
@@ -630,7 +639,7 @@ fun EmptyStateView(
                 onClick = onCreateHabit,
                 shape = RoundedCornerShape(12.dp)
             ) {
-                Icon(Icons.Default.Add, contentDescription = null)
+                Icon(TahoeIcons.Add, contentDescription = null)
                 Spacer(Modifier.width(8.dp))
                 Text(stringResource(R.string.public_habits_create_habit))
             }

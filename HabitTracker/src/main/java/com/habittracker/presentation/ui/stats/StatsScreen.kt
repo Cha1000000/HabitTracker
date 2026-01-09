@@ -18,16 +18,6 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.BarChart
-import androidx.compose.material.icons.filled.CheckCircle
-import androidx.compose.material.icons.filled.EmojiEvents
-import androidx.compose.material.icons.filled.Group
-import androidx.compose.material.icons.filled.Refresh
-import androidx.compose.material.icons.filled.Schedule
-import androidx.compose.material.icons.filled.Warning
-import androidx.compose.material.icons.filled.Whatshot
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -47,6 +37,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -64,6 +55,7 @@ import com.habittracker.presentation.ui.components.UserAvatar
 import com.habittracker.presentation.ui.habits.components.GlassmorphicCard
 import com.habittracker.presentation.ui.habits.components.GradientProgressBar
 import com.habittracker.presentation.ui.habits.components.TahoeGradientBackground
+import com.habittracker.presentation.ui.theme.TahoeIcons
 import com.habittracker.presentation.viewmodel.StatsViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -95,7 +87,7 @@ fun StatsScreen(
                     navigationIcon = {
                         IconButton(onClick = onNavigateBack) {
                             Icon(
-                                Icons.AutoMirrored.Filled.ArrowBack,
+                                imageVector = TahoeIcons.Back,
                                 contentDescription = stringResource(R.string.cd_back)
                             )
                         }
@@ -103,7 +95,7 @@ fun StatsScreen(
                     actions = {
                         IconButton(onClick = { viewModel.refresh() }) {
                             Icon(
-                                Icons.Default.Refresh,
+                                imageVector = TahoeIcons.Refresh,
                                 contentDescription = stringResource(R.string.cd_refresh)
                             )
                         }
@@ -186,7 +178,7 @@ fun StatsScreen(
                         verticalArrangement = Arrangement.spacedBy(16.dp)
                     ) {
                         Icon(
-                            Icons.Default.Warning,
+                            imageVector = TahoeIcons.Warning,
                             contentDescription = null,
                             modifier = Modifier.size(64.dp),
                             tint = MaterialTheme.colorScheme.error
@@ -273,7 +265,7 @@ private fun UserLevelCard(levelInfo: com.habittracker.domain.model.UserLevelInfo
 private fun HabitStatsCard(habitStats: HabitStats) {
     StatsCard(
         title = stringResource(R.string.stats_habits_title),
-        icon = Icons.Default.CheckCircle,
+        icon = TahoeIcons.CheckCircle,
         stats = listOf(
             stringResource(R.string.stats_habits_total) to habitStats.totalHabits.toString(),
             stringResource(R.string.stats_habits_active) to habitStats.activeHabits.toString(),
@@ -295,7 +287,7 @@ private fun HabitStatsCard(habitStats: HabitStats) {
 private fun StreakStatsCard(streakStats: StreakStats) {
     StatsCard(
         title = stringResource(R.string.stats_streaks_title),
-        icon = Icons.Default.Whatshot,
+        icon = TahoeIcons.Fire,
         stats = listOf(
             stringResource(R.string.stats_streak_current) to streakStats.currentStreak.toString(),
             stringResource(R.string.stats_streak_best) to streakStats.longestStreak.toString(),
@@ -309,7 +301,7 @@ private fun StreakStatsCard(streakStats: StreakStats) {
 private fun SocialStatsCard(socialStats: SocialStats) {
     StatsCard(
         title = stringResource(R.string.stats_social_title),
-        icon = Icons.Default.Group,
+        icon = TahoeIcons.Group,
         stats = listOf(
             stringResource(R.string.stats_social_friends) to socialStats.friendsCount.toString(),
             stringResource(R.string.stats_social_group_habits) to socialStats.groupHabitsCount.toString(),
@@ -323,7 +315,7 @@ private fun SocialStatsCard(socialStats: SocialStats) {
 private fun ChallengeStatsCard(challengeStats: ChallengeStats) {
     StatsCard(
         title = stringResource(R.string.stats_challenges_title),
-        icon = Icons.Default.EmojiEvents,
+        icon = TahoeIcons.Achievements,
         stats = listOf(
             stringResource(R.string.stats_challenges_total) to challengeStats.totalChallenges.toString(),
             stringResource(R.string.stats_challenges_active) to challengeStats.activeChallenges.toString(),
@@ -339,7 +331,7 @@ private fun ChallengeStatsCard(challengeStats: ChallengeStats) {
 private fun TimeStatsCard(timeStats: TimeStats) {
     StatsCard(
         title = stringResource(R.string.stats_time_title),
-        icon = Icons.Default.Schedule,
+        icon = TahoeIcons.Schedule,
         stats = listOf(
             stringResource(R.string.stats_time_morning) to timeStats.morningCompletions.toString(),
             stringResource(R.string.stats_time_afternoon) to timeStats.afternoonCompletions.toString(),
@@ -378,7 +370,7 @@ private fun ActivityChartCard(last7Days: List<Pair<kotlinx.datetime.LocalDate, I
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 Icon(
-                    Icons.Default.BarChart,
+                    imageVector = TahoeIcons.Chart,
                     contentDescription = null,
                     tint = if (isDarkTheme) Color(0xFF4DC273) else MaterialTheme.colorScheme.primary
                 )
@@ -452,7 +444,7 @@ private fun ActivityChartCard(last7Days: List<Pair<kotlinx.datetime.LocalDate, I
 @Composable
 private fun StatsCard(
     title: String,
-    icon: ImageVector,
+    icon: Any, // Changed to Any to support TahoeIcons
     stats: List<Pair<String, String>>
 ) {
     val isDarkTheme = isSystemInDarkTheme()
@@ -472,11 +464,19 @@ private fun StatsCard(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                Icon(
-                    icon,
-                    contentDescription = null,
-                    tint = if (isDarkTheme) Color(0xFF4DC273) else MaterialTheme.colorScheme.primary
-                )
+                if (icon is ImageVector) {
+                    Icon(
+                        imageVector = icon,
+                        contentDescription = null,
+                        tint = if (isDarkTheme) Color(0xFF4DC273) else MaterialTheme.colorScheme.primary
+                    )
+                } else if (icon is Int) {
+                    Icon(
+                        painter = painterResource(id = icon),
+                        contentDescription = null,
+                        tint = if (isDarkTheme) Color(0xFF4DC273) else MaterialTheme.colorScheme.primary
+                    )
+                }
                 Text(
                     text = title,
                     style = MaterialTheme.typography.titleMedium,
@@ -538,7 +538,7 @@ private fun LeaderboardSection(
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     Icon(
-                        Icons.Default.EmojiEvents,
+                        imageVector = TahoeIcons.Achievements,
                         contentDescription = null,
                         tint = if (isDarkTheme) Color(0xFFFFD700) else MaterialTheme.colorScheme.primary
                     )

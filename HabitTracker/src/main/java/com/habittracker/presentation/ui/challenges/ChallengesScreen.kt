@@ -14,13 +14,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material.ExperimentalMaterialApi
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.Email
-import androidx.compose.material.icons.filled.EmojiEvents
-import androidx.compose.material.icons.filled.Group
-import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material.pullrefresh.pullRefresh
 import androidx.compose.material.pullrefresh.rememberPullRefreshState
 import androidx.compose.material3.Badge
@@ -63,6 +56,7 @@ import com.habittracker.presentation.state.ChallengeTab
 import com.habittracker.presentation.ui.components.GradientPullRefreshIndicator
 import com.habittracker.presentation.ui.habits.components.ConfirmDialog
 import com.habittracker.presentation.ui.habits.components.TahoeGradientBackground
+import com.habittracker.presentation.ui.theme.TahoeIcons
 import com.habittracker.presentation.viewmodel.ChallengesViewModel
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterialApi::class)
@@ -132,7 +126,7 @@ fun ChallengesScreen(
                     navigationIcon = {
                         IconButton(onClick = onNavigateBack) {
                             Icon(
-                                imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                                imageVector = TahoeIcons.Back,
                                 contentDescription = stringResource(R.string.cd_back)
                             )
                         }
@@ -140,7 +134,7 @@ fun ChallengesScreen(
                     actions = {
                         IconButton(onClick = onNavigateToCreateChallenge) {
                             Icon(
-                                imageVector = Icons.Default.Add,
+                                imageVector = TahoeIcons.Add,
                                 contentDescription = stringResource(R.string.create_challenge)
                             )
                         }
@@ -202,10 +196,10 @@ fun ChallengesScreen(
                                     ) {
                                         Icon(
                                             imageVector = when (tab) {
-                                                ChallengeTab.INVITATIONS -> Icons.Default.Email
-                                                ChallengeTab.ACTIVE -> Icons.Default.Group
-                                                ChallengeTab.ENDING_SOON -> Icons.Default.Schedule
-                                                ChallengeTab.COMPLETED -> Icons.Default.EmojiEvents
+                                                ChallengeTab.INVITATIONS -> TahoeIcons.Email
+                                                ChallengeTab.ACTIVE -> TahoeIcons.Group
+                                                ChallengeTab.ENDING_SOON -> TahoeIcons.Schedule
+                                                ChallengeTab.COMPLETED -> TahoeIcons.Achievements
                                             },
                                             contentDescription = null
                                         )
@@ -374,10 +368,10 @@ private fun EmptyState(
     ) {
         Icon(
             imageVector = when (tab) {
-                ChallengeTab.INVITATIONS -> Icons.Default.Email
-                ChallengeTab.ACTIVE -> Icons.Default.Group
-                ChallengeTab.ENDING_SOON -> Icons.Default.Schedule
-                ChallengeTab.COMPLETED -> Icons.Default.EmojiEvents
+                ChallengeTab.INVITATIONS -> TahoeIcons.Email
+                ChallengeTab.ACTIVE -> TahoeIcons.Group
+                ChallengeTab.ENDING_SOON -> TahoeIcons.Schedule
+                ChallengeTab.COMPLETED -> TahoeIcons.Achievements
             },
             contentDescription = null,
             modifier = Modifier.size(64.dp),
@@ -417,7 +411,7 @@ private fun EmptyState(
             
             Button(onClick = onCreateChallenge) {
                 Icon(
-                    imageVector = Icons.Default.Add,
+                    imageVector = TahoeIcons.Add,
                     contentDescription = null,
                     modifier = Modifier.size(18.dp)
                 )

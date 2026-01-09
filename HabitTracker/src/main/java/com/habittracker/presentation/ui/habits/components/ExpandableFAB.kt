@@ -19,11 +19,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.AutoStories
-import androidx.compose.material.icons.filled.Explore
-import androidx.compose.material.icons.filled.QrCode
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.FloatingActionButtonDefaults
@@ -45,6 +40,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.habittracker.R
+import com.habittracker.presentation.ui.theme.TahoeIcons
 
 /**
  * Опция расширяемого FAB меню
@@ -76,7 +72,7 @@ fun ExpandableFAB(
     
     val options = listOf(
         FABOption(
-            icon = Icons.Default.QrCode,
+            icon = TahoeIcons.QrCode,
             label = stringResource(R.string.fab_enter_code),
             onClick = {
                 isExpanded = false
@@ -84,7 +80,7 @@ fun ExpandableFAB(
             }
         ),
         FABOption(
-            icon = Icons.Default.AutoStories,
+            icon = TahoeIcons.AutoStories,
             label = stringResource(R.string.fab_find_habit),
             onClick = {
                 isExpanded = false
@@ -92,7 +88,7 @@ fun ExpandableFAB(
             }
         ),
         FABOption(
-            icon = Icons.Default.Add,
+            icon = TahoeIcons.Add,
             label = stringResource(R.string.fab_create_habit),
             onClick = {
                 isExpanded = false
@@ -135,7 +131,7 @@ fun ExpandableFAB(
                 isDarkTheme = isSystemInDarkTheme()
             ) {
                 Icon(
-                    imageVector = Icons.Default.Add,
+                    imageVector = TahoeIcons.Add,
                     contentDescription = if (isExpanded) stringResource(R.string.fab_close_menu) else stringResource(R.string.fab_open_menu),
                     modifier = Modifier
                         .size(24.dp)
@@ -214,7 +210,7 @@ fun SimpleFABWithDialog(
             containerColor = MaterialTheme.colorScheme.primaryContainer,
             contentColor = MaterialTheme.colorScheme.onPrimaryContainer
         ) {
-            Icon(Icons.Default.Add, contentDescription = stringResource(R.string.fab_add))
+            Icon(TahoeIcons.Add, contentDescription = stringResource(R.string.fab_add))
         }
         
         if (showDialog) {
@@ -261,19 +257,19 @@ private fun JoinOptionsDialog(
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 DialogOption(
-                    icon = Icons.Default.Add,
+                    icon = TahoeIcons.Add,
                     title = stringResource(R.string.fab_create_new_title),
                     description = stringResource(R.string.fab_create_new_desc),
                     onClick = onCreateNew
                 )
                 DialogOption(
-                    icon = Icons.Default.Explore,
+                    icon = TahoeIcons.Explore,
                     title = stringResource(R.string.fab_browse_catalog_title),
                     description = stringResource(R.string.fab_browse_catalog_desc),
                     onClick = onBrowsePublic
                 )
                 DialogOption(
-                    icon = Icons.Default.QrCode,
+                    icon = TahoeIcons.QrCode,
                     title = stringResource(R.string.fab_enter_code_title),
                     description = stringResource(R.string.fab_enter_code_desc),
                     onClick = onJoinByCode

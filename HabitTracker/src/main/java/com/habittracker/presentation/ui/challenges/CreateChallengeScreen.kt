@@ -15,12 +15,6 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.selection.selectable
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.ArrowDropDown
-import androidx.compose.material.icons.filled.CalendarToday
-import androidx.compose.material.icons.filled.Group
-import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DatePicker
@@ -34,6 +28,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
@@ -47,7 +42,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -55,7 +49,6 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.habittracker.R
 import com.habittracker.domain.model.ChallengeType
 import com.habittracker.domain.model.Habit
-import com.habittracker.domain.model.HabitGoalType
 import com.habittracker.domain.model.User
 import com.habittracker.presentation.state.DatePickerType
 import com.habittracker.presentation.ui.habits.components.GlassmorphicButton
@@ -64,11 +57,13 @@ import com.habittracker.presentation.ui.habits.components.GlassmorphicDialog
 import com.habittracker.presentation.ui.habits.components.GlassmorphicSwitch
 import com.habittracker.presentation.ui.habits.components.GlassmorphicTextField
 import com.habittracker.presentation.ui.habits.components.TahoeGradientBackground
+import com.habittracker.presentation.ui.theme.TahoeIcons
 import com.habittracker.presentation.viewmodel.CreateChallengeViewModel
 import kotlinx.datetime.Clock
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.todayIn
+import com.habittracker.domain.model.HabitGoalType
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -120,7 +115,7 @@ fun CreateChallengeScreen(
                     navigationIcon = {
                         IconButton(onClick = onNavigateBack) {
                             Icon(
-                                imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                                imageVector = TahoeIcons.Back,
                                 contentDescription = stringResource(R.string.back)
                             )
                         }
@@ -411,7 +406,7 @@ private fun HabitSelectionCard(
             }
             if (enabled) {
                 Icon(
-                    imageVector = Icons.Filled.ArrowDropDown,
+                    imageVector = TahoeIcons.ArrowDropDown,
                     contentDescription = null
                 )
             } else {
@@ -463,13 +458,13 @@ private fun ParticipantsSelectionCard(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Icon(
-                    imageVector = Icons.Filled.Group,
+                    imageVector = TahoeIcons.Group,
                     contentDescription = null,
                     modifier = Modifier.size(20.dp)
                 )
                 Spacer(modifier = Modifier.width(4.dp))
                 Icon(
-                    imageVector = Icons.Filled.ArrowDropDown,
+                    imageVector = TahoeIcons.ArrowDropDown,
                     contentDescription = null
                 )
             }
@@ -513,7 +508,7 @@ private fun DateSelectionSection(
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {
                         Icon(
-                            imageVector = Icons.Filled.CalendarToday,
+                            imageVector = TahoeIcons.Calendar,
                             contentDescription = null,
                             modifier = Modifier.size(20.dp)
                         )
@@ -542,7 +537,7 @@ private fun DateSelectionSection(
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {
                         Icon(
-                            imageVector = Icons.Filled.Schedule,
+                            imageVector = TahoeIcons.Schedule,
                             contentDescription = null,
                             modifier = Modifier.size(20.dp)
                         )

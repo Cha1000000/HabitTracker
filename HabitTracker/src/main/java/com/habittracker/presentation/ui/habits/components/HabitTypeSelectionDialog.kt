@@ -15,10 +15,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Check
-import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.Timeline
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -39,6 +35,7 @@ import com.habittracker.R
 import com.habittracker.domain.model.HabitGoalType
 import com.habittracker.presentation.ui.theme.HabitTrackerTheme
 import com.habittracker.presentation.ui.theme.TahoeElectricBlue
+import com.habittracker.presentation.ui.theme.TahoeIcons
 import com.habittracker.presentation.ui.theme.TahoePurple
 
 @Composable
@@ -78,7 +75,7 @@ fun HabitTypeSelectionDialog(
                         modifier = Modifier.size(32.dp)
                     ) {
                         Icon(
-                            imageVector = Icons.Default.Close,
+                            imageVector = TahoeIcons.Close,
                             contentDescription = stringResource(R.string.action_close),
                             tint = MaterialTheme.colorScheme.onSurfaceVariant
                         )
@@ -91,7 +88,7 @@ fun HabitTypeSelectionDialog(
                 HabitTypeOption(
                     title = stringResource(R.string.habit_goal_type_simple),
                     description = stringResource(R.string.habit_goal_type_simple_desc),
-                    icon = Icons.Default.Check,
+                    icon = TahoeIcons.Check,
                     iconTint = TahoeElectricBlue,
                     isDarkTheme = isDarkTheme,
                     onClick = { onTypeSelected(HabitGoalType.SIMPLE) }
@@ -103,7 +100,7 @@ fun HabitTypeSelectionDialog(
                 HabitTypeOption(
                     title = stringResource(R.string.habit_goal_type_measurable),
                     description = stringResource(R.string.habit_goal_type_measurable_desc),
-                    icon = Icons.Default.Timeline,
+                    icon = TahoeIcons.Timeline,
                     iconTint = TahoePurple,
                     isDarkTheme = isDarkTheme,
                     onClick = { onTypeSelected(HabitGoalType.MEASURABLE) }
@@ -238,7 +235,7 @@ private fun HabitTypeSelectionContent(
                     modifier = Modifier.size(32.dp)
                 ) {
                     Icon(
-                        imageVector = Icons.Default.Close,
+                        imageVector = TahoeIcons.Close,
                         contentDescription = stringResource(R.string.action_close),
                         tint = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -251,7 +248,7 @@ private fun HabitTypeSelectionContent(
             HabitTypeOption(
                 title = stringResource(R.string.habit_goal_type_simple),
                 description = stringResource(R.string.habit_goal_type_simple_desc),
-                icon = Icons.Default.Check,
+                icon = TahoeIcons.Check,
                 iconTint = TahoeElectricBlue,
                 isDarkTheme = isDarkTheme,
                 onClick = { onTypeSelected(HabitGoalType.SIMPLE) }
@@ -263,7 +260,7 @@ private fun HabitTypeSelectionContent(
             HabitTypeOption(
                 title = stringResource(R.string.habit_goal_type_measurable),
                 description = stringResource(R.string.habit_goal_type_measurable_desc),
-                icon = Icons.Default.Timeline,
+                icon = TahoeIcons.Timeline,
                 iconTint = TahoePurple,
                 isDarkTheme = isDarkTheme,
                 onClick = { onTypeSelected(HabitGoalType.MEASURABLE) }
