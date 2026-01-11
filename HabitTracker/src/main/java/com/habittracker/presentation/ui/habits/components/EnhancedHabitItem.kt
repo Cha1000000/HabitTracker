@@ -18,14 +18,6 @@ import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Check
-import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material.icons.filled.Edit
-import androidx.compose.material.icons.filled.Group
-import androidx.compose.material.icons.filled.MoreVert
-import androidx.compose.material.icons.filled.Person
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -63,6 +55,7 @@ import com.habittracker.domain.model.HabitGoalType
 import com.habittracker.domain.model.HabitType
 import com.habittracker.domain.model.isGroupHabit
 import com.habittracker.presentation.ui.components.AnimatedCheckmark
+import com.habittracker.presentation.ui.theme.TahoeIcons
 import com.habittracker.presentation.util.SoundManager
 import com.habittracker.presentation.viewmodel.HabitWithCompletion
 import kotlinx.datetime.Clock
@@ -218,9 +211,9 @@ fun EnhancedHabitItem(
                                 )
                                 Spacer(modifier = Modifier.width(8.dp))
                                 if (habit.isGroupHabit()) {
-                                    Icon(imageVector = Icons.Default.Group, contentDescription = stringResource(R.string.group_habit), tint = if (isRestDay) MaterialTheme.colorScheme.primary.copy(alpha = 0.38f) else MaterialTheme.colorScheme.primary, modifier = Modifier.size(16.dp))
+                                    Icon(imageVector = TahoeIcons.Group, contentDescription = stringResource(R.string.group_habit), tint = if (isRestDay) MaterialTheme.colorScheme.primary.copy(alpha = 0.38f) else MaterialTheme.colorScheme.primary, modifier = Modifier.size(16.dp))
                                 } else {
-                                    Icon(imageVector = Icons.Default.Person, contentDescription = stringResource(R.string.personal_habit), tint = if (isRestDay) MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.38f) else MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(16.dp))
+                                    Icon(imageVector = TahoeIcons.User, contentDescription = stringResource(R.string.personal_habit), tint = if (isRestDay) MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.38f) else MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(16.dp))
                                 }
                             }
                             if (habit.description.isNotEmpty()) {
@@ -327,7 +320,7 @@ fun EnhancedHabitItem(
                             showMenu = true
                         }) {
                             Icon(
-                                imageVector = Icons.Default.MoreVert, 
+                                imageVector = TahoeIcons.EllipsisVertical, 
                                 contentDescription = stringResource(id = R.string.cd_more),
                                 tint = if (isRestDay) MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f) else LocalContentColor.current
                             )
@@ -348,13 +341,13 @@ fun EnhancedHabitItem(
                                 stringResource(id = R.string.menu_done)
                             }
                             val doneIcon = if (habitWithCompletion.isCompletedToday) {
-                                Icons.Default.Close
+                                TahoeIcons.XMark
                             } else {
-                                Icons.Default.Check
+                                TahoeIcons.Check
                             }
                             val doneTint by animateColorAsState(
                                 targetValue = if (habitWithCompletion.isCompletedToday) {
-                                    MaterialTheme.colorScheme.onSurfaceVariant
+                                    MaterialTheme.colorScheme.error
                                 } else {
                                     MaterialTheme.colorScheme.primary
                                 },
@@ -393,7 +386,7 @@ fun EnhancedHabitItem(
                             GlassmorphicDropdownMenuItem(
                                 text = { Text(text = restDayLabel) },
                                 leadingIcon = { 
-                                    Icon(imageVector = Icons.Default.Edit, contentDescription = null, tint = Color.Transparent)
+                                    Icon(imageVector = TahoeIcons.Pencil, contentDescription = null, tint = Color.Transparent)
                                 },
                                 onClick = {
                                     showMenu = false
@@ -404,7 +397,7 @@ fun EnhancedHabitItem(
 
                         GlassmorphicDropdownMenuItem(
                             text = { Text(text = stringResource(id = R.string.edit)) },
-                            leadingIcon = { Icon(imageVector = Icons.Default.Edit, contentDescription = null) },
+                            leadingIcon = { Icon(imageVector = TahoeIcons.Pencil, contentDescription = null) },
                             onClick = {
                                 showMenu = false
                                 onEdit(habitWithCompletion)
@@ -412,7 +405,7 @@ fun EnhancedHabitItem(
                         )
                         GlassmorphicDropdownMenuItem(
                             text = { Text(text = stringResource(id = R.string.delete), color = MaterialTheme.colorScheme.error) },
-                            leadingIcon = { Icon(imageVector = Icons.Default.Delete, contentDescription = null, tint = MaterialTheme.colorScheme.error) },
+                            leadingIcon = { Icon(imageVector = TahoeIcons.Trash, contentDescription = null, tint = MaterialTheme.colorScheme.error) },
                             onClick = {
                                 showMenu = false
                                 onDelete(habitWithCompletion)

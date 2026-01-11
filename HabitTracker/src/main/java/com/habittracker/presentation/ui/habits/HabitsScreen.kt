@@ -22,14 +22,6 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.ExperimentalMaterialApi
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.TrendingUp
-import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material.icons.filled.EmojiEvents
-import androidx.compose.material.icons.filled.Flag
-import androidx.compose.material.icons.filled.Notifications
-import androidx.compose.material.icons.filled.People
-import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.pullrefresh.pullRefresh
 import androidx.compose.material.pullrefresh.rememberPullRefreshState
 import androidx.compose.material3.CircularProgressIndicator
@@ -101,6 +93,7 @@ import com.habittracker.presentation.ui.habits.components.TahoeDockDivider
 import com.habittracker.presentation.ui.habits.components.TahoeDockItem
 import com.habittracker.presentation.ui.habits.components.TahoeGradientBackground
 import com.habittracker.presentation.ui.notifications.NotificationBadge
+import com.habittracker.presentation.ui.theme.TahoeIcons
 import com.habittracker.presentation.viewmodel.ChallengesViewModel
 import com.habittracker.presentation.viewmodel.FriendsViewModel
 import com.habittracker.presentation.viewmodel.HabitWithCompletion
@@ -236,7 +229,7 @@ fun HabitsScreen(
                         navController.navigate(Screen.HabitSettings.route)
                     }) {
                         Icon(
-                            imageVector = Icons.Default.Settings,
+                            imageVector = TahoeIcons.Cog,
                             contentDescription = stringResource(R.string.settings_title)
                         )
                     }
@@ -247,7 +240,7 @@ fun HabitsScreen(
                             navController.navigate(Screen.Notifications.route)
                         }) {
                             Icon(
-                                imageVector = Icons.Default.Notifications,
+                                imageVector = TahoeIcons.Bell,
                                 contentDescription = stringResource(R.string.cd_notifications)
                             )
                         }
@@ -330,7 +323,7 @@ fun HabitsScreen(
             ) {
                 // Статистика
                 TahoeDockItem(
-                    icon = Icons.AutoMirrored.Filled.TrendingUp,
+                    icon = TahoeIcons.TrendingUp,
                     label = stringResource(R.string.cd_stats),
                     onClick = { navController.navigate(Screen.Stats.route) },
                     selected = false
@@ -340,7 +333,7 @@ fun HabitsScreen(
                 
                 // Достижения
                 TahoeDockItem(
-                    icon = Icons.Default.EmojiEvents,
+                    icon = TahoeIcons.Trophy,
                     label = stringResource(R.string.cd_achievements),
                     onClick = { navController.navigate(Screen.Achievements.route) },
                     selected = false
@@ -350,7 +343,7 @@ fun HabitsScreen(
                 
                 // Челленджи
                 TahoeDockItem(
-                    icon = Icons.Default.Flag,
+                    icon = TahoeIcons.Flag,
                     label = stringResource(R.string.cd_challenges),
                     badge = challengeInvitationsBadgeCount,
                     onClick = { navController.navigate(Screen.Challenges.route) },
@@ -361,7 +354,7 @@ fun HabitsScreen(
                 
                 // Друзья
                 TahoeDockItem(
-                    icon = Icons.Default.People,
+                    icon = TahoeIcons.Users,
                     label = stringResource(R.string.cd_friends),
                     badge = friendRequestsBadgeCount,
                     onClick = { navController.navigate(Screen.Friends.route) },
@@ -617,7 +610,7 @@ private fun HabitItemRow(
                 contentAlignment = Alignment.CenterEnd
             ) {
                 Icon(
-                    imageVector = Icons.Default.Delete,
+                    imageVector = TahoeIcons.Trash,
                     contentDescription = stringResource(R.string.delete),
                     tint = MaterialTheme.colorScheme.onError.copy(alpha = bgAlpha),
                     modifier = Modifier.padding(end = 24.dp)

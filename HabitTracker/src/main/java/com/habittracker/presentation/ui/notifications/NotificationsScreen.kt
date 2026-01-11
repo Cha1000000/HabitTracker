@@ -10,10 +10,6 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.DoneAll
-import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
@@ -51,6 +47,7 @@ import com.habittracker.domain.usecase.notification.GroupHabitNotification
 import com.habittracker.domain.usecase.notification.NotificationType
 import com.habittracker.presentation.navigation.Screen
 import com.habittracker.presentation.ui.habits.components.TahoeGradientBackground
+import com.habittracker.presentation.ui.theme.TahoeIcons
 import com.habittracker.presentation.viewmodel.NotificationsViewModel
 import kotlinx.datetime.Clock
 
@@ -307,7 +304,7 @@ fun NotificationsTopBar(
         navigationIcon = {
             IconButton(onClick = onBackClick) {
                 Icon(
-                    imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                    imageVector = TahoeIcons.ArrowBack,
                     contentDescription = stringResource(R.string.back)
                 )
             }
@@ -316,7 +313,7 @@ fun NotificationsTopBar(
             // Кнопка настроек уведомлений
             IconButton(onClick = onSettingsClick) {
                 Icon(
-                    imageVector = Icons.Default.Settings,
+                    imageVector = TahoeIcons.Cog,
                     contentDescription = stringResource(R.string.settings_title)
                 )
             }
@@ -326,7 +323,7 @@ fun NotificationsTopBar(
                     // Показываем кнопку "Отметить все как прочитанные"
                     IconButton(onClick = onMarkAllAsRead) {
                         Icon(
-                            imageVector = Icons.Default.DoneAll,
+                            imageVector = TahoeIcons.CheckBadge,
                             contentDescription = stringResource(R.string.mark_all_as_read)
                         )
                     }

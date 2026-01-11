@@ -20,12 +20,6 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.CheckCircle
-import androidx.compose.material.icons.filled.Group
-import androidx.compose.material.icons.filled.GroupAdd
-import androidx.compose.material.icons.filled.Person
-import androidx.compose.material.icons.filled.QrCode
 import androidx.compose.material3.Button
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CircularProgressIndicator
@@ -59,6 +53,7 @@ import com.habittracker.R
 import com.habittracker.domain.model.User
 import com.habittracker.domain.repository.HabitRepository
 import com.habittracker.domain.repository.UserRepository
+import com.habittracker.presentation.ui.theme.TahoeIcons
 import dagger.hilt.android.EntryPointAccessors
 import kotlinx.coroutines.delay
 
@@ -338,7 +333,7 @@ private fun JoinByCodeDialogContent(
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Icon(
-                    Icons.Default.QrCode,
+                    TahoeIcons.QrCode,
                     contentDescription = null,
                     modifier = Modifier.size(48.dp),
                     tint = MaterialTheme.colorScheme.primary
@@ -390,7 +385,7 @@ private fun JoinByCodeDialogContent(
                                 strokeWidth = 2.dp
                             )
                             foundHabit != null -> Icon(
-                                Icons.Default.CheckCircle,
+                                TahoeIcons.CheckCircle,
                                 contentDescription = null,
                                 tint = MaterialTheme.colorScheme.primary
                             )
@@ -431,7 +426,7 @@ private fun JoinByCodeDialogContent(
                 shape = RoundedCornerShape(12.dp)
             ) {
                 Icon(
-                    Icons.Default.GroupAdd,
+                    TahoeIcons.UserPlus,
                     contentDescription = null,
                     modifier = Modifier.size(18.dp)
                 )
@@ -498,7 +493,7 @@ private fun HabitPreviewCard(habit: com.habittracker.domain.model.Habit) {
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Icon(
-                        Icons.Default.Person,
+                        TahoeIcons.User,
                         contentDescription = null,
                         modifier = Modifier.size(14.dp),
                         tint = MaterialTheme.colorScheme.onSurfaceVariant
@@ -517,7 +512,7 @@ private fun HabitPreviewCard(habit: com.habittracker.domain.model.Habit) {
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Icon(
-                        Icons.Default.Group,
+                        TahoeIcons.Group,
                         contentDescription = null,
                         modifier = Modifier.size(14.dp),
                         tint = MaterialTheme.colorScheme.primary

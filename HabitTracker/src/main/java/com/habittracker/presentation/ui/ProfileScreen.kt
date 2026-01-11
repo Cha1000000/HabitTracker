@@ -26,14 +26,8 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.automirrored.filled.TrendingUp
-import androidx.compose.material.icons.filled.CameraAlt
-import androidx.compose.material.icons.filled.Edit
-import androidx.compose.material.icons.filled.EmojiEvents
-import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -51,6 +45,9 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -74,6 +71,7 @@ import com.habittracker.presentation.ui.habits.components.GlassmorphicCard
 import com.habittracker.presentation.ui.habits.components.GlassmorphicOutlinedButton
 import com.habittracker.presentation.ui.habits.components.GlassmorphicTextField
 import com.habittracker.presentation.ui.habits.components.TahoeGradientBackground
+import com.habittracker.presentation.ui.theme.TahoeIcons
 import com.habittracker.presentation.viewmodel.AuthEvent
 import com.habittracker.presentation.viewmodel.AuthState
 import com.habittracker.presentation.viewmodel.AuthViewModel
@@ -114,7 +112,7 @@ fun ProfileScreen(
                     navigationIcon = {
                         IconButton(onClick = { navController.navigateUp() }) {
                             Icon(
-                                imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                                imageVector = TahoeIcons.ArrowBack,
                                 contentDescription = stringResource(R.string.cd_back)
                             )
                         }
@@ -273,7 +271,7 @@ fun ProfileScreen(
                             contentAlignment = Alignment.Center
                         ) {
                             Icon(
-                                imageVector = Icons.Filled.CameraAlt,
+                                imageVector = TahoeIcons.Camera,
                                 contentDescription = null,
                                 tint = if (isDarkTheme) {
                                     Color.White
@@ -320,7 +318,7 @@ fun ProfileScreen(
                     }
                     if (uiState.isOwnProfile) {
                         IconButton(onClick = { profileViewModel.onToggleEditName() }) {
-                            Icon(imageVector = Icons.Filled.Edit, contentDescription = null)
+                            Icon(imageVector = TahoeIcons.Pencil, contentDescription = null)
                         }
                     }
                 }
@@ -400,7 +398,7 @@ fun ProfileScreen(
                             horizontalAlignment = Alignment.CenterHorizontally
                         ) {
                             Icon(
-                                imageVector = Icons.AutoMirrored.Filled.TrendingUp,
+                                imageVector = TahoeIcons.TrendingUp,
                                 contentDescription = stringResource(R.string.cd_stats),
                                 tint = MaterialTheme.colorScheme.primary
                             )
@@ -424,7 +422,7 @@ fun ProfileScreen(
                             horizontalAlignment = Alignment.CenterHorizontally
                         ) {
                             Icon(
-                                imageVector = Icons.Default.EmojiEvents,
+                                imageVector = TahoeIcons.Trophy,
                                 contentDescription = stringResource(R.string.cd_achievements),
                                 tint = MaterialTheme.colorScheme.primary
                             )
@@ -473,11 +471,11 @@ fun ProfileScreen(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Icon(
-                            imageVector = Icons.Default.Notifications,
+                            imageVector = TahoeIcons.Bell,
                             contentDescription = null,
                             modifier = Modifier.size(20.dp)
                         )
-                        Spacer(modifier = Modifier.size(8.dp))
+                        Spacer(modifier = Modifier.width(12.dp))
                         Text(
                             stringResource(R.string.notification_settings_title),
                             fontSize = 16.sp

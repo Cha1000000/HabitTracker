@@ -24,17 +24,7 @@ import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.Icons.AutoMirrored.Filled
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.automirrored.filled.TrendingUp
-import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.CalendarToday
-import androidx.compose.material.icons.filled.Flag
-import androidx.compose.material.icons.filled.Group
-import androidx.compose.material.icons.filled.GroupAdd
-import androidx.compose.material.icons.filled.QrCode
-import androidx.compose.material.icons.filled.Schedule
+import com.habittracker.presentation.ui.theme.TahoeIcons
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -135,7 +125,7 @@ fun PublicHabitsScreen(
                     navigationIcon = {
                         IconButton(onClick = { navController.navigateUp() }) {
                             Icon(
-                                Filled.ArrowBack,
+                                imageVector = TahoeIcons.ArrowBack,
                                 contentDescription = stringResource(R.string.cd_back)
                             )
                         }
@@ -189,7 +179,7 @@ fun PublicHabitsScreen(
                     modifier = Modifier.size(48.dp)
                 ) {
                     Icon(
-                        Icons.Default.QrCode,
+                        imageVector = TahoeIcons.QrCode,
                         contentDescription = stringResource(R.string.fab_enter_code),
                         modifier = Modifier.size(24.dp)
                     )
@@ -241,7 +231,7 @@ fun PublicHabitsScreen(
                     )
                 ) {
                     Icon(
-                        imageVector = if (uiState.sortByPopularity) Filled.TrendingUp else Icons.Default.Schedule,
+                        imageVector = if (uiState.sortByPopularity) TahoeIcons.TrendingUp else TahoeIcons.Clock,
                         contentDescription = null,
                         modifier = Modifier.size(16.dp)
                     )
@@ -374,7 +364,7 @@ fun PublicHabitCard(
                     horizontalArrangement = Arrangement.Center
                 ) {
                     Icon(
-                        Icons.Default.Schedule,
+                        imageVector = TahoeIcons.Clock,
                         contentDescription = null,
                         modifier = Modifier.size(14.dp),
                         tint = MaterialTheme.colorScheme.onSurfaceVariant
@@ -400,7 +390,7 @@ fun PublicHabitCard(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Icon(
-                        Icons.Default.Group,
+                        imageVector = TahoeIcons.Group,
                         contentDescription = null,
                         modifier = Modifier.size(14.dp),
                         tint = MaterialTheme.colorScheme.primary
@@ -482,13 +472,13 @@ fun HabitPreviewBottomSheet(
                 horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 InfoCard(
-                    icon = Icons.Default.Group,
+                    icon = TahoeIcons.Group,
                     title = stringResource(R.string.public_habits_participants_title),
                     value = "${habit.participants.size}/${habit.maxParticipants}",
                     modifier = Modifier.weight(1f)
                 )
                 InfoCard(
-                    icon = Icons.Default.Schedule,
+                    icon = TahoeIcons.Clock,
                     title = stringResource(R.string.public_habits_frequency_title),
                     value = getFrequencyText(habit),
                     modifier = Modifier.weight(1f)
@@ -502,13 +492,13 @@ fun HabitPreviewBottomSheet(
                 horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 InfoCard(
-                    icon = Icons.Default.CalendarToday,
+                    icon = TahoeIcons.Calendar,
                     title = stringResource(R.string.public_habits_created_title),
                     value = formatDate(habit.createdAt),
                     modifier = Modifier.weight(1f)
                 )
                 InfoCard(
-                    icon = Icons.Default.Flag,
+                    icon = TahoeIcons.Flag,
                     title = stringResource(R.string.public_habits_goal_title),
                     value = "${habit.targetValue} ${habit.unit}",
                     modifier = Modifier.weight(1f)
@@ -524,7 +514,7 @@ fun HabitPreviewBottomSheet(
                 enabled = habit.participants.size < habit.maxParticipants,
                 shape = RoundedCornerShape(12.dp)
             ) {
-                Icon(Icons.Default.GroupAdd, contentDescription = null)
+                Icon(imageVector = TahoeIcons.UserPlus, contentDescription = null)
                 Spacer(Modifier.width(8.dp))
                 Text(
                     stringResource(
@@ -630,7 +620,7 @@ fun EmptyStateView(
                 onClick = onCreateHabit,
                 shape = RoundedCornerShape(12.dp)
             ) {
-                Icon(Icons.Default.Add, contentDescription = null)
+                Icon(TahoeIcons.Plus, contentDescription = null)
                 Spacer(Modifier.width(8.dp))
                 Text(stringResource(R.string.public_habits_create_habit))
             }

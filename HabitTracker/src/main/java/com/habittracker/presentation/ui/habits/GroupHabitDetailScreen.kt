@@ -19,25 +19,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.Icons.AutoMirrored.Filled
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.automirrored.filled.ExitToApp
-import androidx.compose.material.icons.automirrored.filled.TrendingUp
-import androidx.compose.material.icons.filled.Cancel
-import androidx.compose.material.icons.filled.Check
-import androidx.compose.material.icons.filled.CheckCircle
-import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.ContentCopy
-import androidx.compose.material.icons.filled.Done
-import androidx.compose.material.icons.filled.Group
-import androidx.compose.material.icons.filled.History
-import androidx.compose.material.icons.filled.PersonAdd
-import androidx.compose.material.icons.filled.PersonRemove
-import androidx.compose.material.icons.filled.Public
-import androidx.compose.material.icons.filled.RadioButtonUnchecked
-import androidx.compose.material.icons.filled.Settings
-import androidx.compose.material.icons.filled.Share
+import com.habittracker.presentation.ui.theme.TahoeIcons
 import androidx.compose.material3.AssistChip
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
@@ -161,7 +143,7 @@ fun GroupHabitDetailScreen(
                     navigationIcon = {
                         IconButton(onClick = onBackClick) {
                             Icon(
-                                imageVector = Filled.ArrowBack,
+                                imageVector = TahoeIcons.ArrowBack,
                                 contentDescription = stringResource(R.string.action_back)
                             )
                         }
@@ -173,7 +155,7 @@ fun GroupHabitDetailScreen(
                                 onClick = { viewModel.toggleManageMode() }
                             ) {
                                 Icon(
-                                    imageVector = if (uiState.isManageMode) Icons.Default.Done else Icons.Default.Settings,
+                                    imageVector = if (uiState.isManageMode) TahoeIcons.Check else TahoeIcons.Cog,
                                     contentDescription = stringResource(R.string.manage_group)
                                 )
                             }
@@ -387,7 +369,7 @@ private fun HabitInfoSection(
                             },
                             leadingIcon = {
                                 Icon(
-                                    Filled.TrendingUp,
+                                    imageVector = TahoeIcons.TrendingUp,
                                     contentDescription = null,
                                     modifier = Modifier.size(16.dp)
                                 )
@@ -432,7 +414,7 @@ private fun HabitInfoSection(
                         )
                     } else {
                         Icon(
-                            imageVector = Icons.Default.Check,
+                            imageVector = TahoeIcons.Check,
                             contentDescription = if (isCompletedToday) {
                                 stringResource(R.string.habits_unmark_complete)
                             } else {
@@ -536,21 +518,21 @@ private fun GroupProgressSection(
             StatisticItem(
                 value = "$completedToday",
                 label = stringResource(R.string.completed),
-                icon = Icons.Default.CheckCircle
+                icon = TahoeIcons.CheckCircle
             )
             
             // Групповая серия
             StatisticItem(
                 value = "$currentStreak",
                 label = stringResource(R.string.streak_days),
-                icon = Filled.TrendingUp
+                icon = TahoeIcons.TrendingUp
             )
             
             // Всего участников
             StatisticItem(
                 value = "$totalParticipants",
                 label = stringResource(R.string.participants),
-                icon = Icons.Default.Group
+                icon = TahoeIcons.Group
             )
         }
     }
@@ -716,9 +698,9 @@ private fun ParticipantListItem(
             ) {
                 Icon(
                     imageVector = if (isCompleted) {
-                        Icons.Default.CheckCircle
+                        TahoeIcons.CheckCircle
                     } else {
-                        Icons.Default.RadioButtonUnchecked
+                        TahoeIcons.Circle
                     },
                     contentDescription = null,
                     tint = if (isCompleted) {
@@ -731,7 +713,7 @@ private fun ParticipantListItem(
                 if (isManageMode && !isOwner) {
                     Spacer(modifier = Modifier.width(12.dp))
                     Icon(
-                        imageVector = Icons.Default.PersonRemove,
+                        imageVector = TahoeIcons.UserMinus,
                         contentDescription = stringResource(R.string.remove_participant),
                         tint = MaterialTheme.colorScheme.error,
                         modifier = Modifier.size(20.dp)
@@ -777,7 +759,7 @@ private fun InviteManagementSection(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Icon(
-                    imageVector = Icons.Default.Public,
+                    imageVector = TahoeIcons.Globe,
                     contentDescription = null,
                     modifier = Modifier.size(20.dp),
                     tint = MaterialTheme.colorScheme.primary
@@ -842,7 +824,7 @@ private fun InviteManagementSection(
                                 }
                             ) {
                                 Icon(
-                                    imageVector = Icons.Default.ContentCopy,
+                                    imageVector = TahoeIcons.Clipboard,
                                     contentDescription = stringResource(R.string.copy_code),
                                     tint = MaterialTheme.colorScheme.primary
                                 )
@@ -851,7 +833,7 @@ private fun InviteManagementSection(
                                 onClick = { onShareCode(inviteCode) }
                             ) {
                                 Icon(
-                                    imageVector = Icons.Default.Share,
+                                    imageVector = TahoeIcons.Share,
                                     contentDescription = stringResource(R.string.share_code),
                                     tint = MaterialTheme.colorScheme.primary
                                 )
@@ -860,7 +842,7 @@ private fun InviteManagementSection(
                                 onClick = onDisableCode
                             ) {
                                 Icon(
-                                    imageVector = Icons.Default.Close,
+                                    imageVector = TahoeIcons.XMark,
                                     contentDescription = stringResource(R.string.disable_code),
                                     tint = MaterialTheme.colorScheme.error
                                 )
@@ -881,7 +863,7 @@ private fun InviteManagementSection(
                         )
                     } else {
                         Icon(
-                            imageVector = Icons.Default.PersonAdd,
+                            imageVector = TahoeIcons.UserPlus,
                             contentDescription = null,
                             modifier = Modifier.size(18.dp)
                         )
@@ -912,7 +894,7 @@ private fun ActivityHistorySection(
         outlined = false,
         action = {
             Icon(
-                imageVector = Icons.Default.History,
+                imageVector = TahoeIcons.ClockHistory,
                 contentDescription = null,
                 modifier = Modifier.size(20.dp),
                 tint = MaterialTheme.colorScheme.primary
@@ -930,7 +912,7 @@ private fun ActivityHistorySection(
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
                     Icon(
-                        imageVector = Icons.Default.History,
+                        imageVector = TahoeIcons.ClockHistory,
                         contentDescription = null,
                         modifier = Modifier.size(48.dp),
                         tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
@@ -1011,7 +993,7 @@ private fun ActivityItem(
         }
 
         Icon(
-            imageVector = if (entry.completed) Icons.Default.CheckCircle else Icons.Default.Cancel,
+            imageVector = if (entry.completed) TahoeIcons.CheckCircle else TahoeIcons.XCircle,
             contentDescription = null,
             tint = if (entry.completed) Color(0xFF4CAF50) else MaterialTheme.colorScheme.error,
             modifier = Modifier.size(20.dp)
@@ -1038,7 +1020,7 @@ private fun LeaveGroupSection(
             content = {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Icon(
-                        imageVector = Filled.ExitToApp,
+                        imageVector = TahoeIcons.ArrowPath,
                         contentDescription = null,
                         tint = MaterialTheme.colorScheme.error
                     )
@@ -1089,7 +1071,7 @@ private fun LeaveGroupSection(
         )
     ) {
         Icon(
-            imageVector = Filled.ExitToApp,
+            imageVector = TahoeIcons.ArrowPath,
             contentDescription = null,
             modifier = Modifier.size(18.dp)
         )
