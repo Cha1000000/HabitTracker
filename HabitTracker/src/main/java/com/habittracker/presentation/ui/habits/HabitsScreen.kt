@@ -323,7 +323,7 @@ fun HabitsScreen(
             ) {
                 // Статистика
                 TahoeDockItem(
-                    icon = TahoeIcons.TrendingUp,
+                    icon = TahoeIcons.ChartBar,
                     label = stringResource(R.string.cd_stats),
                     onClick = { navController.navigate(Screen.Stats.route) },
                     selected = false

@@ -331,9 +331,9 @@ fun NotificationsTopBar(
                 hasReadNotifications -> {
                     // Показываем кнопку "Очистить все"
                     IconButton(onClick = onClearAllRead) {
-                        Text(
-                            text = "🧹",
-                            style = MaterialTheme.typography.titleLarge
+                        Icon(
+                            imageVector = TahoeIcons.Broom,
+                            contentDescription = stringResource(R.string.clear_all_read)
                         )
                     }
                 }

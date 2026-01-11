@@ -225,4 +225,8 @@ object TahoeIcons {
     
     val Circle: ImageVector
         @Composable get() = ImageVector.vectorResource(R.drawable.ic_tahoe_circle)
+    
+    // Cleaning
+    val Broom: ImageVector
+        @Composable get() = ImageVector.vectorResource(R.drawable.ic_tahoe_broom)
 }
