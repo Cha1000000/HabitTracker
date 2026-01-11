@@ -398,7 +398,7 @@ fun ProfileScreen(
                             horizontalAlignment = Alignment.CenterHorizontally
                         ) {
                             Icon(
-                                imageVector = TahoeIcons.TrendingUp,
+                                imageVector = TahoeIcons.ChartBar,
                                 contentDescription = stringResource(R.string.cd_stats),
                                 tint = MaterialTheme.colorScheme.primary
                             )
