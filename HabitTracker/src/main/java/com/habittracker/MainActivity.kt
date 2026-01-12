@@ -29,6 +29,8 @@ import com.habittracker.presentation.ui.theme.HabitTrackerTheme
 import com.habittracker.presentation.util.SoundManager
 import com.habittracker.presentation.viewmodel.AuthState
 import com.habittracker.presentation.viewmodel.AuthViewModel
+import com.habittracker.domain.util.AnalyticsManager
+import com.habittracker.domain.util.ErrorLogger
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -51,6 +53,10 @@ class MainActivity : ComponentActivity() {
     lateinit var dailyReminderScheduler: DailyReminderScheduler
     @Inject
     lateinit var achievementEventManager: AchievementEventManager
+    @Inject
+    lateinit var analyticsManager: AnalyticsManager
+    @Inject
+    lateinit var errorLogger: ErrorLogger
 
     private val authViewModel: AuthViewModel by viewModels()
     private var socialSyncJob: Job? = null
@@ -76,6 +82,13 @@ class MainActivity : ComponentActivity() {
                 AppNavHost(
                     onNavControllerReady = { controller ->
                         navController = controller
+                        // Track screen changes
+                        controller.addOnDestinationChangedListener { _, destination, _ ->
+                            analyticsManager.logScreenView(
+                                screenName = destination.route ?: "unknown",
+                                screenClass = destination.label?.toString()
+                            )
+                        }
                         // Обработка стартового интента из уведомления
                         handleIntentForNavigation(intent)
                     },

@@ -10,6 +10,9 @@ import com.habittracker.data.sync.ChallengeExpirationWorkScheduler
 import com.habittracker.data.sync.SyncWorkScheduler
 import com.habittracker.data.local.seed.AchievementSeeder
 import com.habittracker.domain.usecase.notification.ManageFCMTokenUseCase
+import com.habittracker.data.logging.ReleaseTree
+import com.habittracker.domain.util.ErrorLogger
+import timber.log.Timber
 import dagger.hilt.android.HiltAndroidApp
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -41,11 +44,22 @@ class HabitTrackerApplication : Application(), Configuration.Provider {
     @Inject
     lateinit var achievementSeeder: AchievementSeeder
     
+    @Inject
+    lateinit var errorLogger: ErrorLogger
+    
     // Application-level scope for non-blocking init tasks
     private val applicationScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
     
     override fun onCreate() {
         super.onCreate()
+        
+        // Initialize Timber
+        if (BuildConfig.DEBUG) {
+            Timber.plant(Timber.DebugTree())
+        } else {
+            Timber.plant(ReleaseTree(errorLogger))
+        }
+
         if (BuildConfig.DEBUG) {
             Log.d("HabitTrackerApp", "Application onCreate() called")
         }

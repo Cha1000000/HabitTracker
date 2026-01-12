@@ -22,6 +22,9 @@ import com.habittracker.domain.usecase.habit.GetGroupHabitProgressUseCase
 import com.habittracker.domain.usecase.habit.JoinHabitByCodeUseCase
 import com.habittracker.presentation.state.HabitsUiState
 import com.habittracker.presentation.ui.habits.components.ParticipantProgress
+import com.habittracker.domain.util.AnalyticsEvents
+import com.habittracker.domain.util.AnalyticsManager
+import com.habittracker.domain.util.ErrorLogger
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -82,6 +85,8 @@ class HabitsViewModel @Inject constructor(
     private val getGroupHabitProgressUseCase: GetGroupHabitProgressUseCase,
     private val setHabitRestDayUseCase: com.habittracker.domain.usecase.SetHabitRestDayUseCase,
     private val userPreferencesRepository: UserPreferencesRepository,
+    private val analyticsManager: AnalyticsManager,
+    private val errorLogger: ErrorLogger,
     application: Application
 ) : AndroidViewModel(application) {
 
@@ -660,6 +665,13 @@ class HabitsViewModel @Inject constructor(
         viewModelScope.launch {
             try {
                 val selectedDate = _uiState.value.selectedDate ?: today
+                
+                // Track event
+                analyticsManager.logEvent(
+                    AnalyticsEvents.HABIT_COMPLETED,
+                    mapOf(AnalyticsEvents.Params.HABIT_ID to habitId)
+                )
+
                 // Обновляем UI состояние сразу для отзывчивости
                 updateHabitCompletionStatus(habitId, true, isLoading = true)
                 
@@ -676,9 +688,12 @@ class HabitsViewModel @Inject constructor(
                 val weekStart = getStartOfWeek(selectedDate)
                 loadWeekCompletionData(currentUserId, weekStart, forceReload = true)
             } catch (e: Exception) {
+                errorLogger.logError(e, "Failed to mark habit $habitId completed")
                 // В случае ошибки возвращаем предыдущее состояние
                 updateHabitCompletionStatus(habitId, false, isLoading = false)
-                _uiState.value = _uiState.value.copy(error = getApplication<Application>().getString(R.string.error_mark_habit, e.localizedMessage ?: ""))
+                _uiState.value = _uiState.value.copy(
+                    error = getApplication<Application>().getString(R.string.error_update_habit, e.localizedMessage ?: "")
+                )
             }
         }
     }

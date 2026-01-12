@@ -5,6 +5,10 @@ import com.habittracker.BuildConfig
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.google.firebase.auth.FirebaseAuth
+import com.habittracker.domain.repository.AuthRepository
+import com.habittracker.domain.util.AnalyticsEvents
+import com.habittracker.domain.util.AnalyticsManager
+import com.habittracker.domain.util.ErrorLogger
 import com.habittracker.domain.usecase.LoginUseCase
 import com.habittracker.domain.usecase.RegisterUseCase
 import com.habittracker.domain.usecase.SignInWithGoogleUseCase
@@ -40,7 +44,10 @@ class AuthViewModel @Inject constructor(
     private val registerUseCase: RegisterUseCase,
     private val signInWithGoogleUseCase: SignInWithGoogleUseCase,
     private val signOutUseCase: SignOutUseCase,
-    private val manageFCMTokenUseCase: ManageFCMTokenUseCase
+    private val manageFCMTokenUseCase: ManageFCMTokenUseCase,
+    private val authRepository: AuthRepository,
+    private val analyticsManager: AnalyticsManager,
+    private val errorLogger: ErrorLogger
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(AuthUiState())
@@ -58,7 +65,10 @@ class AuthViewModel @Inject constructor(
 
     private fun checkUserAuthentication() {
         viewModelScope.launch {
-            if (FirebaseAuth.getInstance().currentUser != null) {
+            val userId = authRepository.getCurrentUserId()
+            if (userId != null) {
+                analyticsManager.setUserId(userId)
+                errorLogger.setUserId(userId)
                 _authState.value = AuthState.Success
             } else {
                 _authState.value = AuthState.Unauthenticated
@@ -100,6 +110,11 @@ class AuthViewModel @Inject constructor(
             _authState.value = AuthState.Loading
             loginUseCase(email = uiState.value.email, password = uiState.value.password).collect { result ->
                 result.onSuccess {
+                    val userId = authRepository.getCurrentUserId()
+                    analyticsManager.setUserId(userId)
+                    errorLogger.setUserId(userId ?: "")
+                    analyticsManager.logEvent(AnalyticsEvents.LOGIN)
+                    
                     _authState.value = AuthState.Success
                     _uiState.update { it.copy(isLoading = false) }
                     // Единоразовая инициализация FCM токена после первого успешного входа
@@ -119,6 +134,11 @@ class AuthViewModel @Inject constructor(
             _authState.value = AuthState.Loading
             registerUseCase(email = uiState.value.email, password = uiState.value.password).collect { result ->
                 result.onSuccess {
+                    val userId = authRepository.getCurrentUserId()
+                    analyticsManager.setUserId(userId)
+                    errorLogger.setUserId(userId ?: "")
+                    analyticsManager.logEvent(AnalyticsEvents.SIGN_UP)
+                    
                     _authState.value = AuthState.Success
                     _uiState.update { it.copy(isLoading = false) }
                     // Единоразовая инициализация FCM токена после первого успешного входа
@@ -138,6 +158,11 @@ class AuthViewModel @Inject constructor(
             _authState.value = AuthState.Loading
             signInWithGoogleUseCase().collect { result ->
                 result.onSuccess {
+                    val userId = authRepository.getCurrentUserId()
+                    analyticsManager.setUserId(userId)
+                    errorLogger.setUserId(userId ?: "")
+                    analyticsManager.logEvent(AnalyticsEvents.LOGIN, mapOf("method" to "google"))
+                    
                     _authState.value = AuthState.Success
                     _uiState.update { it.copy(isLoading = false) }
                     // Единоразовая инициализация FCM токена после первого успешного входа
@@ -160,6 +185,8 @@ class AuthViewModel @Inject constructor(
             
             signOutUseCase().collect { result ->
                 result.onSuccess {
+                    analyticsManager.logEvent(AnalyticsEvents.LOGOUT)
+                    analyticsManager.setUserId(null)
                     _authState.value = AuthState.Unauthenticated
                     _uiState.update { AuthUiState() } // Сбрасываем состояние
                 }

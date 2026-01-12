@@ -34,6 +34,9 @@ import com.habittracker.domain.usecase.social.GetFriendsUseCase
 import com.habittracker.presentation.state.AddEditHabitUiState
 import com.habittracker.presentation.utils.GroupHabitConstants
 import com.habittracker.presentation.utils.GroupHabitValidationResult
+import com.habittracker.domain.util.AnalyticsEvents
+import com.habittracker.domain.util.AnalyticsManager
+import com.habittracker.domain.util.ErrorLogger
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
@@ -71,6 +74,8 @@ class AddEditHabitViewModel @Inject constructor(
     private val ensureMySettingsForHabitUseCase: EnsureMySettingsForHabitUseCase,
     private val authRepository: AuthRepository,
     private val getHabitCompletionStatusUseCase: GetHabitCompletionStatusUseCase,
+    private val analyticsManager: AnalyticsManager,
+    private val errorLogger: ErrorLogger,
     savedStateHandle: SavedStateHandle,
 ) : AndroidViewModel(application), IAddEditHabitViewModel {
 
@@ -362,6 +367,14 @@ class AddEditHabitViewModel @Inject constructor(
                         addHabitUseCase(newHabit)
                         Log.d("AddEditHabitViewModel", "Habit saved successfully: ${newHabit.id}")
                         
+                        analyticsManager.logEvent(
+                            AnalyticsEvents.HABIT_CREATED,
+                            mapOf(
+                                AnalyticsEvents.Params.HABIT_ID to newHabit.id,
+                                AnalyticsEvents.Params.HABIT_TYPE to newHabit.type.name
+                            )
+                        )
+                        
                         if (firstHabit == null) firstHabit = newHabit
                         
                         // Планируем напоминание для каждой привычки
@@ -499,6 +512,7 @@ class AddEditHabitViewModel @Inject constructor(
                     sendInvitations()
                 }
             } catch (e: Exception) {
+                errorLogger.logError(e, "Failed to save habit")
                 _uiState.update { it.copy(
                     isLoading = false,
                     error = getApplication<Application>().getString(R.string.error_saving_habit, e.localizedMessage ?: "")

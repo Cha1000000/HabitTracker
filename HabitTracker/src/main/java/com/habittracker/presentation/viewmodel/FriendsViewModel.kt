@@ -10,6 +10,9 @@ import com.habittracker.domain.repository.AuthRepository
 import com.habittracker.domain.repository.SocialRepository
 import com.habittracker.domain.usecase.habit.LeaveSharedHabitsWithFriendUseCase
 import com.habittracker.presentation.state.FriendsUiState
+import com.habittracker.domain.util.AnalyticsEvents
+import com.habittracker.domain.util.AnalyticsManager
+import com.habittracker.domain.util.ErrorLogger
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -36,7 +39,9 @@ import javax.inject.Inject
 class FriendsViewModel @Inject constructor(
     private val socialRepository: SocialRepository,
     private val authRepository: AuthRepository,
-    private val leaveSharedHabitsWithFriendUseCase: LeaveSharedHabitsWithFriendUseCase
+    private val leaveSharedHabitsWithFriendUseCase: LeaveSharedHabitsWithFriendUseCase,
+    private val analyticsManager: AnalyticsManager,
+    private val errorLogger: ErrorLogger
 ) : ViewModel() {
 
     // Текущий пользователь ID
@@ -149,6 +154,10 @@ class FriendsViewModel @Inject constructor(
         viewModelScope.launch {
             socialRepository.sendFriendRequest(_currentUserId.value, userId, message).fold(
                 onSuccess = {
+                    analyticsManager.logEvent(
+                        AnalyticsEvents.FRIEND_REQUEST_SENT,
+                        mapOf(AnalyticsEvents.Params.USER_ID to userId)
+                    )
                     // Успешно отправлено - обновляем поиск
                     val currentQuery = _searchQuery.value
                     if (currentQuery.isNotBlank()) {
@@ -156,6 +165,7 @@ class FriendsViewModel @Inject constructor(
                     }
                 },
                 onFailure = { error ->
+                    errorLogger.logError(error, "Failed to send friend request to $userId")
                     Log.e(TAG, "Failed to send friend request", error)
                     _errorMessage.value = "Не удалось отправить запрос дружбы"
                 }

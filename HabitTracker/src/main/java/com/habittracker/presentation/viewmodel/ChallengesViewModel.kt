@@ -16,6 +16,9 @@ import com.habittracker.domain.usecase.challenge.JoinChallengeUseCase
 import com.habittracker.domain.usecase.challenge.LeaveChallengeUseCase
 import com.habittracker.presentation.state.ChallengeTab
 import com.habittracker.presentation.state.ChallengesUiState
+import com.habittracker.domain.util.AnalyticsEvents
+import com.habittracker.domain.util.AnalyticsManager
+import com.habittracker.domain.util.ErrorLogger
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
@@ -37,7 +40,9 @@ class ChallengesViewModel @Inject constructor(
     private val habitRepository: HabitRepository,
     private val joinChallengeUseCase: JoinChallengeUseCase,
     private val leaveChallengeUseCase: LeaveChallengeUseCase,
-    private val closeExpiredChallengesUseCase: CloseExpiredChallengesUseCase
+    private val closeExpiredChallengesUseCase: CloseExpiredChallengesUseCase,
+    private val analyticsManager: AnalyticsManager,
+    private val errorLogger: ErrorLogger
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(ChallengesUiState())
@@ -145,6 +150,10 @@ class ChallengesViewModel @Inject constructor(
                 try {
                     val result = joinChallengeUseCase(challengeId, userId)
                     if (result.isSuccess) {
+                        analyticsManager.logEvent(
+                            AnalyticsEvents.CHALLENGE_JOINED,
+                            mapOf(AnalyticsEvents.Params.CHALLENGE_ID to challengeId)
+                        )
                         _uiState.value = _uiState.value.copy(
                             showJoinDialog = false,
                             joinChallengeId = null,
@@ -159,6 +168,7 @@ class ChallengesViewModel @Inject constructor(
                         )
                     }
                 } catch (e: Exception) {
+                    errorLogger.logError(e, "Failed to join challenge $challengeId")
                     _uiState.value = _uiState.value.copy(
                         showJoinDialog = false,
                         joinChallengeId = null,
@@ -250,6 +260,10 @@ class ChallengesViewModel @Inject constructor(
 
                 try {
                     challengeRepository.acceptChallengeInvitation(challengeId, userId)
+                    analyticsManager.logEvent(
+                        AnalyticsEvents.CHALLENGE_JOINED,
+                        mapOf(AnalyticsEvents.Params.CHALLENGE_ID to challengeId)
+                    )
                 } catch (e: Exception) {
                     if (previousHabit != null) {
                         runCatching {

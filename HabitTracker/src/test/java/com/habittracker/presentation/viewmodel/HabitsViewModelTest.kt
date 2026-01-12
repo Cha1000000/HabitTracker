@@ -14,6 +14,8 @@ import com.habittracker.domain.model.UserPreferences
 import com.habittracker.domain.repository.AuthRepository
 import com.habittracker.domain.repository.UserPreferencesRepository
 import com.habittracker.domain.repository.UserRepository
+import com.habittracker.domain.util.AnalyticsManager
+import com.habittracker.domain.util.ErrorLogger
 import com.habittracker.domain.usecase.DeleteHabitUseCase
 import com.habittracker.domain.usecase.EnsureMySettingsForHabitUseCase
 import com.habittracker.domain.usecase.GetHabitCompletionStatusUseCase
@@ -71,6 +73,8 @@ class HabitsViewModelTest {
     private val setHabitRestDayUseCase: SetHabitRestDayUseCase = mock()
     private val userPreferencesRepository: UserPreferencesRepository = mock()
     private val application: Application = mock()
+    private val analyticsManager: AnalyticsManager = mock()
+    private val errorLogger: ErrorLogger = mock()
     private lateinit var logMock: MockedStatic<Log>
 
     @Before
@@ -139,6 +143,8 @@ class HabitsViewModelTest {
             getGroupHabitProgressUseCase,
             setHabitRestDayUseCase,
             userPreferencesRepository,
+            analyticsManager,
+            errorLogger,
             application
         )
     }
