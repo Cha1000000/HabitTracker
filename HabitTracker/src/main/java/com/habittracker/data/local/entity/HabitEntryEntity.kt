@@ -27,6 +27,7 @@ data class HabitEntryEntity(
     val value: Int,
     val note: String?,
     val isRestDay: Boolean,
+    val streakBonusAwardedDays: Int?,
     val createdAt: LocalDate,
     val updatedAt: LocalDate
 )

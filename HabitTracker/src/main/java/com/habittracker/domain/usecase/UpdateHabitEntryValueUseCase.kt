@@ -118,8 +118,17 @@ class UpdateHabitEntryValueUseCase @Inject constructor(
                 try {
                     val entries = habitEntryRepository.getEntriesForUserAndHabit(userId, habitId).first()
                     val streak = calculatePointsUseCase.calculateCurrentStreak(habitId, entries, date)
-                    if (streak == 3 || streak == 7 || streak == 30) {
-                        updateUserPointsUseCase(userId, GamificationEvent.StreakBonus(streak))
+                    val isMilestone = (streak == 3 || streak == 7 || streak == 30)
+                    if (isMilestone) {
+                        val alreadyAwardedDays = existingEntry?.streakBonusAwardedDays
+                        val shouldAward = alreadyAwardedDays == null || alreadyAwardedDays < streak
+                        if (shouldAward) {
+                            updateUserPointsUseCase(userId, GamificationEvent.StreakBonus(streak))
+                            // Сохраняем маркер, чтобы бонус не начислялся повторно
+                            habitEntryRepository.updateEntry(
+                                entryToSave.copy(streakBonusAwardedDays = streak, updatedAt = today)
+                            )
+                        }
                     }
                 } catch (e: Exception) {
                     Log.w("UpdateHabitValue", "Streak calc failed", e)

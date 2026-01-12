@@ -3,7 +3,6 @@ package com.habittracker.domain.usecase
 import android.util.Log
 import com.habittracker.data.sync.SyncManager
 import com.habittracker.data.sync.SyncWorkScheduler
-import com.habittracker.domain.model.HabitEntry
 import com.habittracker.domain.model.gamification.GamificationEvent
 import com.habittracker.domain.repository.HabitEntryRepository
 import com.habittracker.domain.usecase.challenge.UpdateChallengeProgressUseCase
@@ -11,15 +10,12 @@ import com.habittracker.domain.usecase.gamification.CalculatePointsUseCase
 import com.habittracker.domain.usecase.gamification.CheckAchievementsUseCase
 import com.habittracker.domain.usecase.gamification.UpdateUserPointsUseCase
 import com.habittracker.domain.usecase.notification.SendGroupHabitPushNotificationUseCase
-import com.habittracker.domain.util.HabitEntryIds
-import com.habittracker.domain.util.SyncPayloads
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.datetime.Clock
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.TimeZone
-import kotlinx.datetime.atStartOfDayIn
 import kotlinx.datetime.toLocalDateTime
 import javax.inject.Inject
 
@@ -63,17 +59,6 @@ class MarkHabitCompletedUseCase @Inject constructor(
         // Проверяем, была ли привычка уже выполнена в этот день
         val existingEntry = habitEntryRepository.getEntry(habitId, userId, date)
         val wasAlreadyCompleted = existingEntry?.completed == true
-        
-        val entry = HabitEntry(
-            habitId = habitId,
-            userId = userId,
-            date = date,
-            completed = true,
-            completedAt = now,
-            note = note,
-            createdAt = today,
-            updatedAt = today
-        )
 
         // 1) Локально в Room + Outbox (Repository handles both)
         habitEntryRepository.markHabitCompleted(habitId, userId, date, note)
@@ -102,8 +87,19 @@ class MarkHabitCompletedUseCase @Inject constructor(
                     try {
                         val entries = habitEntryRepository.getEntriesForUserAndHabit(userId, habitId).first()
                         val streak = calculatePointsUseCase.calculateCurrentStreak(habitId, entries, date)
-                        if (streak == 3 || streak == 7 || streak == 30) {
-                            updateUserPointsUseCase(userId, GamificationEvent.StreakBonus(streak))
+                        val isMilestone = (streak == 3 || streak == 7 || streak == 30)
+                        if (isMilestone) {
+                            val alreadyAwardedDays = existingEntry?.streakBonusAwardedDays
+                            val shouldAward = alreadyAwardedDays == null || alreadyAwardedDays < streak
+                            if (shouldAward) {
+                                updateUserPointsUseCase(userId, GamificationEvent.StreakBonus(streak))
+                                // Сохраняем маркер, чтобы бонус не начислялся повторно
+                                habitEntryRepository.getEntry(habitId, userId, date)?.let { current ->
+                                    habitEntryRepository.updateEntry(
+                                        current.copy(streakBonusAwardedDays = streak, updatedAt = today)
+                                    )
+                                }
+                            }
                         }
                     } catch (e: Exception) {
                         Log.w("MarkHabitCompleted", "Streak bonus calculation failed: ${e.message}", e)

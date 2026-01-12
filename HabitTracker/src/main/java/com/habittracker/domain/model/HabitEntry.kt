@@ -15,6 +15,7 @@ data class HabitEntry(
     val value: Int = 1, // сколько раз выполнил (для привычек с targetValue > 1)
     val note: String? = "",
     val isRestDay: Boolean = false,
+    val streakBonusAwardedDays: Int? = null,
     val createdAt: LocalDate = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault()).date,
     val updatedAt: LocalDate = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault()).date
 )

@@ -85,6 +85,7 @@ object SyncPayloads {
             "value" to entry.value,
             "note" to entry.note,
             "isRestDay" to entry.isRestDay,
+            "streakBonusAwardedDays" to entry.streakBonusAwardedDays,
             "createdAt" to entry.createdAt.toString(),
             "updatedAt" to entry.updatedAt.toString()
         )

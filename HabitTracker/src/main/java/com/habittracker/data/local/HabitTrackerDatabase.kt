@@ -54,7 +54,7 @@ import com.habittracker.data.local.entity.UserEntity
         NotificationReadStatusEntity::class,
         GroupHabitNotificationEntity::class
     ],
-    version = 12,
+    version = 13,
     exportSchema = false
 )
 @TypeConverters(Converters::class)
@@ -167,6 +167,12 @@ abstract class HabitTrackerDatabase : RoomDatabase() {
             }
         }
 
+        private val MIGRATION_12_13 = object : Migration(12, 13) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE habit_entries ADD COLUMN streakBonusAwardedDays INTEGER")
+            }
+        }
+
         @Volatile
         private var INSTANCE: HabitTrackerDatabase? = null
 
@@ -191,7 +197,8 @@ abstract class HabitTrackerDatabase : RoomDatabase() {
                     MIGRATION_8_9,
                     MIGRATION_9_10,
                     MIGRATION_10_11,
-                    MIGRATION_11_12
+                    MIGRATION_11_12,
+                    MIGRATION_12_13
                 )
 
                 val instance = builder.build()
