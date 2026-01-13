@@ -28,7 +28,9 @@ fun AchievementEntity.toDomain(): Achievement {
         pointsReward = pointsReward,
         isSecret = isSecret,
         isActive = isActive,
-        createdAt = Instant.fromEpochMilliseconds(createdAt)
+        createdAt = Instant.fromEpochMilliseconds(createdAt),
+        titleResId = titleResId,
+        descriptionResId = descriptionResId
     )
 }
 
@@ -46,7 +48,9 @@ fun Achievement.toEntity(): AchievementEntity {
         pointsReward = pointsReward,
         isSecret = isSecret,
         isActive = isActive,
-        createdAt = createdAt.toEpochMilliseconds()
+        createdAt = createdAt.toEpochMilliseconds(),
+        titleResId = titleResId,
+        descriptionResId = descriptionResId
     )
 }
 

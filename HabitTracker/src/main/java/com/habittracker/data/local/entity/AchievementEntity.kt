@@ -1,5 +1,6 @@
 package com.habittracker.data.local.entity
 
+import androidx.annotation.StringRes
 import androidx.room.Entity
 import androidx.room.PrimaryKey
 
@@ -18,5 +19,7 @@ data class AchievementEntity(
     val pointsReward: Int,
     val isSecret: Boolean = false,
     val isActive: Boolean = true,
-    val createdAt: Long
+    val createdAt: Long,
+    @StringRes val titleResId: Int? = null,
+    @StringRes val descriptionResId: Int? = null
 )

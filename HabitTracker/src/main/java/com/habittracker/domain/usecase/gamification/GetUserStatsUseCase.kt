@@ -14,6 +14,7 @@ import com.habittracker.domain.model.gamification.TimeStats
 import com.habittracker.domain.model.gamification.UserStats
 import com.habittracker.domain.model.getLevelProgress
 import com.habittracker.domain.model.getLevelTitle
+import com.habittracker.domain.model.getLevelTitleResId
 import com.habittracker.domain.model.isActiveOnDayOfWeek
 import com.habittracker.domain.repository.ChallengeRepository
 import com.habittracker.domain.repository.HabitEntryRepository
@@ -87,6 +88,7 @@ class GetUserStatsUseCase @Inject constructor(
                 pointsToNextLevel = (nextLevelPoints - user.points).coerceAtLeast(0),
                 progress = user.getLevelProgress(),
                 levelTitle = user.getLevelTitle(),
+                levelTitleResId = user.getLevelTitleResId(),
                 isMaxLevel = calculatedLevel >= 100
             )
         )

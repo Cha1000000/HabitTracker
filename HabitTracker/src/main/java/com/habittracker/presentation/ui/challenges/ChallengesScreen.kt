@@ -382,7 +382,7 @@ private fun EmptyState(
         
         Text(
             text = when (tab) {
-                ChallengeTab.INVITATIONS -> "Нет приглашений"
+                ChallengeTab.INVITATIONS -> stringResource(R.string.no_challenge_invitations)
                 ChallengeTab.ACTIVE -> stringResource(R.string.no_active_challenges)
                 ChallengeTab.ENDING_SOON -> stringResource(R.string.no_ending_soon_challenges)
                 ChallengeTab.COMPLETED -> stringResource(R.string.no_completed_challenges)
@@ -396,7 +396,7 @@ private fun EmptyState(
         
         Text(
             text = when (tab) {
-                ChallengeTab.INVITATIONS -> "Когда друзья пригласят вас в челлендж, приглашения появятся здесь"
+                ChallengeTab.INVITATIONS -> stringResource(R.string.no_challenge_invitations_description)
                 ChallengeTab.ACTIVE -> stringResource(R.string.no_active_challenges_description)
                 ChallengeTab.ENDING_SOON -> stringResource(R.string.no_ending_soon_challenges_description)
                 ChallengeTab.COMPLETED -> stringResource(R.string.no_completed_challenges_description)

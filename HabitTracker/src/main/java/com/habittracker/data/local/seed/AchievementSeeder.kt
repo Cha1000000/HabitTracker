@@ -27,8 +27,9 @@ class AchievementSeeder @Inject constructor(
         /**
          * Версия данных достижений.
          * Увеличивайте при добавлении новых достижений или изменении существующих.
+         * v2: Добавлены titleResId и descriptionResId для локализации
          */
-        private const val CURRENT_VERSION = 1
+        private const val CURRENT_VERSION = 2
     }
 
     private val prefs: SharedPreferences by lazy {

@@ -1,5 +1,6 @@
 package com.habittracker.domain.model
 
+import androidx.annotation.StringRes
 import androidx.room.Entity
 import androidx.room.PrimaryKey
 import kotlinx.datetime.Instant
@@ -20,7 +21,9 @@ data class Achievement(
     val pointsReward: Int, // очки за получение достижения
     val isSecret: Boolean = false, // скрытое достижение
     val isActive: Boolean = true,
-    val createdAt: Instant
+    val createdAt: Instant,
+    @StringRes val titleResId: Int? = null,
+    @StringRes val descriptionResId: Int? = null
 )
 
 /**

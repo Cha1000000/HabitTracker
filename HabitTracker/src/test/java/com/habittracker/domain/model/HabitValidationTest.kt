@@ -1,5 +1,6 @@
 package com.habittracker.domain.model
 
+import com.habittracker.domain.provider.StringProvider
 import kotlinx.datetime.Clock
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toLocalDateTime
@@ -10,6 +11,14 @@ class HabitValidationTest {
 
     private val now = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault())
     private val today = now.date
+    
+    // Mock StringProvider that returns the resource ID as string for testing
+    private val mockStringProvider = object : StringProvider {
+        override fun getString(resId: Int): String = "test_string_$resId"
+        override fun getString(resId: Int, vararg formatArgs: Any): String = "test_string_$resId"
+    }
+    
+    private val habitValidation = HabitValidation(mockStringProvider)
 
     private fun createValidHabit(): Habit = Habit(
         id = "test-id",
@@ -36,7 +45,7 @@ class HabitValidationTest {
     @Test
     fun `validateHabit should return valid for correct habit`() {
         val habit = createValidHabit()
-        val result = HabitValidation.validateHabit(habit)
+        val result = habitValidation.validateHabit(habit)
         
         assertTrue("Valid habit should pass validation", result.isValid)
         assertTrue("Valid habit should have no errors", result.errors.isEmpty())
@@ -45,7 +54,7 @@ class HabitValidationTest {
     @Test
     fun `validateHabit should fail for empty title`() {
         val habit = createValidHabit().copy(title = "")
-        val result = HabitValidation.validateHabit(habit)
+        val result = habitValidation.validateHabit(habit)
         
         assertFalse("Empty title should fail validation", result.isValid)
         assertTrue("Should have title error", result.hasError(HabitValidation.HabitField.TITLE))
@@ -56,7 +65,7 @@ class HabitValidationTest {
     fun `validateHabit should fail for too long title`() {
         val longTitle = "a".repeat(HabitValidation.MAX_TITLE_LENGTH + 1)
         val habit = createValidHabit().copy(title = longTitle)
-        val result = HabitValidation.validateHabit(habit)
+        val result = habitValidation.validateHabit(habit)
         
         assertFalse("Too long title should fail validation", result.isValid)
         assertTrue("Should have title error", result.hasError(HabitValidation.HabitField.TITLE))
@@ -67,7 +76,7 @@ class HabitValidationTest {
     fun `validateHabit should fail for too long description`() {
         val longDescription = "a".repeat(HabitValidation.MAX_DESCRIPTION_LENGTH + 1)
         val habit = createValidHabit().copy(description = longDescription)
-        val result = HabitValidation.validateHabit(habit)
+        val result = habitValidation.validateHabit(habit)
         
         assertFalse("Too long description should fail validation", result.isValid)
         assertTrue("Should have description error", result.hasError(HabitValidation.HabitField.DESCRIPTION))
@@ -77,7 +86,7 @@ class HabitValidationTest {
     @Test
     fun `validateHabit should fail for invalid color format`() {
         val habit = createValidHabit().copy(color = "invalid-color")
-        val result = HabitValidation.validateHabit(habit)
+        val result = habitValidation.validateHabit(habit)
         
         assertFalse("Invalid color should fail validation", result.isValid)
         assertTrue("Should have color error", result.hasError(HabitValidation.HabitField.COLOR))
@@ -90,7 +99,7 @@ class HabitValidationTest {
         
         validColors.forEach { color ->
             val habit = createValidHabit().copy(color = color)
-            val result = HabitValidation.validateHabit(habit)
+            val result = habitValidation.validateHabit(habit)
             
             assertFalse("Color $color should be valid", result.hasError(HabitValidation.HabitField.COLOR))
         }
@@ -99,14 +108,14 @@ class HabitValidationTest {
     @Test
     fun `validateHabit should fail for invalid target value`() {
         val habit1 = createValidHabit().copy(targetValue = 0)
-        val result1 = HabitValidation.validateHabit(habit1)
+        val result1 = habitValidation.validateHabit(habit1)
         
         assertFalse("Zero target value should fail validation", result1.isValid)
         assertTrue("Should have target value error", result1.hasError(HabitValidation.HabitField.TARGET_VALUE))
         assertEquals("Should have correct error code", "TARGET_VALUE_TOO_LOW", result1.getError(HabitValidation.HabitField.TARGET_VALUE)?.code)
 
         val habit2 = createValidHabit().copy(targetValue = HabitValidation.MAX_TARGET_VALUE + 1)
-        val result2 = HabitValidation.validateHabit(habit2)
+        val result2 = habitValidation.validateHabit(habit2)
         
         assertFalse("Too high target value should fail validation", result2.isValid)
         assertTrue("Should have target value error", result2.hasError(HabitValidation.HabitField.TARGET_VALUE))
@@ -116,7 +125,7 @@ class HabitValidationTest {
     @Test
     fun `validateHabit should fail for empty unit`() {
         val habit = createValidHabit().copy(unit = "")
-        val result = HabitValidation.validateHabit(habit)
+        val result = habitValidation.validateHabit(habit)
         
         assertFalse("Empty unit should fail validation", result.isValid)
         assertTrue("Should have unit error", result.hasError(HabitValidation.HabitField.UNIT))
@@ -129,7 +138,7 @@ class HabitValidationTest {
             type = HabitType.GROUP,
             maxParticipants = 1 // Too low for group habit
         )
-        val result = HabitValidation.validateHabit(groupHabit)
+        val result = habitValidation.validateHabit(groupHabit)
         
         assertFalse("Group habit with too few max participants should fail", result.isValid)
         assertTrue("Should have max participants error", result.hasError(HabitValidation.HabitField.MAX_PARTICIPANTS))
@@ -142,7 +151,7 @@ class HabitValidationTest {
             type = HabitType.GROUP,
             inviteCode = "invalid-code"
         )
-        val result = HabitValidation.validateHabit(groupHabit)
+        val result = habitValidation.validateHabit(groupHabit)
         
         assertFalse("Group habit with invalid invite code should fail", result.isValid)
         assertTrue("Should have invite code error", result.hasError(HabitValidation.HabitField.INVITE_CODE))
@@ -157,7 +166,7 @@ class HabitValidationTest {
             maxParticipants = 10,
             participants = tooManyParticipants
         )
-        val result = HabitValidation.validateHabit(groupHabit)
+        val result = habitValidation.validateHabit(groupHabit)
         
         assertFalse("Group habit with too many participants should fail", result.isValid)
         assertTrue("Should have participants error", result.hasError(HabitValidation.HabitField.PARTICIPANTS))
@@ -186,8 +195,8 @@ class HabitValidationTest {
         val validHabit = createValidHabit()
         val invalidHabit = createValidHabit().copy(title = "")
         
-        assertTrue("Valid habit should return true", HabitValidation.isValidHabit(validHabit))
-        assertFalse("Invalid habit should return false", HabitValidation.isValidHabit(invalidHabit))
+        assertTrue("Valid habit should return true", habitValidation.isValidHabit(validHabit))
+        assertFalse("Invalid habit should return false", habitValidation.isValidHabit(invalidHabit))
     }
 
     @Test
@@ -198,7 +207,7 @@ class HabitValidationTest {
             targetValue = 0, // Invalid target value
             unit = "" // Empty unit
         )
-        val result = HabitValidation.validateHabit(invalidHabit)
+        val result = habitValidation.validateHabit(invalidHabit)
         
         assertFalse("Multiple invalid fields should fail validation", result.isValid)
         assertEquals("Should have 4 errors", 4, result.errors.size)

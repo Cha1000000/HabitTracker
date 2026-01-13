@@ -4,6 +4,8 @@ import com.habittracker.domain.model.Challenge
 import com.habittracker.domain.model.ChallengeStatus
 import com.habittracker.domain.model.ChallengeType
 import com.habittracker.domain.model.gamification.GamificationEvent
+import com.habittracker.R
+import com.habittracker.domain.provider.StringProvider
 import com.habittracker.domain.repository.AuthRepository
 import com.habittracker.domain.repository.ChallengeRepository
 import com.habittracker.domain.repository.SocialRepository
@@ -22,7 +24,8 @@ class CloseExpiredChallengesUseCase @Inject constructor(
     private val challengeRepository: ChallengeRepository,
     private val socialRepository: SocialRepository,
     private val updateUserPointsUseCase: UpdateUserPointsUseCase,
-    private val checkAchievementsUseCase: CheckAchievementsUseCase
+    private val checkAchievementsUseCase: CheckAchievementsUseCase,
+    private val stringProvider: StringProvider
 ) {
     suspend operator fun invoke(): Result<Int> {
         return try {
@@ -129,7 +132,7 @@ class CloseExpiredChallengesUseCase @Inject constructor(
             }
 
             val ratio = if (target > 0) min(value.toFloat() / target.toFloat(), 1f) else 0f
-            if (ratio > bestRatio || (ratio == bestRatio && value > bestValue) || (ratio == bestRatio && value == bestValue && (bestUserId == null || userId < bestUserId!!))) {
+            if (ratio > bestRatio || (ratio == bestRatio && value > bestValue) || (ratio == bestRatio && value == bestValue && (bestUserId == null || userId < bestUserId))) {
                 bestRatio = ratio
                 bestValue = value
                 bestUserId = userId
@@ -141,7 +144,7 @@ class CloseExpiredChallengesUseCase @Inject constructor(
 
     private suspend fun notifyExpired(challenge: Challenge, participantIds: List<String>) {
         try {
-            val reason = "Челлендж истёк без победителя"
+            val reason = stringProvider.getString(R.string.challenge_expired_no_winner)
             participantIds.forEach { userId ->
                 socialRepository.sendChallengeCancelledNotification(
                     toUserId = userId,
@@ -157,13 +160,13 @@ class CloseExpiredChallengesUseCase @Inject constructor(
 
     private suspend fun notifyCompleted(challenge: Challenge, participantIds: List<String>, winnerId: String) {
         try {
-            val winnerName = socialRepository.getUserById(winnerId)?.name ?: "Участник"
+            val winnerName = socialRepository.getUserById(winnerId)?.name ?: stringProvider.getString(R.string.default_participant_name)
             participantIds.forEach { userId ->
                 val isWinner = userId == winnerId
                 val message = if (isWinner) {
-                    "Поздравляем! Вы победили в челлендже \"${challenge.title}\"!"
+                    stringProvider.getString(R.string.challenge_won_message, challenge.title)
                 } else {
-                    "Челлендж \"${challenge.title}\" завершен. $winnerName стал победителем!"
+                    stringProvider.getString(R.string.challenge_completed_winner_message, challenge.title, winnerName)
                 }
 
                 socialRepository.sendChallengeCompletedNotification(

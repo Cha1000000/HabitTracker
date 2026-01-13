@@ -4,6 +4,8 @@ import com.habittracker.domain.model.Challenge
 import com.habittracker.domain.model.ChallengeStatus
 import com.habittracker.domain.model.ChallengeType
 import com.habittracker.domain.model.isCompleted
+import com.habittracker.R
+import com.habittracker.domain.provider.StringProvider
 import com.habittracker.domain.repository.ChallengeRepository
 import com.habittracker.domain.repository.HabitEntryRepository
 import com.habittracker.domain.repository.SocialRepository
@@ -17,7 +19,8 @@ class UpdateChallengeProgressUseCase @Inject constructor(
     private val challengeRepository: ChallengeRepository,
     private val habitEntryRepository: HabitEntryRepository,
     private val socialRepository: SocialRepository,
-    private val getChallengeResultsUseCase: GetChallengeResultsUseCase
+    private val getChallengeResultsUseCase: GetChallengeResultsUseCase,
+    private val stringProvider: StringProvider
 ) {
     /**
      * Обновляет прогресс челленджа после выполнения/невыполнения привычки
@@ -95,7 +98,7 @@ class UpdateChallengeProgressUseCase @Inject constructor(
                             participantId,
                             challenge.id,
                             challenge.title,
-                            "Челлендж истёк без победителя"
+                            stringProvider.getString(R.string.challenge_expired_no_winner)
                         )
                     }
                 } catch (_: Exception) {
@@ -155,9 +158,9 @@ class UpdateChallengeProgressUseCase @Inject constructor(
             participants.forEach { participant ->
                 val isWinner = participant.isWinner
                 val message = if (isWinner) {
-                    "Поздравляем! Вы победили в челлендже \"${challenge.title}\"!"
+                    stringProvider.getString(R.string.challenge_won_message, challenge.title)
                 } else {
-                    "Челлендж \"${challenge.title}\" завершен. ${winner?.user?.name ?: "Участник"} стал победителем!"
+                    stringProvider.getString(R.string.challenge_completed_winner_message, challenge.title, winner?.user?.name ?: stringProvider.getString(R.string.default_participant_name))
                 }
                 
                 socialRepository.sendChallengeCompletedNotification(
@@ -182,10 +185,10 @@ class UpdateChallengeProgressUseCase @Inject constructor(
     suspend fun forceFinishChallenge(challengeId: String, winnerId: String? = null): Result<Challenge> {
         return try {
             val challenge = challengeRepository.getChallengeById(challengeId)
-                ?: return Result.failure(Exception("Челлендж не найден"))
+                ?: return Result.failure(Exception(stringProvider.getString(R.string.error_challenge_not_found)))
             
             if (challenge.isCompleted()) {
-                return Result.failure(Exception("Челлендж уже завершен"))
+                return Result.failure(Exception(stringProvider.getString(R.string.error_challenge_completed)))
             }
             
             val today = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault()).date
@@ -221,14 +224,14 @@ class UpdateChallengeProgressUseCase @Inject constructor(
     suspend fun cancelChallenge(challengeId: String, reason: String = ""): Result<Challenge> {
         return try {
             val challenge = challengeRepository.getChallengeById(challengeId)
-                ?: return Result.failure(Exception("Челлендж не найден"))
+                ?: return Result.failure(Exception(stringProvider.getString(R.string.error_challenge_not_found)))
             
             if (challenge.isCompleted()) {
-                return Result.failure(Exception("Нельзя отменить завершенный челлендж"))
+                return Result.failure(Exception(stringProvider.getString(R.string.error_cannot_cancel_completed)))
             }
             
             if (challenge.status == ChallengeStatus.CANCELLED) {
-                return Result.failure(Exception("Челлендж уже отменен"))
+                return Result.failure(Exception(stringProvider.getString(R.string.error_challenge_already_cancelled)))
             }
             val today = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault()).date
             val updatedChallenge = challenge.copy(
@@ -245,7 +248,7 @@ class UpdateChallengeProgressUseCase @Inject constructor(
                         participantId,
                         challenge.id,
                         challenge.title,
-                        reason.ifBlank { "Челлендж отменен создателем" }
+                        reason.ifBlank { stringProvider.getString(R.string.challenge_cancelled_by_creator) }
                     )
                 }
             } catch (_: Exception) {

@@ -52,8 +52,6 @@ class HabitTrackerFirebaseMessagingService : FirebaseMessagingService() {
     companion object {
         private const val TAG = "FCMService"
         private const val CHANNEL_ID = "habit_tracker_notifications"
-        private const val CHANNEL_NAME = "HabitTracker Уведомления"
-        private const val CHANNEL_DESCRIPTION = "Уведомления о групповых привычках и социальных взаимодействиях"
     }
 
     override fun onCreate() {
@@ -122,8 +120,8 @@ class HabitTrackerFirebaseMessagingService : FirebaseMessagingService() {
                 // Сохраняем в локальную очередь
                 serviceScope.launch {
                     try {
-                        val titleFromData = data["title"] ?: notification?.title ?: "HabitTracker"
-                        val bodyFromData = data["body"] ?: notification?.body ?: "У вас новое уведомление"
+                        val titleFromData = data["title"] ?: notification?.title ?: getString(R.string.notification_default_title)
+                        val bodyFromData = data["body"] ?: notification?.body ?: getString(R.string.notification_default_body)
                         savePendingNotification(
                             recipientUserId = recipientUserId,
                             type = notificationType,
@@ -156,8 +154,8 @@ class HabitTrackerFirebaseMessagingService : FirebaseMessagingService() {
             !(appStateManager.isHabitsScreenActive() || appStateManager.isNotificationsScreenActive())
         
         if (shouldShowNotification) {
-            val titleToShow = data["title"] ?: notification?.title ?: "HabitTracker"
-            val bodyToShow = data["body"] ?: notification?.body ?: "У вас новое уведомление"
+            val titleToShow = data["title"] ?: notification?.title ?: getString(R.string.notification_default_title)
+            val bodyToShow = data["body"] ?: notification?.body ?: getString(R.string.notification_default_body)
             showNotification(
                 title = titleToShow,
                 body = bodyToShow,
@@ -207,10 +205,10 @@ class HabitTrackerFirebaseMessagingService : FirebaseMessagingService() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             val channel = NotificationChannel(
                 CHANNEL_ID,
-                CHANNEL_NAME,
+                getString(R.string.notification_channel_name),
                 NotificationManager.IMPORTANCE_HIGH
             ).apply {
-                description = CHANNEL_DESCRIPTION
+                description = getString(R.string.notification_channel_description)
                 enableLights(true)
                 enableVibration(true)
                 setShowBadge(true)
@@ -412,43 +410,43 @@ class HabitTrackerFirebaseMessagingService : FirebaseMessagingService() {
         val (type, entityId, message) = when (notificationType) {
             "group_habit_completed" -> {
                 if (habitId == null) return
-                val name = data["participant_name"] ?: "Участник"
-                Triple("PARTICIPANT_COMPLETED", habitId, data["body"] ?: "$name выполнил привычку!")
+                val name = data["participant_name"] ?: getString(R.string.default_participant_name)
+                Triple("PARTICIPANT_COMPLETED", habitId, data["body"] ?: getString(R.string.notification_fallback_participant_completed, name))
             }
             "habit_invitation_accepted" -> {
                 if (habitId == null) return
-                val name = data["acceptedByName"] ?: "Пользователь"
-                Triple("INVITATION_ACCEPTED", habitId, data["body"] ?: "$name принял ваше приглашение")
+                val name = data["acceptedByName"] ?: getString(R.string.default_user_name)
+                Triple("INVITATION_ACCEPTED", habitId, data["body"] ?: getString(R.string.notification_fallback_invitation_accepted, name))
             }
             "new_participant" -> {
                 if (habitId == null) return
-                val name = data["participant_name"] ?: "Пользователь"
-                Triple("FRIEND_JOINED", habitId, data["body"] ?: "$name присоединился к привычке")
+                val name = data["participant_name"] ?: getString(R.string.default_user_name)
+                Triple("FRIEND_JOINED", habitId, data["body"] ?: getString(R.string.notification_fallback_friend_joined, name))
             }
             "challenge_invitation" -> {
-                val challengeTitle = data["challengeTitle"] ?: "Челлендж"
+                val challengeTitle = data["challengeTitle"] ?: getString(R.string.challenge_default_title)
                 val id = challengeId ?: "unknown"
-                Triple("CHALLENGE_INVITATION", id, data["body"] ?: "Вас пригласили в челлендж '$challengeTitle'")
+                Triple("CHALLENGE_INVITATION", id, data["body"] ?: getString(R.string.notification_fallback_challenge_invitation, challengeTitle))
             }
             "challenge_completed" -> {
-                val challengeTitle = data["challengeTitle"] ?: "Челлендж"
+                val challengeTitle = data["challengeTitle"] ?: getString(R.string.challenge_default_title)
                 val id = challengeId ?: "unknown"
-                Triple("CHALLENGE_COMPLETED", id, data["body"] ?: "Челлендж '$challengeTitle' завершен")
+                Triple("CHALLENGE_COMPLETED", id, data["body"] ?: getString(R.string.notification_fallback_challenge_completed, challengeTitle))
             }
             "challenge_cancelled" -> {
-                val challengeTitle = data["challengeTitle"] ?: "Челлендж"
+                val challengeTitle = data["challengeTitle"] ?: getString(R.string.challenge_default_title)
                 val id = challengeId ?: "unknown"
-                Triple("CHALLENGE_CANCELLED", id, data["body"] ?: "Челлендж '$challengeTitle' отменен")
+                Triple("CHALLENGE_CANCELLED", id, data["body"] ?: getString(R.string.notification_fallback_challenge_cancelled, challengeTitle))
             }
             "challenge_joined" -> {
-                val challengeTitle = data["challengeTitle"] ?: "Челлендж"
+                val challengeTitle = data["challengeTitle"] ?: getString(R.string.challenge_default_title)
                 val id = challengeId ?: "unknown"
-                Triple("CHALLENGE_JOINED", id, data["body"] ?: "Новый участник присоединился к челленджу '$challengeTitle'")
+                Triple("CHALLENGE_JOINED", id, data["body"] ?: getString(R.string.notification_fallback_challenge_joined, challengeTitle))
             }
             "challenge_left" -> {
-                val challengeTitle = data["challengeTitle"] ?: "Челлендж"
+                val challengeTitle = data["challengeTitle"] ?: getString(R.string.challenge_default_title)
                 val id = challengeId ?: "unknown"
-                Triple("CHALLENGE_LEFT", id, data["body"] ?: "Участник покинул челлендж '$challengeTitle'")
+                Triple("CHALLENGE_LEFT", id, data["body"] ?: getString(R.string.notification_fallback_challenge_left, challengeTitle))
             }
             else -> return
         }

@@ -21,6 +21,8 @@ import com.habittracker.domain.usecase.habit.GenerateHabitInviteCodeUseCase
 import com.habittracker.domain.usecase.habit.SendHabitInvitationUseCase
 import com.habittracker.domain.usecase.social.GetFriendsUseCase
 import com.habittracker.domain.repository.AuthRepository
+import com.habittracker.domain.model.HabitValidation
+import com.habittracker.domain.provider.StringProvider
 import com.habittracker.domain.util.AnalyticsManager
 import com.habittracker.domain.util.ErrorLogger
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -63,6 +65,13 @@ class AddEditHabitViewModelTest {
     private val getHabitCompletionStatusUseCase: GetHabitCompletionStatusUseCase = mock()
     private val analyticsManager: AnalyticsManager = mock()
     private val errorLogger: ErrorLogger = mock()
+    
+    // Mock StringProvider for tests
+    private val fakeStringProvider = object : StringProvider {
+        override fun getString(resId: Int): String = "test_string_$resId"
+        override fun getString(resId: Int, vararg formatArgs: Any): String = "test_string_$resId"
+    }
+    private val habitValidation = HabitValidation(fakeStringProvider)
 
     private lateinit var logMock: MockedStatic<Log>
 
@@ -125,6 +134,7 @@ class AddEditHabitViewModelTest {
             getHabitCompletionStatusUseCase = getHabitCompletionStatusUseCase,
             analyticsManager = analyticsManager,
             errorLogger = errorLogger,
+            habitValidation = habitValidation,
             savedStateHandle = SavedStateHandle(mapOf("habitId" to habitId))
         )
 

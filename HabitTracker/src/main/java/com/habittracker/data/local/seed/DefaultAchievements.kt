@@ -1,5 +1,6 @@
 package com.habittracker.data.local.seed
 
+import com.habittracker.R
 import com.habittracker.data.local.entity.AchievementEntity
 import kotlinx.datetime.Clock
 
@@ -37,7 +38,9 @@ object DefaultAchievements {
             pointsReward = 15,
             isSecret = false,
             isActive = true,
-            createdAt = createdAt
+            createdAt = createdAt,
+            titleResId = R.string.achievement_streak_3_title,
+            descriptionResId = R.string.achievement_streak_3_desc
         ),
         AchievementEntity(
             id = "streak_7",
@@ -52,7 +55,9 @@ object DefaultAchievements {
             pointsReward = 50,
             isSecret = false,
             isActive = true,
-            createdAt = createdAt
+            createdAt = createdAt,
+            titleResId = R.string.achievement_streak_7_title,
+            descriptionResId = R.string.achievement_streak_7_desc
         ),
         AchievementEntity(
             id = "streak_21",
@@ -67,7 +72,9 @@ object DefaultAchievements {
             pointsReward = 100,
             isSecret = false,
             isActive = true,
-            createdAt = createdAt
+            createdAt = createdAt,
+            titleResId = R.string.achievement_streak_21_title,
+            descriptionResId = R.string.achievement_streak_21_desc
         ),
         AchievementEntity(
             id = "streak_30",
@@ -82,7 +89,9 @@ object DefaultAchievements {
             pointsReward = 200,
             isSecret = false,
             isActive = true,
-            createdAt = createdAt
+            createdAt = createdAt,
+            titleResId = R.string.achievement_streak_30_title,
+            descriptionResId = R.string.achievement_streak_30_desc
         ),
         AchievementEntity(
             id = "streak_100",
@@ -97,7 +106,9 @@ object DefaultAchievements {
             pointsReward = 500,
             isSecret = false,
             isActive = true,
-            createdAt = createdAt
+            createdAt = createdAt,
+            titleResId = R.string.achievement_streak_100_title,
+            descriptionResId = R.string.achievement_streak_100_desc
         ),
         AchievementEntity(
             id = "streak_365",
@@ -112,7 +123,9 @@ object DefaultAchievements {
             pointsReward = 1000,
             isSecret = false,
             isActive = true,
-            createdAt = createdAt
+            createdAt = createdAt,
+            titleResId = R.string.achievement_streak_365_title,
+            descriptionResId = R.string.achievement_streak_365_desc
         )
     )
 
@@ -134,7 +147,9 @@ object DefaultAchievements {
             pointsReward = 25,
             isSecret = false,
             isActive = true,
-            createdAt = createdAt
+            createdAt = createdAt,
+            titleResId = R.string.achievement_phoenix_title,
+            descriptionResId = R.string.achievement_phoenix_desc
         ),
         AchievementEntity(
             id = "comeback_kid",
@@ -149,7 +164,9 @@ object DefaultAchievements {
             pointsReward = 30,
             isSecret = true,
             isActive = true,
-            createdAt = createdAt
+            createdAt = createdAt,
+            titleResId = R.string.achievement_comeback_title,
+            descriptionResId = R.string.achievement_comeback_desc
         )
     )
 
@@ -171,7 +188,9 @@ object DefaultAchievements {
             pointsReward = 20,
             isSecret = false,
             isActive = true,
-            createdAt = createdAt
+            createdAt = createdAt,
+            titleResId = R.string.achievement_completions_10_title,
+            descriptionResId = R.string.achievement_completions_10_desc
         ),
         AchievementEntity(
             id = "completions_50",
@@ -186,7 +205,9 @@ object DefaultAchievements {
             pointsReward = 50,
             isSecret = false,
             isActive = true,
-            createdAt = createdAt
+            createdAt = createdAt,
+            titleResId = R.string.achievement_completions_50_title,
+            descriptionResId = R.string.achievement_completions_50_desc
         ),
         AchievementEntity(
             id = "completions_100",
@@ -201,7 +222,9 @@ object DefaultAchievements {
             pointsReward = 100,
             isSecret = false,
             isActive = true,
-            createdAt = createdAt
+            createdAt = createdAt,
+            titleResId = R.string.achievement_completions_100_title,
+            descriptionResId = R.string.achievement_completions_100_desc
         ),
         AchievementEntity(
             id = "completions_500",
@@ -216,7 +239,9 @@ object DefaultAchievements {
             pointsReward = 250,
             isSecret = false,
             isActive = true,
-            createdAt = createdAt
+            createdAt = createdAt,
+            titleResId = R.string.achievement_completions_500_title,
+            descriptionResId = R.string.achievement_completions_500_desc
         ),
         AchievementEntity(
             id = "completions_1000",
@@ -231,7 +256,9 @@ object DefaultAchievements {
             pointsReward = 500,
             isSecret = false,
             isActive = true,
-            createdAt = createdAt
+            createdAt = createdAt,
+            titleResId = R.string.achievement_completions_1000_title,
+            descriptionResId = R.string.achievement_completions_1000_desc
         ),
         AchievementEntity(
             id = "habits_created_1",
@@ -246,7 +273,9 @@ object DefaultAchievements {
             pointsReward = 10,
             isSecret = false,
             isActive = true,
-            createdAt = createdAt
+            createdAt = createdAt,
+            titleResId = R.string.achievement_first_steps_title,
+            descriptionResId = R.string.achievement_first_steps_desc
         ),
         AchievementEntity(
             id = "habits_created_5",
@@ -261,7 +290,9 @@ object DefaultAchievements {
             pointsReward = 30,
             isSecret = false,
             isActive = true,
-            createdAt = createdAt
+            createdAt = createdAt,
+            titleResId = R.string.achievement_collector_title,
+            descriptionResId = R.string.achievement_collector_desc
         ),
         AchievementEntity(
             id = "habits_created_10",
@@ -276,7 +307,9 @@ object DefaultAchievements {
             pointsReward = 75,
             isSecret = false,
             isActive = true,
-            createdAt = createdAt
+            createdAt = createdAt,
+            titleResId = R.string.achievement_life_architect_title,
+            descriptionResId = R.string.achievement_life_architect_desc
         ),
         AchievementEntity(
             id = "multitasker",
@@ -291,7 +324,9 @@ object DefaultAchievements {
             pointsReward = 40,
             isSecret = false,
             isActive = true,
-            createdAt = createdAt
+            createdAt = createdAt,
+            titleResId = R.string.achievement_multitasker_title,
+            descriptionResId = R.string.achievement_multitasker_desc
         )
     )
 
@@ -313,7 +348,9 @@ object DefaultAchievements {
             pointsReward = 20,
             isSecret = false,
             isActive = true,
-            createdAt = createdAt
+            createdAt = createdAt,
+            titleResId = R.string.achievement_first_friend_title,
+            descriptionResId = R.string.achievement_first_friend_desc
         ),
         AchievementEntity(
             id = "social_circle",
@@ -328,7 +365,9 @@ object DefaultAchievements {
             pointsReward = 50,
             isSecret = false,
             isActive = true,
-            createdAt = createdAt
+            createdAt = createdAt,
+            titleResId = R.string.achievement_social_circle_title,
+            descriptionResId = R.string.achievement_social_circle_desc
         ),
         AchievementEntity(
             id = "social_butterfly",
@@ -343,7 +382,9 @@ object DefaultAchievements {
             pointsReward = 100,
             isSecret = false,
             isActive = true,
-            createdAt = createdAt
+            createdAt = createdAt,
+            titleResId = R.string.achievement_social_butterfly_title,
+            descriptionResId = R.string.achievement_social_butterfly_desc
         ),
         AchievementEntity(
             id = "team_player",
@@ -358,7 +399,9 @@ object DefaultAchievements {
             pointsReward = 25,
             isSecret = false,
             isActive = true,
-            createdAt = createdAt
+            createdAt = createdAt,
+            titleResId = R.string.achievement_team_player_title,
+            descriptionResId = R.string.achievement_team_player_desc
         ),
         AchievementEntity(
             id = "group_leader",
@@ -373,7 +416,9 @@ object DefaultAchievements {
             pointsReward = 75,
             isSecret = false,
             isActive = true,
-            createdAt = createdAt
+            createdAt = createdAt,
+            titleResId = R.string.achievement_group_leader_title,
+            descriptionResId = R.string.achievement_group_leader_desc
         )
     )
 
@@ -395,7 +440,9 @@ object DefaultAchievements {
             pointsReward = 25,
             isSecret = false,
             isActive = true,
-            createdAt = createdAt
+            createdAt = createdAt,
+            titleResId = R.string.achievement_first_challenge_title,
+            descriptionResId = R.string.achievement_first_challenge_desc
         ),
         AchievementEntity(
             id = "first_win",
@@ -410,7 +457,9 @@ object DefaultAchievements {
             pointsReward = 50,
             isSecret = false,
             isActive = true,
-            createdAt = createdAt
+            createdAt = createdAt,
+            titleResId = R.string.achievement_first_win_title,
+            descriptionResId = R.string.achievement_first_win_desc
         ),
         AchievementEntity(
             id = "champion",
@@ -425,7 +474,9 @@ object DefaultAchievements {
             pointsReward = 150,
             isSecret = false,
             isActive = true,
-            createdAt = createdAt
+            createdAt = createdAt,
+            titleResId = R.string.achievement_champion_title,
+            descriptionResId = R.string.achievement_champion_desc
         ),
         AchievementEntity(
             id = "veteran",
@@ -440,7 +491,9 @@ object DefaultAchievements {
             pointsReward = 100,
             isSecret = false,
             isActive = true,
-            createdAt = createdAt
+            createdAt = createdAt,
+            titleResId = R.string.achievement_veteran_title,
+            descriptionResId = R.string.achievement_veteran_desc
         ),
         AchievementEntity(
             id = "undefeated",
@@ -455,7 +508,9 @@ object DefaultAchievements {
             pointsReward = 300,
             isSecret = false,
             isActive = true,
-            createdAt = createdAt
+            createdAt = createdAt,
+            titleResId = R.string.achievement_undefeated_title,
+            descriptionResId = R.string.achievement_undefeated_desc
         )
     )
 
@@ -477,7 +532,9 @@ object DefaultAchievements {
             pointsReward = 50,
             isSecret = false,
             isActive = true,
-            createdAt = createdAt
+            createdAt = createdAt,
+            titleResId = R.string.achievement_early_bird_title,
+            descriptionResId = R.string.achievement_early_bird_desc
         ),
         AchievementEntity(
             id = "night_owl",
@@ -492,7 +549,9 @@ object DefaultAchievements {
             pointsReward = 50,
             isSecret = false,
             isActive = true,
-            createdAt = createdAt
+            createdAt = createdAt,
+            titleResId = R.string.achievement_night_owl_title,
+            descriptionResId = R.string.achievement_night_owl_desc
         ),
         AchievementEntity(
             id = "weekend_warrior",
@@ -507,7 +566,9 @@ object DefaultAchievements {
             pointsReward = 75,
             isSecret = false,
             isActive = true,
-            createdAt = createdAt
+            createdAt = createdAt,
+            titleResId = R.string.achievement_weekend_warrior_title,
+            descriptionResId = R.string.achievement_weekend_warrior_desc
         ),
         AchievementEntity(
             id = "perfect_week",
@@ -522,7 +583,9 @@ object DefaultAchievements {
             pointsReward = 75,
             isSecret = false,
             isActive = true,
-            createdAt = createdAt
+            createdAt = createdAt,
+            titleResId = R.string.achievement_perfect_week_title,
+            descriptionResId = R.string.achievement_perfect_week_desc
         ),
         AchievementEntity(
             id = "perfect_month",
@@ -537,7 +600,9 @@ object DefaultAchievements {
             pointsReward = 200,
             isSecret = false,
             isActive = true,
-            createdAt = createdAt
+            createdAt = createdAt,
+            titleResId = R.string.achievement_perfect_month_title,
+            descriptionResId = R.string.achievement_perfect_month_desc
         ),
         AchievementEntity(
             id = "consistency_master",
@@ -552,7 +617,9 @@ object DefaultAchievements {
             pointsReward = 150,
             isSecret = false,
             isActive = true,
-            createdAt = createdAt
+            createdAt = createdAt,
+            titleResId = R.string.achievement_consistency_master_title,
+            descriptionResId = R.string.achievement_consistency_master_desc
         ),
         AchievementEntity(
             id = "level_5",
@@ -567,7 +634,9 @@ object DefaultAchievements {
             pointsReward = 50,
             isSecret = false,
             isActive = true,
-            createdAt = createdAt
+            createdAt = createdAt,
+            titleResId = R.string.achievement_level_5_title,
+            descriptionResId = R.string.achievement_level_5_desc
         ),
         AchievementEntity(
             id = "level_10",
@@ -582,7 +651,9 @@ object DefaultAchievements {
             pointsReward = 100,
             isSecret = false,
             isActive = true,
-            createdAt = createdAt
+            createdAt = createdAt,
+            titleResId = R.string.achievement_level_10_title,
+            descriptionResId = R.string.achievement_level_10_desc
         )
     )
 }

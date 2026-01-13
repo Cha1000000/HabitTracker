@@ -224,7 +224,7 @@ private fun UserLevelCard(levelInfo: com.habittracker.domain.model.UserLevelInfo
                     fontWeight = FontWeight.Bold
                 )
                 Text(
-                    text = levelInfo.levelTitle,
+                    text = levelInfo.levelTitleResId?.let { stringResource(it) } ?: levelInfo.levelTitle,
                     style = MaterialTheme.typography.bodyLarge,
                     color = MaterialTheme.colorScheme.primary
                 )

@@ -1,10 +1,12 @@
 package com.habittracker.domain.usecase.notification
 
 import android.util.Log
+import com.habittracker.R
 import com.habittracker.data.local.entity.GroupHabitNotificationEntity
 import com.habittracker.domain.model.Habit
 import com.habittracker.domain.model.User
 import com.habittracker.domain.model.isGroupHabit
+import com.habittracker.domain.provider.StringProvider
 import com.habittracker.domain.repository.GroupHabitNotificationRepository
 import com.habittracker.domain.repository.HabitRepository
 import com.habittracker.domain.repository.SocialRepository
@@ -21,7 +23,8 @@ class SendGroupHabitPushNotificationUseCase @Inject constructor(
     private val socialRepository: SocialRepository,
     private val habitRepository: HabitRepository,
     private val firestoreRepository: com.habittracker.domain.repository.FirestoreRepository,
-    private val notificationRepository: GroupHabitNotificationRepository
+    private val notificationRepository: GroupHabitNotificationRepository,
+    private val stringProvider: StringProvider
 ) {
     
     companion object {
@@ -60,7 +63,7 @@ class SendGroupHabitPushNotificationUseCase @Inject constructor(
                 val participants = getHabitParticipants(habit, completedByUserId)
                 Log.d(TAG, "Sending push to ${participants.size} participants: ${participants.map { "${it.name}(${it.id})" }}")
 
-                val message = "${completedByUser.name} выполнил привычку!"
+                val message = stringProvider.getString(R.string.push_habit_completed_body, completedByUser.name)
                 val currentTime = System.currentTimeMillis()
 
                 coroutineScope {
@@ -70,7 +73,7 @@ class SendGroupHabitPushNotificationUseCase @Inject constructor(
                             sendPushNotification(
                                 toUserId = participant.id,
                                 type = "group_habit_completed",
-                                title = "🎯 ${habit.title}",
+                                title = stringProvider.getString(R.string.push_habit_completed_title, habit.title),
                                 body = message,
                                 data = mapOf(
                                     "habit_id" to habit.id,
@@ -130,8 +133,8 @@ class SendGroupHabitPushNotificationUseCase @Inject constructor(
                         sendPushNotification(
                             toUserId = participant.id,
                             type = "group_achievement",
-                            title = "🏆 Групповое достижение!",
-                            body = "Все участники выполнили \"${habit?.title}\" сегодня!",
+                            title = stringProvider.getString(R.string.push_group_achievement_title),
+                            body = stringProvider.getString(R.string.push_group_achievement_body, habit?.title ?: ""),
                             data = mapOf(
                                 "habit_id" to habitId,
                                 "habit_title" to (habit?.title ?: ""),
@@ -167,8 +170,8 @@ class SendGroupHabitPushNotificationUseCase @Inject constructor(
                         sendPushNotification(
                             toUserId = participant.id,
                             type = "participant_streak",
-                            title = "🔥 Отличная серия!",
-                            body = "${streakUser?.name} поддерживает серию $streak дней в \"${habit?.title}\"!",
+                            title = stringProvider.getString(R.string.push_streak_title),
+                            body = stringProvider.getString(R.string.push_streak_body, streakUser?.name ?: "", streak, habit?.title ?: ""),
                             data = mapOf(
                                 "habit_id" to habitId,
                                 "habit_title" to (habit?.title ?: ""),
@@ -205,8 +208,8 @@ class SendGroupHabitPushNotificationUseCase @Inject constructor(
                         sendPushNotification(
                             toUserId = participant.id,
                             type = "new_participant",
-                            title = "👥 Новый участник",
-                            body = "${newParticipant?.name} присоединился к \"${habit?.title}\"!",
+                            title = stringProvider.getString(R.string.push_new_participant_title),
+                            body = stringProvider.getString(R.string.push_new_participant_body, newParticipant?.name ?: "", habit?.title ?: ""),
                             data = mapOf(
                                 "habit_id" to habitId,
                                 "habit_title" to (habit?.title ?: ""),
@@ -239,8 +242,8 @@ class SendGroupHabitPushNotificationUseCase @Inject constructor(
             sendPushNotification(
                 toUserId = toUserId,
                 type = "habit_invitation",
-                title = "📩 Приглашение в группу",
-                body = "${fromUser?.name} приглашает вас в \"${habit?.title}\"",
+                title = stringProvider.getString(R.string.push_invitation_title),
+                body = stringProvider.getString(R.string.push_invitation_body, fromUser?.name ?: "", habit?.title ?: ""),
                 data = mapOf(
                     "habit_id" to habitId,
                     "habit_title" to (habit?.title ?: ""),
@@ -269,7 +272,7 @@ class SendGroupHabitPushNotificationUseCase @Inject constructor(
             val leftUser = socialRepository.getUserById(leftUserId)
 
             if (habit != null && leftUser != null && remainingParticipants.isNotEmpty()) {
-                val message = "${leftUser.name} покинул \"${habit.title}\""
+                val message = stringProvider.getString(R.string.push_participant_left_body, leftUser.name, habit.title)
                 val currentTime = System.currentTimeMillis()
                 
                 coroutineScope {
@@ -279,7 +282,7 @@ class SendGroupHabitPushNotificationUseCase @Inject constructor(
                             sendPushNotification(
                                 toUserId = participantId,
                                 type = "participant_left",
-                                title = "👋 Участник покинул группу",
+                                title = stringProvider.getString(R.string.push_participant_left_title),
                                 body = message,
                                 data = mapOf(
                                     "habit_id" to habitId,

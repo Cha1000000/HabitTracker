@@ -1,10 +1,12 @@
 package com.habittracker.domain.usecase.habit
 
 import android.util.Log
+import com.habittracker.R
 import com.habittracker.domain.model.HabitInvitation
 import com.habittracker.domain.model.canAddParticipants
 import com.habittracker.domain.model.isGroupHabit
 import com.habittracker.domain.model.isUserParticipant
+import com.habittracker.domain.provider.StringProvider
 import com.habittracker.domain.repository.HabitRepository
 import com.habittracker.domain.repository.SocialRepository
 import javax.inject.Inject
@@ -14,7 +16,8 @@ import javax.inject.Inject
  */
 class SendHabitInvitationUseCase @Inject constructor(
     private val socialRepository: SocialRepository,
-    private val habitRepository: HabitRepository
+    private val habitRepository: HabitRepository,
+    private val stringProvider: StringProvider
 ) {
     /**
      * Отправляет приглашение в групповую привычку
@@ -35,79 +38,79 @@ class SendHabitInvitationUseCase @Inject constructor(
             // Проверяем, что пользователь не приглашает сам себя
             if (fromUserId == toUserId) {
                 Log.w("SendHabitInvitationUC", "[validation] self-invite blocked")
-                return Result.failure(Exception("Нельзя пригласить самого себя"))
+                return Result.failure(Exception(stringProvider.getString(R.string.error_self_invite)))
             }
 
             // Получаем привычку для проверки прав и получения информации
             val habit = habitRepository.getHabitById(habitId)
                 ?: run {
                     Log.w("SendHabitInvitationUC", "[validation] habit not found: $habitId")
-                    return Result.failure(Exception("Привычка не найдена"))
+                    return Result.failure(Exception(stringProvider.getString(R.string.error_habit_not_found)))
                 }
 
             // Проверяем, что привычка активна
             if (!habit.isActive) {
                 Log.w("SendHabitInvitationUC", "[validation] habit inactive")
-                return Result.failure(Exception("Нельзя приглашать в неактивную привычку"))
+                return Result.failure(Exception(stringProvider.getString(R.string.error_invite_inactive_habit)))
             }
 
             // Проверяем, что отправитель является создателем привычки
             if (habit.createdBy != fromUserId) {
                 Log.w("SendHabitInvitationUC", "[validation] only creator can invite: creator=${habit.createdBy}")
-                return Result.failure(Exception("Только создатель привычки может отправлять приглашения"))
+                return Result.failure(Exception(stringProvider.getString(R.string.error_only_creator_can_invite)))
             }
 
             // Проверяем, что привычка групповая
             if (!habit.isGroupHabit()) {
                 Log.w("SendHabitInvitationUC", "[validation] not a group habit")
-                return Result.failure(Exception("Можно приглашать только в групповые привычки"))
+                return Result.failure(Exception(stringProvider.getString(R.string.error_invite_group_only)))
             }
 
             // Проверяем, что есть свободные места
             if (!habit.canAddParticipants()) {
                 Log.w("SendHabitInvitationUC", "[validation] no free slots: max=${habit.maxParticipants}")
-                return Result.failure(Exception("В привычке нет свободных мест (максимум ${habit.maxParticipants} участников)"))
+                return Result.failure(Exception(stringProvider.getString(R.string.error_no_free_slots_limit, habit.maxParticipants)))
             }
 
             // Проверяем, что пользователь еще не участвует в привычке
             if (habit.isUserParticipant(toUserId)) {
                 Log.w("SendHabitInvitationUC", "[validation] user already participant: $toUserId")
-                return Result.failure(Exception("Пользователь уже участвует в этой привычке"))
+                return Result.failure(Exception(stringProvider.getString(R.string.error_user_already_participant)))
             }
 
             // Проверяем, что получатель существует
             val toUser = socialRepository.getUserById(toUserId)
                 ?: run {
                     Log.w("SendHabitInvitationUC", "[validation] recipient not found: $toUserId")
-                    return Result.failure(Exception("Пользователь не найден"))
+                    return Result.failure(Exception(stringProvider.getString(R.string.error_user_not_found)))
                 }
 
             // Проверяем дружеские связи (можно приглашать только друзей)
             val areFriends = socialRepository.areFriends(fromUserId, toUserId)
             if (!areFriends) {
                 Log.w("SendHabitInvitationUC", "[validation] not friends: from=$fromUserId to=$toUserId")
-                return Result.failure(Exception("Можно приглашать только друзей. Сначала добавьте пользователя в друзья"))
+                return Result.failure(Exception(stringProvider.getString(R.string.error_invite_friends_only)))
             }
 
             // Проверяем, нет ли уже активного приглашения для этого пользователя в эту привычку
             val existingInvitation = socialRepository.getPendingHabitInvitation(habitId, toUserId)
             if (existingInvitation != null) {
                 Log.w("SendHabitInvitationUC", "[validation] invitation already exists: habit=$habitId to=$toUserId")
-                return Result.failure(Exception("Пользователю уже отправлено приглашение в эту привычку"))
+                return Result.failure(Exception(stringProvider.getString(R.string.error_invitation_already_exists)))
             }
 
             // Проверяем лимит активных исходящих приглашений от пользователя (максимум 10)
             val activeInvitationsCount = socialRepository.getActiveOutgoingInvitationsCount(fromUserId)
             if (activeInvitationsCount >= 10) {
                 Log.w("SendHabitInvitationUC", "[validation] outgoing limit reached: $activeInvitationsCount")
-                return Result.failure(Exception("Превышен лимит активных приглашений (максимум 10). Дождитесь ответа на предыдущие приглашения"))
+                return Result.failure(Exception(stringProvider.getString(R.string.error_outgoing_invites_limit)))
             }
 
             // Получаем информацию об отправителе
             val fromUser = socialRepository.getUserById(fromUserId)
                 ?: run {
                     Log.w("SendHabitInvitationUC", "[validation] sender not found: $fromUserId")
-                    return Result.failure(Exception("Отправитель не найден"))
+                    return Result.failure(Exception(stringProvider.getString(R.string.error_sender_not_found)))
                 }
 
             // Отправляем приглашение через SocialRepository

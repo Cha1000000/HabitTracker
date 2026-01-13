@@ -1,7 +1,9 @@
 package com.habittracker.domain.usecase.habit
 
+import com.habittracker.R
 import com.habittracker.domain.model.canAddParticipants
 import com.habittracker.domain.model.isGroupHabit
+import com.habittracker.domain.provider.StringProvider
 import com.habittracker.domain.repository.HabitRepository
 import com.habittracker.domain.usecase.UpdateHabitUseCase
 import kotlinx.datetime.Clock
@@ -15,7 +17,8 @@ import kotlin.random.Random
  */
 class GenerateHabitInviteCodeUseCase @Inject constructor(
     private val habitRepository: HabitRepository,
-    private val updateHabitUseCase: UpdateHabitUseCase
+    private val updateHabitUseCase: UpdateHabitUseCase,
+    private val stringProvider: StringProvider
 ) {
     
     companion object {
@@ -37,26 +40,26 @@ class GenerateHabitInviteCodeUseCase @Inject constructor(
         return try {
             // Получаем привычку для проверки прав
             val habit = habitRepository.getHabitById(habitId)
-                ?: return Result.failure(Exception("Привычка не найдена"))
+                ?: return Result.failure(Exception(stringProvider.getString(R.string.error_habit_not_found)))
 
             // Проверяем права доступа
             if (habit.createdBy != userId) {
-                return Result.failure(Exception("Только создатель привычки может генерировать коды приглашения"))
+                return Result.failure(Exception(stringProvider.getString(R.string.error_only_creator_can_generate_code)))
             }
 
             // Проверяем, что привычка групповая
             if (!habit.isGroupHabit()) {
-                return Result.failure(Exception("Коды приглашения доступны только для групповых привычек"))
+                return Result.failure(Exception(stringProvider.getString(R.string.error_invite_codes_group_only)))
             }
 
             // Проверяем, что привычка активна
             if (!habit.isActive) {
-                return Result.failure(Exception("Нельзя создавать коды для неактивной привычки"))
+                return Result.failure(Exception(stringProvider.getString(R.string.error_cannot_create_code_inactive_habit)))
             }
 
             // Проверяем, что есть свободные места
             if (!habit.canAddParticipants()) {
-                return Result.failure(Exception("В привычке нет свободных мест для новых участников"))
+                return Result.failure(Exception(stringProvider.getString(R.string.error_no_free_slots)))
             }
 
             // Генерируем уникальный код
@@ -90,10 +93,10 @@ class GenerateHabitInviteCodeUseCase @Inject constructor(
     ): Result<Unit> {
         return try {
             val habit = habitRepository.getHabitById(habitId)
-                ?: return Result.failure(Exception("Привычка не найдена"))
+                ?: return Result.failure(Exception(stringProvider.getString(R.string.error_habit_not_found)))
 
             if (habit.createdBy != userId) {
-                return Result.failure(Exception("Только создатель привычки может отключить код приглашения"))
+                return Result.failure(Exception(stringProvider.getString(R.string.error_only_creator_can_disable_code)))
             }
 
             val updatedHabit = habit.copy(
@@ -125,7 +128,7 @@ class GenerateHabitInviteCodeUseCase @Inject constructor(
         }
         
         // Если не удалось сгенерировать уникальный код за MAX_GENERATION_ATTEMPTS попыток
-        throw Exception("Не удалось сгенерировать уникальный код приглашения. Попробуйте позже.")
+        throw Exception(stringProvider.getString(R.string.error_generate_code_failed))
     }
 
     /**

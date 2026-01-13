@@ -21,6 +21,9 @@ import com.habittracker.domain.usecase.challenge.JoinChallengeUseCase
 import com.habittracker.domain.usecase.challenge.LeaveChallengeUseCase
 import com.habittracker.domain.usecase.gamification.CheckAchievementsUseCase
 import com.habittracker.domain.usecase.gamification.UpdateUserPointsUseCase
+import com.habittracker.domain.provider.StringProvider
+import com.habittracker.domain.util.AnalyticsManager
+import com.habittracker.domain.util.ErrorLogger
 import com.habittracker.presentation.state.ChallengeTab
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
@@ -61,6 +64,14 @@ class ChallengesViewModelTest {
     private val getCurrentUserUseCase: GetCurrentUserUseCase = mock()
     private val joinChallengeUseCase: JoinChallengeUseCase = mock()
     private val leaveChallengeUseCase: LeaveChallengeUseCase = mock()
+    private val analyticsManager: AnalyticsManager = mock()
+    private val errorLogger: ErrorLogger = mock()
+    
+    // Mock StringProvider for tests
+    private val fakeStringProvider = object : StringProvider {
+        override fun getString(resId: Int): String = "test_string_$resId"
+        override fun getString(resId: Int, vararg formatArgs: Any): String = "test_string_$resId"
+    }
 
     private val today = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault()).date
 
@@ -188,7 +199,8 @@ class ChallengesViewModelTest {
             challengeRepository = actualRepository,
             socialRepository = mock(),
             updateUserPointsUseCase = UpdateUserPointsUseCase(mock<UserRepository>(), mock<SocialRepository>()),
-            checkAchievementsUseCase = mock<CheckAchievementsUseCase>()
+            checkAchievementsUseCase = mock<CheckAchievementsUseCase>(),
+            stringProvider = fakeStringProvider
         )
         
         whenever(getCurrentUserUseCase.invoke()).thenReturn(flowOf(currentUser))
@@ -200,7 +212,9 @@ class ChallengesViewModelTest {
             habitRepository = habitRepository,
             joinChallengeUseCase = joinChallengeUseCase,
             leaveChallengeUseCase = leaveChallengeUseCase,
-            closeExpiredChallengesUseCase = closeExpiredChallengesUseCase
+            closeExpiredChallengesUseCase = closeExpiredChallengesUseCase,
+            analyticsManager = analyticsManager,
+            errorLogger = errorLogger
         )
     }
 

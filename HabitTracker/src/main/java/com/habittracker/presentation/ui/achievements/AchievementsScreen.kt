@@ -329,7 +329,8 @@ private fun AchievementCard(
                     
                     Column {
                         Text(
-                            text = achievement.getDisplayTitle(),
+                            text = achievement.achievement.titleResId?.let { stringResource(it) } 
+                                ?: achievement.getDisplayTitle(),
                             style = MaterialTheme.typography.titleMedium,
                             fontWeight = FontWeight.Bold,
                             color = if (isCompleted) {
@@ -339,7 +340,8 @@ private fun AchievementCard(
                             }
                         )
                         Text(
-                            text = achievement.achievement.description,
+                            text = achievement.achievement.descriptionResId?.let { stringResource(it) }
+                                ?: achievement.achievement.description,
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = if (isLocked) 0.5f else 1f)
                         )
