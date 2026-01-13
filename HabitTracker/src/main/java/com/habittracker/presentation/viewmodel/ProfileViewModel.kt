@@ -75,10 +75,18 @@ class ProfileViewModel @Inject constructor(
                     // при первом приходе проставим имя для редактирования
                     val curr = _state.value
                     val defaultName = user?.name?.ifBlank { user.email.substringBefore("@") } ?: ""
+                    val isFirstLoad = curr.editableName.isBlank()
+                    val newEditableName = if (isFirstLoad) defaultName else curr.editableName
+                    // hasChanges = false при первой загрузке, иначе проверяем изменения
+                    val hasChanges = if (isFirstLoad) {
+                        false
+                    } else {
+                        curr.pendingAvatarUri != null || (user != null && newEditableName != user.name)
+                    }
                     curr.copy(
                         user = user,
-                        editableName = if (curr.editableName.isBlank()) defaultName else curr.editableName,
-                        hasChanges = curr.pendingAvatarUri != null || (user != null && curr.editableName != user.name),
+                        editableName = newEditableName,
+                        hasChanges = hasChanges,
                         isOwnProfile = viewedUserId == null || (selfId != null && viewedUserId == selfId)
                     )
                 }

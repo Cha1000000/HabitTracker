@@ -229,4 +229,11 @@ object TahoeIcons {
     // Cleaning
     val Broom: ImageVector
         @Composable get() = ImageVector.vectorResource(R.drawable.ic_tahoe_broom)
+    
+    // Save & Exit
+    val FloppyDisk: ImageVector
+        @Composable get() = ImageVector.vectorResource(R.drawable.ic_tahoe_floppy_disk)
+    
+    val ArrowRightOnRectangle: ImageVector
+        @Composable get() = ImageVector.vectorResource(R.drawable.ic_tahoe_arrow_right_on_rectangle)
 }
