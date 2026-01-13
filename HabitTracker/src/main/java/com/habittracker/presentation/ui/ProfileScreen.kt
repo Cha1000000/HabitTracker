@@ -488,35 +488,6 @@ fun ProfileScreen(
                         .height(IntrinsicSize.Min),
                     horizontalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
-                    // Кнопка настроек уведомлений
-                    GlassmorphicCard(
-                        modifier = Modifier
-                            .weight(1f)
-                            .fillMaxHeight()
-                            .clickable { navController.navigate(Screen.NotificationSettings.route) },
-                        isDarkTheme = isDarkTheme
-                    ) {
-                        Column(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(16.dp),
-                            horizontalAlignment = Alignment.CenterHorizontally
-                        ) {
-                            Icon(
-                                imageVector = TahoeIcons.Bell,
-                                contentDescription = stringResource(R.string.notification_settings_title),
-                                tint = MaterialTheme.colorScheme.primary
-                            )
-                            Spacer(modifier = Modifier.height(8.dp))
-                            Text(
-                                text = stringResource(R.string.profile_notifications_button),
-                                style = MaterialTheme.typography.labelLarge,
-                                textAlign = TextAlign.Center,
-                                maxLines = 2
-                            )
-                        }
-                    }
-
                     // Кнопка выхода из аккаунта
                     val coralColor = Color(0xFFFF6B6B)
                     GlassmorphicCard(
@@ -552,6 +523,35 @@ fun ProfileScreen(
                                 style = MaterialTheme.typography.labelLarge,
                                 textAlign = TextAlign.Center,
                                 color = coralColor,
+                                maxLines = 2
+                            )
+                        }
+                    }
+
+                    // Кнопка настроек уведомлений
+                    GlassmorphicCard(
+                        modifier = Modifier
+                            .weight(1f)
+                            .fillMaxHeight()
+                            .clickable { navController.navigate(Screen.NotificationSettings.route) },
+                        isDarkTheme = isDarkTheme
+                    ) {
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(16.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally
+                        ) {
+                            Icon(
+                                imageVector = TahoeIcons.Bell,
+                                contentDescription = stringResource(R.string.notification_settings_title),
+                                tint = MaterialTheme.colorScheme.primary
+                            )
+                            Spacer(modifier = Modifier.height(8.dp))
+                            Text(
+                                text = stringResource(R.string.profile_notifications_button),
+                                style = MaterialTheme.typography.labelLarge,
+                                textAlign = TextAlign.Center,
                                 maxLines = 2
                             )
                         }
