@@ -193,6 +193,8 @@
     <string name="profile_welcome">Welcome to profile</string>
     <string name="profile_stats_button">My Statistics</string>
     <string name="profile_achievements_button">My Achievements</string>
+    <string name="profile_notifications_button">Notification settings</string>
+    <string name="profile_sign_out_button">Sign Out</string>
     <string name="profile_username_label">Username</string>
     <string name="profile_level_label">Level</string>
     <string name="friends_title">My Friends</string>

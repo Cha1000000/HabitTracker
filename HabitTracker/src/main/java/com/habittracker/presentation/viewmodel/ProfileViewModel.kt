@@ -197,10 +197,17 @@ class ProfileViewModel @Inject constructor(
                 }
 
                 val nameToSave = _state.value.editableName.ifBlank { user.email.substringBefore("@") }
+                // Если аватар не менялся, сохраняем существующие URL
+                val finalAvatarUrl = if (picked != null) avatarUrl else user.avatarUrl
+                val finalThumbnailUrl = if (picked != null) {
+                    avatarThumbDataUrl ?: avatarUrl
+                } else {
+                    user.avatarThumbnailUrl
+                }
                 val updated = user.copy(
                     name = nameToSave,
-                    avatarUrl = avatarUrl,
-                    avatarThumbnailUrl = avatarThumbDataUrl ?: avatarUrl
+                    avatarUrl = finalAvatarUrl,
+                    avatarThumbnailUrl = finalThumbnailUrl
                 )
                 // сохраняем без изменения FCM токена
                 upsertUser(updated, null)

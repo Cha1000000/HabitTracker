@@ -19,8 +19,10 @@ import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -50,6 +52,7 @@ import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -317,7 +320,7 @@ fun ProfileScreen(
                     }
                 }
 
-                Spacer(modifier = Modifier.height(12.dp))
+                Spacer(modifier = Modifier.height(6.dp))
 
                 // Friendship actions when viewing someone else's profile
                 if (!uiState.isOwnProfile) {
@@ -352,85 +355,26 @@ fun ProfileScreen(
                             }
                         }
                     }
-                    Spacer(modifier = Modifier.height(12.dp))
+                    Spacer(modifier = Modifier.height(6.dp))
                 }
 
                 // Level read-only
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.SpaceBetween
                 ) {
                     Text(
                         text = stringResource(id = R.string.profile_level_label),
-                        style = MaterialTheme.typography.labelMedium
+                        style = MaterialTheme.typography.titleMedium
                     )
+                    Spacer(modifier = Modifier.width(8.dp))
                     Text(
                         text = (uiState.user?.level ?: 1).toString(),
                         style = MaterialTheme.typography.titleMedium
                     )
                 }
 
-                Spacer(modifier = Modifier.height(24.dp))
-                HorizontalDivider()
-                Spacer(modifier = Modifier.height(24.dp))
-
-                // Кнопки геймификации
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(16.dp)
-                ) {
-                    // Кнопка статистики
-                    GlassmorphicCard(
-                        modifier = Modifier
-                            .weight(1f)
-                            .clickable { navController.navigate(Screen.Stats.route) },
-                        isDarkTheme = isDarkTheme
-                    ) {
-                        Column(
-                            modifier = Modifier.padding(16.dp),
-                            horizontalAlignment = Alignment.CenterHorizontally
-                        ) {
-                            Icon(
-                                imageVector = TahoeIcons.ChartBar,
-                                contentDescription = stringResource(R.string.cd_stats),
-                                tint = MaterialTheme.colorScheme.primary
-                            )
-                            Spacer(modifier = Modifier.height(8.dp))
-                            Text(
-                                text = stringResource(R.string.profile_stats_button),
-                                style = MaterialTheme.typography.labelLarge
-                            )
-                        }
-                    }
-
-                    // Кнопка достижений
-                    GlassmorphicCard(
-                        modifier = Modifier
-                            .weight(1f)
-                            .clickable { navController.navigate(Screen.Achievements.route) },
-                        isDarkTheme = isDarkTheme
-                    ) {
-                        Column(
-                            modifier = Modifier.padding(16.dp),
-                            horizontalAlignment = Alignment.CenterHorizontally
-                        ) {
-                            Icon(
-                                imageVector = TahoeIcons.Trophy,
-                                contentDescription = stringResource(R.string.cd_achievements),
-                                tint = MaterialTheme.colorScheme.primary
-                            )
-                            Spacer(modifier = Modifier.height(8.dp))
-                            Text(
-                                text = stringResource(R.string.profile_achievements_button),
-                                style = MaterialTheme.typography.labelLarge
-                            )
-                        }
-                    }
-                }
-
-                Spacer(modifier = Modifier.height(32.dp))
-
+                Spacer(modifier = Modifier.height(12.dp))
                 // Save button (animated visibility on changes)
                 AnimatedVisibility(
                     visible = uiState.hasChanges,
@@ -438,7 +382,6 @@ fun ProfileScreen(
                     exit = fadeOut() + slideOutVertically(targetOffsetY = { it / 3 })
                 ) {
                     Column(modifier = Modifier.fillMaxWidth()) {
-                        Spacer(modifier = Modifier.height(16.dp))
                         GlassmorphicButton(
                             onClick = { profileViewModel.saveChanges() },
                             enabled = !uiState.isSaving,
@@ -464,60 +407,152 @@ fun ProfileScreen(
                                 }
                             }
                         }
+                        Spacer(modifier = Modifier.height(16.dp))
                     }
                 }
 
+                HorizontalDivider()
                 Spacer(modifier = Modifier.height(24.dp))
-                
-                // Notification settings button
-                GlassmorphicButton(
-                    onClick = { navController.navigate(Screen.NotificationSettings.route) },
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Row(
-                        horizontalArrangement = Arrangement.Center,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Icon(
-                            imageVector = TahoeIcons.Bell,
-                            contentDescription = null,
-                            modifier = Modifier.size(20.dp)
-                        )
-                        Spacer(modifier = Modifier.width(12.dp))
-                        Text(
-                            stringResource(R.string.notification_settings_title),
-                            fontSize = 18.sp
-                        )
-                    }
-                }
-                
-                Spacer(modifier = Modifier.height(12.dp))
 
-                // Sign out button
-                val accentColor = Color(0xFF7324C1)
-                GlassmorphicButton(
-                    onClick = { authViewModel.onEvent(AuthEvent.SignOut) },
-                    enabled = authState !is AuthState.Loading,
-                    modifier = Modifier.fillMaxWidth()
+                // Кнопки геймификации
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(IntrinsicSize.Min),
+                    horizontalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
-                    if (authState is AuthState.Loading) {
-                        CircularProgressIndicator(color = MaterialTheme.colorScheme.onPrimary)
-                    } else {
-                        Row(
-                            horizontalArrangement = Arrangement.Center,
-                            verticalAlignment = Alignment.CenterVertically
+                    // Кнопка статистики
+                    GlassmorphicCard(
+                        modifier = Modifier
+                            .weight(1f)
+                            .fillMaxHeight()
+                            .clickable { navController.navigate(Screen.Stats.route) },
+                        isDarkTheme = isDarkTheme
+                    ) {
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(16.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally
                         ) {
                             Icon(
-                                imageVector = TahoeIcons.ArrowRightOnRectangle,
-                                contentDescription = null,
-                                modifier = Modifier.size(20.dp),
-                                tint = accentColor
+                                imageVector = TahoeIcons.ChartBar,
+                                contentDescription = stringResource(R.string.cd_stats),
+                                tint = MaterialTheme.colorScheme.primary
                             )
-                            Spacer(modifier = Modifier.width(12.dp))
+                            Spacer(modifier = Modifier.height(8.dp))
                             Text(
-                                stringResource(R.string.action_sign_out),
-                                fontSize = 18.sp,
-                                color = accentColor
+                                text = stringResource(R.string.profile_stats_button),
+                                style = MaterialTheme.typography.labelLarge,
+                                textAlign = TextAlign.Center,
+                                maxLines = 2
+                            )
+                        }
+                    }
+
+                    // Кнопка достижений
+                    GlassmorphicCard(
+                        modifier = Modifier
+                            .weight(1f)
+                            .fillMaxHeight()
+                            .clickable { navController.navigate(Screen.Achievements.route) },
+                        isDarkTheme = isDarkTheme
+                    ) {
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(16.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally
+                        ) {
+                            Icon(
+                                imageVector = TahoeIcons.Trophy,
+                                contentDescription = stringResource(R.string.cd_achievements),
+                                tint = MaterialTheme.colorScheme.primary
+                            )
+                            Spacer(modifier = Modifier.height(8.dp))
+                            Text(
+                                text = stringResource(R.string.profile_achievements_button),
+                                style = MaterialTheme.typography.labelLarge,
+                                textAlign = TextAlign.Center,
+                                maxLines = 2
+                            )
+                        }
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(IntrinsicSize.Min),
+                    horizontalArrangement = Arrangement.spacedBy(16.dp)
+                ) {
+                    // Кнопка настроек уведомлений
+                    GlassmorphicCard(
+                        modifier = Modifier
+                            .weight(1f)
+                            .fillMaxHeight()
+                            .clickable { navController.navigate(Screen.NotificationSettings.route) },
+                        isDarkTheme = isDarkTheme
+                    ) {
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(16.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally
+                        ) {
+                            Icon(
+                                imageVector = TahoeIcons.Bell,
+                                contentDescription = stringResource(R.string.notification_settings_title),
+                                tint = MaterialTheme.colorScheme.primary
+                            )
+                            Spacer(modifier = Modifier.height(8.dp))
+                            Text(
+                                text = stringResource(R.string.profile_notifications_button),
+                                style = MaterialTheme.typography.labelLarge,
+                                textAlign = TextAlign.Center,
+                                maxLines = 2
+                            )
+                        }
+                    }
+
+                    // Кнопка выхода из аккаунта
+                    val coralColor = Color(0xFFFF6B6B)
+                    GlassmorphicCard(
+                        modifier = Modifier
+                            .weight(1f)
+                            .fillMaxHeight()
+                            .clickable(enabled = authState !is AuthState.Loading) { 
+                                authViewModel.onEvent(AuthEvent.SignOut) 
+                            },
+                        isDarkTheme = isDarkTheme
+                    ) {
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(16.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally
+                        ) {
+                            if (authState is AuthState.Loading) {
+                                CircularProgressIndicator(
+                                    modifier = Modifier.size(24.dp),
+                                    color = coralColor
+                                )
+                            } else {
+                                Icon(
+                                    imageVector = TahoeIcons.ArrowRightOnRectangle,
+                                    contentDescription = stringResource(R.string.action_sign_out),
+                                    tint = coralColor
+                                )
+                            }
+                            Spacer(modifier = Modifier.height(8.dp))
+                            Text(
+                                text = stringResource(R.string.profile_sign_out_button),
+                                style = MaterialTheme.typography.labelLarge,
+                                textAlign = TextAlign.Center,
+                                color = coralColor,
+                                maxLines = 2
                             )
                         }
                     }

@@ -191,6 +191,8 @@
     <string name="profile_welcome">Добро пожаловать в профиль</string>
     <string name="profile_stats_button">Моя статистика</string>
     <string name="profile_achievements_button">Мои достижения</string>
+    <string name="profile_notifications_button">Настройки уведомлений</string>
+    <string name="profile_sign_out_button">Выйти из аккаунта</string>
     <string name="profile_username_label">Имя пользователя</string>
     <string name="profile_level_label">Уровень</string>
     <string name="friends_title">Мои друзья</string>
