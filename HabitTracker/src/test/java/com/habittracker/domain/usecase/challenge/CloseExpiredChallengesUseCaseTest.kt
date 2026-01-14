@@ -52,6 +52,8 @@ class CloseExpiredChallengesUseCaseTest {
         override suspend fun register(email: String, password: String) = MutableStateFlow(Result.failure<Unit>(Exception("not used")))
         override suspend fun signInWithGoogle() = MutableStateFlow(Result.failure<android.content.Intent?>(Exception("not used")))
         override suspend fun signOut() = MutableStateFlow(Result.success(Unit))
+        override suspend fun sendPasswordResetEmail(email: String) =
+            MutableStateFlow(Result.failure<Unit>(Exception("not used")))
     }
     
     // Fake UpdateUserPointsUseCase
