@@ -75,7 +75,17 @@ fun AnimatedCheckmark(
         val center = Offset(canvasSize / 2, canvasSize / 2)
         val radius = (canvasSize / 2 - strokePx) * scaleFactor
         
-        // Рисуем круг
+        // Рисуем фоновый круг (серый)
+        if (circleProgress.value < 1f) {
+            drawCircle(
+                color = uncheckedColor,
+                radius = radius,
+                center = center,
+                style = Stroke(width = strokePx, cap = StrokeCap.Round)
+            )
+        }
+        
+        // Рисуем активный круг (зеленый)
         if (circleProgress.value > 0f) {
             drawArc(
                 color = color,

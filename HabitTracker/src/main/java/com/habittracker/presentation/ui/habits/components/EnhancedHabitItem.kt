@@ -294,8 +294,9 @@ fun EnhancedHabitItem(
                                     
                                     AnimatedCheckmark(
                                         isChecked = isCompleted,
-                                        size = 28.dp,
+                                        size = 32.dp,
                                         color = successColor,
+                                        uncheckedColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f),
                                         strokeWidth = 2.dp
                                     )
                                 }
