@@ -75,10 +75,18 @@ class ProfileViewModel @Inject constructor(
                     // при первом приходе проставим имя для редактирования
                     val curr = _state.value
                     val defaultName = user?.name?.ifBlank { user.email.substringBefore("@") } ?: ""
+                    val isFirstLoad = curr.editableName.isBlank()
+                    val newEditableName = if (isFirstLoad) defaultName else curr.editableName
+                    // hasChanges = false при первой загрузке, иначе проверяем изменения
+                    val hasChanges = if (isFirstLoad) {
+                        false
+                    } else {
+                        curr.pendingAvatarUri != null || (user != null && newEditableName != user.name)
+                    }
                     curr.copy(
                         user = user,
-                        editableName = if (curr.editableName.isBlank()) defaultName else curr.editableName,
-                        hasChanges = curr.pendingAvatarUri != null || (user != null && curr.editableName != user.name),
+                        editableName = newEditableName,
+                        hasChanges = hasChanges,
                         isOwnProfile = viewedUserId == null || (selfId != null && viewedUserId == selfId)
                     )
                 }
@@ -189,10 +197,17 @@ class ProfileViewModel @Inject constructor(
                 }
 
                 val nameToSave = _state.value.editableName.ifBlank { user.email.substringBefore("@") }
+                // Если аватар не менялся, сохраняем существующие URL
+                val finalAvatarUrl = if (picked != null) avatarUrl else user.avatarUrl
+                val finalThumbnailUrl = if (picked != null) {
+                    avatarThumbDataUrl ?: avatarUrl
+                } else {
+                    user.avatarThumbnailUrl
+                }
                 val updated = user.copy(
                     name = nameToSave,
-                    avatarUrl = avatarUrl,
-                    avatarThumbnailUrl = avatarThumbDataUrl ?: avatarUrl
+                    avatarUrl = finalAvatarUrl,
+                    avatarThumbnailUrl = finalThumbnailUrl
                 )
                 // сохраняем без изменения FCM токена
                 upsertUser(updated, null)

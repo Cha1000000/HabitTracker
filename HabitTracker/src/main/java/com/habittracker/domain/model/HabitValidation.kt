@@ -1,23 +1,46 @@
 package com.habittracker.domain.model
 
+import com.habittracker.R
+import com.habittracker.domain.provider.StringProvider
+import javax.inject.Inject
+
 /**
  * Константы и валидация для модели Habit
  */
-object HabitValidation {
-    // Константы для валидации
-    const val MIN_TITLE_LENGTH = 1
-    const val MAX_TITLE_LENGTH = 100
-    const val MAX_DESCRIPTION_LENGTH = 500
-    const val MIN_TARGET_VALUE = 1
-    const val MAX_TARGET_VALUE = 100
-    const val MIN_GROUP_PARTICIPANTS = 2
-    const val MAX_GROUP_PARTICIPANTS = 20
-    const val INVITE_CODE_LENGTH = 8
-    const val MAX_UNIT_LENGTH = 20
+class HabitValidation @Inject constructor(
+    private val stringProvider: StringProvider
+) {
+    companion object {
+        // Константы для валидации
+        const val MIN_TITLE_LENGTH = 1
+        const val MAX_TITLE_LENGTH = 100
+        const val MAX_DESCRIPTION_LENGTH = 500
+        const val MIN_TARGET_VALUE = 1
+        const val MAX_TARGET_VALUE = 100
+        const val MIN_GROUP_PARTICIPANTS = 2
+        const val MAX_GROUP_PARTICIPANTS = 20
+        const val INVITE_CODE_LENGTH = 8
+        const val MAX_UNIT_LENGTH = 20
     
-    // Регулярные выражения
-    val INVITE_CODE_REGEX = Regex("^[A-Z0-9]{$INVITE_CODE_LENGTH}$")
-    val HEX_COLOR_REGEX = Regex("^#[0-9A-Fa-f]{6}$")
+        // Регулярные выражения
+        val INVITE_CODE_REGEX = Regex("^[A-Z0-9]{$INVITE_CODE_LENGTH}$")
+        val HEX_COLOR_REGEX = Regex("^#[0-9A-Fa-f]{6}$")
+
+        /**
+         * Генерация случайного invite-кода
+         */
+        fun generateInviteCode(): String {
+            val chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
+            return (1..INVITE_CODE_LENGTH)
+                .map { chars.random() }
+                .joinToString("")
+        }
+
+        /**
+         * Проверка валидности invite-кода
+         */
+        fun isValidInviteCode(code: String): Boolean = INVITE_CODE_REGEX.matches(code)
+    }
     
     /**
      * Результат валидации привычки
@@ -68,21 +91,21 @@ object HabitValidation {
             habit.title.isBlank() -> errors.add(
                 HabitValidationError(
                     HabitField.TITLE,
-                    "Название привычки не может быть пустым",
+                    stringProvider.getString(R.string.validation_title_empty),
                     "TITLE_EMPTY"
                 )
             )
             habit.title.length < MIN_TITLE_LENGTH -> errors.add(
                 HabitValidationError(
                     HabitField.TITLE,
-                    "Название должно содержать минимум $MIN_TITLE_LENGTH символ",
+                    stringProvider.getString(R.string.validation_title_too_short, MIN_TITLE_LENGTH),
                     "TITLE_TOO_SHORT"
                 )
             )
             habit.title.length > MAX_TITLE_LENGTH -> errors.add(
                 HabitValidationError(
                     HabitField.TITLE,
-                    "Название не должно превышать $MAX_TITLE_LENGTH символов",
+                    stringProvider.getString(R.string.validation_title_too_long, MAX_TITLE_LENGTH),
                     "TITLE_TOO_LONG"
                 )
             )
@@ -93,7 +116,7 @@ object HabitValidation {
             errors.add(
                 HabitValidationError(
                     HabitField.DESCRIPTION,
-                    "Описание не должно превышать $MAX_DESCRIPTION_LENGTH символов",
+                    stringProvider.getString(R.string.validation_description_too_long, MAX_DESCRIPTION_LENGTH),
                     "DESCRIPTION_TOO_LONG"
                 )
             )
@@ -104,7 +127,7 @@ object HabitValidation {
             errors.add(
                 HabitValidationError(
                     HabitField.ICON,
-                    "Иконка не может быть пустой",
+                    stringProvider.getString(R.string.validation_icon_empty),
                     "ICON_EMPTY"
                 )
             )
@@ -115,7 +138,7 @@ object HabitValidation {
             errors.add(
                 HabitValidationError(
                     HabitField.COLOR,
-                    "Неверный формат цвета. Используйте формат #RRGGBB",
+                    stringProvider.getString(R.string.validation_color_invalid),
                     "COLOR_INVALID_FORMAT"
                 )
             )
@@ -126,14 +149,14 @@ object HabitValidation {
             habit.targetValue < MIN_TARGET_VALUE -> errors.add(
                 HabitValidationError(
                     HabitField.TARGET_VALUE,
-                    "Целевое значение должно быть минимум $MIN_TARGET_VALUE",
+                    stringProvider.getString(R.string.validation_target_value_too_low, MIN_TARGET_VALUE),
                     "TARGET_VALUE_TOO_LOW"
                 )
             )
             habit.targetValue > MAX_TARGET_VALUE -> errors.add(
                 HabitValidationError(
                     HabitField.TARGET_VALUE,
-                    "Целевое значение не должно превышать $MAX_TARGET_VALUE",
+                    stringProvider.getString(R.string.validation_target_value_too_high, MAX_TARGET_VALUE),
                     "TARGET_VALUE_TOO_HIGH"
                 )
             )
@@ -144,14 +167,14 @@ object HabitValidation {
             habit.unit.isBlank() -> errors.add(
                 HabitValidationError(
                     HabitField.UNIT,
-                    "Единица измерения не может быть пустой",
+                    stringProvider.getString(R.string.validation_unit_empty),
                     "UNIT_EMPTY"
                 )
             )
             habit.unit.length > MAX_UNIT_LENGTH -> errors.add(
                 HabitValidationError(
                     HabitField.UNIT,
-                    "Единица измерения не должна превышать $MAX_UNIT_LENGTH символов",
+                    stringProvider.getString(R.string.validation_unit_too_long, MAX_UNIT_LENGTH),
                     "UNIT_TOO_LONG"
                 )
             )
@@ -164,14 +187,14 @@ object HabitValidation {
                 habit.maxParticipants < MIN_GROUP_PARTICIPANTS -> errors.add(
                     HabitValidationError(
                         HabitField.MAX_PARTICIPANTS,
-                        "Групповая привычка должна поддерживать минимум $MIN_GROUP_PARTICIPANTS участников",
+                        stringProvider.getString(R.string.validation_min_participants, MIN_GROUP_PARTICIPANTS),
                         "MAX_PARTICIPANTS_TOO_LOW"
                     )
                 )
                 habit.maxParticipants > MAX_GROUP_PARTICIPANTS -> errors.add(
                     HabitValidationError(
                         HabitField.MAX_PARTICIPANTS,
-                        "Максимальное количество участников не должно превышать $MAX_GROUP_PARTICIPANTS",
+                        stringProvider.getString(R.string.validation_max_participants, MAX_GROUP_PARTICIPANTS),
                         "MAX_PARTICIPANTS_TOO_HIGH"
                     )
                 )
@@ -183,7 +206,7 @@ object HabitValidation {
                     errors.add(
                         HabitValidationError(
                             HabitField.INVITE_CODE,
-                            "Код приглашения должен содержать $INVITE_CODE_LENGTH заглавных букв и цифр",
+                            stringProvider.getString(R.string.validation_invite_code_invalid, INVITE_CODE_LENGTH),
                             "INVITE_CODE_INVALID_FORMAT"
                         )
                     )
@@ -195,7 +218,7 @@ object HabitValidation {
                 errors.add(
                     HabitValidationError(
                         HabitField.PARTICIPANTS,
-                        "Количество участников превышает максимально допустимое",
+                        stringProvider.getString(R.string.validation_too_many_participants),
                         "TOO_MANY_PARTICIPANTS"
                     )
                 )
@@ -212,19 +235,4 @@ object HabitValidation {
      * Быстрая проверка валидности привычки
      */
     fun isValidHabit(habit: Habit): Boolean = validateHabit(habit).isValid
-    
-    /**
-     * Генерация случайного invite-кода
-     */
-    fun generateInviteCode(): String {
-        val chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
-        return (1..INVITE_CODE_LENGTH)
-            .map { chars.random() }
-            .joinToString("")
-    }
-    
-    /**
-     * Проверка валидности invite-кода
-     */
-    fun isValidInviteCode(code: String): Boolean = INVITE_CODE_REGEX.matches(code)
 }

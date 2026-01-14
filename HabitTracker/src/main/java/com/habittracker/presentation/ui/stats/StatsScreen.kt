@@ -18,16 +18,6 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.BarChart
-import androidx.compose.material.icons.filled.CheckCircle
-import androidx.compose.material.icons.filled.EmojiEvents
-import androidx.compose.material.icons.filled.Group
-import androidx.compose.material.icons.filled.Refresh
-import androidx.compose.material.icons.filled.Schedule
-import androidx.compose.material.icons.filled.Warning
-import androidx.compose.material.icons.filled.Whatshot
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -64,6 +54,7 @@ import com.habittracker.presentation.ui.components.UserAvatar
 import com.habittracker.presentation.ui.habits.components.GlassmorphicCard
 import com.habittracker.presentation.ui.habits.components.GradientProgressBar
 import com.habittracker.presentation.ui.habits.components.TahoeGradientBackground
+import com.habittracker.presentation.ui.theme.TahoeIcons
 import com.habittracker.presentation.viewmodel.StatsViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -95,7 +86,7 @@ fun StatsScreen(
                     navigationIcon = {
                         IconButton(onClick = onNavigateBack) {
                             Icon(
-                                Icons.AutoMirrored.Filled.ArrowBack,
+                                TahoeIcons.ArrowBack,
                                 contentDescription = stringResource(R.string.cd_back)
                             )
                         }
@@ -103,7 +94,7 @@ fun StatsScreen(
                     actions = {
                         IconButton(onClick = { viewModel.refresh() }) {
                             Icon(
-                                Icons.Default.Refresh,
+                                TahoeIcons.ArrowPath,
                                 contentDescription = stringResource(R.string.cd_refresh)
                             )
                         }
@@ -186,7 +177,7 @@ fun StatsScreen(
                         verticalArrangement = Arrangement.spacedBy(16.dp)
                     ) {
                         Icon(
-                            Icons.Default.Warning,
+                            TahoeIcons.Warning,
                             contentDescription = null,
                             modifier = Modifier.size(64.dp),
                             tint = MaterialTheme.colorScheme.error
@@ -233,7 +224,7 @@ private fun UserLevelCard(levelInfo: com.habittracker.domain.model.UserLevelInfo
                     fontWeight = FontWeight.Bold
                 )
                 Text(
-                    text = levelInfo.levelTitle,
+                    text = levelInfo.levelTitleResId?.let { stringResource(it) } ?: levelInfo.levelTitle,
                     style = MaterialTheme.typography.bodyLarge,
                     color = MaterialTheme.colorScheme.primary
                 )
@@ -273,7 +264,7 @@ private fun UserLevelCard(levelInfo: com.habittracker.domain.model.UserLevelInfo
 private fun HabitStatsCard(habitStats: HabitStats) {
     StatsCard(
         title = stringResource(R.string.stats_habits_title),
-        icon = Icons.Default.CheckCircle,
+        icon = TahoeIcons.CheckCircle,
         stats = listOf(
             stringResource(R.string.stats_habits_total) to habitStats.totalHabits.toString(),
             stringResource(R.string.stats_habits_active) to habitStats.activeHabits.toString(),
@@ -295,7 +286,7 @@ private fun HabitStatsCard(habitStats: HabitStats) {
 private fun StreakStatsCard(streakStats: StreakStats) {
     StatsCard(
         title = stringResource(R.string.stats_streaks_title),
-        icon = Icons.Default.Whatshot,
+        icon = TahoeIcons.Fire,
         stats = listOf(
             stringResource(R.string.stats_streak_current) to streakStats.currentStreak.toString(),
             stringResource(R.string.stats_streak_best) to streakStats.longestStreak.toString(),
@@ -309,7 +300,7 @@ private fun StreakStatsCard(streakStats: StreakStats) {
 private fun SocialStatsCard(socialStats: SocialStats) {
     StatsCard(
         title = stringResource(R.string.stats_social_title),
-        icon = Icons.Default.Group,
+        icon = TahoeIcons.Group,
         stats = listOf(
             stringResource(R.string.stats_social_friends) to socialStats.friendsCount.toString(),
             stringResource(R.string.stats_social_group_habits) to socialStats.groupHabitsCount.toString(),
@@ -323,7 +314,7 @@ private fun SocialStatsCard(socialStats: SocialStats) {
 private fun ChallengeStatsCard(challengeStats: ChallengeStats) {
     StatsCard(
         title = stringResource(R.string.stats_challenges_title),
-        icon = Icons.Default.EmojiEvents,
+        icon = TahoeIcons.Trophy,
         stats = listOf(
             stringResource(R.string.stats_challenges_total) to challengeStats.totalChallenges.toString(),
             stringResource(R.string.stats_challenges_active) to challengeStats.activeChallenges.toString(),
@@ -339,7 +330,7 @@ private fun ChallengeStatsCard(challengeStats: ChallengeStats) {
 private fun TimeStatsCard(timeStats: TimeStats) {
     StatsCard(
         title = stringResource(R.string.stats_time_title),
-        icon = Icons.Default.Schedule,
+        icon = TahoeIcons.Clock,
         stats = listOf(
             stringResource(R.string.stats_time_morning) to timeStats.morningCompletions.toString(),
             stringResource(R.string.stats_time_afternoon) to timeStats.afternoonCompletions.toString(),
@@ -378,7 +369,7 @@ private fun ActivityChartCard(last7Days: List<Pair<kotlinx.datetime.LocalDate, I
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 Icon(
-                    Icons.Default.BarChart,
+                    TahoeIcons.ChartBar,
                     contentDescription = null,
                     tint = if (isDarkTheme) Color(0xFF4DC273) else MaterialTheme.colorScheme.primary
                 )
@@ -538,7 +529,7 @@ private fun LeaderboardSection(
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     Icon(
-                        Icons.Default.EmojiEvents,
+                        TahoeIcons.Trophy,
                         contentDescription = null,
                         tint = if (isDarkTheme) Color(0xFFFFD700) else MaterialTheme.colorScheme.primary
                     )

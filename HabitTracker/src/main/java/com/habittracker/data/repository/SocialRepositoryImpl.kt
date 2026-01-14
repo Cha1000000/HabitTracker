@@ -7,8 +7,10 @@ import com.habittracker.data.firestore.UserFirestoreConverter
 import com.habittracker.data.local.dao.FriendRequestDao
 import com.habittracker.data.local.dao.FriendshipDao
 import com.habittracker.data.local.dao.HabitInvitationDao
-import com.habittracker.data.local.dao.SyncOutboxDao
 import com.habittracker.data.local.dao.UserDao
+import com.habittracker.R
+import com.habittracker.domain.provider.StringProvider
+import com.habittracker.data.local.dao.SyncOutboxDao
 import com.habittracker.data.local.entity.UserEntity
 import com.habittracker.data.local.mappers.toDomain
 import com.habittracker.data.local.mappers.toEntity
@@ -73,7 +75,8 @@ class SocialRepositoryImpl @Inject constructor(
     private val syncManager: SyncManager,
     private val syncWorkScheduler: SyncWorkScheduler,
     private val notificationRepository: GroupHabitNotificationRepository,
-    private val syncOutboxDao: SyncOutboxDao
+    private val syncOutboxDao: SyncOutboxDao,
+    private val stringProvider: StringProvider
 ) : SocialRepository {
 
     // Repository-level scope for fire-and-forget background tasks (safe: singleton)
@@ -210,11 +213,11 @@ class SocialRepositoryImpl @Inject constructor(
                 // Обновляем локальный кэш с актуальными данными
                 user?.let {
                     try {
-                        val hasPending = try {
-                            syncManager.hasPendingOperations("user", it.id)
+                        var hasPending = false
+                        try {
+                            hasPending = syncManager.hasPendingOperations("user", it.id)
                         } catch (e: Exception) {
                             Log.w("SocialRepository", "getUserByIdFromFirestore: hasPendingOperations failed for userId=${it.id}: ${e.message}")
-                            false
                         }
                         if (!hasPending) {
                             upsertLocalUser(it.toEntity())
@@ -394,15 +397,15 @@ class SocialRepositoryImpl @Inject constructor(
             val local = userDao.getUserById(fromUserId)?.toDomain()?.name
             if (!local.isNullOrBlank()) local else {
                 val fromDoc = firestore.collection("users").document(fromUserId).get().await()
-                (fromDoc.get("name") as? String) ?: "Пользователь"
+                (fromDoc.get("name") as? String) ?: stringProvider.getString(R.string.default_user_name)
             }
         } catch (e: Exception) {
             Log.d("SocialRepository", "sendFriendRequestPush: resolve fromName failed for fromUserId=$fromUserId: ${e.message}")
-            "Пользователь"
+            stringProvider.getString(R.string.default_user_name)
         }
 
-        val title = "Новый запрос дружбы"
-        val body = "$fromName хочет добавить вас в друзья"
+        val title = stringProvider.getString(R.string.notification_friend_request_title)
+        val body = stringProvider.getString(R.string.notification_friend_request_body, fromName)
 
         // 3) Сформируем data payload
         val data = buildMap {
@@ -426,7 +429,7 @@ class SocialRepositoryImpl @Inject constructor(
     override suspend fun acceptFriendRequest(requestId: String): Result<Friendship> {
         return try {
             val friendRequest = getFriendRequestById(requestId)
-                ?: return Result.failure(IllegalArgumentException("Запрос не найден"))
+                ?: return Result.failure(IllegalArgumentException(stringProvider.getString(R.string.error_request_not_found)))
 
             val now = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault())
             val acceptedRequest = friendRequest.copy(
@@ -505,7 +508,7 @@ class SocialRepositoryImpl @Inject constructor(
     override suspend fun declineFriendRequest(requestId: String): Result<FriendRequest> {
         return try {
             val friendRequest = getFriendRequestById(requestId)
-                ?: return Result.failure(IllegalArgumentException("Запрос не найден"))
+                ?: return Result.failure(IllegalArgumentException(stringProvider.getString(R.string.error_request_not_found)))
 
             val now = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault())
             val declinedRequest = friendRequest.copy(
@@ -884,7 +887,7 @@ class SocialRepositoryImpl @Inject constructor(
     override suspend fun unblockUser(currentUserId: String, userIdToUnblock: String): Result<Friendship> {
         return try {
             val friendship = getFriendshipBetweenUsers(currentUserId, userIdToUnblock)
-                ?: return Result.failure(IllegalStateException("Дружба не найдена"))
+                ?: return Result.failure(IllegalStateException(stringProvider.getString(R.string.error_friendship_not_found)))
 
             val unblockedFriendship = friendship.copy(
                 status = FriendshipStatus.ACCEPTED,
@@ -1141,7 +1144,7 @@ class SocialRepositoryImpl @Inject constructor(
     }
 
     override suspend fun expireOldFriendRequests() {
-        val thirtyDaysAgo = System.currentTimeMillis() - (30 * 24 * 60 * 60 * 1000)
+        val thirtyDaysAgo = System.currentTimeMillis() - (30L * 24 * 60 * 60 * 1000)
         try {
             friendRequestDao.expireOldRequests(thirtyDaysAgo)
         } catch (e: Exception) {
@@ -1170,8 +1173,8 @@ class SocialRepositoryImpl @Inject constructor(
             // Отправка на все токены и очистка невалидных (UNREGISTERED)
             val batchResult = fcmApiClient.sendToMultipleTokens(
                 tokens = allTokens,
-                title = "Новый запрос дружбы",
-                body = "$fromUserName хочет добавить вас в друзья",
+                title = stringProvider.getString(R.string.notification_friend_request_title),
+                body = stringProvider.getString(R.string.notification_friend_request_body, fromUserName),
                 data = mapOf(
                     "type" to "friend_request",
                     "fromUserName" to fromUserName,
@@ -1215,8 +1218,8 @@ class SocialRepositoryImpl @Inject constructor(
 
             val batchResult = fcmApiClient.sendToMultipleTokens(
                 tokens = allTokens,
-                title = "Запрос дружбы принят",
-                body = "$acceptedByName принял ваш запрос дружбы",
+                title = stringProvider.getString(R.string.notification_friend_request_title),
+                body = stringProvider.getString(R.string.notification_friend_accepted_body, acceptedByName),
                 data = mapOf(
                     "type" to "friend_accepted",
                     "acceptedByName" to acceptedByName,
@@ -1251,7 +1254,7 @@ class SocialRepositoryImpl @Inject constructor(
         return try {
             // Проверяем, можно ли отправить приглашение
             if (!canSendHabitInvitation(fromUserId, toUserId, habitId)) {
-                return Result.failure(Exception("Нельзя отправить приглашение этому пользователю"))
+                return Result.failure(Exception(stringProvider.getString(R.string.error_cannot_send_invite)))
             }
 
             val invitation = HabitInvitation(
@@ -1774,7 +1777,7 @@ class SocialRepositoryImpl @Inject constructor(
         val currentTime = System.currentTimeMillis()
         try {
             habitInvitationDao.expireOldInvitations(currentTime)
-            habitInvitationDao.deleteOldInvitations(currentTime - (30 * 24 * 60 * 60 * 1000)) // Удаляем старые через 30 дней
+            habitInvitationDao.deleteOldInvitations(currentTime - (30L * 24 * 60 * 60 * 1000)) // Удаляем старые через 30 дней
         } catch (e: Exception) {
             Log.d("SocialRepository", "expireOldHabitInvitations failed (non-fatal): ${e.message}")
         }
@@ -1793,46 +1796,42 @@ class SocialRepositoryImpl @Inject constructor(
 
     override suspend fun sendHabitInvitationNotification(toUserId: String, fromUserName: String, habitTitle: String) {
         try {
-            // Отправляем асинхронно и неотменяемо, включая загрузку токенов
-            repoScope.launch {
-                withContext(NonCancellable + Dispatchers.IO) {
-                    val userDoc = firestore.collection("users").document(toUserId).get().await()
-                    val tokensFromArray = (userDoc.get("fcmTokens") as? List<*>)?.mapNotNull { it as? String } ?: emptyList()
-                    val legacyToken = userDoc.getString("fcmToken")
-                    val allTokens = (tokensFromArray + listOfNotNull(legacyToken)).toSet()
+            // Получаем все актуальные токены получателя: массив fcmTokens + fallback fcmToken
+            val userDoc = firestore.collection("users").document(toUserId).get().await()
+            val tokensFromArray = (userDoc.get("fcmTokens") as? List<*>)?.mapNotNull { it as? String } ?: emptyList()
+            val legacyToken = userDoc.getString("fcmToken")
+            val allTokens = (tokensFromArray + listOfNotNull(legacyToken)).toSet().toList()
 
-                    if (allTokens.isEmpty()) {
-                        Log.w("SocialRepository", "FCM skip: habit_invitation -> to=$toUserId, tokens_absent")
-                        return@withContext
-                    }
+            if (allTokens.isEmpty()) {
+                Log.w("SocialRepository", "FCM skip: habit_invitation -> to=$toUserId, tokens_absent")
+                return
+            }
 
-                    Log.d(
-                        "SocialRepository",
-                        "FCM send: habit_invitation -> to=$toUserId, tokens_count=${allTokens.size}, tokens=${allTokens.map { maskToken(it) }}"
+            Log.d(
+                "SocialRepository",
+                "FCM send: habit_invitation -> to=$toUserId, tokens_count=${allTokens.size}, tokens=${allTokens.map { maskToken(it) }}"
+            )
+
+            allTokens.forEach { token ->
+                val result = fcmApiClient.sendPushNotification(
+                    fcmToken = token,
+                    title = stringProvider.getString(R.string.notification_habit_invitation_title),
+                    body = stringProvider.getString(R.string.notification_habit_invitation_body, fromUserName, habitTitle),
+                    data = mapOf(
+                        "type" to "habit_invitation",
+                        "habitTitle" to habitTitle,
+                        "fromUserName" to fromUserName,
+                        "action" to "open_habit_invitations",
+                        "recipientUserId" to toUserId
                     )
-
-                    allTokens.forEach { token ->
-                        val result = fcmApiClient.sendPushNotification(
-                            fcmToken = token,
-                            title = "Приглашение к привычке",
-                            body = "$fromUserName приглашает вас к участию в привычке '$habitTitle'",
-                            data = mapOf(
-                                "type" to "habit_invitation",
-                                "habitTitle" to habitTitle,
-                                "fromUserName" to fromUserName,
-                                "action" to "open_habit_invitations",
-                                "recipientUserId" to toUserId
-                            )
-                        )
-                        result.onFailure { e ->
-                            val msg = e.message ?: ""
-                            if (msg.contains("UNREGISTERED", ignoreCase = true)) {
-                                Log.w("SocialRepository", "FCM UNREGISTERED -> remove token ${maskToken(token)} for user=$toUserId")
-                                safelyRemoveInvalidFcmToken(toUserId, token)
-                            } else {
-                                Log.w("SocialRepository", "FCM send failed for token ${maskToken(token)}: ${e.message}")
-                            }
-                        }
+                )
+                result.onFailure { e ->
+                    val msg = e.message ?: ""
+                    if (msg.contains("UNREGISTERED", ignoreCase = true)) {
+                        Log.w("SocialRepository", "FCM UNREGISTERED -> remove token ${maskToken(token)} for user=$toUserId")
+                        safelyRemoveInvalidFcmToken(toUserId, token)
+                    } else {
+                        Log.w("SocialRepository", "FCM send failed for token ${maskToken(token)}: ${e.message}")
                     }
                 }
             }
@@ -1849,7 +1848,7 @@ class SocialRepositoryImpl @Inject constructor(
     ) {
         try {
             // Сохраняем уведомление в БД для отображения на NotificationsScreen
-            val message = "$acceptedByName принял ваше приглашение к участию в привычке '$habitTitle'"
+            val message = stringProvider.getString(R.string.notification_habit_invitation_accepted, acceptedByName, habitTitle)
             val notificationEntity = com.habittracker.data.local.entity.GroupHabitNotificationEntity(
                 id = java.util.UUID.randomUUID().toString(),
                 userId = toUserId,
@@ -1888,7 +1887,7 @@ class SocialRepositoryImpl @Inject constructor(
                     allTokens.forEach { token ->
                         val result = fcmApiClient.sendPushNotification(
                             fcmToken = token,
-                            title = "Приглашение принято",
+                            title = stringProvider.getString(R.string.notification_habit_invitation_accepted_title),
                             body = message,
                             data = mapOf(
                                 "type" to "habit_invitation_accepted",
@@ -1924,7 +1923,7 @@ class SocialRepositoryImpl @Inject constructor(
     ) {
         try {
             // Сохраняем уведомление в БД для отображения на NotificationsScreen
-            val message = "$joinedUserName присоединился к привычке '$habitTitle'"
+            val message = stringProvider.getString(R.string.notification_participant_joined, joinedUserName, habitTitle)
             val notificationEntity = com.habittracker.data.local.entity.GroupHabitNotificationEntity(
                 id = java.util.UUID.randomUUID().toString(),
                 userId = toUserId,
@@ -1948,7 +1947,7 @@ class SocialRepositoryImpl @Inject constructor(
                     val userDoc = firestore.collection("users").document(toUserId).get().await()
                     val tokensFromArray = (userDoc.get("fcmTokens") as? List<*>)?.mapNotNull { it as? String } ?: emptyList()
                     val legacyToken = userDoc.getString("fcmToken")
-                    val allTokens = (tokensFromArray + listOfNotNull(legacyToken)).toSet()
+                    val allTokens = (tokensFromArray + listOfNotNull(legacyToken)).toSet().toList()
 
                     if (allTokens.isEmpty()) {
                         Log.w("SocialRepository", "FCM skip: participant_joined -> to=$toUserId, tokens_absent")
@@ -1963,7 +1962,7 @@ class SocialRepositoryImpl @Inject constructor(
                     allTokens.forEach { token ->
                         val result = fcmApiClient.sendPushNotification(
                             fcmToken = token,
-                            title = "Новый участник",
+                            title = stringProvider.getString(R.string.notification_participant_joined_title),
                             body = message,
                             data = mapOf(
                                 "type" to "new_participant",
@@ -2046,8 +2045,8 @@ class SocialRepositoryImpl @Inject constructor(
 
             val batchResult = fcmApiClient.sendToMultipleTokens(
                 tokens = allTokens,
-                title = "Приглашение в челлендж",
-                body = "$fromUserName приглашает вас к участию в челлендже '$challengeTitle' по привычке '$habitTitle'",
+                title = stringProvider.getString(R.string.notification_challenge_invitation_title),
+                body = stringProvider.getString(R.string.notification_challenge_invitation_body, fromUserName, challengeTitle),
                 data = mapOf(
                     "type" to "challenge_invitation",
                     "challengeId" to challengeId,
@@ -2090,8 +2089,8 @@ class SocialRepositoryImpl @Inject constructor(
 
             val batchResult = fcmApiClient.sendToMultipleTokens(
                 tokens = allTokens,
-                title = "Новый участник челленджа",
-                body = "$joinedUserName присоединился к челленджу '$challengeTitle'",
+                title = stringProvider.getString(R.string.notification_challenge_joined_title),
+                body = stringProvider.getString(R.string.notification_challenge_joined_body, joinedUserName, challengeTitle),
                 data = mapOf(
                     "type" to "challenge_joined",
                     "challengeId" to challengeId,
@@ -2133,8 +2132,8 @@ class SocialRepositoryImpl @Inject constructor(
 
             val batchResult = fcmApiClient.sendToMultipleTokens(
                 tokens = allTokens,
-                title = "Участник покинул челлендж",
-                body = "$leftUserName покинул челлендж '$challengeTitle'",
+                title = stringProvider.getString(R.string.notification_participant_left_title),
+                body = stringProvider.getString(R.string.notification_participant_left_body, leftUserName, challengeTitle),
                 data = mapOf(
                     "type" to "challenge_left",
                     "challengeId" to challengeId,
@@ -2169,7 +2168,11 @@ class SocialRepositoryImpl @Inject constructor(
                 return
             }
 
-            val title = if (isWinner) "Поздравляем с победой!" else "Челлендж завершен"
+            val title = if (isWinner) {
+                stringProvider.getString(R.string.notification_congrats_title)
+            } else {
+                stringProvider.getString(R.string.notification_challenge_completed_title)
+            }
             Log.d(
                 "SocialRepository",
                 "FCM send: challenge_completed -> to=$toUserId, tokens_count=${allTokens.size}, tokens=${allTokens.map { maskToken(it) }}, challenge='$challengeTitle', isWinner=$isWinner"
@@ -2221,8 +2224,8 @@ class SocialRepositoryImpl @Inject constructor(
 
             val batchResult = fcmApiClient.sendToMultipleTokens(
                 tokens = allTokens,
-                title = "Челлендж отменен",
-                body = "Челлендж '$challengeTitle' был отменен. $reason",
+                title = stringProvider.getString(R.string.notification_challenge_cancelled_title),
+                body = stringProvider.getString(R.string.notification_challenge_cancelled_body, challengeTitle, reason),
                 data = mapOf(
                     "type" to "challenge_cancelled",
                     "challengeId" to challengeId,

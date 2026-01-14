@@ -4,6 +4,8 @@ import android.util.Log
 import com.habittracker.domain.model.Habit
 import com.habittracker.domain.model.HabitEntry
 import com.habittracker.domain.model.User
+import com.habittracker.R
+import com.habittracker.domain.provider.StringProvider
 import com.habittracker.domain.repository.HabitEntryRepository
 import com.habittracker.domain.repository.HabitRepository
 import com.habittracker.domain.repository.NotificationRepository
@@ -28,7 +30,8 @@ class GroupHabitNotificationUseCase @Inject constructor(
     private val habitRepository: HabitRepository,
     private val habitEntryRepository: HabitEntryRepository,
     private val socialRepository: SocialRepository,
-    private val notificationRepository: NotificationRepository
+    private val notificationRepository: NotificationRepository,
+    private val stringProvider: StringProvider
 ) {
     
     /**
@@ -109,6 +112,7 @@ class GroupHabitNotificationUseCase @Inject constructor(
                 
                 val participantEntries = entriesByUser[participantId] ?: emptyList()
                 val participant = getParticipantInfo(participantId)
+                val participantName = participant?.name ?: stringProvider.getString(R.string.default_participant_name)
                 
                 // Уведомление о выполнении сегодня
                 val todayEntry = participantEntries.find { entry -> entry.date == today && entry.completed }
@@ -127,8 +131,8 @@ class GroupHabitNotificationUseCase @Inject constructor(
                         type = NotificationType.PARTICIPANT_COMPLETED,
                         habitId = habit.id,
                         habitTitle = habit.title,
-                        participantName = participant?.name ?: "Участник",
-                        message = "${participant?.name ?: "Участник"} выполнил(а) привычку \"${habit.title}\"",
+                        participantName = participantName,
+                        message = stringProvider.getString(R.string.notification_participant_completed_message, participantName, habit.title),
                         timestamp = todayEntry.completedAt?.toInstant(TimeZone.currentSystemDefault()) ?: Clock.System.now(),
                         isRead = false
                     )
@@ -154,8 +158,8 @@ class GroupHabitNotificationUseCase @Inject constructor(
                         type = NotificationType.PARTICIPANT_STREAK,
                         habitId = habit.id,
                         habitTitle = habit.title,
-                        participantName = participant?.name ?: "Участник",
-                        message = "${participant?.name ?: "Участник"} поддерживает серию $streak дней в \"${habit.title}\"!",
+                        participantName = participantName,
+                        message = stringProvider.getString(R.string.notification_participant_streak_message, participantName, streak, habit.title),
                         timestamp = Clock.System.now(),
                         isRead = false
                     )
@@ -180,7 +184,7 @@ class GroupHabitNotificationUseCase @Inject constructor(
                     type = NotificationType.GROUP_ACHIEVEMENT,
                     habitId = habit.id,
                     habitTitle = habit.title,
-                    message = "Все участники выполнили \"${habit.title}\" сегодня! ",
+                    message = stringProvider.getString(R.string.notification_group_achievement_message, habit.title),
                     timestamp = Clock.System.now(),
                     isRead = false
                 )

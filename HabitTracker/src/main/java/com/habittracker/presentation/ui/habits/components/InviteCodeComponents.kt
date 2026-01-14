@@ -16,12 +16,6 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ContentCopy
-import androidx.compose.material.icons.filled.QrCode
-import androidx.compose.material.icons.filled.Share
-import androidx.compose.material.icons.filled.Visibility
-import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -52,6 +46,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.habittracker.R
+import com.habittracker.presentation.ui.theme.TahoeIcons
 
 /**
  * Компонент для отображения и управления invite-кодом групповой привычки
@@ -93,7 +88,7 @@ fun InviteCodeCard(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Icon(
-                        imageVector = if (isPublic) Icons.Default.Visibility else Icons.Default.VisibilityOff,
+                        imageVector = if (isPublic) TahoeIcons.Eye else TahoeIcons.EyeSlash,
                         contentDescription = null,
                         tint = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.size(20.dp)
@@ -201,7 +196,7 @@ private fun InviteCodeDisplay(
                     }
                 ) {
                     Icon(
-                        imageVector = Icons.Default.ContentCopy,
+                        imageVector = TahoeIcons.Clipboard,
                         contentDescription = stringResource(R.string.copy_code),
                         tint = MaterialTheme.colorScheme.onSurface
                     )
@@ -221,7 +216,7 @@ private fun InviteCodeDisplay(
                 modifier = Modifier.weight(1f)
             ) {
                 Icon(
-                    imageVector = Icons.Default.Share,
+                    imageVector = TahoeIcons.Share,
                     contentDescription = null,
                     modifier = Modifier.size(18.dp)
                 )
@@ -279,7 +274,7 @@ private fun InviteCodeGeneration(
                 Text(stringResource(R.string.generating_code))
             } else {
                 Icon(
-                    imageVector = Icons.Default.QrCode,
+                    imageVector = TahoeIcons.QrCode,
                     contentDescription = null,
                     modifier = Modifier.size(18.dp)
                 )

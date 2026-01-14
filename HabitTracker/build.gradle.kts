@@ -10,6 +10,8 @@ plugins {
     alias(libs.plugins.kotlin.ksp)
     alias(libs.plugins.hilt.android)
     alias(libs.plugins.kotlin.serialization)
+    alias(libs.plugins.firebase.crashlytics)
+    alias(libs.plugins.firebase.perf)
     id("com.google.gms.google-services")
     alias(libs.plugins.kotlin.compose)
 }
@@ -27,7 +29,7 @@ ksp {
 }
 
 // Единый источник versionName для использования и в defaultConfig, и в имени APK
-val appVersionName = "1.3.4"
+val appVersionName = "1.3.8"
 
 android {
     namespace = "com.habittracker"
@@ -261,9 +263,14 @@ dependencies {
     // Serialization
     implementation(libs.kotlinx.serialization.json)
 
+    // Logging
+    implementation(libs.timber)
+
     // Firebase
     implementation(platform(libs.firebase.bom))
     implementation(libs.firebase.analytics)
+    implementation(libs.firebase.crashlytics)
+    implementation(libs.firebase.perf)
     implementation(libs.firebase.messaging)
     implementation(libs.firebase.firestore)
     implementation(libs.firebase.auth)

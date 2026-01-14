@@ -16,11 +16,6 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Email
-import androidx.compose.material.icons.filled.Lock
-import androidx.compose.material.icons.filled.Visibility
-import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -53,9 +48,11 @@ import com.habittracker.R
 import com.habittracker.presentation.navigation.Screen
 import com.habittracker.presentation.ui.habits.components.GlassmorphicButton
 import com.habittracker.presentation.ui.habits.components.GlassmorphicCard
+import com.habittracker.presentation.ui.habits.components.GlassmorphicDialog
 import com.habittracker.presentation.ui.habits.components.GlassmorphicOutlinedButton
 import com.habittracker.presentation.ui.habits.components.GlassmorphicTextField
 import com.habittracker.presentation.ui.habits.components.TahoeGradientBackground
+import com.habittracker.presentation.ui.theme.TahoeIcons
 import com.habittracker.presentation.viewmodel.AuthEvent
 import com.habittracker.presentation.viewmodel.AuthState
 import com.habittracker.presentation.viewmodel.AuthViewModel
@@ -143,7 +140,7 @@ fun LoginScreen(
                         placeholder = { Text("example@email.com") },
                         leadingIcon = { 
                             Icon(
-                                imageVector = Icons.Default.Email, 
+                                imageVector = TahoeIcons.Envelope, 
                                 contentDescription = null
                             ) 
                         },
@@ -163,14 +160,14 @@ fun LoginScreen(
                         placeholder = { Text("••••••••") },
                         leadingIcon = { 
                             Icon(
-                                imageVector = Icons.Default.Lock, 
+                                imageVector = TahoeIcons.LockClosed, 
                                 contentDescription = null
                             ) 
                         },
                         trailingIcon = {
                             IconButton(onClick = { passwordVisible = !passwordVisible }) {
                                 Icon(
-                                    imageVector = if (passwordVisible) Icons.Default.Visibility else Icons.Default.VisibilityOff,
+                                    imageVector = if (passwordVisible) TahoeIcons.Eye else TahoeIcons.EyeSlash,
                                     contentDescription = if (passwordVisible) stringResource(R.string.cd_hide_password) else stringResource(R.string.cd_show_password)
                                 )
                             }
@@ -180,8 +177,24 @@ fun LoginScreen(
                         modifier = Modifier.fillMaxWidth(),
                         singleLine = true
                     )
+                    
+                    // Кнопка "Забыли пароль?"
+                    Box(
+                        modifier = Modifier.fillMaxWidth(),
+                        contentAlignment = Alignment.CenterEnd
+                    ) {
+                        TextButton(
+                            onClick = { viewModel.onEvent(AuthEvent.ShowForgotPasswordDialog) }
+                        ) {
+                            Text(
+                                text = stringResource(R.string.auth_forgot_password),
+                                style = MaterialTheme.typography.bodySmall,
+                                color = if (isDarkTheme) Color.White.copy(alpha = 0.8f) else MaterialTheme.colorScheme.primary
+                            )
+                        }
+                    }
 
-                    Spacer(modifier = Modifier.height(24.dp))
+                    Spacer(modifier = Modifier.height(16.dp))
 
                     // Кнопка входа
                     GlassmorphicButton(
@@ -262,5 +275,166 @@ fun LoginScreen(
                 }
             }
         }
+        
+        // Диалог сброса пароля
+        if (uiState.showForgotPasswordDialog) {
+            ForgotPasswordDialog(
+                email = uiState.forgotPasswordEmail,
+                onEmailChange = { viewModel.onEvent(AuthEvent.ForgotPasswordEmailChanged(it)) },
+                onSend = { viewModel.onEvent(AuthEvent.SendPasswordResetEmail) },
+                onDismiss = { viewModel.onEvent(AuthEvent.HideForgotPasswordDialog) },
+                isLoading = uiState.forgotPasswordLoading,
+                isSuccess = uiState.forgotPasswordSuccess,
+                error = uiState.forgotPasswordError,
+                isDarkTheme = isDarkTheme
+            )
+        }
     }
+}
+
+@Composable
+private fun ForgotPasswordDialog(
+    email: String,
+    onEmailChange: (String) -> Unit,
+    onSend: () -> Unit,
+    onDismiss: () -> Unit,
+    isLoading: Boolean,
+    isSuccess: Boolean,
+    error: String?,
+    isDarkTheme: Boolean
+) {
+    GlassmorphicDialog(
+        onDismissRequest = onDismiss,
+        isDarkTheme = isDarkTheme,
+        maxWidthFraction = 1f,
+        content = {
+            Column(
+            modifier = Modifier.padding(12.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Icon(
+                imageVector = TahoeIcons.Envelope,
+                contentDescription = null,
+                modifier = Modifier.size(48.dp),
+                tint = MaterialTheme.colorScheme.primary
+            )
+            
+            Spacer(modifier = Modifier.height(8.dp))
+            
+            Text(
+                text = stringResource(R.string.auth_forgot_password_title),
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.Bold,
+                color = if (isDarkTheme) Color.White else MaterialTheme.colorScheme.onSurface
+            )
+            
+            Spacer(modifier = Modifier.height(8.dp))
+            
+            Text(
+                text = stringResource(R.string.auth_forgot_password_description),
+                style = MaterialTheme.typography.bodyMedium,
+                color = if (isDarkTheme) Color.White.copy(alpha = 0.7f) else MaterialTheme.colorScheme.onSurfaceVariant,
+                textAlign = TextAlign.Center
+            )
+            
+            Spacer(modifier = Modifier.height(24.dp))
+            
+            if (isSuccess) {
+                // Успешная отправка
+                Icon(
+                    imageVector = TahoeIcons.Check,
+                    contentDescription = null,
+                    modifier = Modifier.size(48.dp),
+                    tint = Color(0xFF4CAF50)
+                )
+                
+                Spacer(modifier = Modifier.height(16.dp))
+                
+                Text(
+                    text = stringResource(R.string.auth_forgot_password_success),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = if (isDarkTheme) Color.White else MaterialTheme.colorScheme.onSurface,
+                    textAlign = TextAlign.Center
+                )
+                
+                Spacer(modifier = Modifier.height(24.dp))
+                
+                GlassmorphicButton(
+                    onClick = onDismiss,
+                    modifier = Modifier.fillMaxWidth(),
+                    isDarkTheme = isDarkTheme
+                ) {
+                    Text(
+                        text = stringResource(R.string.ok),
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                }
+            } else {
+                // Форма ввода email
+                GlassmorphicTextField(
+                    value = email,
+                    onValueChange = onEmailChange,
+                    label = { Text(stringResource(R.string.auth_email_label)) },
+                    placeholder = { Text("example@email.com") },
+                    leadingIcon = { 
+                        Icon(
+                            imageVector = TahoeIcons.Envelope, 
+                            contentDescription = null
+                        ) 
+                    },
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
+                    modifier = Modifier.fillMaxWidth(),
+                    singleLine = true
+                )
+                
+                // Сообщение об ошибке
+                if (error != null) {
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(
+                        text = error,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.error
+                    )
+                }
+                
+                Spacer(modifier = Modifier.height(24.dp))
+                
+                GlassmorphicButton(
+                    onClick = onSend,
+                    modifier = Modifier.fillMaxWidth(),
+                    enabled = !isLoading && email.isNotBlank(),
+                    isDarkTheme = isDarkTheme
+                ) {
+                    if (isLoading) {
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(20.dp),
+                            color = if (isDarkTheme) Color.White else MaterialTheme.colorScheme.onPrimary
+                        )
+                    } else {
+                        Text(
+                            text = stringResource(R.string.auth_send),
+                            style = MaterialTheme.typography.bodyLarge,
+                            fontWeight = FontWeight.SemiBold
+                        )
+                    }
+                }
+                
+                Spacer(modifier = Modifier.height(8.dp))
+                
+                GlassmorphicOutlinedButton(
+                    onClick = onDismiss,
+                    modifier = Modifier.fillMaxWidth(),
+                    enabled = !isLoading,
+                    isDarkTheme = isDarkTheme
+                ) {
+                    Text(
+                        text = stringResource(R.string.cancel),
+                        style = MaterialTheme.typography.bodyMedium
+                    )
+                }
+            }
+        }
+        }
+    )
 }

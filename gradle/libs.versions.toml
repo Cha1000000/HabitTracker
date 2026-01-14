@@ -35,10 +35,13 @@ desugarJdkLibs = "2.1.2"
 androidxCredentials = "1.3.0"
 googleid = "1.1.1"
 firebaseBom = "33.4.0"
+firebaseCrashlyticsGradle = "3.0.2"
+firebasePerfGradle = "1.4.2"
 calendar = "2.6.0"
 googleAuth = "1.19.0"
 splashscreen = "1.0.1"
 konfetti = "2.0.4"
+timber = "5.0.1"
 profileinstaller = "1.4.1"
 
 [libraries]
@@ -121,6 +124,8 @@ kotlinx-datetime = { group = "org.jetbrains.kotlinx", name = "kotlinx-datetime",
 firebase-bom = { group = "com.google.firebase", name = "firebase-bom", version.ref = "firebaseBom" }
 firebase-analytics = { group = "com.google.firebase", name = "firebase-analytics" }
 firebase-analytics-ktx = { group = "com.google.firebase", name = "firebase-analytics-ktx" }
+firebase-crashlytics = { group = "com.google.firebase", name = "firebase-crashlytics-ktx" }
+firebase-perf = { group = "com.google.firebase", name = "firebase-perf-ktx" }
 firebase-messaging = { group = "com.google.firebase", name = "firebase-messaging" }
 firebase-firestore = { group = "com.google.firebase", name = "firebase-firestore" }
 firebase-auth = { group = "com.google.firebase", name = "firebase-auth" }
@@ -137,6 +142,7 @@ accompanist-flowlayout = { group = "com.google.accompanist", name = "accompanist
 
 # Konfetti (Confetti animations)
 konfetti-compose = { group = "nl.dionsegijn", name = "konfetti-compose", version.ref = "konfetti" }
+timber = { group = "com.jakewharton.timber", name = "timber", version.ref = "timber" }
 
 # Desugaring
 desugar-jdk-libs = { group = "com.android.tools", name = "desugar_jdk_libs", version.ref = "desugarJdkLibs" }
@@ -154,3 +160,5 @@ kotlin-ksp = { id = "com.google.devtools.ksp", version.ref = "ksp" }
 kotlin-serialization = { id = "org.jetbrains.kotlin.plugin.serialization", version.ref = "kotlin" }
 kotlin-compose = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "kotlin" }
 google-gms-google-services = { id = "com.google.gms.google-services", version.ref = "googleGmsGoogleServices" }
+firebase-crashlytics = { id = "com.google.firebase.crashlytics", version.ref = "firebaseCrashlyticsGradle" }
+firebase-perf = { id = "com.google.firebase.firebase-perf", version.ref = "firebasePerfGradle" }

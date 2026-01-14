@@ -14,8 +14,6 @@ import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Check
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -31,6 +29,7 @@ import androidx.compose.ui.unit.dp
 import androidx.core.graphics.toColorInt
 import com.habittracker.R
 import com.habittracker.presentation.ui.habits.components.GlassmorphicDialog
+import com.habittracker.presentation.ui.theme.TahoeIcons
 
 /**
  * Диалог выбора цвета для привычки
@@ -123,7 +122,7 @@ private fun ColorItem(
         ) {
             if (isSelected) {
                 Icon(
-                    imageVector = Icons.Default.Check,
+                    imageVector = TahoeIcons.Check,
                     contentDescription = stringResource(R.string.cd_chosen),
                     tint = Color.White,
                     modifier = Modifier.size(24.dp)

@@ -55,4 +55,12 @@ interface AuthRepository {
      * @return Flow, который эмитит результат операции: успех или ошибку.
      */
     suspend fun signOut(): Flow<Result<Unit>>
+
+    /**
+     * Отправляет письмо для сброса пароля на указанный email.
+     *
+     * @param email Email пользователя для сброса пароля.
+     * @return Flow, который эмитит результат операции: успех или ошибку.
+     */
+    suspend fun sendPasswordResetEmail(email: String): Flow<Result<Unit>>
 }

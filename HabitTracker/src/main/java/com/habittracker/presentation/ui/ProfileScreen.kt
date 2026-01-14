@@ -19,30 +19,23 @@ import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.automirrored.filled.TrendingUp
-import androidx.compose.material.icons.filled.CameraAlt
-import androidx.compose.material.icons.filled.Edit
-import androidx.compose.material.icons.filled.EmojiEvents
-import androidx.compose.material.icons.filled.Notifications
-import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
@@ -59,6 +52,7 @@ import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -74,6 +68,7 @@ import com.habittracker.presentation.ui.habits.components.GlassmorphicCard
 import com.habittracker.presentation.ui.habits.components.GlassmorphicOutlinedButton
 import com.habittracker.presentation.ui.habits.components.GlassmorphicTextField
 import com.habittracker.presentation.ui.habits.components.TahoeGradientBackground
+import com.habittracker.presentation.ui.theme.TahoeIcons
 import com.habittracker.presentation.viewmodel.AuthEvent
 import com.habittracker.presentation.viewmodel.AuthState
 import com.habittracker.presentation.viewmodel.AuthViewModel
@@ -114,7 +109,7 @@ fun ProfileScreen(
                     navigationIcon = {
                         IconButton(onClick = { navController.navigateUp() }) {
                             Icon(
-                                imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                                imageVector = TahoeIcons.ArrowBack,
                                 contentDescription = stringResource(R.string.cd_back)
                             )
                         }
@@ -273,7 +268,7 @@ fun ProfileScreen(
                             contentAlignment = Alignment.Center
                         ) {
                             Icon(
-                                imageVector = Icons.Filled.CameraAlt,
+                                imageVector = TahoeIcons.Camera,
                                 contentDescription = null,
                                 tint = if (isDarkTheme) {
                                     Color.White
@@ -320,12 +315,12 @@ fun ProfileScreen(
                     }
                     if (uiState.isOwnProfile) {
                         IconButton(onClick = { profileViewModel.onToggleEditName() }) {
-                            Icon(imageVector = Icons.Filled.Edit, contentDescription = null)
+                            Icon(imageVector = TahoeIcons.Pencil, contentDescription = null)
                         }
                     }
                 }
 
-                Spacer(modifier = Modifier.height(12.dp))
+                Spacer(modifier = Modifier.height(6.dp))
 
                 // Friendship actions when viewing someone else's profile
                 if (!uiState.isOwnProfile) {
@@ -360,85 +355,26 @@ fun ProfileScreen(
                             }
                         }
                     }
-                    Spacer(modifier = Modifier.height(12.dp))
+                    Spacer(modifier = Modifier.height(6.dp))
                 }
 
                 // Level read-only
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.SpaceBetween
                 ) {
                     Text(
                         text = stringResource(id = R.string.profile_level_label),
-                        style = MaterialTheme.typography.labelMedium
+                        style = MaterialTheme.typography.titleMedium
                     )
+                    Spacer(modifier = Modifier.width(8.dp))
                     Text(
                         text = (uiState.user?.level ?: 1).toString(),
                         style = MaterialTheme.typography.titleMedium
                     )
                 }
 
-                Spacer(modifier = Modifier.height(24.dp))
-                HorizontalDivider()
-                Spacer(modifier = Modifier.height(24.dp))
-
-                // Кнопки геймификации
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(16.dp)
-                ) {
-                    // Кнопка статистики
-                    GlassmorphicCard(
-                        modifier = Modifier
-                            .weight(1f)
-                            .clickable { navController.navigate(Screen.Stats.route) },
-                        isDarkTheme = isDarkTheme
-                    ) {
-                        Column(
-                            modifier = Modifier.padding(16.dp),
-                            horizontalAlignment = Alignment.CenterHorizontally
-                        ) {
-                            Icon(
-                                imageVector = Icons.AutoMirrored.Filled.TrendingUp,
-                                contentDescription = stringResource(R.string.cd_stats),
-                                tint = MaterialTheme.colorScheme.primary
-                            )
-                            Spacer(modifier = Modifier.height(8.dp))
-                            Text(
-                                text = stringResource(R.string.profile_stats_button),
-                                style = MaterialTheme.typography.labelLarge
-                            )
-                        }
-                    }
-
-                    // Кнопка достижений
-                    GlassmorphicCard(
-                        modifier = Modifier
-                            .weight(1f)
-                            .clickable { navController.navigate(Screen.Achievements.route) },
-                        isDarkTheme = isDarkTheme
-                    ) {
-                        Column(
-                            modifier = Modifier.padding(16.dp),
-                            horizontalAlignment = Alignment.CenterHorizontally
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.EmojiEvents,
-                                contentDescription = stringResource(R.string.cd_achievements),
-                                tint = MaterialTheme.colorScheme.primary
-                            )
-                            Spacer(modifier = Modifier.height(8.dp))
-                            Text(
-                                text = stringResource(R.string.profile_achievements_button),
-                                style = MaterialTheme.typography.labelLarge
-                            )
-                        }
-                    }
-                }
-
-                Spacer(modifier = Modifier.height(32.dp))
-
+                Spacer(modifier = Modifier.height(12.dp))
                 // Save button (animated visibility on changes)
                 AnimatedVisibility(
                     visible = uiState.hasChanges,
@@ -446,7 +382,6 @@ fun ProfileScreen(
                     exit = fadeOut() + slideOutVertically(targetOffsetY = { it / 3 })
                 ) {
                     Column(modifier = Modifier.fillMaxWidth()) {
-                        Spacer(modifier = Modifier.height(16.dp))
                         GlassmorphicButton(
                             onClick = { profileViewModel.saveChanges() },
                             enabled = !uiState.isSaving,
@@ -455,51 +390,171 @@ fun ProfileScreen(
                             if (uiState.isSaving) {
                                 CircularProgressIndicator(color = MaterialTheme.colorScheme.onPrimary)
                             } else {
-                                Text(text = stringResource(id = R.string.action_save))
+                                Row(
+                                    horizontalArrangement = Arrangement.Center,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Icon(
+                                        imageVector = TahoeIcons.FloppyDisk,
+                                        contentDescription = null,
+                                        modifier = Modifier.size(20.dp)
+                                    )
+                                    Spacer(modifier = Modifier.width(12.dp))
+                                    Text(
+                                        text = stringResource(id = R.string.action_save),
+                                        fontSize = 16.sp
+                                    )
+                                }
                             }
+                        }
+                        Spacer(modifier = Modifier.height(16.dp))
+                    }
+                }
+
+                HorizontalDivider()
+                Spacer(modifier = Modifier.height(24.dp))
+
+                // Кнопки геймификации
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(IntrinsicSize.Min),
+                    horizontalArrangement = Arrangement.spacedBy(16.dp)
+                ) {
+                    // Кнопка статистики
+                    GlassmorphicCard(
+                        modifier = Modifier
+                            .weight(1f)
+                            .fillMaxHeight()
+                            .clickable { navController.navigate(Screen.Stats.route) },
+                        isDarkTheme = isDarkTheme
+                    ) {
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(16.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally
+                        ) {
+                            Icon(
+                                imageVector = TahoeIcons.ChartBar,
+                                contentDescription = stringResource(R.string.cd_stats),
+                                tint = MaterialTheme.colorScheme.primary
+                            )
+                            Spacer(modifier = Modifier.height(8.dp))
+                            Text(
+                                text = stringResource(R.string.profile_stats_button),
+                                style = MaterialTheme.typography.labelLarge,
+                                textAlign = TextAlign.Center,
+                                maxLines = 2
+                            )
+                        }
+                    }
+
+                    // Кнопка достижений
+                    GlassmorphicCard(
+                        modifier = Modifier
+                            .weight(1f)
+                            .fillMaxHeight()
+                            .clickable { navController.navigate(Screen.Achievements.route) },
+                        isDarkTheme = isDarkTheme
+                    ) {
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(16.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally
+                        ) {
+                            Icon(
+                                imageVector = TahoeIcons.Trophy,
+                                contentDescription = stringResource(R.string.cd_achievements),
+                                tint = MaterialTheme.colorScheme.primary
+                            )
+                            Spacer(modifier = Modifier.height(8.dp))
+                            Text(
+                                text = stringResource(R.string.profile_achievements_button),
+                                style = MaterialTheme.typography.labelLarge,
+                                textAlign = TextAlign.Center,
+                                maxLines = 2
+                            )
                         }
                     }
                 }
 
-                Spacer(modifier = Modifier.height(24.dp))
-                
-                // Notification settings button
-                GlassmorphicButton(
-                    onClick = { navController.navigate(Screen.NotificationSettings.route) },
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Row(
-                        horizontalArrangement = Arrangement.Center,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.Notifications,
-                            contentDescription = null,
-                            modifier = Modifier.size(20.dp)
-                        )
-                        Spacer(modifier = Modifier.size(8.dp))
-                        Text(
-                            stringResource(R.string.notification_settings_title),
-                            fontSize = 16.sp
-                        )
-                    }
-                }
-                
-                Spacer(modifier = Modifier.height(12.dp))
+                Spacer(modifier = Modifier.height(16.dp))
 
-                // Sign out button
-                GlassmorphicButton(
-                    onClick = { authViewModel.onEvent(AuthEvent.SignOut) },
-                    enabled = authState !is AuthState.Loading,
-                    modifier = Modifier.fillMaxWidth()
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(IntrinsicSize.Min),
+                    horizontalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
-                    if (authState is AuthState.Loading) {
-                        CircularProgressIndicator(color = MaterialTheme.colorScheme.onPrimary)
-                    } else {
-                        Text(
-                            stringResource(R.string.action_sign_out),
-                            fontSize = 16.sp,
-                        )
+                    // Кнопка выхода из аккаунта
+                    val coralColor = Color(0xFFFF6B6B)
+                    GlassmorphicCard(
+                        modifier = Modifier
+                            .weight(1f)
+                            .fillMaxHeight()
+                            .clickable(enabled = authState !is AuthState.Loading) { 
+                                authViewModel.onEvent(AuthEvent.SignOut) 
+                            },
+                        isDarkTheme = isDarkTheme
+                    ) {
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(16.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally
+                        ) {
+                            if (authState is AuthState.Loading) {
+                                CircularProgressIndicator(
+                                    modifier = Modifier.size(24.dp),
+                                    color = coralColor
+                                )
+                            } else {
+                                Icon(
+                                    imageVector = TahoeIcons.ArrowRightOnRectangle,
+                                    contentDescription = stringResource(R.string.action_sign_out),
+                                    tint = coralColor
+                                )
+                            }
+                            Spacer(modifier = Modifier.height(8.dp))
+                            Text(
+                                text = stringResource(R.string.profile_sign_out_button),
+                                style = MaterialTheme.typography.labelLarge,
+                                textAlign = TextAlign.Center,
+                                color = coralColor,
+                                maxLines = 2
+                            )
+                        }
+                    }
+
+                    // Кнопка настроек уведомлений
+                    GlassmorphicCard(
+                        modifier = Modifier
+                            .weight(1f)
+                            .fillMaxHeight()
+                            .clickable { navController.navigate(Screen.NotificationSettings.route) },
+                        isDarkTheme = isDarkTheme
+                    ) {
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(16.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally
+                        ) {
+                            Icon(
+                                imageVector = TahoeIcons.Bell,
+                                contentDescription = stringResource(R.string.notification_settings_title),
+                                tint = MaterialTheme.colorScheme.primary
+                            )
+                            Spacer(modifier = Modifier.height(8.dp))
+                            Text(
+                                text = stringResource(R.string.profile_notifications_button),
+                                style = MaterialTheme.typography.labelLarge,
+                                textAlign = TextAlign.Center,
+                                maxLines = 2
+                            )
+                        }
                     }
                 }
 

@@ -1,819 +1,1073 @@
+<?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="daily_reminder_title">Как ваши успехи?</string>
-    <string name="daily_reminder_message">Не забудьте отметить выполненные сегодня привычки!</string>
-    
+    <string name="daily_reminder_title">How is your progress?</string>
+    <string name="daily_reminder_message">Don\'t forget to check off your habits for today!</string>
+
     <!-- Settings Screen -->
-    <string name="settings_notifications_header">Уведомления</string>
-    <string name="settings_daily_reminder">Ежедневное напоминание</string>
-    <string name="settings_daily_reminder_summary">Получать напоминание о проверке привычек в выбранное время</string>
-    <string name="settings_daily_reminder_time">Время напоминания</string>
-    <string name="settings_display_header">Отображение</string>
-    <string name="settings_sort_completed_bottom">Сортировка</string>
-    <string name="settings_sort_completed_bottom_summary">Перемещать выполненные привычки вниз списка</string>
-    
+    <string name="settings_notifications_header">Notifications</string>
+    <string name="settings_daily_reminder">Daily Reminder</string>
+    <string name="settings_daily_reminder_summary">Receive a reminder to check habits at selected time</string>
+    <string name="settings_daily_reminder_time">Reminder Time</string>
+    <string name="settings_display_header">Display</string>
+    <string name="settings_sort_completed_bottom">Sorting</string>
+    <string name="settings_sort_completed_bottom_summary">Move completed habits to the bottom</string>
+
     <!-- App Info -->
     <string name="app_name">HabitTracker</string>
     <string name="default_web_client_id">637297267141-flvhigsfcbgc0m20hdoh3kid6vl0k0ne.apps.googleusercontent.com</string>
+    
     <!-- Common Actions -->
-    <string name="action_save">Сохранить</string>
-    <string name="action_cancel">Отмена</string>
-    <string name="action_done">Готово</string>
-    <string name="action_back">Назад</string>
-    <string name="action_login">Войти</string>
-    <string name="action_register">Зарегистрироваться</string>
-    <string name="action_sign_out">Выйти из аккаунта</string>
-    <string name="action_ok">Понятно</string>
-    <string name="save">Сохранить</string>
-    <string name="cancel">Отменить</string>
-    <string name="add">Добавить</string>
-    <string name="delete">Удалить</string>
-    <string name="edit">Редактировать</string>
-    <string name="edit_challenge_title_format">Изменить %1$s</string>
-    <string name="edit_challenge_title_fallback">Изменить челлендж</string>
-    <string name="menu_done">Выполнено</string>
-    <string name="menu_rest_day">Сделать выходной</string>
-    <string name="menu_resume">Возобновить</string>
-    <string name="back">Назад</string>
-    <string name="clear">Очистить</string>
-    <string name="done">Готово</string>
-    <string name="create_new_habit">Создать новую привычку</string>
-    <string name="action_close">Закрыть</string>
-    <string name="habit_goal_type_simple">Отмечаемая</string>
-    <string name="habit_goal_type_simple_desc">Просто отметить, что привычка выполнена</string>
-    <string name="habit_goal_type_measurable">Измеряемая</string>
-    <string name="habit_goal_type_measurable_desc">Указывать количество.\nНапример: сколько выпито стаканов воды, или сделано отжиманий</string>
+    <string name="action_save">Save</string>
+    <string name="action_cancel">Cancel</string>
+    <string name="action_done">Done</string>
+    <string name="action_back">Back</string>
+    <string name="action_login">Log In</string>
+    <string name="action_register">Sign Up</string>
+    <string name="action_sign_out">Sign Out</string>
+    <string name="action_ok">OK</string>
+    <string name="save">Save</string>
+    <string name="cancel">Cancel</string>
+    <string name="add">Add</string>
+    <string name="delete">Delete</string>
+    <string name="edit">Edit</string>
+    <string name="edit_challenge_title_format">Edit %1$s</string>
+    <string name="edit_challenge_title_fallback">Edit Challenge</string>
+    <string name="menu_done">Done</string>
+    <string name="menu_rest_day">Take a Rest Day</string>
+    <string name="menu_resume">Resume</string>
+    <string name="back">Back</string>
+    <string name="clear">Clear</string>
+    <string name="done">Done</string>
+    <string name="create_new_habit">Create New Habit</string>
+    <string name="action_close">Close</string>
+    <string name="habit_goal_type_simple">Simple</string>
+    <string name="habit_goal_type_simple_desc">Just mark that the habit is done</string>
+    <string name="habit_goal_type_measurable">Measurable</string>
+    <string name="habit_goal_type_measurable_desc">Specify quantity.\nFor example: glasses of water drunk, or push-ups done</string>
 
     <!-- Splash Screen -->
     <string name="app_name_display">Habit Tracker</string>
-    <string name="splash_subtitle">Создавайте привычки вместе</string>
-    <string name="cd_app_logo">Логотип приложения</string>
+    <string name="splash_subtitle">Build habits together</string>
+    <string name="cd_app_logo">App Logo</string>
     <string name="version_name_format">v%1$s</string>
-    
+
     <!-- Auth Screen -->
-    <string name="auth_welcome_title">Добро пожаловать!</string>
-    <string name="auth_welcome_subtitle">Войдите в свой аккаунт</string>
+    <string name="auth_welcome_title">Welcome!</string>
+    <string name="auth_welcome_subtitle">Log in to your account</string>
     <string name="auth_email_label">Email</string>
-    <string name="auth_password_label">Пароль</string>
-    <string name="auth_login_with_google">Войти через Google</string>
-    <string name="auth_no_account">Нет аккаунта? Зарегистрироваться</string>
-    <string name="auth_have_account">Уже есть аккаунт? Войдите</string>
-    <string name="auth_or">или</string>
-    <string name="auth_register_title">Регистрация</string>
-    
+    <string name="auth_password_label">Password</string>
+    <string name="auth_login_with_google">Log in with Google</string>
+    <string name="auth_no_account">No account? Sign up</string>
+    <string name="auth_have_account">Already have an account? Log in</string>
+    <string name="auth_or">or</string>
+    <string name="auth_register_title">Registration</string>
+    <string name="auth_forgot_password">Forgot password?</string>
+    <string name="auth_forgot_password_title">Password Reset</string>
+    <string name="auth_forgot_password_description">Enter your email address and we will send you a link to reset your password.</string>
+    <string name="auth_forgot_password_success">Password reset link has been sent to your email. Check your inbox.</string>
+    <string name="auth_send">Send</string>
+    <string name="ok">OK</string>
+
     <!-- Content Descriptions -->
-    <string name="cd_back">Назад</string>
-    <string name="cd_profile">Профиль</string>
-    <string name="cd_add_habit">Добавить привычку</string>
-    
-    <string name="cd_save">Сохранить</string>
-    <string name="cd_show_password">Показать пароль</string>
-    <string name="cd_hide_password">Скрыть пароль</string>
-    <string name="cd_chosen">Выбрано</string>
-    <string name="cd_notifications">Уведомления</string>
-    <string name="cd_friends">Друзья</string>
-    <string name="cd_stats">Статистика</string>
-    <string name="cd_achievements">Достижения</string>
-    <string name="cd_challenges">Челленджи</string>
-    <string name="cd_refresh">Обновить</string>
-    <string name="cd_habit_icon">Иконка привычки</string>
-    <string name="cd_invitation_icon">Иконка приглашения</string>
-    
+    <string name="cd_back">Back</string>
+    <string name="cd_profile">Profile</string>
+    <string name="cd_add_habit">Add Habit</string>
+
+    <string name="cd_save">Save</string>
+    <string name="cd_show_password">Show Password</string>
+    <string name="cd_hide_password">Hide Password</string>
+    <string name="cd_chosen">Selected</string>
+    <string name="cd_notifications">Notifications</string>
+    <string name="cd_friends">Friends</string>
+    <string name="cd_stats">Statistics</string>
+    <string name="cd_achievements">Achievements</string>
+    <string name="cd_challenges">Challenges</string>
+    <string name="cd_refresh">Refresh</string>
+    <string name="cd_habit_icon">Habit Icon</string>
+    <string name="cd_invitation_icon">Invitation Icon</string>
+
     <!-- Habits Screen -->
-    <string name="habits_title">Мои привычки</string>
-    <string name="habits_empty_state">Пока нет привычек. Начните с новой!</string>
-    <string name="habits_mark_complete">Отметить как выполненную</string>
-    <string name="habits_unmark_complete">Снять отметку</string>
-    
+    <string name="habits_title">My Habits</string>
+    <string name="habits_empty_state">No habits yet. Start with a new one!</string>
+    <string name="habits_mark_complete">Mark as completed</string>
+    <string name="habits_unmark_complete">Unmark</string>
+
     <!-- Add/Edit Habit Screen -->
-    <string name="habit_new_title">Новая привычка</string>
-    <string name="habit_edit_title">Редактировать привычку</string>
-    <string name="habit_saving">Сохранение...</string>
-    <string name="habit_name_label">Название</string>
-    <string name="habit_description_label">Описание (необязательно)</string>
-    <string name="habit_type_label">Тип привычки</string>
-    <string name="habit_frequency_label">Частота</string>
-    <string name="habit_target_value_label">Целевое значение</string>
-    <string name="habit_unit_label">Ед. изм.</string>
-    <string name="habit_reminder_label">Напоминание</string>
-    <string name="habit_reminder_time_format">Каждый день в %1$d:%2$02d</string>
-    <string name="habit_reminder_disabled">Выкл</string>
-    <string name="habit_reminder_not_set">Время не установлено</string>
-    <string name="habit_change_time">Изменить время</string>
-    <string name="habit_change_color">Изменить цвет</string>
-    <string name="habit_change_reminder_time">Изменить время</string>
-    <string name="habit_select_time">Выберите время</string>
-    <string name="habit_select_icon">Выберите иконку</string>
-    <string name="habit_select_color">Выберите цвет</string>
-    <string name="habit_click_to_change_icon">Нажмите, чтобы изменить иконку</string>
-    
+    <string name="habit_new_title">New Habit</string>
+    <string name="habit_edit_title">Edit Habit</string>
+    <string name="habit_saving">Saving...</string>
+    <string name="habit_name_label">Name</string>
+    <string name="habit_description_label">Description (optional)</string>
+    <string name="habit_type_label">Habit Type</string>
+    <string name="habit_frequency_label">Frequency</string>
+    <string name="habit_target_value_label">Target Value</string>
+    <string name="habit_unit_label">Unit</string>
+    <string name="habit_reminder_label">Reminder</string>
+    <string name="habit_reminder_time_format">Every day at %1$d:%2$02d</string>
+    <string name="habit_reminder_disabled">Off</string>
+    <string name="habit_reminder_not_set">Time not set</string>
+    <string name="habit_change_time">Change time</string>
+    <string name="habit_change_color">Change color</string>
+    <string name="habit_change_reminder_time">Change time</string>
+    <string name="habit_select_time">Select time</string>
+    <string name="habit_select_icon">Select icon</string>
+    <string name="habit_select_color">Select color</string>
+    <string name="habit_click_to_change_icon">Click to change icon</string>
+
     <!-- Follow-up reminder (Add/Edit Habit Screen) -->
-    <string name="follow_up_reminder_title">Повторное напоминание</string>
-    <string name="follow_up_reminder_subtitle">Напомнить, если привычка не выполнена</string>
-    <string name="follow_up_reminder_interval_label">Интервал напоминания</string>
-    <string name="follow_up_reminder_interval_picker_title">Выберите интервал</string>
-    <string name="follow_up_reminder_after_format">Через %1$dч %2$dмин</string>
+    <string name="follow_up_reminder_title">Follow-up Reminder</string>
+    <string name="follow_up_reminder_subtitle">Remind if habit is not completed</string>
+    <string name="follow_up_reminder_interval_label">Reminder Interval</string>
+    <string name="follow_up_reminder_interval_picker_title">Select Interval</string>
+    <string name="follow_up_reminder_after_format">After %1$dh %2$dmin</string>
     <!-- Personal reminder settings -->
-    <string name="reminder_personal_hint">Напоминание — только для меня</string>
-    <string name="apply_reminder_to_all">Применить для всех</string>
-    <string name="confirm_apply_reminder_title">Применить напоминание для всех?</string>
-    <string name="confirm_apply_reminder_message">Текущие настройки напоминания (время и дни) будут применены всем участникам группы. Продолжить?</string>
-    <string name="apply">Применить</string>
-    <string name="error_apply_reminder_all_generic">Ошибка применения настроек для всех</string>
-    <string name="error_apply_reminder_all_fallback">Ошибка применения настроек для всех</string>
+    <string name="reminder_personal_hint">Reminder — only for me</string>
+    <string name="apply_reminder_to_all">Apply to all</string>
+    <string name="confirm_apply_reminder_title">Apply reminder to all?</string>
+    <string name="confirm_apply_reminder_message">Current reminder settings (time and days) will be applied to all group participants. Continue?</string>
+    <string name="apply">Apply</string>
+    <string name="error_apply_reminder_all_generic">Error applying settings to all</string>
+    <string name="error_apply_reminder_all_fallback">Error applying settings to all</string>
     <!-- Frequency global control -->
-    <string name="frequency_global_hint">Глобальная настройка — изменяет только автор</string>
-    <string name="confirm_change_frequency_title">Изменить частоту для всех?</string>
-    <string name="confirm_change_frequency_message">Изменение частоты повлияет на всех участников группы. Продолжить?</string>
-    <string name="habit_color_label">Цвет:</string>
-    <string name="habit_name_required_hint">Введите название, чтобы продолжить</string>
-    
+    <string name="frequency_global_hint">Global setting — only author can change</string>
+    <string name="confirm_change_frequency_title">Change frequency for all?</string>
+    <string name="confirm_change_frequency_message">Changing frequency will affect all group participants. Continue?</string>
+    <string name="habit_color_label">Color:</string>
+    <string name="habit_name_required_hint">Enter name to continue</string>
+
     <!-- Habit Dates -->
-    <string name="habit_dates_section">Даты активности</string>
-    <string name="habit_start_date_label">Дата начала</string>
-    <string name="habit_start_date_placeholder">Выберите дату начала</string>
-    <string name="habit_start_date_locked_hint">Дату начала нельзя изменить после первого выполнения</string>
-    <string name="habit_end_date_label">Дата окончания</string>
-    <string name="habit_end_date_placeholder">Не ограничена</string>
-    <string name="habit_end_date_hint">Оставьте пустым для бессрочной привычки</string>
-    <string name="select_date">Выбрать дату</string>
-    
+    <string name="habit_dates_section">Activity Dates</string>
+    <string name="habit_start_date_label">Start Date</string>
+    <string name="habit_start_date_placeholder">Select start date</string>
+    <string name="habit_start_date_locked_hint">Start date cannot be changed after first completion</string>
+    <string name="habit_end_date_label">End Date</string>
+    <string name="habit_end_date_placeholder">Unlimited</string>
+    <string name="habit_end_date_hint">Leave empty for indefinite habit</string>
+    <string name="select_date">Select date</string>
+
     <!-- Color Names -->
-    <string name="color_blue">Синий</string>
-    <string name="color_green">Зеленый</string>
-    <string name="color_orange">Оранжевый</string>
-    <string name="color_red">Красный</string>
-    <string name="color_purple">Фиолетовый</string>
-    <string name="color_cyan">Бирюзовый</string>
-    <string name="color_lime">Лайм</string>
-    <string name="color_yellow">Желтый</string>
-    <string name="color_pink">Розовый</string>
-    <string name="color_gray">Серый</string>
-    <string name="color_brown">Коричневый</string>
-    <string name="color_indigo">Индиго</string>
-    
+    <string name="color_blue">Blue</string>
+    <string name="color_green">Green</string>
+    <string name="color_orange">Orange</string>
+    <string name="color_red">Red</string>
+    <string name="color_purple">Purple</string>
+    <string name="color_cyan">Cyan</string>
+    <string name="color_lime">Lime</string>
+    <string name="color_yellow">Yellow</string>
+    <string name="color_pink">Pink</string>
+    <string name="color_gray">Gray</string>
+    <string name="color_brown">Brown</string>
+    <string name="color_indigo">Indigo</string>
+
     <!-- Habit Types -->
-    <string name="habit_type_personal">Личная привычка</string>
-    <string name="habit_type_group">Групповая привычка</string>
-    
+    <string name="habit_type_personal">Personal Habit</string>
+    <string name="habit_type_group">Group Habit</string>
+
     <!-- Habit Frequencies -->
-    <string name="frequency_daily">Каждый день</string>
-    <string name="frequency_weekly">Раз в неделю</string>
-    <string name="frequency_twice_weekly">Два раза в неделю</string>
-    <string name="frequency_weekdays">По будням</string>
-    <string name="frequency_weekends">По выходным</string>
-    <string name="frequency_custom">Произвольно</string>
-    
+    <string name="frequency_daily">Every day</string>
+    <string name="frequency_weekly">Once a week</string>
+    <string name="frequency_twice_weekly">Twice a week</string>
+    <string name="frequency_weekdays">Weekdays</string>
+    <string name="frequency_weekends">Weekends</string>
+    <string name="frequency_custom">Custom</string>
+
     <!-- Weekday short names -->
-    <string name="weekday_mon">Пн</string>
-    <string name="weekday_tue">Вт</string>
-    <string name="weekday_wed">Ср</string>
-    <string name="weekday_thu">Чт</string>
-    <string name="weekday_fri">Пт</string>
-    <string name="weekday_sat">Сб</string>
-    <string name="weekday_sun">Вс</string>
+    <string name="weekday_mon">Mon</string>
+    <string name="weekday_tue">Tue</string>
+    <string name="weekday_wed">Wed</string>
+    <string name="weekday_thu">Thu</string>
+    <string name="weekday_fri">Fri</string>
+    <string name="weekday_sat">Sat</string>
+    <string name="weekday_sun">Sun</string>
 
     <!-- Active days selection (for habit frequency) -->
-    <string name="active_days_hint_weekly">Выберите день недели для этой привычки</string>
-    <string name="active_days_hint_twice">Выберите 2 дня недели для этой привычки</string>
-    <string name="active_days_hint_custom">Выберите дни недели для этой привычки</string>
-    <string name="active_days_info">💡 Привычка будет отображаться только в выбранные дни. Если включены напоминания, они также будут приходить в эти дни.</string>
-    
+    <string name="active_days_hint_weekly">Select a day of the week for this habit</string>
+    <string name="active_days_hint_twice">Select 2 days of the week for this habit</string>
+    <string name="active_days_hint_custom">Select days of the week for this habit</string>
+    <string name="active_days_info">💡 The habit will be displayed only on selected days. If reminders are enabled, they will also come on these days.</string>
+
     <!-- Reminder day selection hints (validation) -->
-    <string name="reminder_days_hint_weekly">Выберите 1 день</string>
-    <string name="reminder_days_hint_twice">Выберите 2 дня</string>
-    <string name="reminder_days_hint_custom">Выберите дни</string>
+    <string name="reminder_days_hint_weekly">Select 1 day</string>
+    <string name="reminder_days_hint_twice">Select 2 days</string>
+    <string name="reminder_days_hint_custom">Select days</string>
 
     <!-- Time suffix for composing phrases -->
-    <string name="at_time_format">в %1$d:%2$02d</string>
-    
+    <string name="at_time_format">at %1$d:%2$02d</string>
+
     <!-- Profile Screen -->
-    <string name="profile_title">Профиль</string>
-    <string name="profile_welcome">Добро пожаловать в профиль</string>
-    <string name="profile_stats_button">Моя статистика</string>
-    <string name="profile_achievements_button">Мои достижения</string>
-    <string name="profile_username_label">Имя пользователя</string>
-    <string name="profile_level_label">Уровень</string>
-    <string name="friends_title">Мои друзья</string>
-    <string name="stats_title">Статистика</string>
-    <string name="stats_error_load">Не удалось загрузить статистику</string>
-    <string name="try_again">Попробовать снова</string>
-    
+    <string name="profile_title">Profile</string>
+    <string name="profile_welcome">Welcome to profile</string>
+    <string name="profile_stats_button">My Statistics</string>
+    <string name="profile_achievements_button">My Achievements</string>
+    <string name="profile_notifications_button">Notification settings</string>
+    <string name="profile_sign_out_button">Sign Out</string>
+    <string name="profile_username_label">Username</string>
+    <string name="profile_level_label">Level</string>
+    <string name="friends_title">My Friends</string>
+    <string name="stats_title">Statistics</string>
+    <string name="stats_error_load">Failed to load statistics</string>
+    <string name="try_again">Try again</string>
+
     <!-- Notifications -->
-    <string name="notification_permission_title">Разрешение на уведомления</string>
-    <string name="notification_permission_message">Для отправки напоминаний о привычках необходимо разрешение на уведомления. Вы можете включить его в настройках приложения.</string>
-    
+    <string name="notification_permission_title">Notification Permission</string>
+    <string name="notification_permission_message">Notification permission is required to send habit reminders. You can enable it in app settings.</string>
+
     <!-- Success/Error Messages -->
-    <string name="error_load_habit">Не удалось загрузить привычку: %1$s</string>
-    <string name="error_loading_habit">Не удалось загрузить привычку: %1$s</string>
-    <string name="error_save_habit">Не удалось сохранить привычку: %1$s</string>
-    <string name="error_saving_habit">Ошибка сохранения привычки: %1$s</string>
-    <string name="error_mark_habit">Не удалось отметить привычку: %1$s</string>
-    <string name="error_unmark_habit">Не удалось снять отметку: %1$s</string>
-    <string name="error_delete_habit">Не удалось удалить привычку: %1$s</string>
-    <string name="error_schedule_reminder">Не удалось запланировать напоминание: %1$s</string>
-    <string name="error_scheduling_reminder">Не удалось запланировать напоминание: %1$s</string>
-    <string name="error_cancel_reminder">Не удалось отменить напоминание: %1$s</string>
-    <string name="error_canceling_reminder">Не удалось отменить напоминание: %1$s</string>
-    <string name="error_update_reminder">Не удалось обновить напоминание: %1$s</string>
-    <string name="error_updating_reminder">Не удалось обновить напоминание: %1$s</string>
-    <string name="error_updating_habit">Не удалось обновить привычку: %1$s</string>
-    <string name="error_no_friends_selected">Выберите друзей для приглашения</string>
-    <string name="error_too_many_participants">Превышен лимит участников</string>
-    <string name="success_habit_created">Привычка создана!</string>
-    <string name="habit_created">Привычка создана!</string>
-    <string name="success_habit_updated">Привычка обновлена!</string>
-    <string name="habit_updated">Привычка обновлена!</string>
-    <string name="habit_deleted">Привычка удалена</string>
-    <string name="confirm_delete_habit_title">Удалить привычку?</string>
-    <string name="confirm_delete_habit_message">Вы уверены, что хотите удалить привычку \"%1$s\"?</string>
-    <string name="undo">Отменить</string>
-    <string name="error_marking_habit">Не удалось отметить привычку: %1$s</string>
-    <string name="error_unmarking_habit">Не удалось снять отметку: %1$s</string>
-    <string name="error_loading_friends">Ошибка загрузки друзей</string>
-    <string name="error_cannot_mark_future_habit">Нельзя отмечать привычки в будущем</string>
-    <string name="boundary_reached_oldest">Достигнута самая ранняя неделя с привычками</string>
-    <string name="boundary_reached_future">Достигнута максимальная дата (год вперёд)</string>
-    
+    <string name="error_load_habit">Failed to load habit: %1$s</string>
+    <string name="error_loading_habit">Failed to load habit: %1$s</string>
+    <string name="error_save_habit">Failed to save habit: %1$s</string>
+    <string name="error_saving_habit">Error saving habit: %1$s</string>
+    <string name="error_mark_habit">Failed to mark habit: %1$s</string>
+    <string name="error_unmark_habit">Failed to unmark: %1$s</string>
+    <string name="error_delete_habit">Failed to delete habit: %1$s</string>
+    <string name="error_schedule_reminder">Failed to schedule reminder: %1$s</string>
+    <string name="error_scheduling_reminder">Failed to schedule reminder: %1$s</string>
+    <string name="error_cancel_reminder">Failed to cancel reminder: %1$s</string>
+    <string name="error_canceling_reminder">Failed to cancel reminder: %1$s</string>
+    <string name="error_update_reminder">Failed to update reminder: %1$s</string>
+    <string name="error_updating_reminder">Failed to update reminder: %1$s</string>
+    <string name="error_updating_habit">Failed to update habit: %1$s</string>
+    <string name="error_no_friends_selected">Select friends to invite</string>
+    <string name="error_too_many_participants">Participant limit exceeded</string>
+    <string name="success_habit_created">Habit created!</string>
+    <string name="habit_created">Habit created!</string>
+    <string name="success_habit_updated">Habit updated!</string>
+    <string name="habit_updated">Habit updated!</string>
+    <string name="habit_deleted">Habit deleted</string>
+    <string name="confirm_delete_habit_title">Delete habit?</string>
+    <string name="confirm_delete_habit_message">Are you sure you want to delete habit \"%1$s\"?</string>
+    <string name="undo">Undo</string>
+    <string name="error_marking_habit">Failed to mark habit: %1$s</string>
+    <string name="error_unmarking_habit">Failed to unmark habit: %1$s</string>
+    <string name="error_loading_friends">Error loading friends</string>
+    <string name="error_cannot_mark_future_habit">Cannot mark future habits</string>
+    <string name="boundary_reached_oldest">Oldest week reached</string>
+    <string name="boundary_reached_future">Max date reached (one year ahead)</string>
+
     <!-- Animation Labels -->
     <string name="animation_fab_scale">fab_scale</string>
     <string name="animation_fab_color">fab_color</string>
-    <string name="animation_saving">Сохранение...</string>
-    
+    <string name="animation_saving">Saving...</string>
+
     <!-- Social Features -->
-    <string name="friends">Друзья</string>
-    <string name="search_friends">Поиск друзей</string>
-    <string name="friend_requests">Запросы в друзья</string>
-    <string name="add_friend">Добавить в друзья</string>
-    <string name="remove_friend">Удалить из друзей</string>
-    <string name="confirm_remove_friend_title">Удалить %1$s из друзей?</string>
-    <string name="confirm_remove_friend_message">Это действие удалит дружбу у обоих пользователей. Вы уверены?</string>
-    <string name="also_leave_group_habits">Также выйти из совместных привычек</string>
-    <string name="accept_request">Принять</string>
-    <string name="decline_request">Отклонить</string>
-    <string name="cancel_request">Отменить запрос</string>
-    <string name="send_request">Отправить запрос</string>
-    <string name="incoming_requests">Входящие запросы</string>
-    <string name="outgoing_requests">Исходящие запросы</string>
-    <string name="incoming_requests_count">📥 Входящие запросы (%1$d)</string>
-    <string name="outgoing_requests_count">📤 Отправленные запросы (%1$d)</string>
-    <string name="no_friends">У вас пока нет друзей</string>
-    <string name="no_friend_requests">Нет запросов в друзья</string>
-    <string name="no_search_results">Пользователи не найдены</string>
-    <string name="search_hint">Введите имя или email</string>
-    <string name="friends_count">Друзей: %1$d</string>
-    <string name="requests_count">Запросов: %1$d</string>
-    <string name="requests_label">Запросов</string>
-    <string name="friends_empty_hint_search">Найдите друзей во вкладке &quot;Поиск&quot;</string>
-    <string name="no_requests_title">Нет запросов</string>
-    <string name="no_requests_subtitle">Здесь будут отображаться запросы дружбы</string>
-    <string name="search_placeholder_friends">Найти друзей по имени...</string>
-    <string name="search_nothing_found_title">Ничего не найдено</string>
-    <string name="search_try_different_query">Попробуйте изменить поисковый запрос</string>
-    <string name="search_enter_name_prompt">Введите имя пользователя для поиска</string>
-    <string name="level_points_format">Уровень %1$d • %2$d очков</string>
-    <string name="level_title">Уровень %1$d</string>
-    <string name="level_points_inline">%1$d / %2$d очков</string>
-    <string name="level_next_points">До следующего уровня: %1$d очков</string>
+    <string name="friends">Friends</string>
+    <string name="search_friends">Find Friends</string>
+    <string name="friend_requests">Friend Requests</string>
+    <string name="add_friend">Add Friend</string>
+    <string name="remove_friend">Remove Friend</string>
+    <string name="confirm_remove_friend_title">Remove %1$s from friends?</string>
+    <string name="confirm_remove_friend_message">This action will remove friendship for both users. Are you sure?</string>
+    <string name="also_leave_group_habits">Also leave shared habits</string>
+    <string name="accept_request">Accept</string>
+    <string name="decline_request">Decline</string>
+    <string name="cancel_request">Cancel Request</string>
+    <string name="send_request">Send Request</string>
+    <string name="incoming_requests">Incoming Requests</string>
+    <string name="outgoing_requests">Outgoing Requests</string>
+    <string name="incoming_requests_count">📥 Incoming Requests (%1$d)</string>
+    <string name="outgoing_requests_count">📤 Sent Requests (%1$d)</string>
+    <string name="no_friends">You have no friends yet</string>
+    <string name="no_friend_requests">No friend requests</string>
+    <string name="no_search_results">No users found</string>
+    <string name="search_hint">Enter name or email</string>
+    <string name="friends_count">Friends: %1$d</string>
+    <string name="requests_count">Requests: %1$d</string>
+    <string name="requests_label">Requests</string>
+    <string name="friends_empty_hint_search">Find friends in the \"Search\" tab</string>
+    <string name="no_requests_title">No requests</string>
+    <string name="no_requests_subtitle">Friend requests will appear here</string>
+    <string name="search_placeholder_friends">Find friends by name...</string>
+    <string name="search_nothing_found_title">Nothing found</string>
+    <string name="search_try_different_query">Try changing the search query</string>
+    <string name="search_enter_name_prompt">Enter username to search</string>
+    <string name="level_points_format">Level %1$d • %2$d points</string>
+    <string name="level_title">Level %1$d</string>
+    <string name="level_points_inline">%1$d / %2$d points</string>
+    <string name="level_next_points">Next level: %1$d points</string>
+    
+    <!-- User Level Titles -->
+    <string name="level_title_novice">Novice</string>
+    <string name="level_title_enthusiast">Enthusiast</string>
+    <string name="level_title_expert">Expert</string>
+    <string name="level_title_master">Master</string>
+    <string name="level_title_legend">Legend</string>
+    <string name="level_title_beginner">Beginner</string>
+    <string name="level_title_student">Student</string>
+    <string name="level_title_practitioner">Practitioner</string>
+    <string name="level_title_professional">Professional</string>
+    <string name="level_title_guru">Guru</string>
+    <string name="level_up_congratulations_title">🎉 Congratulations on leveling up!</string>
+    <string name="level_up_congratulations_body">You reached level %1$d! %2$s</string>
+
+    <!-- Achievement Titles and Descriptions -->
+    <!-- Streaks -->
+    <string name="achievement_streak_3_title">Hat-trick</string>
+    <string name="achievement_streak_3_desc">Complete a habit 3 days in a row</string>
+    <string name="achievement_streak_7_title">In Orbit</string>
+    <string name="achievement_streak_7_desc">7 days in a row — the hardest part is behind!</string>
+    <string name="achievement_streak_21_title">21 Days Later</string>
+    <string name="achievement_streak_21_desc">They say a habit forms in 21 days. Let\'s check?</string>
+    <string name="achievement_streak_30_title">Iron Man</string>
+    <string name="achievement_streak_30_desc">30 days of perfect execution. You\'re a legend!</string>
+    <string name="achievement_streak_100_title">Steadfast</string>
+    <string name="achievement_streak_100_desc">100 days in a row. Discipline is your middle name</string>
+    <string name="achievement_streak_365_title">Mayan Calendar</string>
+    <string name="achievement_streak_365_desc">365 days in a row. You completed a year — legendary!</string>
+    <!-- Resilience -->
+    <string name="achievement_phoenix_title">Phoenix</string>
+    <string name="achievement_phoenix_desc">Come back after a miss and complete a habit</string>
+    <string name="achievement_comeback_title">Hero\'s Return</string>
+    <string name="achievement_comeback_desc">You returned to the app after a week of absence</string>
+    <!-- Mastery -->
+    <string name="achievement_completions_10_title">Beginner</string>
+    <string name="achievement_completions_10_desc">A good start — 10 completed habits</string>
+    <string name="achievement_completions_50_title">Student</string>
+    <string name="achievement_completions_50_desc">50 completions — you\'re on the right track!</string>
+    <string name="achievement_completions_100_title">Amateur</string>
+    <string name="achievement_completions_100_desc">100 completions — you understand how it works</string>
+    <string name="achievement_completions_500_title">Pro</string>
+    <string name="achievement_completions_500_desc">500 completions — discipline is your middle name</string>
+    <string name="achievement_completions_1000_title">Grandmaster</string>
+    <string name="achievement_completions_1000_desc">1000 completions — 10,000 hours start here</string>
+    <!-- Habits -->
+    <string name="achievement_first_steps_title">First Steps</string>
+    <string name="achievement_first_steps_desc">Create your first habit</string>
+    <string name="achievement_collector_title">Collector</string>
+    <string name="achievement_collector_desc">Create 5 habits — variety matters!</string>
+    <string name="achievement_life_architect_title">Life Architect</string>
+    <string name="achievement_life_architect_desc">10 habits — you\'re building your best version</string>
+    <string name="achievement_multitasker_title">Multitasking</string>
+    <string name="achievement_multitasker_desc">Complete 5 different habits in one day</string>
+    <!-- Social -->
+    <string name="achievement_first_friend_title">First Friend</string>
+    <string name="achievement_first_friend_desc">Add your first friend — it\'s more fun together!</string>
+    <string name="achievement_social_circle_title">Your Circle</string>
+    <string name="achievement_social_circle_desc">5 friends — you have great company!</string>
+    <string name="achievement_social_butterfly_title">Social Butterfly</string>
+    <string name="achievement_social_butterfly_desc">10 friends — you\'re the life of the party!</string>
+    <string name="achievement_team_player_title">Team Player</string>
+    <string name="achievement_team_player_desc">Join a group habit</string>
+    <string name="achievement_group_leader_title">Group Leader</string>
+    <string name="achievement_group_leader_desc">Create a group habit and invite friends</string>
+    <!-- Challenges -->
+    <string name="achievement_first_challenge_title">First Challenge</string>
+    <string name="achievement_first_challenge_desc">Participate in your first challenge</string>
+    <string name="achievement_first_win_title">First Victory</string>
+    <string name="achievement_first_win_desc">Win your first challenge!</string>
+    <string name="achievement_champion_title">Champion</string>
+    <string name="achievement_champion_desc">5 challenge wins — you\'re a true champion!</string>
+    <string name="achievement_veteran_title">Veteran</string>
+    <string name="achievement_veteran_desc">Participate in 10 challenges</string>
+    <string name="achievement_undefeated_title">Undefeated</string>
+    <string name="achievement_undefeated_desc">10 wins — nothing can stop you!</string>
+    <!-- Special -->
+    <string name="achievement_early_bird_title">Early Bird</string>
+    <string name="achievement_early_bird_desc">Complete 10 habits before 8 AM</string>
+    <string name="achievement_night_owl_title">Night Owl</string>
+    <string name="achievement_night_owl_desc">Complete 10 habits after 10 PM</string>
+    <string name="achievement_weekend_warrior_title">Weekend Warrior</string>
+    <string name="achievement_weekend_warrior_desc">Complete habits every weekend for a month</string>
+    <string name="achievement_perfect_week_title">Perfect Week</string>
+    <string name="achievement_perfect_week_desc">Complete all habits for a week</string>
+    <string name="achievement_perfect_month_title">Perfect Month</string>
+    <string name="achievement_perfect_month_desc">Complete all habits for a month — you\'re amazing!</string>
+    <string name="achievement_consistency_master_title">Consistency Master</string>
+    <string name="achievement_consistency_master_desc">Achieve 90% habit completion for a month</string>
+    <string name="achievement_level_5_title">Experienced</string>
+    <string name="achievement_level_5_desc">Reach level 5</string>
+    <string name="achievement_level_10_title">Master</string>
+    <string name="achievement_level_10_desc">Reach level 10 — you\'re a true master!</string>
 
     <!-- Stats section titles -->
-    <string name="stats_habits_title">Привычки</string>
-    <string name="stats_streaks_title">Серии</string>
-    <string name="stats_social_title">Социальные</string>
-    <string name="stats_challenges_title">Челленджи</string>
-    <string name="stats_time_title">Время выполнения</string>
+    <string name="stats_habits_title">Habits</string>
+    <string name="stats_streaks_title">Streaks</string>
+    <string name="stats_social_title">Social</string>
+    <string name="stats_challenges_title">Challenges</string>
+    <string name="stats_time_title">Completion Time</string>
 
     <!-- Habits labels -->
-    <string name="stats_habits_total">Всего привычек</string>
-    <string name="stats_habits_active">Активных привычек</string>
-    <string name="stats_habits_completed_today">Выполнено сегодня</string>
-    <string name="stats_habits_total_completions">Всего выполнений</string>
-    <string name="stats_habits_week">За эту неделю</string>
-    <string name="stats_habits_month">За этот месяц</string>
-    <string name="stats_habits_avg_completion">Средний процент выполнения</string>
-    <string name="stats_habits_perfect_days">Идеальных дней</string>
-    <string name="stats_habits_best">Лучшая привычка</string>
+    <string name="stats_habits_total">Total Habits</string>
+    <string name="stats_habits_active">Active Habits</string>
+    <string name="stats_habits_completed_today">Completed Today</string>
+    <string name="stats_habits_total_completions">Total Completions</string>
+    <string name="stats_habits_week">This Week</string>
+    <string name="stats_habits_month">This Month</string>
+    <string name="stats_habits_avg_completion">Average Completion</string>
+    <string name="stats_habits_perfect_days">Perfect Days</string>
+    <string name="stats_habits_best">Best Habit</string>
 
     <!-- Streaks labels -->
-    <string name="stats_streak_current">Текущая серия</string>
-    <string name="stats_streak_best">Лучшая серия</string>
-    <string name="stats_streak_avg">Средняя серия</string>
-    <string name="stats_streak_active">Активных серий</string>
+    <string name="stats_streak_current">Current Streak</string>
+    <string name="stats_streak_best">Best Streak</string>
+    <string name="stats_streak_avg">Average Streak</string>
+    <string name="stats_streak_active">Active Streaks</string>
 
     <!-- Social labels -->
-    <string name="stats_social_friends">Друзей</string>
-    <string name="stats_social_group_habits">Групповых привычек</string>
-    <string name="stats_social_challenges_participated">Челленджей участвовал</string>
-    <string name="stats_social_challenges_won">Челленджей выиграл</string>
+    <string name="stats_social_friends">Friends</string>
+    <string name="stats_social_group_habits">Group Habits</string>
+    <string name="stats_social_challenges_participated">Challenges Participated</string>
+    <string name="stats_social_challenges_won">Challenges Won</string>
 
     <!-- Challenges labels -->
-    <string name="stats_challenges_total">Всего челленджей</string>
-    <string name="stats_challenges_active">Активных</string>
-    <string name="stats_challenges_completed">Завершено</string>
-    <string name="stats_challenges_won">Выиграно</string>
-    <string name="stats_challenges_win_rate">Процент побед</string>
-    <string name="stats_challenges_created">Создано</string>
+    <string name="stats_challenges_total">Total Challenges</string>
+    <string name="stats_challenges_active">Active</string>
+    <string name="stats_challenges_completed">Completed</string>
+    <string name="stats_challenges_won">Won</string>
+    <string name="stats_challenges_win_rate">Win Rate</string>
+    <string name="stats_challenges_created">Created</string>
 
     <!-- Time labels -->
-    <string name="stats_time_morning">Утром (5-11)</string>
-    <string name="stats_time_afternoon">Днем (12-17)</string>
-    <string name="stats_time_evening">Вечером (18-22)</string>
-    <string name="stats_time_consistency">Оценка постоянства</string>
-    <string name="stats_time_average">Среднее время</string>
-    <string name="stats_time_best_hour">Лучший час</string>
-    
-    <!-- Time of Day Selection -->
-    <string name="habit_time_of_day_label">Время выполнения</string>
-    <string name="time_of_day_morning">Утро</string>
-    <string name="time_of_day_afternoon">День</string>
-    <string name="time_of_day_evening">Вечер</string>
-    <string name="time_of_day_any">Любое время</string>
-    <string name="time_of_day_multi_select_hint">Можно выбрать несколько периодов</string>
-    <string name="time_of_day_will_create_multiple">Будет создано %d отдельных привычек</string>
-    <string name="time_of_day_edit_mode_hint">Время выполнения нельзя изменить при редактировании</string>
+    <string name="stats_time_morning">Morning (5-11)</string>
+    <string name="stats_time_afternoon">Afternoon (12-17)</string>
+    <string name="stats_time_evening">Evening (18-22)</string>
+    <string name="stats_time_consistency">Consistency Score</string>
+    <string name="stats_time_average">Average Time</string>
+    <string name="stats_time_best_hour">Best Hour</string>
 
-    <string name="stats_activity_title">Активность за 7 дней</string>
-    <string name="stats_leaderboard_title">Рейтинг друзей</string>
-    <string name="leaderboard_empty">У вас пока нет друзей для соревнования</string>
-    <string name="leaderboard_weekly">За неделю</string>
-    <string name="leaderboard_all_time">Все время</string>
-    <string name="leaderboard_completions">выполнений</string>
-    <string name="leaderboard_habit_title">Рейтинг участников</string>
-    <string name="cd_more">Еще</string>
-    <string name="wants_to_add_you">Хочет добавить вас в друзья</string>
-    <string name="request_sent">Запрос отправлен</string>
-    
+    <!-- Time of Day Selection -->
+    <string name="habit_time_of_day_label">Completion Time</string>
+    <string name="time_of_day_morning">Morning</string>
+    <string name="time_of_day_afternoon">Afternoon</string>
+    <string name="time_of_day_evening">Evening</string>
+    <string name="time_of_day_any">Any time</string>
+    <string name="time_of_day_multi_select_hint">Multiple periods can be selected</string>
+    <string name="time_of_day_will_create_multiple">Will create %d separate habits</string>
+    <string name="time_of_day_edit_mode_hint">Completion time cannot be changed when editing</string>
+
+    <string name="stats_activity_title">Activity (7 days)</string>
+    <string name="stats_leaderboard_title">Friends Leaderboard</string>
+    <string name="leaderboard_empty">No friends to compete with yet</string>
+    <string name="leaderboard_weekly">Weekly</string>
+    <string name="leaderboard_all_time">All Time</string>
+    <string name="leaderboard_completions">completions</string>
+    <string name="leaderboard_habit_title">Participants Leaderboard</string>
+    <string name="cd_more">More</string>
+    <string name="wants_to_add_you">Wants to add you as friend</string>
+    <string name="request_sent">Request sent</string>
+
     <!-- Social Success Messages -->
-    <string name="friend_request_sent">Запрос в друзья отправлен</string>
-    <string name="friend_request_accepted">Запрос принят</string>
-    <string name="friend_request_declined">Запрос отклонен</string>
-    <string name="friend_request_canceled">Запрос отменен</string>
-    <string name="friend_removed">Друг удален</string>
-    <string name="request_cancelled">Запрос отменен</string>
-    
+    <string name="friend_request_sent">Friend request sent</string>
+    <string name="friend_request_accepted">Request accepted</string>
+    <string name="friend_request_declined">Request declined</string>
+    <string name="friend_request_canceled">Request canceled</string>
+    <string name="friend_removed">Friend removed</string>
+    <string name="request_cancelled">Request canceled</string>
+
     <!-- Social Error Messages -->
-    <string name="error_user_not_found">Пользователь не найден</string>
-    <string name="error_loading_data">Ошибка загрузки данных</string>
-    <string name="error_search_failed">Ошибка поиска</string>
-    <string name="error_sending_request">Ошибка отправки запроса</string>
-    <string name="error_accepting_request">Ошибка принятия запроса</string>
-    <string name="error_declining_request">Ошибка отклонения запроса</string>
-    <string name="error_removing_friend">Ошибка удаления друга</string>
-    <string name="error_canceling_request">Ошибка отмены запроса</string>
-    <string name="error_generic">Произошла ошибка</string>
-    
+    <string name="error_user_not_found">User not found</string>
+    <string name="error_loading_data">Error loading data</string>
+    <string name="error_search_failed">Search failed</string>
+    <string name="error_sending_request">Error sending request</string>
+    <string name="error_accepting_request">Error accepting request</string>
+    <string name="error_declining_request">Error declining request</string>
+    <string name="error_removing_friend">Error removing friend</string>
+    <string name="error_canceling_request">Error canceling request</string>
+    <string name="error_generic">An error occurred</string>
+
     <!-- Social Status -->
-    <string name="online">В сети</string>
-    <string name="offline">Не в сети</string>
-    <string name="last_seen">Был в сети: %1$s</string>
-    <string name="friend_since">Друзья с %1$s</string>
-    <string name="request_sent_at">Запрос отправлен %1$s</string>
-    
-    <!-- Групповые привычки - дополнительные строки -->
-    <string name="share_invite_code_text">Присоединяйтесь к групповой привычке "%1$s"!\n\nКод приглашения: %2$s\n\nВведите этот код в приложении HabitTracker, чтобы присоединиться к нашей группе.</string>
-    <string name="share_invite_code_subject">Приглашение в групповую привычку</string>
-    <string name="share_invite_code_title">Поделиться кодом приглашения</string>
-    <string name="invite_code_shared">Код приглашения отправлен</string>
-    <string name="habit_marked_complete">Привычка отмечена как выполненная</string>
-    <string name="habit_marked_incomplete">Отметка о выполнении снята</string>
-    <string name="error_updating_habit_status">Ошибка обновления статуса привычки</string>
-    <string name="group_habit_settings">Настройки групповой привычки</string>
-    <string name="max_participants">Максимум участников</string>
-    <string name="participants_limit">из 10</string>
-    <string name="participants_exceeds_limit">Лимит участников превышен</string>
-    <string name="participants_min_limit">В группе должно быть минимум 2 участника</string>
-    <string name="public_habit">Публичная привычка</string>
-    <string name="invite_code">Код приглашения</string>
-    <string name="invite_code_placeholder">Нажмите "Создать" для генерации</string>
-    <string name="generate">Создать</string>
-    <string name="invite_friends">Пригласить друзей</string>
-    <string name="selected_friends">Выбрано друзей: %d</string>
-    <string name="remove">Удалить</string>
-    <string name="select_friends_to_invite">Выберите друзей для приглашения</string>
-    <string name="no_friends_available">Нет доступных друзей</string>
-    <string name="invite_selected">Отправить приглашения (%d)</string>
-    <string name="save_to_send_invitations">Сохраните привычку, чтобы отправить приглашения</string>
-    
+    <string name="online">Online</string>
+    <string name="offline">Offline</string>
+    <string name="last_seen">Last seen: %1$s</string>
+    <string name="friend_since">Friends since %1$s</string>
+    <string name="request_sent_at">Request sent %1$s</string>
+
+    <!-- Group Habits - additional strings -->
+    <string name="share_invite_code_text">Join group habit \"%1$s\"!\n\nInvite code: %2$s\n\nEnter this code in HabitTracker app to join our group.</string>
+    <string name="share_invite_code_subject">Group Habit Invitation</string>
+    <string name="share_invite_code_title">Share Invite Code</string>
+    <string name="invite_code_shared">Invite code shared</string>
+    <string name="habit_marked_complete">Habit marked as completed</string>
+    <string name="habit_marked_incomplete">Completion unmark</string>
+    <string name="error_updating_habit_status">Error updating habit status</string>
+    <string name="group_habit_settings">Group Habit Settings</string>
+    <string name="max_participants">Max participants</string>
+    <string name="participants_limit">of 10</string>
+    <string name="participants_exceeds_limit">Participant limit exceeded</string>
+    <string name="participants_min_limit">Group must have at least 2 participants</string>
+    <string name="public_habit">Public Habit</string>
+    <string name="invite_code">Invite Code</string>
+    <string name="invite_code_placeholder">Click \"Create\" to generate</string>
+    <string name="generate">Create</string>
+    <string name="invite_friends">Invite Friends</string>
+    <string name="selected_friends">Friends selected: %d</string>
+    <string name="remove">Remove</string>
+    <string name="select_friends_to_invite">Select friends to invite</string>
+    <string name="no_friends_available">No friends available</string>
+    <string name="invite_selected">Invite selected (%d)</string>
+    <string name="save_to_send_invitations">Save habit to send invitations</string>
+
     <!-- Group Habits Progress -->
-    <string name="group_progress_today">Прогресс группы сегодня</string>
-    <string name="group_progress_subtitle">Ежедневный прогресс участников группы</string>
-    <string name="group_participants">Участники группы</string>
-    <string name="participant_streak">Серия: %d дней</string>
-    <string name="participant_completion_rate">%d%% за неделю</string>
+    <string name="group_progress_today">Group Progress Today</string>
+    <string name="group_progress_subtitle">Daily progress of group participants</string>
+    <string name="group_participants">Group Participants</string>
+    <string name="participant_streak">Streak: %d days</string>
+    <string name="participant_completion_rate">%d%% this week</string>
     <string name="group_progress_count_format">%1$d/%2$d</string>
     <string name="streak_fire_format">%1$d🔥</string>
-    <string name="group_habit_invite_code">Код приглашения: %s</string>
-    <string name="group_habit_public">Публичная привычка</string>
-    <string name="group_habit_private">Приватная привычка</string>
-    <string name="participants_count" formatted="false">Участников: %d/%d</string>
+    <string name="group_habit_invite_code">Invite Code: %s</string>
+    <string name="group_habit_public">Public Habit</string>
+    <string name="group_habit_private">Private Habit</string>
+    <string name="participants_count" formatted="false">Participants: %d/%d</string>
     <plurals name="participants_plural">
-        <item quantity="one">%d участник</item>
-        <item quantity="few">%d участника</item>
-        <item quantity="many">%d участников</item>
-        <item quantity="other">%d участников</item>
+        <item quantity="one">%d participant</item>
+        <item quantity="few">%d participants</item>
+        <item quantity="many">%d participants</item>
+        <item quantity="other">%d participants</item>
     </plurals>
-    <string name="group_habit">Групповая привычка</string>
-    <string name="personal_habit">Личная привычка</string>
-    <string name="completed">Выполнено</string>
-    <string name="streak_days">дней подряд</string>
-    <string name="no_participants">Пока нет участников</string>
-    <string name="owner">Владелец</string>
-    <string name="public_access">Публичный доступ</string>
-    <string name="public_access_description">Любой может присоединиться по коду</string>
-    <string name="recent_activity_description">Последняя активность участников</string>
-    <string name="leave_group_title">Покинуть группу?</string>
-    <string name="leave_confirm">Покинуть</string>
-    
+    <string name="group_habit">Group Habit</string>
+    <string name="personal_habit">Personal Habit</string>
+    <string name="completed">Completed</string>
+    <string name="streak_days">days streak</string>
+    <string name="no_participants">No participants yet</string>
+    <string name="owner">Owner</string>
+    <string name="public_access">Public Access</string>
+    <string name="public_access_description">Anyone can join with code</string>
+    <string name="recent_activity_description">Recent activity of participants</string>
+    <string name="leave_group_title">Leave group?</string>
+    <string name="leave_confirm">Leave</string>
+
     <!-- Invite Code Components -->
-    <string name="invite_code_settings">Настройки приглашений</string>
-    <string name="public_habit_description">Любой может присоединиться по коду</string>
-    <string name="private_habit_description">Только приглашенные друзья могут присоединиться</string>
-    <string name="current_invite_code">Текущий код приглашения</string>
-    <string name="copy_code">Копировать код</string>
-    <string name="share_code">Поделиться</string>
-    <string name="disable_code">Отключить код</string>
-    <string name="no_invite_code">У этой привычки пока нет кода приглашения</string>
-    <string name="generating_code">Генерируем...</string>
-    <string name="generate_invite_code">Создать код приглашения</string>
-    <string name="invite_code_after_save">У этой привычки пока нет кода приглашения</string>
-    <string name="invite_code_can_generate_after_save">Код приглашения можно создать после сохранения привычки</string>
-    <string name="join_habit_by_code">Присоединиться по коду</string>
-    <string name="join_habit_by_code_description">Введите код приглашения, чтобы присоединиться к групповой привычке</string>
-    <string name="joining">Присоединяемся...</string>
-    <string name="join_habit">Присоединиться</string>
+    <string name="invite_code_settings">Invite Settings</string>
+    <string name="public_habit_description">Anyone can join with code</string>
+    <string name="private_habit_description">Only invited friends can join</string>
+    <string name="current_invite_code">Current Invite Code</string>
+    <string name="copy_code">Copy Code</string>
+    <string name="share_code">Share</string>
+    <string name="disable_code">Disable Code</string>
+    <string name="no_invite_code">This habit has no invite code yet</string>
+    <string name="generating_code">Generating...</string>
+    <string name="generate_invite_code">Create Invite Code</string>
+    <string name="invite_code_after_save">This habit has no invite code yet</string>
+    <string name="invite_code_can_generate_after_save">Invite code can be created after saving the habit</string>
+    <string name="join_habit_by_code">Join by Code</string>
+    <string name="join_habit_by_code_description">Enter invite code to join a group habit</string>
+    <string name="joining">Joining...</string>
+    <string name="join_habit">Join</string>
 
     <!-- Notifications -->
-    <string name="notifications_title">Уведомления</string>
-    <string name="mark_as_read">Отметить как прочитанное</string>
-    <string name="mark_all_as_read">Отметить все как прочитанные</string>
-    <string name="clear_all_read">Очистить все</string>
-    <string name="no_notifications_title">Нет уведомлений</string>
-    <string name="no_notifications_description">Здесь будут отображаться уведомления о прогрессе ваших групповых привычек</string>
-    <string name="time_just_now">Только что</string>
-    <string name="time_minutes_ago">%1$dм назад</string>
-    <string name="time_hours_ago">%1$dч назад</string>
-    <string name="time_days_ago">%1$dд назад</string>
+    <string name="notifications_title">Notifications</string>
+    <string name="mark_as_read">Mark as read</string>
+    <string name="mark_all_as_read">Mark all as read</string>
+    <string name="clear_all_read">Clear all read</string>
+    <string name="no_notifications_title">No notifications</string>
+    <string name="no_notifications_description">Notifications about your group habits progress will appear here</string>
+    <string name="time_just_now">Just now</string>
+    <string name="time_minutes_ago">%1$dm ago</string>
+    <string name="time_hours_ago">%1$dh ago</string>
+    <string name="time_days_ago">%1$dd ago</string>
     <string name="date_dd_mm_yyyy">%1$02d.%2$02d.%3$04d</string>
     <string name="nine_plus">9+</string>
-    <string name="notification_participant_completed">%1$s выполнил(а) привычку \"%2$s\"</string>
-    <string name="notification_participant_streak">%1$s поддерживает серию %2$d дней в \"%3$s\"!</string>
-    <string name="notification_group_achievement">Все участники выполнили \"%1$s\" сегодня! 🎉</string>
-    <string name="notification_new_invitation">Приглашение в групповую привычку \"%1$s\"</string>
-    <string name="notification_invitation_accepted">%1$s принял(а) приглашение в \"%2$s\"</string>
-    <string name="notification_participant_joined">%1$s присоединился к \"%2$s\"</string>
-    <string name="notification_habit_reminder">Время выполнить \"%1$s\"</string>
-    <string name="settings_title">Настройки</string>
+    <string name="notification_participant_completed">%1$s completed habit \"%2$s\"</string>
+    <string name="notification_participant_streak">%1$s is on a %2$d day streak in \"%3$s\"!</string>
+    <string name="notification_group_achievement">All participants completed \"%1$s\" today! 🎉</string>
+    <string name="notification_new_invitation">Invitation to group habit \"%1$s\"</string>
+    <string name="notification_invitation_accepted">%1$s accepted invitation to \"%2$s\"</string>
+    <string name="notification_participant_joined">%1$s joined \"%2$s\"</string>
+    <string name="notification_habit_reminder">Time to do \"%1$s\"</string>
+    <string name="settings_title">Settings</string>
     <!-- Invitations in Notifications -->
-    <string name="invitations_title">Приглашения к привычкам</string>
-    <string name="no_invitations">Нет входящих приглашений</string>
-    <string name="accept_invitation">Принять</string>
-    <string name="decline_invitation">Отклонить</string>
-    <string name="invitation_from_format">От: %1$s</string>
-    
+    <string name="invitations_title">Habit Invitations</string>
+    <string name="no_invitations">No incoming invitations</string>
+    <string name="accept_invitation">Accept</string>
+    <string name="decline_invitation">Decline</string>
+    <string name="invitation_from_format">From: %1$s</string>
+
+    <!-- Notification Strings (Added) -->
+    <string name="notification_friend_request_title">Friend Request</string>
+    <string name="notification_friend_request_body">%1$s sent you a friend request</string>
+    <string name="notification_friend_accepted_body">%1$s accepted your friend request</string>
+    <string name="notification_habit_invitation_title">Habit Invitation</string>
+    <string name="notification_habit_invitation_body">%1$s invited you to join \"%2$s\"</string>
+    <string name="notification_habit_invitation_accepted_title">Invitation Accepted</string>
+    <string name="notification_habit_invitation_accepted">Participant %1$s joined \"%2$s\"</string>
+    <string name="notification_participant_joined_title">New Participant</string>
+    <string name="notification_participant_left_title">Participant Left</string>
+    <string name="notification_participant_left_body">%1$s left challenge \"%2$s\"</string>
+    <string name="notification_congrats_title">Congratulations!</string>
+    <string name="notification_challenge_completed_title">Challenge Completed</string>
+    <string name="notification_challenge_cancelled_title">Challenge Cancelled</string>
+    <string name="notification_challenge_cancelled_body">Challenge \"%1$s\" was cancelled: %2$s</string>
+    <string name="notification_challenge_invitation_title">Challenge Invitation</string>
+    <string name="notification_challenge_invitation_body">%1$s invited you to join challenge \"%2$s\"</string>
+    <string name="notification_challenge_joined_title">Challenge Joined</string>
+    <string name="notification_challenge_joined_body">%1$s joined challenge \"%2$s\"</string>
+    <string name="notification_challenge_created_title">Challenge Created</string>
+    <string name="notification_challenge_created_body">Challenge \"%1$s\" has been created</string>
+    <string name="challenge_cancelled_by_creator">Challenge cancelled by creator</string>
+    <string name="default_user_name">User</string>
+
+    <!-- UseCase Strings -->
+    <string name="challenge_expired_no_winner">Challenge expired. No winner.</string>
+    <string name="challenge_won_message">You won the challenge!</string>
+    <string name="challenge_completed_winner_message">Challenge completed! Winner: %1$s</string>
+    <string name="error_challenge_not_found">Challenge not found</string>
+    <string name="error_already_joined_challenge">You have already joined this challenge</string>
+    <string name="error_challenge_completed">Challenge is already completed</string>
+    <string name="error_challenge_cancelled">Challenge is cancelled</string>
+    <string name="error_challenge_max_participants">Challenge is full</string>
+    <string name="error_must_be_friend_creator">You must be friends with the creator to join</string>
+    <string name="error_request_not_found">Request not found</string>
+    <string name="error_friendship_not_found">Friendship not found</string>
+    <string name="error_cannot_send_invite">Cannot send invitation to this user</string>
+
+    <!-- Group Habit Notifications -->
+    <string name="default_participant_name">Participant</string>
+    <string name="notification_participant_completed_message">%1$s completed habit \"%2$s\"</string>
+    <string name="notification_participant_streak_message">%1$s is on a %2$d day streak in \"%3$s\"!</string>
+    <string name="notification_group_achievement_message">All participants completed \"%1$s\" today! 🎉</string>
+    <string name="push_habit_completed_message">%1$s completed the habit!</string>
+
+    <!-- GenerateHabitInviteCodeUseCase Errors -->
+    <string name="error_only_creator_can_generate_code">Only the habit creator can generate invite codes</string>
+    <string name="error_invite_codes_group_only">Invite codes are only available for group habits</string>
+    <string name="error_cannot_create_code_inactive_habit">Cannot create codes for inactive habits</string>
+    <string name="error_no_free_slots">No free slots available for new participants</string>
+    <string name="error_only_creator_can_disable_code">Only the habit creator can disable the invite code</string>
+    <string name="error_generate_code_failed">Failed to generate unique invite code. Please try again later.</string>
+
+    <!-- SendHabitInvitationUseCase Errors -->
+    <string name="error_self_invite">Cannot invite yourself</string>
+    <string name="error_invite_inactive_habit">Cannot invite to an inactive habit</string>
+    <string name="error_only_creator_can_invite">Only the habit creator can send invitations</string>
+    <string name="error_invite_group_only">Can only invite to group habits</string>
+    <string name="error_no_free_slots_limit">No free slots available (maximum %1$d participants)</string>
+    <string name="error_user_already_participant">User is already a participant in this habit</string>
+    <string name="error_invite_friends_only">Can only invite friends. Add the user as a friend first</string>
+    <string name="error_invitation_already_exists">An invitation has already been sent to this user</string>
+    <string name="error_outgoing_invites_limit">Active invitations limit exceeded (maximum 10). Wait for responses to previous invitations</string>
+    <string name="error_sender_not_found">Sender not found</string>
+
+    <!-- JoinHabitByCodeUseCase Errors -->
+    <string name="error_invalid_code_format">Invalid invite code format</string>
+    <string name="error_habit_not_found_or_inactive">Habit with this code not found or inactive</string>
+    <string name="error_code_group_only">Invite code only works for group habits</string>
+    <string name="error_habit_inactive">Habit is inactive</string>
+    <string name="error_code_invalid">Invite code is invalid</string>
+    <string name="error_already_participant">You are already a participant in this habit</string>
+
+    <!-- Push Notification Strings -->
+    <string name="push_habit_completed_title">🎯 %1$s</string>
+    <string name="push_habit_completed_body">%1$s completed the habit!</string>
+    <string name="push_group_achievement_title">🏆 Group Achievement!</string>
+    <string name="push_group_achievement_body">All participants completed \"%1$s\" today!</string>
+    <string name="push_streak_title">🔥 Great Streak!</string>
+    <string name="push_streak_body">%1$s is on a %2$d day streak in \"%3$s\"!</string>
+    <string name="push_new_participant_title">👥 New Participant</string>
+    <string name="push_new_participant_body">%1$s joined \"%2$s\"!</string>
+    <string name="push_invitation_title">📩 Group Invitation</string>
+    <string name="push_invitation_body">%1$s invites you to \"%2$s\"</string>
+    <string name="push_participant_left_title">👋 Participant Left</string>
+    <string name="push_participant_left_body">%1$s left \"%2$s\"</string>
+
     <!-- Snackbar messages (Notifications screen) -->
-    <string name="error_loading_notifications">Не удалось загрузить уведомления</string>
-    <string name="error_loading_invitations">Не удалось загрузить приглашения</string>
-    <string name="error_processing_notification">Ошибка обработки уведомления</string>
-    <string name="error_mark_notification">Не удалось отметить уведомление</string>
-    <string name="error_delete_notification">Не удалось удалить уведомление</string>
-    <string name="success_all_marked_read">Все уведомления отмечены как прочитанные</string>
-    <string name="error_mark_all_notifications">Не удалось отметить все уведомления</string>
-    <string name="success_all_read_deleted">Все прочитанные уведомления удалены</string>
-    <string name="error_delete_notifications">Не удалось удалить уведомления</string>
-    <string name="success_invitation_accepted">Приглашение принято</string>
-    <string name="error_accept_invitation">Ошибка принятия приглашения</string>
-    <string name="success_invitation_declined">Приглашение отклонено</string>
-    <string name="error_decline_invitation">Ошибка отклонения приглашения</string>
-    <string name="error_update_habit">Ошибка обновления привычки</string>
-    
+    <string name="error_loading_notifications">Failed to load notifications</string>
+    <string name="error_loading_invitations">Failed to load invitations</string>
+    <string name="error_processing_notification">Error processing notification</string>
+    <string name="error_mark_notification">Failed to mark notification</string>
+    <string name="error_delete_notification">Failed to delete notification</string>
+    <string name="success_all_marked_read">All notifications marked as read</string>
+    <string name="error_mark_all_notifications">Failed to mark all notifications</string>
+    <string name="success_all_read_deleted">All read notifications deleted</string>
+    <string name="error_delete_notifications">Failed to delete notifications</string>
+    <string name="success_invitation_accepted">Invitation accepted</string>
+    <string name="error_accept_invitation">Error accepting invitation</string>
+    <string name="success_invitation_declined">Invitation declined</string>
+    <string name="error_decline_invitation">Error declining invitation</string>
+    <string name="error_update_habit">Error updating habit</string>
+
     <!-- Dialogs -->
-    <string name="enter_value_title">Указать количество</string>
-    <string name="enter_value_message">Введите выполненное количество для привычки «%1$s»\n(Цель: %2$d %3$s)</string>
-    
+    <string name="enter_value_title">Enter Amount</string>
+    <string name="enter_value_message">Enter completed amount for habit \"%1$s\"\n(Target: %2$d %3$s)</string>
+
     <!-- Expandable FAB -->
-    <string name="fab_enter_code">Ввести код приглашения</string>
-    <string name="fab_find_habit">Выбрать из каталога</string>
-    <string name="fab_create_habit">Создать привычку</string>
-    <string name="fab_open_menu">Открыть меню</string>
-    <string name="fab_close_menu">Закрыть</string>
-    <string name="fab_add">Добавить</string>
-    <string name="fab_add_habit_title">Добавить привычку</string>
-    <string name="fab_create_new_title">Создать новую</string>
-    <string name="fab_create_new_desc">Создайте личную или групповую привычку</string>
-    <string name="fab_browse_catalog_title">Найти в каталоге</string>
-    <string name="fab_browse_catalog_desc">Присоединитесь к публичным привычкам</string>
-    <string name="fab_enter_code_title">Ввести код</string>
-    <string name="fab_enter_code_desc">Присоединитесь по коду приглашения</string>
-    
+    <string name="fab_enter_code">Enter Invite Code</string>
+    <string name="fab_find_habit">Browse Catalog</string>
+    <string name="fab_create_habit">Create Habit</string>
+    <string name="fab_open_menu">Open Menu</string>
+    <string name="fab_close_menu">Close</string>
+    <string name="fab_add">Add</string>
+    <string name="fab_add_habit_title">Add Habit</string>
+    <string name="fab_create_new_title">Create New</string>
+    <string name="fab_create_new_desc">Create personal or group habit</string>
+    <string name="fab_browse_catalog_title">Find in Catalog</string>
+    <string name="fab_browse_catalog_desc">Join public habits</string>
+    <string name="fab_enter_code_title">Enter Code</string>
+    <string name="fab_enter_code_desc">Join by invite code</string>
+
     <!-- Join by Code Dialog -->
-    <string name="join_by_code_title">Введите код приглашения</string>
-    <string name="join_by_code_hint">Код состоит из 8 символов</string>
-    <string name="join_by_code_label">Код</string>
+    <string name="join_by_code_title">Enter Invite Code</string>
+    <string name="join_by_code_hint">Code consists of 8 characters</string>
+    <string name="join_by_code_label">Code</string>
     <string name="join_by_code_placeholder">ABC123TO</string>
-    <string name="join_by_code_error">Код должен содержать 8 символов</string>
-    <string name="join_by_code_button">Присоединиться</string>
-    
+    <string name="join_by_code_error">Code must be 8 characters long</string>
+    <string name="join_by_code_button">Join</string>
+
     <!-- Public Habits -->
-    <string name="public_habits_title">Публичные привычки</string>
-    <string name="public_habits_subtitle">Найдите привычки, которые вам интересны</string>
-    <string name="public_habits_found">Найдено</string>
-    <string name="public_habits_search_hint">Поиск привычек...</string>
-    <string name="public_habits_category_all">Все</string>
-    <string name="public_habits_category_health">Здоровье</string>
-    <string name="public_habits_category_sport">Спорт</string>
-    <string name="public_habits_category_education">Образование</string>
-    <string name="public_habits_category_productivity">Продуктивность</string>
-    <string name="public_habits_category_mindfulness">Осознанность</string>
-    <string name="public_habits_category_creativity">Творчество</string>
-    <string name="public_habits_category_social">Социальные</string>
-    <string name="public_habits_category_other">Другое</string>
-    <string name="public_habits_sort_popularity">По популярности</string>
-    <string name="public_habits_sort_newest">Сначала новые</string>
-    <string name="public_habits_participants">участников</string>
-    <string name="public_habits_participants_one">участник</string>
-    <string name="public_habits_participants_few">участника</string>
-    <string name="public_habits_no_habits">Нет доступных публичных привычек</string>
-    <string name="public_habits_loading">Загрузка...</string>
-    <string name="public_habits_join">Присоединиться</string>
-    <string name="public_habits_details">Подробности</string>
-    <string name="public_habits_created_by">Создано:</string>
-    <string name="public_habits_date_created">Дата создания:</string>
-    
+    <string name="public_habits_title">Public Habits</string>
+    <string name="public_habits_subtitle">Find habits that interest you</string>
+    <string name="public_habits_found">Found</string>
+    <string name="public_habits_search_hint">Search habits...</string>
+    <string name="public_habits_category_all">All</string>
+    <string name="public_habits_category_health">Health</string>
+    <string name="public_habits_category_sport">Sport</string>
+    <string name="public_habits_category_education">Education</string>
+    <string name="public_habits_category_productivity">Productivity</string>
+    <string name="public_habits_category_mindfulness">Mindfulness</string>
+    <string name="public_habits_category_creativity">Creativity</string>
+    <string name="public_habits_category_social">Social</string>
+    <string name="public_habits_category_other">Other</string>
+    <string name="public_habits_sort_popularity">Popular</string>
+    <string name="public_habits_sort_newest">Newest</string>
+    <string name="public_habits_participants">participants</string>
+    <string name="public_habits_participants_one">participant</string>
+    <string name="public_habits_participants_few">participants</string>
+    <string name="public_habits_no_habits">No public habits available</string>
+    <string name="public_habits_loading">Loading...</string>
+    <string name="public_habits_join">Join</string>
+    <string name="public_habits_details">Details</string>
+    <string name="public_habits_created_by">Created by:</string>
+    <string name="public_habits_date_created">Date created:</string>
+
     <!-- Habits View Model Messages -->
-    <string name="join_habit_auth_required">Необходимо войти в систему</string>
-    <string name="join_habit_success">Вы успешно присоединились к привычке \"%1$s\"</string>
-    <string name="join_habit_error_generic">Не удалось присоединиться по коду</string>
-    <string name="join_habit_error">Произошла ошибка: %1$s</string>
-    
+    <string name="join_habit_auth_required">Log in required</string>
+    <string name="join_habit_success">You successfully joined habit \"%1$s\"</string>
+    <string name="join_habit_error_generic">Failed to join by code</string>
+    <string name="join_habit_error">An error occurred: %1$s</string>
+
     <!-- Public Habits View Model Messages -->
-    <string name="public_habits_error_load">Не удалось загрузить публичные привычки</string>
-    <string name="public_habits_joining">Присоединяемся...</string>
-    <string name="public_habits_join_success">Вы присоединились к привычке!</string>
-    <string name="public_habits_join_error">Не удалось присоединиться к привычке</string>
-    <string name="error_already_participating">Вы уже участвуете в этой привычке</string>
-    <string name="error_invalid_invite_code">Неверный код приглашения</string>
-    <string name="public_habits_participants_title">Участники</string>
-    <string name="public_habits_frequency_title">Частота</string>
-    <string name="public_habits_created_title">Создана</string>
-    <string name="public_habits_goal_title">Цель</string>
-    <string name="public_habits_group_full">Группа заполнена</string>
-    <string name="public_habits_join_habit">Присоединиться к привычке</string>
-    
+    <string name="public_habits_error_load">Failed to load public habits</string>
+    <string name="public_habits_joining">Joining...</string>
+    <string name="public_habits_join_success">You joined the habit!</string>
+    <string name="public_habits_join_error">Failed to join the habit</string>
+    <string name="error_already_participating">You are already participating in this habit</string>
+    <string name="error_invalid_invite_code">Invalid invite code</string>
+    <string name="public_habits_participants_title">Participants</string>
+    <string name="public_habits_frequency_title">Frequency</string>
+    <string name="public_habits_created_title">Created</string>
+    <string name="public_habits_goal_title">Goal</string>
+    <string name="public_habits_group_full">Group is full</string>
+    <string name="public_habits_join_habit">Join Habit</string>
+
     <!-- Habit Preview Card -->
-    <string name="habit_preview_author">Автор:</string>
-    <string name="habit_preview_participants">участников</string>
-    <string name="public_habits_nothing_found">Ничего не найдено</string>
-    <string name="public_habits_no_public">Нет публичных привычек</string>
-    <string name="public_habits_try_different">Попробуйте изменить запрос или фильтры</string>
-    <string name="public_habits_be_first">Будьте первым, кто создаст публичную привычку!</string>
-    <string name="public_habits_create_habit">Создать привычку</string>
+    <string name="habit_preview_author">Author:</string>
+    <string name="habit_preview_participants">participants</string>
+    <string name="public_habits_nothing_found">Nothing found</string>
+    <string name="public_habits_no_public">No public habits</string>
+    <string name="public_habits_try_different">Try different query or filters</string>
+    <string name="public_habits_be_first">Be the first to create a public habit!</string>
+    <string name="public_habits_create_habit">Create Habit</string>
 
     <!-- Validation Messages -->
-    <string name="validation_all_good">Все поля заполнены корректно</string>
-    <string name="validation_has_warnings">Есть предупреждения</string>
-    <string name="validation_has_errors">Есть ошибки</string>
-    <string name="validation_form_invalid">Форма содержит ошибки</string>
-    <string name="validation_form_valid">Форма готова к отправке</string>
-    <string name="validation_checking">Проверка данных...</string>
+    <string name="validation_all_good">All fields are correct</string>
+    <string name="validation_has_warnings">Has warnings</string>
+    <string name="validation_has_errors">Has errors</string>
+    <string name="validation_form_invalid">Form contains errors</string>
+    <string name="validation_form_valid">Form is ready</string>
+    <string name="validation_checking">Checking data...</string>
 
     <!-- Group Habit Detail Screen -->
-    <string name="group_habit_details">Детали групповой привычки</string>
-    <string name="manage_group">Управление группой</string>
-    <string name="group_progress">Прогресс группы</string>
-    <string name="not_completed_today">Не выполнено сегодня</string>
-    <string name="group_streak_days">дней подряд</string>
-    <string name="participants">Участники</string>
-    <string name="tap_to_remove">Нажмите для удаления</string>
-    <string name="remove_participant">Удалить участника</string>
-    <string name="invite_management">Управление приглашениями</string>
-    <string name="pending_invitations">Ожидающие приглашения (%1$d)</string>
-    <string name="recent_activity">Недавняя активность</string>
-    <string name="no_activity_yet">Пока нет активности</string>
-    <string name="participant_completed">%1$s выполнил привычку</string>
-    <string name="participant_marked_incomplete">%1$s отметил как невыполненное</string>
-    <string name="leave_group">Покинуть группу</string>
-    <string name="leave_group_warning">Вы уверены, что хотите покинуть эту группу? Это действие нельзя отменить.</string>
-    
+    <string name="group_habit_details">Group Habit Details</string>
+    <string name="manage_group">Manage Group</string>
+    <string name="group_progress">Group Progress</string>
+    <string name="not_completed_today">Not completed today</string>
+    <string name="group_streak_days">days streak</string>
+    <string name="participants">Participants</string>
+    <string name="tap_to_remove">Tap to remove</string>
+    <string name="remove_participant">Remove Participant</string>
+    <string name="invite_management">Manage Invites</string>
+    <string name="pending_invitations">Pending Invitations (%1$d)</string>
+    <string name="recent_activity">Recent Activity</string>
+    <string name="no_activity_yet">No activity yet</string>
+    <string name="participant_completed">%1$s completed the habit</string>
+    <string name="participant_marked_incomplete">%1$s marked as incomplete</string>
+    <string name="leave_group">Leave Group</string>
+    <string name="leave_group_warning">Are you sure you want to leave this group? This action cannot be undone.</string>
+
     <!-- Success/Error Messages for Group Habits -->
-    <string name="error_habit_not_found">Привычка не найдена</string>
-    <string name="error_loading_habit_details">Ошибка загрузки деталей привычки</string>
-    <string name="invite_code_generated">Код приглашения создан</string>
-    <string name="error_generating_invite_code">Ошибка создания кода приглашения</string>
-    <string name="invite_code_copied">Код приглашения скопирован</string>
-    <string name="invite_code_disabled">Код приглашения отключен</string>
-    <string name="error_disabling_invite_code">Ошибка отключения кода приглашения</string>
-    <string name="habit_made_public">Привычка стала публичной</string>
-    <string name="habit_made_private">Привычка стала приватной</string>
-    <string name="participant_removed">Участник удален</string>
-    <string name="error_removing_participant">Ошибка удаления участника</string>
-    <string name="left_group_successfully">Вы покинули группу</string>
-    <string name="error_leaving_group">Ошибка выхода из группы</string>
+    <string name="error_habit_not_found">Habit not found</string>
+    <string name="error_loading_habit_details">Error loading habit details</string>
+    <string name="invite_code_generated">Invite code generated</string>
+    <string name="error_generating_invite_code">Error generating invite code</string>
+    <string name="invite_code_copied">Invite code copied</string>
+    <string name="invite_code_disabled">Invite code disabled</string>
+    <string name="error_disabling_invite_code">Error disabling invite code</string>
+    <string name="habit_made_public">Habit made public</string>
+    <string name="habit_made_private">Habit made private</string>
+    <string name="participant_removed">Participant removed</string>
+    <string name="error_removing_participant">Error removing participant</string>
+    <string name="left_group_successfully">You left the group</string>
+    <string name="error_leaving_group">Error leaving group</string>
 
     <!-- Challenge strings -->
-    <string name="challenges_title">Челленджи</string>
-    <string name="create_challenge">Создать челлендж</string>
-    <string name="invitations">Приглашения</string>
-    <string name="active_challenges">Активные</string>
-    <string name="ending_soon">Скоро завершатся</string>
-    <string name="completed_challenges">Завершенные</string>
-    <string name="join_challenge">Присоединиться к челленджу</string>
-    <string name="join_challenge_confirmation">Вы уверены, что хотите присоединиться к этому челленджу?</string>
-    <string name="join">Присоединиться</string>
-    <string name="leave_challenge">Покинуть челлендж</string>
-    <string name="leave_challenge_title">Покинуть челлендж?</string>
-    <string name="leave_challenge_confirmation">Вы уверены, что хотите покинуть этот челлендж? Вы больше не сможете участвовать в нём.</string>
-    <string name="leave">Покинуть</string>
-    <string name="cancel_challenge">Отменить челлендж</string>
-    <string name="delete_challenge">Удалить челлендж</string>
-    <string name="remove_participant_title">Удалить участника?</string>
-    <string name="remove_participant_confirmation">Вы уверены, что хотите удалить %1$s из этого челленджа?</string>
-    <string name="retry">Повторить</string>
-    <string name="dismiss">Закрыть</string>
+    <string name="challenges_title">Challenges</string>
+    <string name="create_challenge">Create Challenge</string>
+    <string name="invitations">Invitations</string>
+    <string name="active_challenges">Active</string>
+    <string name="ending_soon">Ending Soon</string>
+    <string name="completed_challenges">Completed</string>
+    <string name="join_challenge">Join Challenge</string>
+    <string name="join_challenge_confirmation">Are you sure you want to join this challenge?</string>
+    <string name="join">Join</string>
+    <string name="leave_challenge">Leave Challenge</string>
+    <string name="leave_challenge_title">Leave Challenge?</string>
+    <string name="leave_challenge_confirmation">Are you sure you want to leave this challenge? You won\'t be able to participate anymore.</string>
+    <string name="leave">Leave</string>
+    <string name="cancel_challenge">Cancel Challenge</string>
+    <string name="delete_challenge">Delete Challenge</string>
+    <string name="remove_participant_title">Remove Participant?</string>
+    <string name="remove_participant_confirmation">Are you sure you want to remove %1$s from this challenge?</string>
+    <string name="retry">Retry</string>
+    <string name="dismiss">Dismiss</string>
     <!-- Create Challenge UI helpers -->
-    <string name="tap_to_select_habit">Нажмите для выбора привычки</string>
-    <string name="tap_to_select_participants">Нажмите для выбора участников</string>
-    <string name="selected_participants">Выбрано участников: %1$d</string>
-    <string name="add_participants">Добавить участников</string>
-    <string name="no_friends_to_add">Нет доступных друзей для добавления</string>
-    
+    <string name="tap_to_select_habit">Tap to select habit</string>
+    <string name="tap_to_select_participants">Tap to select participants</string>
+    <string name="selected_participants">Selected participants: %1$d</string>
+    <string name="add_participants">Add Participants</string>
+    <string name="no_friends_to_add">No friends available to add</string>
+
     <!-- Empty states -->
-    <string name="no_active_challenges">Нет активных челленджей</string>
-    <string name="no_active_challenges_description">Создайте свой первый челлендж или присоединитесь к челленджу друзей</string>
-    <string name="no_ending_soon_challenges">Нет челленджей, которые скоро завершатся</string>
-    <string name="no_ending_soon_challenges_description">Челленджи, которые завершаются в ближайшие дни, появятся здесь</string>
-    <string name="no_completed_challenges">Нет завершенных челленджей</string>
-    <string name="no_completed_challenges_description">Завершенные челленджи будут отображаться здесь</string>
-    <string name="create_first_challenge">Создать первый челлендж</string>
-    
+    <string name="no_challenge_invitations">No invitations</string>
+    <string name="no_challenge_invitations_description">When friends invite you to a challenge, invitations will appear here</string>
+    <string name="no_active_challenges">No active challenges</string>
+    <string name="no_active_challenges_description">Create your first challenge or join friends\' challenges</string>
+    <string name="no_ending_soon_challenges">No challenges ending soon</string>
+    <string name="no_ending_soon_challenges_description">Challenges ending in upcoming days will appear here</string>
+    <string name="no_completed_challenges">No completed challenges</string>
+    <string name="no_completed_challenges_description">Completed challenges will appear here</string>
+    <string name="create_first_challenge">Create First Challenge</string>
+
     <!-- Challenge status -->
-    <string name="challenge_pending">Ожидает</string>
-    <string name="challenge_active">Активный</string>
-    <string name="challenge_completed">Завершен</string>
-    <string name="challenge_expired">Истёк</string>
-    <string name="challenge_cancelled">Отменен</string>
-    <string name="challenge_ended">Завершен</string>
-    <string name="one_day_left">1 день</string>
-    <string name="days_left">%d дн.</string>
-    <string name="progress">Прогресс</string>
-    
+    <string name="challenge_pending">Pending</string>
+    <string name="challenge_active">Active</string>
+    <string name="challenge_completed">Completed</string>
+    <string name="challenge_expired">Expired</string>
+    <string name="challenge_cancelled">Cancelled</string>
+    <string name="challenge_ended">Ended</string>
+    <string name="one_day_left">1 day</string>
+    <string name="days_left">%d days</string>
+    <string name="progress">Progress</string>
+
     <!-- Challenge types -->
-    <string name="completion_rate">% выполнения</string>
-    <string name="streak_challenge">Серия</string>
-    <string name="total_days">Всего дней</string>
-    <string name="first_to_target">Первый к цели</string>
-    
+    <string name="completion_rate">% completion</string>
+    <string name="streak_challenge">Streak</string>
+    <string name="total_days">Total days</string>
+    <string name="first_to_target">First to target</string>
+
     <!-- Challenge details -->
-    <string name="challenge_details_title">Детали челленджа</string>
-    
+    <string name="challenge_details_title">Challenge Details</string>
+
     <!-- Create challenge -->
-    <string name="create_challenge_title">Создание челленджа</string>
-    <string name="challenge_name">Название челленджа</string>
-    <string name="challenge_name_hint">Введите название челленджа</string>
-    <string name="challenge_description">Описание</string>
-    <string name="challenge_description_hint">Краткое описание челленджа (необязательно)</string>
-    <string name="challenge_invite_skipped_due_to_full_habit">В привычке уже максимум %1$d участников. Эти друзья не могут быть приглашены в челлендж: %2$s</string>
-    <string name="select_habit">Выберите привычку</string>
-    <string name="select_habit_empty_hint">У вас нет доступных групповых привычек для создания челленджа</string>
-    <string name="select_participants">Выберите участников</string>
-    <string name="challenge_dates">Даты челленджа</string>
-    <string name="start_date">Дата начала</string>
-    <string name="end_date">Дата окончания</string>
-    <string name="challenge_rules">Правила челленджа</string>
-    <string name="challenge_type">Тип челленджа</string>
-    <string name="target_value">Целевое значение</string>
-    <string name="target_value_hint">Введите целевое значение</string>
-    <string name="target_total_value">Целевое количество</string>
-    <string name="target_total_value_hint">Например: 100%1$s</string>
-    <string name="first_to_target_simple_hint">Побеждает первый, кто выполнит привычку указанное количество дней</string>
-    <string name="first_to_target_measurable_hint">Побеждает первый, кто наберёт указанное количество выполнений</string>
-    <string name="allow_backfill_completions">Отметки за прошлые дни</string>
-    <string name="allow_backfill_completions_description">Можно отмечать выполнения за прошедшие дни, если забыли отметить вовремя</string>
-    <string name="allow_backfill_completions_info">Можно отмечать выполнения за прошедшие дни</string>
-    <string name="reward">Награда</string>
-    <string name="reward_hint">Опишите награду для победителя</string>
-    <string name="create_challenge_button">Создать челлендж</string>
-    
+    <string name="create_challenge_title">Create Challenge</string>
+    <string name="challenge_name">Challenge Name</string>
+    <string name="challenge_name_hint">Enter challenge name</string>
+    <string name="challenge_description">Description</string>
+    <string name="challenge_description_hint">Short description (optional)</string>
+    <string name="challenge_invite_skipped_due_to_full_habit">Habit already has max %1$d participants. These friends cannot be invited: %2$s</string>
+    <string name="select_habit">Select Habit</string>
+    <string name="select_habit_empty_hint">You don\'t have available group habits to create a challenge</string>
+    <string name="select_participants">Select Participants</string>
+    <string name="challenge_dates">Challenge Dates</string>
+    <string name="start_date">Start Date</string>
+    <string name="end_date">End Date</string>
+    <string name="challenge_rules">Challenge Rules</string>
+    <string name="challenge_type">Challenge Type</string>
+    <string name="target_value">Target Value</string>
+    <string name="target_value_hint">Enter target value</string>
+    <string name="target_total_value">Target Total</string>
+    <string name="target_total_value_hint">Example: 100%1$s</string>
+    <string name="first_to_target_simple_hint">Winner is the first to complete habit for specified number of days</string>
+    <string name="first_to_target_measurable_hint">Winner is the first to reach specified total count</string>
+    <string name="allow_backfill_completions">Allow backfill completions</string>
+    <string name="allow_backfill_completions_description">Can mark completions for past days if forgotten</string>
+    <string name="allow_backfill_completions_info">Can mark completions for past days</string>
+    <string name="reward">Reward</string>
+    <string name="reward_hint">Describe reward for the winner</string>
+    <string name="create_challenge_button">Create Challenge</string>
+
     <!-- Challenge type descriptions -->
-    <string name="completion_rate_description">Побеждает тот, у кого больший процент выполнения привычки</string>
-    <string name="streak_description">Побеждает тот, у кого самая длинная серия выполнений</string>
-    <string name="total_days_description">Побеждает тот, кто выполнил привычку больше всего дней</string>
-    <string name="first_to_target_description">Побеждает первый, кто достигнет целевого значения</string>
-    
+    <string name="completion_rate_description">Winner has the highest completion rate</string>
+    <string name="streak_description">Winner has the longest streak</string>
+    <string name="total_days_description">Winner has the most completed days</string>
+    <string name="first_to_target_description">Winner reaches the target value first</string>
+
     <!-- Stats Categories -->
-    <string name="stats_habits">Привычки</string>
-    <string name="stats_streaks">Серии</string>
-    <string name="stats_social">Социальные</string>
-    <string name="stats_challenges">Челленджи</string>
-    <string name="stats_time">Время выполнения</string>
-    
+    <string name="stats_habits">Habits</string>
+    <string name="stats_streaks">Streaks</string>
+    <string name="stats_social">Social</string>
+    <string name="stats_challenges">Challenges</string>
+    <string name="stats_time">Time</string>
+
     <!-- Habit Stats Labels -->
-    <string name="total_habits">Всего привычек</string>
-    <string name="active_habits">Активных привычек</string>
-    <string name="completed_today">Выполнено сегодня</string>
-    <string name="total_completions">Всего выполнений</string>
-    <string name="completions_this_week">За эту неделю</string>
-    <string name="completions_this_month">За этот месяц</string>
-    <string name="average_completion_rate">Средний процент выполнения</string>
-    <string name="perfect_days">Идеальных дней</string>
-    <string name="best_habit">Лучшая привычка</string>
-    
+    <string name="total_habits">Total Habits</string>
+    <string name="active_habits">Active Habits</string>
+    <string name="completed_today">Completed Today</string>
+    <string name="total_completions">Total Completions</string>
+    <string name="completions_this_week">This Week</string>
+    <string name="completions_this_month">This Month</string>
+    <string name="average_completion_rate">Avg. Completion</string>
+    <string name="perfect_days">Perfect Days</string>
+    <string name="best_habit">Best Habit</string>
+
     <!-- Streak Stats Labels -->
-    <string name="current_streak">Текущая серия</string>
-    <string name="longest_streak">Лучшая серия</string>
-    <string name="average_streak">Средняя серия</string>
-    <string name="active_streaks">Активных серий</string>
-    
+    <string name="current_streak">Current Streak</string>
+    <string name="longest_streak">Longest Streak</string>
+    <string name="average_streak">Avg. Streak</string>
+    <string name="active_streaks">Active Streaks</string>
+
     <!-- Social Stats Labels -->
-    <string name="friends_count_label">Друзей</string>
-    <string name="group_habits_count">Групповых привычек</string>
-    <string name="challenges_participated">Челленджей участвовал</string>
-    <string name="challenges_won">Челленджей выиграл</string>
-    
+    <string name="friends_count_label">Friends</string>
+    <string name="group_habits_count">Group Habits</string>
+    <string name="challenges_participated">Participated</string>
+    <string name="challenges_won">Won</string>
+
     <!-- Challenge Stats Labels -->
-    <string name="total_challenges">Всего челленджей</string>
-    <string name="active_challenges_count">Активных</string>
-    <string name="completed_challenges_count">Завершено</string>
-    <string name="won_challenges">Выиграно</string>
-    <string name="win_rate">Процент побед</string>
-    <string name="created_challenges">Создано</string>
-    
+    <string name="total_challenges">Total Challenges</string>
+    <string name="active_challenges_count">Active</string>
+    <string name="completed_challenges_count">Completed</string>
+    <string name="won_challenges">Won</string>
+    <string name="win_rate">Win Rate</string>
+    <string name="created_challenges">Created</string>
+
     <!-- Time Stats Labels -->
-    <string name="morning_completions">Утром (5-11)</string>
-    <string name="afternoon_completions">Днем (12-17)</string>
-    <string name="evening_completions">Вечером (18-22)</string>
-    <string name="consistency_score">Оценка постоянства</string>
-    <string name="average_completion_time">Среднее время</string>
-    <string name="most_productive_hour">Лучший час</string>
+    <string name="morning_completions">Morning (5-11)</string>
+    <string name="afternoon_completions">Afternoon (12-17)</string>
+    <string name="evening_completions">Evening (18-22)</string>
+    <string name="consistency_score">Consistency Score</string>
+    <string name="average_completion_time">Avg. Time</string>
+    <string name="most_productive_hour">Best Hour</string>
     <string name="hour_format">%1$d:00</string>
     <string name="percentage_format">%1$d%%</string>
-    <string name="label_today">СЕГОДНЯ</string>
-    <string name="label_completed_percentage">Завершено %1$d%%</string>
-    
+    <string name="label_today">TODAY</string>
+    <string name="label_completed_percentage">Completed %1$d%%</string>
+
     <!-- Month abbreviations -->
-    <string name="month_jan_short">янв</string>
-    <string name="month_feb_short">фев</string>
-    <string name="month_mar_short">мар</string>
-    <string name="month_apr_short">апр</string>
-    <string name="month_may_short">мая</string>
-    <string name="month_jun_short">июня</string>
-    <string name="month_jul_short">июля</string>
-    <string name="month_aug_short">авг</string>
-    <string name="month_sep_short">сен</string>
-    <string name="month_oct_short">окт</string>
-    <string name="month_nov_short">нояб</string>
-    <string name="month_dec_short">дек</string>
-    
+    <string name="month_jan_short">Jan</string>
+    <string name="month_feb_short">Feb</string>
+    <string name="month_mar_short">Mar</string>
+    <string name="month_apr_short">Apr</string>
+    <string name="month_may_short">May</string>
+    <string name="month_jun_short">Jun</string>
+    <string name="month_jul_short">Jul</string>
+    <string name="month_aug_short">Aug</string>
+    <string name="month_sep_short">Sep</string>
+    <string name="month_oct_short">Oct</string>
+    <string name="month_nov_short">Nov</string>
+    <string name="month_dec_short">Dec</string>
+
     <!-- Week day abbreviations -->
-    <string name="day_mon_short">ПН</string>
-    <string name="day_tue_short">ВТ</string>
-    <string name="day_wed_short">СР</string>
-    <string name="day_thu_short">ЧТ</string>
-    <string name="day_fri_short">ПТ</string>
-    <string name="day_sat_short">СБ</string>
-    <string name="day_sun_short">ВС</string>
-    <string name="button_today">Сегодня</string>
+    <string name="day_mon_short">MON</string>
+    <string name="day_tue_short">TUE</string>
+    <string name="day_wed_short">WED</string>
+    <string name="day_thu_short">THU</string>
+    <string name="day_fri_short">FRI</string>
+    <string name="day_sat_short">SAT</string>
+    <string name="day_sun_short">SUN</string>
+    <string name="button_today">Today</string>
 
     <!-- Achievements Screen -->
-    <string name="achievements_unknown_error">Неизвестная ошибка</string>
-    <string name="achievements_title">Достижения</string>
-    <string name="achievements_progress">%1$d из %2$d разблокировано</string>
-    <string name="achievements_loading">Загрузка достижений…</string>
-    <string name="achievements_error">Ошибка загрузки</string>
-    <string name="achievements_empty">Нет достижений</string>
-    <string name="achievements_empty_description">Пока здесь пусто. Выполняйте привычки, участвуйте в челленджах и добавляйте друзей, чтобы открыть достижения!</string>
-    <string name="achievements_habits">Привычки</string>
-    <string name="achievements_streaks">Серии</string>
-    <string name="achievements_social">Социальные</string>
-    <string name="achievements_challenges">Челленджи</string>
-    <string name="achievements_milestones">Ранг</string>
-    <string name="achievements_special">Особые</string>
-    <string name="achievements_near_to_unlock">Близко к получению</string>
-    
-    <string name="achievement_unlocked">Разблокировано</string>
-    <string name="achievement_locked">Заблокировано</string>
-    <string name="achievement_progress">Прогресс</string>
-    
-    <!-- Achievement Status -->
-    <string name="achievement_unlocked_title">Достижение разблокировано!</string>
-    <string name="points_label">очков</string>
-    <string name="achievement_reward">+%1$d очков</string>
-    
-    <!-- Notification Settings Screen -->
-    <string name="notification_settings_title">Настройки уведомлений</string>
-    <string name="notification_section_habits">Напоминания о привычках</string>
-    <string name="notification_habit_reminders">Напоминания</string>
-    <string name="notification_habit_reminders_desc">Получать напоминания о выполнении привычек</string>
-    <string name="notification_section_social">Социальные уведомления</string>
-    <string name="notification_friend_activity">Активность друзей</string>
-    <string name="notification_friend_activity_desc">Запросы дружбы и приглашения</string>
-    <string name="notification_group_habits">Групповые привычки</string>
-    <string name="notification_group_habits_desc">Обновления в совместных привычках</string>
-    <string name="notification_challenges">Челленджи</string>
-    <string name="notification_challenges_desc">Приглашения и обновления челленджей</string>
-    <string name="notification_section_achievements">Достижения</string>
-    <string name="notification_achievements">Новые достижения</string>
-    <string name="notification_achievements_desc">Уведомления о разблокированных достижениях</string>
-    <string name="notification_section_quiet_hours">Режим \"Не беспокоить\"</string>
-    <string name="notification_quiet_hours">Тихие часы</string>
-    <string name="notification_quiet_hours_desc">Не беспокоить с %1$d:00 до %2$d:00</string>
+    <string name="achievements_unknown_error">Unknown error</string>
+    <string name="achievements_title">Achievements</string>
+    <string name="achievements_progress">%1$d of %2$d unlocked</string>
+    <string name="achievements_loading">Loading achievements...</string>
+    <string name="achievements_error">Error loading</string>
+    <string name="achievements_empty">No achievements</string>
+    <string name="achievements_empty_description">Empty here. Complete habits, participate in challenges and add friends to unlock achievements!</string>
+    <string name="achievements_habits">Habits</string>
+    <string name="achievements_streaks">Streaks</string>
+    <string name="achievements_social">Social</string>
+    <string name="achievements_challenges">Challenges</string>
+    <string name="achievements_milestones">Rank</string>
+    <string name="achievements_special">Special</string>
+    <string name="achievements_near_to_unlock">Close to unlock</string>
 
+    <string name="achievement_unlocked">Unlocked</string>
+    <string name="achievement_locked">Locked</string>
+    <string name="achievement_progress">Progress</string>
+
+    <!-- Achievement Status -->
+    <string name="achievement_unlocked_title">Achievement Unlocked!</string>
+    <string name="points_label">points</string>
+    <string name="achievement_reward">+%1$d points</string>
+
+    <!-- Notification Settings Screen -->
+    <string name="notification_settings_title">Notification Settings</string>
+    <string name="notification_section_habits">Habit Reminders</string>
+    <string name="notification_habit_reminders">Reminders</string>
+    <string name="notification_habit_reminders_desc">Receive reminders to complete habits</string>
+    <string name="notification_section_social">Social Notifications</string>
+    <string name="notification_friend_activity">Friend Activity</string>
+    <string name="notification_friend_activity_desc">Friend requests and invitations</string>
+    <string name="notification_group_habits">Group Habits</string>
+    <string name="notification_group_habits_desc">Updates in shared habits</string>
+    <string name="notification_challenges">Challenges</string>
+    <string name="notification_challenges_desc">Challenge invitations and updates</string>
+    <string name="notification_section_achievements">Achievements</string>
+    <string name="notification_achievements">New Achievements</string>
+    <string name="notification_achievements_desc">Notifications about unlocked achievements</string>
+    <string name="notification_section_quiet_hours">Do Not Disturb</string>
+    <string name="notification_quiet_hours">Quiet Hours</string>
+    <string name="notification_quiet_hours_desc">Do not disturb from %1$d:00 to %2$d:00</string>
+    <string name="error_end_date_past">End date must be in the future</string>
+    <string name="error_habit_not_found_domain">Habit not found</string>
+    <string name="error_no_habit_access">No access to this habit</string>
+    <string name="error_not_habit_participant">You are not a participant of this habit</string>
+    <string name="error_not_friend_template">%1$s is not your friend</string>
+
+    <!-- Validation Error Messages -->
+    <string name="validation_title_empty">Habit title cannot be empty</string>
+    <string name="validation_title_too_short">Title must contain at least %1$d character</string>
+    <string name="validation_title_too_long">Title must not exceed %1$d characters</string>
+    <string name="validation_description_too_long">Description must not exceed %1$d characters</string>
+    <string name="validation_icon_empty">Icon cannot be empty</string>
+    <string name="validation_color_invalid">Invalid color format. Use #RRGGBB format</string>
+    <string name="validation_target_value_too_low">Target value must be at least %1$d</string>
+    <string name="validation_target_value_too_high">Target value must not exceed %1$d</string>
+    <string name="validation_unit_empty">Unit cannot be empty</string>
+    <string name="validation_unit_too_long">Unit must not exceed %1$d characters</string>
+    <string name="validation_min_participants">Group habit must support at least %1$d participants</string>
+    <string name="validation_max_participants">Max participants must not exceed %1$d</string>
+    <string name="validation_invite_code_invalid">Invite code must contain %1$d uppercase letters and digits</string>
+    <string name="validation_too_many_participants">Number of participants exceeds the limit</string>
+
+    <!-- Service Notifications -->
+    <string name="notification_default_title">HabitTracker</string>
+    <string name="notification_default_body">You have a new notification</string>
+    <string name="notification_channel_name">HabitTracker Notifications</string>
+    <string name="notification_channel_description">Notifications about group habits and social interactions</string>
+
+    <!-- Notification Fallbacks (Service) -->
+    <string name="notification_fallback_participant_completed">%1$s completed the habit!</string>
+    <string name="notification_fallback_invitation_accepted">%1$s accepted your invitation</string>
+    <string name="notification_fallback_friend_joined">%1$s joined the habit</string>
+    <string name="notification_fallback_challenge_invitation">You were invited to challenge \'%1$s\'</string>
+    <string name="notification_fallback_challenge_completed">Challenge \'%1$s\' completed</string>
+    <string name="notification_fallback_challenge_cancelled">Challenge \'%1$s\' cancelled</string>
+    <string name="notification_fallback_challenge_joined">New participant joined challenge \'%1$s\'</string>
+    <string name="notification_fallback_challenge_left">Participant left challenge \'%1$s\'</string>
+
+    <!-- Notification Helper Strings -->
+    <string name="channel_habit_reminder_name">Habit Reminders</string>
+    <string name="channel_habit_reminder_description">Notifications to remind you about your habits</string>
+    <string name="notification_habit_reminder_title_followup">%1$s Don\'t forget your habit!</string>
+    <string name="notification_habit_reminder_title_normal">%1$s Time for habit!</string>
+    <string name="notification_habit_reminder_text_followup">You haven\'t marked completion yet: %1$s</string>
+    <string name="notification_habit_reminder_text_normal">%1$s</string>
+    <string name="notification_habit_reminder_big_text_followup">Seems you forgot to mark your habit: %1$s. It\'s time to do it!</string>
+    <string name="notification_habit_reminder_big_text_normal">Time to complete your habit: %1$s</string>
+
+    <!-- Challenge Default -->
+    <string name="challenge_default_title">Challenge</string>
+
+    <!-- Challenge Errors (LeaveChallengeUseCase, UpdateChallengeProgressUseCase) -->
+    <string name="error_not_joined_challenge">You have not joined this challenge</string>
+    <string name="error_creator_cannot_leave">Creator cannot leave the challenge</string>
+    <string name="error_cannot_leave_completed">Cannot leave a completed challenge</string>
+    <string name="error_challenge_already_cancelled">Challenge is already cancelled</string>
+    <string name="error_cannot_cancel_completed">Cannot cancel a completed challenge</string>
+
+    <!-- Challenge Validation Errors -->
+    <string name="error_challenge_title_empty">Enter challenge title</string>
+    <string name="error_challenge_min_participants">Select at least one participant</string>
+    <string name="error_challenge_max_participants_limit">Maximum participants limit: 10</string>
+    <string name="error_end_date_before_start">End date cannot be earlier than start date</string>
 </resources>

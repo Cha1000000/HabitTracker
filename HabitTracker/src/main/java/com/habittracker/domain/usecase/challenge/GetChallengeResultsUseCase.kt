@@ -5,6 +5,8 @@ import com.habittracker.domain.model.ChallengeStatus
 import com.habittracker.domain.model.ChallengeType
 import com.habittracker.domain.model.User
 import com.habittracker.domain.model.HabitGoalType
+import com.habittracker.R
+import com.habittracker.domain.provider.StringProvider
 import com.habittracker.domain.repository.ChallengeRepository
 import com.habittracker.domain.repository.HabitEntryRepository
 import com.habittracker.domain.repository.HabitRepository
@@ -47,7 +49,8 @@ class GetChallengeResultsUseCase @Inject constructor(
     private val challengeRepository: ChallengeRepository,
     private val habitEntryRepository: HabitEntryRepository,
     private val habitRepository: HabitRepository,
-    private val socialRepository: SocialRepository
+    private val socialRepository: SocialRepository,
+    private val stringProvider: StringProvider
 ) {
     /**
      * Получает результаты челленджа с подсчетом статистики участников
@@ -58,7 +61,7 @@ class GetChallengeResultsUseCase @Inject constructor(
         return try {
             // Получаем челлендж
             val challenge = challengeRepository.getChallengeById(challengeId)
-                ?: return Result.failure(Exception("Челлендж не найден"))
+                ?: return Result.failure(Exception(stringProvider.getString(R.string.error_challenge_not_found)))
             
             // Получаем привычку для определения goalType
             val habit = habitRepository.getHabitById(challenge.habitId)

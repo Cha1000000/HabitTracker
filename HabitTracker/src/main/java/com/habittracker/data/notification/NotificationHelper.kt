@@ -23,8 +23,6 @@ class NotificationHelper @Inject constructor(
 ) {
     companion object {
         const val HABIT_REMINDER_CHANNEL_ID = "habit_reminder_channel"
-        const val HABIT_REMINDER_CHANNEL_NAME = "Напоминания о привычках"
-        const val HABIT_REMINDER_CHANNEL_DESCRIPTION = "Уведомления для напоминания о выполнении привычек"
         
         private const val NOTIFICATION_REQUEST_CODE = 1001
         private const val DAILY_REMINDER_REQUEST_CODE = 1002
@@ -44,10 +42,10 @@ class NotificationHelper @Inject constructor(
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             val channel = NotificationChannel(
                 HABIT_REMINDER_CHANNEL_ID,
-                HABIT_REMINDER_CHANNEL_NAME,
+                context.getString(R.string.channel_habit_reminder_name),
                 NotificationManager.IMPORTANCE_DEFAULT
             ).apply {
-                description = HABIT_REMINDER_CHANNEL_DESCRIPTION
+                description = context.getString(R.string.channel_habit_reminder_description)
                 enableVibration(true)
                 setShowBadge(true)
             }
@@ -79,21 +77,21 @@ class NotificationHelper @Inject constructor(
         )
 
         val contentTitle = if (isFollowUp) {
-            "$habitIcon Не забудьте про привычку!"
+            context.getString(R.string.notification_habit_reminder_title_followup, habitIcon)
         } else {
-            "$habitIcon Время для привычки!"
+            context.getString(R.string.notification_habit_reminder_title_normal, habitIcon)
         }
 
         val contentText = if (isFollowUp) {
-            "Вы еще не отметили выполнение: $habitTitle"
+            context.getString(R.string.notification_habit_reminder_text_followup, habitTitle)
         } else {
-            habitTitle
+            context.getString(R.string.notification_habit_reminder_text_normal, habitTitle)
         }
         
         val bigText = if (isFollowUp) {
-            "Кажется, вы забыли отметить привычку: $habitTitle. Самое время сделать это!"
+            context.getString(R.string.notification_habit_reminder_big_text_followup, habitTitle)
         } else {
-            "Пора выполнить привычку: $habitTitle"
+            context.getString(R.string.notification_habit_reminder_big_text_normal, habitTitle)
         }
 
         val notification = NotificationCompat.Builder(context, HABIT_REMINDER_CHANNEL_ID)

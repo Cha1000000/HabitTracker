@@ -22,17 +22,6 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Check
-import androidx.compose.material.icons.filled.CheckCircle
-import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material.icons.filled.EmojiEvents
-import androidx.compose.material.icons.filled.Group
-import androidx.compose.material.icons.filled.Mail
-import androidx.compose.material.icons.filled.Notifications
-import androidx.compose.material.icons.filled.NotificationsNone
-import androidx.compose.material.icons.filled.PersonAdd
-import androidx.compose.material.icons.filled.Whatshot
 import androidx.compose.material3.AssistChip
 import androidx.compose.material3.Badge
 import androidx.compose.material3.CircularProgressIndicator
@@ -60,6 +49,7 @@ import com.habittracker.domain.usecase.notification.NotificationType
 import com.habittracker.presentation.ui.habits.components.GlassmorphicButton
 import com.habittracker.presentation.ui.habits.components.GlassmorphicCard
 import com.habittracker.presentation.ui.habits.components.GlassmorphicOutlinedButton
+import com.habittracker.presentation.ui.theme.TahoeIcons
 import kotlinx.datetime.Clock
 import kotlinx.datetime.Instant
 import kotlinx.datetime.TimeZone
@@ -189,7 +179,7 @@ fun InvitationItem(
                     contentAlignment = Alignment.Center
                 ) {
                     Icon(
-                        imageVector = Icons.Default.Mail,
+                        imageVector = TahoeIcons.Envelope,
                         contentDescription = stringResource(R.string.cd_invitation_icon),
                         tint = MaterialTheme.colorScheme.primary
                     )
@@ -337,7 +327,7 @@ fun NotificationItem(
                     modifier = Modifier.size(24.dp)
                 ) {
                     Icon(
-                        imageVector = Icons.Default.Check,
+                        imageVector = TahoeIcons.Check,
                         contentDescription = stringResource(R.string.mark_as_read),
                         tint = MaterialTheme.colorScheme.primary,
                         modifier = Modifier.size(16.dp)
@@ -358,15 +348,15 @@ fun NotificationTypeIcon(
     modifier: Modifier = Modifier
 ) {
     val iconData = when (type) {
-        NotificationType.PARTICIPANT_COMPLETED -> Icons.Default.CheckCircle to Color(0xFF4CAF50)
-        NotificationType.PARTICIPANT_STREAK -> Icons.Default.Whatshot to Color(0xFFFF9800)
-        NotificationType.GROUP_ACHIEVEMENT -> Icons.Default.EmojiEvents to Color(0xFFFFD700)
-        NotificationType.NEW_INVITATION -> Icons.Default.Mail to Color(0xFF2196F3)
-        NotificationType.INVITATION_ACCEPTED -> Icons.Default.PersonAdd to Color(0xFF4CAF50)
-        NotificationType.PARTICIPANT_JOINED -> Icons.Default.Group to Color(0xFF9C27B0)
-        NotificationType.FRIEND_JOINED -> Icons.Default.PersonAdd to Color(0xFF9C27B0)
-        NotificationType.HABIT_REMINDER -> Icons.Default.Notifications to Color(0xFF607D8B)
-        NotificationType.ACHIEVEMENT_UNLOCKED -> Icons.Default.EmojiEvents to Color(0xFFFFD700)
+        NotificationType.PARTICIPANT_COMPLETED -> TahoeIcons.CheckCircle to Color(0xFF4CAF50)
+        NotificationType.PARTICIPANT_STREAK -> TahoeIcons.Fire to Color(0xFFFF9800)
+        NotificationType.GROUP_ACHIEVEMENT -> TahoeIcons.Trophy to Color(0xFFFFD700)
+        NotificationType.NEW_INVITATION -> TahoeIcons.Envelope to Color(0xFF2196F3)
+        NotificationType.INVITATION_ACCEPTED -> TahoeIcons.UserPlus to Color(0xFF4CAF50)
+        NotificationType.PARTICIPANT_JOINED -> TahoeIcons.Group to Color(0xFF9C27B0)
+        NotificationType.FRIEND_JOINED -> TahoeIcons.UserPlus to Color(0xFF9C27B0)
+        NotificationType.HABIT_REMINDER -> TahoeIcons.Bell to Color(0xFF607D8B)
+        NotificationType.ACHIEVEMENT_UNLOCKED -> TahoeIcons.Trophy to Color(0xFFFFD700)
     }
     
     val icon = iconData.first
@@ -405,7 +395,7 @@ fun EmptyNotificationsState(
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
         Icon(
-            imageVector = Icons.Default.NotificationsNone,
+            imageVector = TahoeIcons.BellSlash,
             contentDescription = null,
             tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
             modifier = Modifier.size(64.dp)
@@ -544,7 +534,7 @@ fun StoredNotificationItem(
                     contentAlignment = Alignment.CenterEnd
                 ) {
                     Icon(
-                        imageVector = Icons.Default.Delete,
+                        imageVector = TahoeIcons.Trash,
                         contentDescription = "Удалить",
                         tint = Color.White.copy(alpha = bgAlpha),
                         modifier = Modifier.padding(end = 24.dp)
@@ -583,7 +573,7 @@ fun StoredNotificationItem(
                     contentAlignment = Alignment.Center
                 ) {
                     Icon(
-                        imageVector = Icons.Default.CheckCircle,
+                        imageVector = TahoeIcons.CheckCircle,
                         contentDescription = null,
                         tint = if (notification.isRead) 
                             MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)

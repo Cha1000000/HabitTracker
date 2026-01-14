@@ -15,6 +15,7 @@ import com.habittracker.domain.repository.SocialRepository
 import com.habittracker.domain.repository.UserRepository
 import com.habittracker.domain.usecase.gamification.CheckAchievementsUseCase
 import com.habittracker.domain.usecase.gamification.UpdateUserPointsUseCase
+import com.habittracker.domain.provider.StringProvider
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -36,6 +37,12 @@ import java.util.UUID
 
 class CloseExpiredChallengesUseCaseTest {
 
+    // Mock StringProvider for tests
+    private val fakeStringProvider = object : StringProvider {
+        override fun getString(resId: Int): String = "test_string_$resId"
+        override fun getString(resId: Int, vararg formatArgs: Any): String = "test_string_$resId"
+    }
+
     private class FakeAuthRepository(
         private val currentUserId: String?
     ) : AuthRepository {
@@ -45,6 +52,8 @@ class CloseExpiredChallengesUseCaseTest {
         override suspend fun register(email: String, password: String) = MutableStateFlow(Result.failure<Unit>(Exception("not used")))
         override suspend fun signInWithGoogle() = MutableStateFlow(Result.failure<android.content.Intent?>(Exception("not used")))
         override suspend fun signOut() = MutableStateFlow(Result.success(Unit))
+        override suspend fun sendPasswordResetEmail(email: String) =
+            MutableStateFlow(Result.failure<Unit>(Exception("not used")))
     }
     
     // Fake UpdateUserPointsUseCase
@@ -333,7 +342,7 @@ class CloseExpiredChallengesUseCaseTest {
 
         val updateUserPointsUseCase = FakeUpdateUserPointsUseCase()
         val checkAchievementsUseCase = mock(CheckAchievementsUseCase::class.java)
-        val useCase = CloseExpiredChallengesUseCase(auth, repo, social, updateUserPointsUseCase, checkAchievementsUseCase)
+        val useCase = CloseExpiredChallengesUseCase(auth, repo, social, updateUserPointsUseCase, checkAchievementsUseCase, fakeStringProvider)
         val result = useCase()
 
         assertTrue(result.isSuccess)
@@ -364,7 +373,7 @@ class CloseExpiredChallengesUseCaseTest {
 
         val updateUserPointsUseCase = FakeUpdateUserPointsUseCase()
         val checkAchievementsUseCase = mock(CheckAchievementsUseCase::class.java)
-        val useCase = CloseExpiredChallengesUseCase(auth, repo, social, updateUserPointsUseCase, checkAchievementsUseCase)
+        val useCase = CloseExpiredChallengesUseCase(auth, repo, social, updateUserPointsUseCase, checkAchievementsUseCase, fakeStringProvider)
         val result = useCase()
 
         assertTrue(result.isSuccess)
@@ -412,7 +421,7 @@ class CloseExpiredChallengesUseCaseTest {
 
         val updateUserPointsUseCase = FakeUpdateUserPointsUseCase()
         val checkAchievementsUseCase = mock(CheckAchievementsUseCase::class.java)
-        val useCase = CloseExpiredChallengesUseCase(auth, repo, social, updateUserPointsUseCase, checkAchievementsUseCase)
+        val useCase = CloseExpiredChallengesUseCase(auth, repo, social, updateUserPointsUseCase, checkAchievementsUseCase, fakeStringProvider)
         val result = useCase()
 
         assertTrue(result.isSuccess)
@@ -442,7 +451,7 @@ class CloseExpiredChallengesUseCaseTest {
 
         val updateUserPointsUseCase = FakeUpdateUserPointsUseCase()
         val checkAchievementsUseCase = mock(CheckAchievementsUseCase::class.java)
-        val useCase = CloseExpiredChallengesUseCase(auth, repo, social, updateUserPointsUseCase, checkAchievementsUseCase)
+        val useCase = CloseExpiredChallengesUseCase(auth, repo, social, updateUserPointsUseCase, checkAchievementsUseCase, fakeStringProvider)
         val result = useCase()
 
         assertTrue(result.isSuccess)
@@ -469,7 +478,7 @@ class CloseExpiredChallengesUseCaseTest {
 
         val updateUserPointsUseCase = FakeUpdateUserPointsUseCase()
         val checkAchievementsUseCase = mock(CheckAchievementsUseCase::class.java)
-        val useCase = CloseExpiredChallengesUseCase(auth, repo, social, updateUserPointsUseCase, checkAchievementsUseCase)
+        val useCase = CloseExpiredChallengesUseCase(auth, repo, social, updateUserPointsUseCase, checkAchievementsUseCase, fakeStringProvider)
         val result = useCase()
 
         assertTrue(result.isSuccess)
@@ -495,7 +504,7 @@ class CloseExpiredChallengesUseCaseTest {
 
         val updateUserPointsUseCase = FakeUpdateUserPointsUseCase()
         val checkAchievementsUseCase = mock(CheckAchievementsUseCase::class.java)
-        val useCase = CloseExpiredChallengesUseCase(auth, repo, social, updateUserPointsUseCase, checkAchievementsUseCase)
+        val useCase = CloseExpiredChallengesUseCase(auth, repo, social, updateUserPointsUseCase, checkAchievementsUseCase, fakeStringProvider)
         val result = useCase()
 
         assertTrue(result.isSuccess)

@@ -20,6 +20,7 @@ import com.habittracker.domain.repository.ChallengeRepository
 import com.habittracker.domain.repository.HabitEntryRepository
 import com.habittracker.domain.repository.HabitRepository
 import com.habittracker.domain.repository.SocialRepository
+import com.habittracker.domain.provider.StringProvider
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -43,6 +44,12 @@ import java.util.UUID
  * Используются простые fake-реализации репозиториев, строго соответствующие интерфейсам.
  */
 class ChallengeUseCasesTest {
+
+    // Mock StringProvider for tests
+    private val fakeStringProvider = object : StringProvider {
+        override fun getString(resId: Int): String = "test_string_$resId"
+        override fun getString(resId: Int, vararg formatArgs: Any): String = "test_string_$resId"
+    }
 
     private class FakeChallengeRepository : ChallengeRepository {
         val items = LinkedHashMap<String, Challenge>()
@@ -269,7 +276,7 @@ class ChallengeUseCasesTest {
         )
         habitRepo.insertHabit(habit)
 
-        val useCase = CreateChallengeUseCase(challengeRepo, habitRepo, socialRepo)
+        val useCase = CreateChallengeUseCase(challengeRepo, habitRepo, socialRepo, fakeStringProvider)
         val today = Clock.System.todayIn(TimeZone.currentSystemDefault())
         val start = today
         val end = today.plus(7, DateTimeUnit.DAY)
@@ -315,7 +322,7 @@ class ChallengeUseCasesTest {
         )
         challengeRepo.insertChallenge(ch)
 
-        val useCase = JoinChallengeUseCase(challengeRepo, socialRepo)
+        val useCase = JoinChallengeUseCase(challengeRepo, socialRepo, fakeStringProvider)
         val res = useCase(ch.id, "u2")
         assertTrue(res.isSuccess)
         val updated = res.getOrNull()!!
@@ -346,7 +353,7 @@ class ChallengeUseCasesTest {
         )
         challengeRepo.insertChallenge(ch)
 
-        val useCase = LeaveChallengeUseCase(challengeRepo, socialRepo)
+        val useCase = LeaveChallengeUseCase(challengeRepo, socialRepo, fakeStringProvider)
         val res = useCase(ch.id, "u2")
         assertTrue(res.isSuccess)
         val updated = res.getOrNull()!!
@@ -360,7 +367,7 @@ class ChallengeUseCasesTest {
         val habitEntryRepo = FakeHabitEntryRepository()
         val socialRepo = FakeSocialRepository()
         val habitRepo = FakeHabitRepository()
-        val resultsUseCase = GetChallengeResultsUseCase(challengeRepo, habitEntryRepo, habitRepo, socialRepo)
+        val resultsUseCase = GetChallengeResultsUseCase(challengeRepo, habitEntryRepo, habitRepo, socialRepo, fakeStringProvider)
 
         // закончился вчера
         val yesterday = kotlinx.datetime.Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault()).date.minus(1, DateTimeUnit.DAY)
@@ -382,7 +389,7 @@ class ChallengeUseCasesTest {
         )
         challengeRepo.insertChallenge(ch)
 
-        val useCase = UpdateChallengeProgressUseCase(challengeRepo, habitEntryRepo, socialRepo, resultsUseCase)
+        val useCase = UpdateChallengeProgressUseCase(challengeRepo, habitEntryRepo, socialRepo, resultsUseCase, fakeStringProvider)
         val res = useCase("h1", "creator")
         assertTrue(res.isSuccess)
         val updated = challengeRepo.getChallengeById(ch.id)!!

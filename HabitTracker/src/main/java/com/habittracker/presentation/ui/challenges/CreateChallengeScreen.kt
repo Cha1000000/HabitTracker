@@ -15,12 +15,6 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.selection.selectable
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.ArrowDropDown
-import androidx.compose.material.icons.filled.CalendarToday
-import androidx.compose.material.icons.filled.Group
-import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DatePicker
@@ -64,6 +58,7 @@ import com.habittracker.presentation.ui.habits.components.GlassmorphicDialog
 import com.habittracker.presentation.ui.habits.components.GlassmorphicSwitch
 import com.habittracker.presentation.ui.habits.components.GlassmorphicTextField
 import com.habittracker.presentation.ui.habits.components.TahoeGradientBackground
+import com.habittracker.presentation.ui.theme.TahoeIcons
 import com.habittracker.presentation.viewmodel.CreateChallengeViewModel
 import kotlinx.datetime.Clock
 import kotlinx.datetime.LocalDate
@@ -120,7 +115,7 @@ fun CreateChallengeScreen(
                     navigationIcon = {
                         IconButton(onClick = onNavigateBack) {
                             Icon(
-                                imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                                imageVector = TahoeIcons.ArrowBack,
                                 contentDescription = stringResource(R.string.back)
                             )
                         }
@@ -411,7 +406,7 @@ private fun HabitSelectionCard(
             }
             if (enabled) {
                 Icon(
-                    imageVector = Icons.Filled.ArrowDropDown,
+                    imageVector = TahoeIcons.ChevronDown,
                     contentDescription = null
                 )
             } else {
@@ -463,13 +458,13 @@ private fun ParticipantsSelectionCard(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Icon(
-                    imageVector = Icons.Filled.Group,
+                    imageVector = TahoeIcons.Group,
                     contentDescription = null,
                     modifier = Modifier.size(20.dp)
                 )
                 Spacer(modifier = Modifier.width(4.dp))
                 Icon(
-                    imageVector = Icons.Filled.ArrowDropDown,
+                    imageVector = TahoeIcons.ChevronDown,
                     contentDescription = null
                 )
             }
@@ -513,7 +508,7 @@ private fun DateSelectionSection(
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {
                         Icon(
-                            imageVector = Icons.Filled.CalendarToday,
+                            imageVector = TahoeIcons.Calendar,
                             contentDescription = null,
                             modifier = Modifier.size(20.dp)
                         )
@@ -542,7 +537,7 @@ private fun DateSelectionSection(
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {
                         Icon(
-                            imageVector = Icons.Filled.Schedule,
+                            imageVector = TahoeIcons.Clock,
                             contentDescription = null,
                             modifier = Modifier.size(20.dp)
                         )

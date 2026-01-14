@@ -34,6 +34,9 @@ import com.habittracker.domain.usecase.social.GetFriendsUseCase
 import com.habittracker.presentation.state.AddEditHabitUiState
 import com.habittracker.presentation.utils.GroupHabitConstants
 import com.habittracker.presentation.utils.GroupHabitValidationResult
+import com.habittracker.domain.util.AnalyticsEvents
+import com.habittracker.domain.util.AnalyticsManager
+import com.habittracker.domain.util.ErrorLogger
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
@@ -71,6 +74,9 @@ class AddEditHabitViewModel @Inject constructor(
     private val ensureMySettingsForHabitUseCase: EnsureMySettingsForHabitUseCase,
     private val authRepository: AuthRepository,
     private val getHabitCompletionStatusUseCase: GetHabitCompletionStatusUseCase,
+    private val analyticsManager: AnalyticsManager,
+    private val errorLogger: ErrorLogger,
+    private val habitValidation: HabitValidation,
     savedStateHandle: SavedStateHandle,
 ) : AndroidViewModel(application), IAddEditHabitViewModel {
 
@@ -171,7 +177,7 @@ class AddEditHabitViewModel @Inject constructor(
     override fun onTitleChange(title: String) {
         // Создаем временную привычку для валидации
         val tempHabit = createTempHabit().copy(title = title)
-        val validationResult = HabitValidation.validateHabit(tempHabit)
+        val validationResult = habitValidation.validateHabit(tempHabit)
         val titleError = validationResult.getError(HabitField.TITLE)?.message
 
         _uiState.update { 
@@ -187,7 +193,7 @@ class AddEditHabitViewModel @Inject constructor(
     override fun onDescriptionChange(description: String) {
         // Создаем временную привычку для валидации
         val tempHabit = createTempHabit().copy(description = description)
-        val validationResult = HabitValidation.validateHabit(tempHabit)
+        val validationResult = habitValidation.validateHabit(tempHabit)
         val descriptionError = validationResult.getError(HabitField.DESCRIPTION)?.message
 
         _uiState.update { 
@@ -362,6 +368,14 @@ class AddEditHabitViewModel @Inject constructor(
                         addHabitUseCase(newHabit)
                         Log.d("AddEditHabitViewModel", "Habit saved successfully: ${newHabit.id}")
                         
+                        analyticsManager.logEvent(
+                            AnalyticsEvents.HABIT_CREATED,
+                            mapOf(
+                                AnalyticsEvents.Params.HABIT_ID to newHabit.id,
+                                AnalyticsEvents.Params.HABIT_TYPE to newHabit.type.name
+                            )
+                        )
+                        
                         if (firstHabit == null) firstHabit = newHabit
                         
                         // Планируем напоминание для каждой привычки
@@ -499,6 +513,7 @@ class AddEditHabitViewModel @Inject constructor(
                     sendInvitations()
                 }
             } catch (e: Exception) {
+                errorLogger.logError(e, "Failed to save habit")
                 _uiState.update { it.copy(
                     isLoading = false,
                     error = getApplication<Application>().getString(R.string.error_saving_habit, e.localizedMessage ?: "")
@@ -575,7 +590,7 @@ class AddEditHabitViewModel @Inject constructor(
     override fun onTargetValueChange(value: Int) {
         // Создаем временную привычку для валидации
         val tempHabit = createTempHabit().copy(targetValue = value)
-        val validationResult = HabitValidation.validateHabit(tempHabit)
+        val validationResult = habitValidation.validateHabit(tempHabit)
         val targetValueError = validationResult.getError(HabitField.TARGET_VALUE)?.message
         
         _uiState.update { 
@@ -607,7 +622,7 @@ class AddEditHabitViewModel @Inject constructor(
     override fun onUnitChange(unit: String) {
         // Создаем временную привычку для валидации
         val tempHabit = createTempHabit().copy(unit = unit)
-        val validationResult = HabitValidation.validateHabit(tempHabit)
+        val validationResult = habitValidation.validateHabit(tempHabit)
         val unitError = validationResult.getError(HabitField.UNIT)?.message
         
         _uiState.update { 
@@ -1159,7 +1174,7 @@ class AddEditHabitViewModel @Inject constructor(
     override fun onMaxParticipantsChange(maxParticipants: Int) {
         // Создаем временную привычку для валидации
         val tempHabit = createTempHabit().copy(participants = (1..maxParticipants).map { "user$it" })
-        val validationResult = HabitValidation.validateHabit(tempHabit)
+        val validationResult = habitValidation.validateHabit(tempHabit)
         val participantsError = validationResult.getError(HabitField.PARTICIPANTS)?.message
         
         _uiState.update { 
@@ -1205,7 +1220,7 @@ class AddEditHabitViewModel @Inject constructor(
      */
     private fun validateHabitForm(): GroupHabitValidationResult {
         val tempHabit = createTempHabit()
-        val validationResult = HabitValidation.validateHabit(tempHabit)
+        val validationResult = habitValidation.validateHabit(tempHabit)
         
         // Преобразуем HabitValidationResult в GroupHabitValidationResult для совместимости с UI
         val errors = mutableListOf<String>()

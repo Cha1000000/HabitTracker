@@ -19,12 +19,14 @@
   <a href="https://developer.android.com/jetpack/compose"><img alt="Jetpack Compose" src="https://img.shields.io/badge/Jetpack%20Compose-Material%203-4285F4?style=flat&logo=jetpackcompose&logoColor=white"></a>
   <a href="https://dagger.dev/hilt/"><img alt="Hilt" src="https://img.shields.io/badge/Hilt-DI-9B59B6?style=flat"></a>
   <a href="https://kotlinlang.org/docs/coroutines-overview.html"><img alt="Coroutines" src="https://img.shields.io/badge/Coroutines-Flow-00ADD8?style=flat"></a>
-  <a href="https://firebase.google.com"><img alt="Firebase" src="https://img.shields.io/badge/Firebase-Auth%20%7C%20Firestore%20%7C%20FCM-FFCA28?style=flat&logo=firebase&logoColor=black"></a>
+  <a href="https://firebase.google.com"><img alt="Firebase" src="https://img.shields.io/badge/Firebase-Auth%20%7C%20Firestore%20%7C%20FCM%20%7C%20Crashlytics%20%7C%20Perf-FFCA28?style=flat&logo=firebase&logoColor=black"></a>
+  <a href="https://github.com/JakeWharton/timber"><img alt="Timber" src="https://img.shields.io/badge/Timber-Logging-3DDC84?style=flat"></a>
 </p>
 
 ---
 
 ## Содержание
+
 - [О проекте](#о-проекте)
 - [Основные возможности](#основные-возможности)
 - [Скриншоты](#скриншоты)
@@ -44,12 +46,14 @@ HabitTracker — мобильное приложение для Android, кот�
 Делайте прогресс вместе: приглашайте друзей, получайте напоминания, отмечайте выполнение и смотрите общую статистику.
 
 Проект построен с упором на:
+
 - современный UI/UX (Jetpack Compose, Material 3, анимации);
 - надежную офлайн-поддержку (Room) и синхронизацию (Outbox → Firestore);
 - социальные функции (друзья, приглашения, групповые привычки);
 - уведомления (локальные напоминания и push через FCM).
 
 ## Основные возможности
+
 - Личные и групповые привычки (поддержка участников, лимитов, invite-code, публичные/приватные группы).
 - Приглашения в привычки: отправка, принятие/отклонение, присоединение по коду.
 - Напоминания о привычках: WorkManager + корректная работа с разрешением уведомлений (Android 13+).
@@ -62,12 +66,14 @@ HabitTracker — мобильное приложение для Android, кот�
   - защита от переполнения группы: если групповая привычка заполнена, новые внешние участники не добавляются в челлендж, а создатель получает понятное предупреждение;
   - автоматическое завершение по дате и определение победителя + уведомления участникам.
 - Офлайн-режим: Room-кэш, оптимистичные апдейты, Outbox-синхронизация с Firestore.
+- Аналитика и мониторинг: Firebase Analytics, Crashlytics и Performance Monitoring.
 - Аутентификация Google (Credential Manager API).
 - Улучшенный UX: валидация формы в реальном времени, Snackbar, UNDO после удаления, плавные анимации.
 
 Статус модулей:
+
 - Челленджи: реализовано (core-функциональность + уведомления).
-- Геймификация (очки, уровни, достижения): реализованы базовые достижения (UserAchievements) с синхронизацией.
+- Геймификация (очки, уровни, достижения): реализованы базовые достижения (UserAchievements) with synchronization.
 
 ## Скриншоты
 
@@ -89,12 +95,15 @@ HabitTracker — мобильное приложение для Android, кот�
 | **Публичные привычки** | <img src="art/screenshots/public_habits.png" width="280"/> | <img src="art/screenshots/public_habits_dark.png" width="280"/> |
 
 ## Стек технологий
+
 - Язык: Kotlin, Coroutines + Flow
 - UI: Jetpack Compose (Material 3), Navigation Compose
 - DI: Hilt
 - Данные: Room (локально), Firebase Firestore (облако)
 - Синхронизация: Outbox-паттерн + WorkManager (экспедированная OneTimeWork)
 - Уведомления: WorkManager (локальные), Firebase Cloud Messaging (push)
+- Аналитика: Firebase Analytics, Crashlytics, Performance Monitoring
+- Логирование: Timber
 - Аутентификация: Firebase Auth + Google Sign-In (Credential Manager)
 - Изображения: Coil (аватарки и кэширование)
 
@@ -102,11 +111,13 @@ HabitTracker — мобильное приложение для Android, кот�
 Следуем Clean Architecture и MVVM.
 
 Слои:
+
 - Presentation — экраны Compose, ViewModel, навигация
 - Domain — use cases, модели, интерфейсы репозиториев
 - Data — реализации репозиториев, источники данных (Room/Firestore)
 
 Пакеты (сокращенно):
+
 ```
 com.habittracker/
 ├── presentation/
@@ -130,6 +141,7 @@ com.habittracker/
 ```
 
 Ключевые решения:
+
 - Room-first + Outbox: все операции сначала в локальную БД, затем — фоновая синхронизация с Firestore.
 - Оптимистичные апдейты в UI, last-write-wins стратегия конфликтов по `updatedAtMillis`.
 - Soft-delete для `habit`/`challenge`: удаление доставляется через tombstones (`deletedAtMillis`), а не hard delete.
@@ -137,80 +149,108 @@ com.habittracker/
 - Разрешения на уведомления (Android 13+) запрашиваются корректно и контекстно.
 
 ## Документация в репозитории
+
 - `sync_architecture.md` — актуальный принцип синхронизации Room ↔ Firestore (Outbox, pending-guards, merge/LWW ограничения)
 - `sync_gaps.md` — текущие риски/гепы синхронизации и план закрытия
+- `ANALYTICS_GUIDE.md` — руководство по использованию аналитики, мониторингу ошибок и работе с Firebase Console
+- `FCM_SETUP_INSTRUCTIONS.md` — инструкция по настройке Cloud Messaging
 
 ## Синхронизация (коротко)
+
 - **Запись (Room-first)**: UI всегда читает из Room. При create/update/delete репозиторий обновляет Room и кладёт операцию в outbox.
 - **Доставка в Firestore**: `SyncWorker` вызывает `SyncManager.drainPending()`. Для пользовательских действий дополнительно делается экспедит: `scheduleOneTimeSync()` + неблокирующий `drainPending()`.
 - **Realtime (Firestore → Room)**: слушатели по ключевым коллекциям мержат данные в Room с pending-guard и LWW по `updatedAtMillis`.
 
 Где смотреть логи:
+
 - `SyncWorker`: старт/завершение дренажа.
 - `SyncManager`: enqueue / pushUpsert / pushDelete / retry.
 
 ## Быстрый старт
+
 Требования:
+
 - Android Studio Koala или новее
 - JDK 17
 - Android SDK 26+
 
 Шаги:
+
 1. Клонировать репозиторий:
+
    ```bash
    git clone https://github.com/Cha1000000/HabitTracker.git
    cd HabitTracker
    ```
+
 2. Firebase:
+
    - Создайте проект Firebase и добавьте Android-приложение (используйте `applicationId` из `HabitTracker/build.gradle.kts`).
    - Скачайте `google-services.json` и поместите в `HabitTracker/`.
    - Включите Authentication (Google), Firestore и Cloud Messaging.
    - Добавьте SHA-1/SH A-256 отпечатки для корректного Google Sign-In.
+
 3. FCM Server Key:
+
    - Не храните ключ в репозитории. Следуйте `FCM_SETUP_INSTRUCTIONS.md` для безопасной настройки (через `local.properties`/переменные окружения и `BuildConfig`).
+
 4. Сборка и запуск:
+
    - Откройте проект в Android Studio и запустите на устройстве/эмуляторе;
    - либо используйте Gradle:
+
      ```bash
      ./gradlew assembleDebug
      ```
 
 ## Тестирование
+
 - Unit-тесты:
+
   ```bash
   ./gradlew test
   ```
+
 - Быстрый запуск unit-тестов только модуля приложения:
+
   ```bash
   ./gradlew :HabitTracker:testDebugUnitTest
   ```
+
 - UI-тесты (на подключенном устройстве/эмуляторе):
+
   ```bash
   ./gradlew connectedDebugAndroidTest
   ```
+
 Примечание: в `HabitTracker/build.gradle.kts` настроены packagingOptions для исключения дубликатов META-INF. Часть UI-тестов стабилизирована с помощью MockK.
 
 ## Безопасность и приватность
+
 - Не коммитьте секреты (FCM Server Key, приватные ключи, реальные `google-services.json`).
 - Валидируйте входные данные, не логируйте чувствительное.
 - Для локального хранения чувствительных данных используйте безопасные решения (шифрование/EncryptedSharedPreferences/Room с шифрованием по необходимости).
 
 ## Производительность
+
 - Используются `LazyColumn`/`LazyVerticalGrid` для списков.
 - Coil с кэшированием изображений.
 - Минимизация recomposition в Compose.
 - Пагинация для истории выполнений (по мере необходимости).
 
 ## Как контрибьютить
+
 1. Форкните репозиторий и создайте ветку из `main`.
 2. Следуйте принятым стилям (Kotlin style, Compose best practices, SOLID/DRY).
 3. Пишите чистые коммиты и описательные PR (что сделано, почему, скриншоты/видео при UI-изменениях).
 4. Покрывайте критические изменения тестами.
 
 ## Лицензия
+
 Проект распространяется под лицензией [Apache License 2.0](LICENSE).
 
 ## Благодарности
+
 - Jetpack Compose и AndroidX команда
 - Firebase (Auth, Firestore, FCM)
 - Сообщество Kotlin/Android за примеры и лучшие практики

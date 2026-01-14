@@ -17,6 +17,29 @@ import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.components.SingletonComponent
 import javax.inject.Singleton
 
+import com.habittracker.data.analytics.CrashlyticsErrorLogger
+import com.habittracker.data.analytics.FirebaseAnalyticsManager
+import com.habittracker.domain.util.AnalyticsManager
+import com.habittracker.domain.util.ErrorLogger
+import dagger.Binds
+
+@Module
+@InstallIn(SingletonComponent::class)
+abstract class AnalyticsModule {
+
+    @Binds
+    @Singleton
+    abstract fun bindAnalyticsManager(
+        firebaseAnalyticsManager: FirebaseAnalyticsManager
+    ): AnalyticsManager
+
+    @Binds
+    @Singleton
+    abstract fun bindErrorLogger(
+        crashlyticsErrorLogger: CrashlyticsErrorLogger
+    ): ErrorLogger
+}
+
 @Module
 @InstallIn(SingletonComponent::class)
 object FirebaseModule {

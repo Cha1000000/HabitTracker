@@ -1,5 +1,7 @@
 package com.habittracker.presentation.ui.auth
 
+import android.app.Activity
+import android.widget.Toast
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -12,11 +14,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Email
-import androidx.compose.material.icons.filled.Lock
-import androidx.compose.material.icons.filled.Visibility
-import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -24,6 +21,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -32,6 +30,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
@@ -42,11 +41,14 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
 import com.habittracker.R
+import com.habittracker.presentation.navigation.Screen
 import com.habittracker.presentation.ui.habits.components.GlassmorphicButton
 import com.habittracker.presentation.ui.habits.components.GlassmorphicCard
 import com.habittracker.presentation.ui.habits.components.GlassmorphicTextField
 import com.habittracker.presentation.ui.habits.components.TahoeGradientBackground
+import com.habittracker.presentation.ui.theme.TahoeIcons
 import com.habittracker.presentation.viewmodel.AuthEvent
+import com.habittracker.presentation.viewmodel.AuthState
 import com.habittracker.presentation.viewmodel.AuthViewModel
 
 @Composable
@@ -55,8 +57,26 @@ fun RegisterScreen(
     viewModel: AuthViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
-    // Навигация после успешной регистрации выполняется централизованно в MainActivity
-    // (учитывает deep link из push). Здесь ничего не делаем, чтобы избежать гонок навигации.
+    val authState by viewModel.authState.collectAsState()
+    val context = LocalContext.current
+
+    LaunchedEffect(authState) {
+        when (authState) {
+            is AuthState.Success -> {
+                val deep = (context as? Activity)?.intent?.getStringExtra("navigate_to")
+                if (deep.isNullOrEmpty()) {
+                    navController.navigate(Screen.Habits.route) {
+                        popUpTo(Screen.Login.route) { inclusive = true }
+                        launchSingleTop = true
+                    }
+                }
+            }
+            is AuthState.Error -> {
+                Toast.makeText(context, (authState as AuthState.Error).message, Toast.LENGTH_LONG).show()
+            }
+            else -> {}
+        }
+    }
     
     val isDarkTheme = isSystemInDarkTheme()
     
@@ -110,7 +130,7 @@ fun RegisterScreen(
                         placeholder = { Text("example@email.com") },
                         leadingIcon = { 
                             Icon(
-                                imageVector = Icons.Default.Email, 
+                                imageVector = TahoeIcons.Envelope, 
                                 contentDescription = null
                             ) 
                         },
@@ -130,14 +150,14 @@ fun RegisterScreen(
                         placeholder = { Text("Минимум 6 символов") },
                         leadingIcon = { 
                             Icon(
-                                imageVector = Icons.Default.Lock, 
+                                imageVector = TahoeIcons.LockClosed, 
                                 contentDescription = null
                             ) 
                         },
                         trailingIcon = {
                             IconButton(onClick = { passwordVisible = !passwordVisible }) {
                                 Icon(
-                                    imageVector = if (passwordVisible) Icons.Default.Visibility else Icons.Default.VisibilityOff,
+                                    imageVector = if (passwordVisible) TahoeIcons.Eye else TahoeIcons.EyeSlash,
                                     contentDescription = if (passwordVisible) "Скрыть пароль" else "Показать пароль"
                                 )
                             }

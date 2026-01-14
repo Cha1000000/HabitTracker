@@ -3,6 +3,8 @@ package com.habittracker.domain.usecase.challenge
 import com.habittracker.domain.model.Challenge
 import com.habittracker.domain.model.ChallengeStatus
 import com.habittracker.domain.model.isCompleted
+import com.habittracker.R
+import com.habittracker.domain.provider.StringProvider
 import com.habittracker.domain.repository.ChallengeRepository
 import com.habittracker.domain.repository.SocialRepository
 import kotlinx.datetime.Clock
@@ -12,7 +14,8 @@ import javax.inject.Inject
 
 class JoinChallengeUseCase @Inject constructor(
     private val challengeRepository: ChallengeRepository,
-    private val socialRepository: SocialRepository
+    private val socialRepository: SocialRepository,
+    private val stringProvider: StringProvider
 ) {
     /**
      * Присоединяется к существующему челленджу
@@ -27,31 +30,31 @@ class JoinChallengeUseCase @Inject constructor(
         return try {
             // Получаем челлендж
             val challenge = challengeRepository.getChallengeById(challengeId)
-                ?: return Result.failure(Exception("Челлендж не найден"))
+                ?: return Result.failure(Exception(stringProvider.getString(R.string.error_challenge_not_found)))
             
             // Проверяем, что пользователь еще не участвует
             if (challenge.participants.contains(userId)) {
-                return Result.failure(Exception("Вы уже участвуете в этом челлендже"))
+                return Result.failure(Exception(stringProvider.getString(R.string.error_already_joined_challenge)))
             }
             
             // Проверяем статус челленджа
             if (challenge.isCompleted()) {
-                return Result.failure(Exception("Челлендж уже завершен"))
+                return Result.failure(Exception(stringProvider.getString(R.string.error_challenge_completed)))
             }
             
             if (challenge.status == ChallengeStatus.CANCELLED) {
-                return Result.failure(Exception("Челлендж отменен"))
+                return Result.failure(Exception(stringProvider.getString(R.string.error_challenge_cancelled)))
             }
             
             // Проверяем лимит участников
             if (challenge.participants.size >= 10) {
-                return Result.failure(Exception("Достигнуто максимальное количество участников"))
+                return Result.failure(Exception(stringProvider.getString(R.string.error_challenge_max_participants)))
             }
             
             // Проверяем дружбу с создателем
             val areFriends = socialRepository.areFriends(userId, challenge.createdBy)
             if (!areFriends) {
-                return Result.failure(Exception("Вы должны быть другом создателя челленджа"))
+                return Result.failure(Exception(stringProvider.getString(R.string.error_must_be_friend_creator)))
             }
             
             // Добавляем участника
@@ -68,7 +71,7 @@ class JoinChallengeUseCase @Inject constructor(
                 val joiningUser = socialRepository.getUserById(userId)
                 socialRepository.sendChallengeJoinedNotification(
                     challenge.createdBy,
-                    joiningUser?.name ?: "Пользователь",
+                    joiningUser?.name ?: stringProvider.getString(R.string.default_user_name),
                     challenge.id,
                     challenge.title
                 )

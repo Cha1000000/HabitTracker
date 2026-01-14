@@ -14,12 +14,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Edit
-import androidx.compose.material.icons.filled.EmojiEvents
-import androidx.compose.material.icons.filled.Group
-import androidx.compose.material.icons.filled.Schedule
-import androidx.compose.material.icons.filled.Timer
 import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -44,6 +38,7 @@ import com.habittracker.domain.model.ChallengeType
 import com.habittracker.presentation.ui.habits.components.GlassmorphicCard
 import com.habittracker.presentation.ui.habits.components.GradientProgressBar
 import com.habittracker.presentation.ui.theme.HabitTrackerTheme
+import com.habittracker.presentation.ui.theme.TahoeIcons
 import kotlinx.datetime.Clock
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.TimeZone
@@ -125,7 +120,7 @@ fun ChallengeCard(
                             onClick = onEditClick
                         ) {
                             Icon(
-                                imageVector = Icons.Default.Edit,
+                                imageVector = TahoeIcons.Pencil,
                                 contentDescription = stringResource(R.string.edit),
                                 modifier = Modifier.size(20.dp)
                             )
@@ -191,7 +186,7 @@ fun ChallengeCard(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Icon(
-                        imageVector = Icons.Default.Group,
+                        imageVector = TahoeIcons.Group,
                         contentDescription = null,
                         modifier = Modifier.size(16.dp),
                         tint = MaterialTheme.colorScheme.onSurfaceVariant
@@ -209,7 +204,7 @@ fun ChallengeCard(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Icon(
-                        imageVector = if (daysRemaining <= 3) Icons.Default.Timer else Icons.Default.Schedule,
+                        imageVector = if (daysRemaining <= 3) TahoeIcons.Timer else TahoeIcons.Clock,
                         contentDescription = null,
                         modifier = Modifier.size(16.dp),
                         tint = when {
@@ -366,7 +361,7 @@ internal fun ChallengeStatusBadge(
                 MaterialTheme.colorScheme.surfaceVariant,
                 MaterialTheme.colorScheme.onSurfaceVariant,
                 stringResource(R.string.challenge_pending),
-                Icons.Default.Schedule
+                TahoeIcons.Clock
             )
         }
         ChallengeStatus.ACTIVE -> {
@@ -374,7 +369,7 @@ internal fun ChallengeStatusBadge(
                 MaterialTheme.colorScheme.primaryContainer,
                 MaterialTheme.colorScheme.onPrimaryContainer,
                 stringResource(R.string.challenge_active),
-                Icons.Default.Timer
+                TahoeIcons.Timer
             )
         }
         ChallengeStatus.COMPLETED -> {
@@ -382,7 +377,7 @@ internal fun ChallengeStatusBadge(
                 MaterialTheme.colorScheme.tertiaryContainer,
                 MaterialTheme.colorScheme.onTertiaryContainer,
                 stringResource(R.string.challenge_completed),
-                Icons.Default.EmojiEvents
+                TahoeIcons.Trophy
             )
         }
         ChallengeStatus.EXPIRED -> {
@@ -390,7 +385,7 @@ internal fun ChallengeStatusBadge(
                 MaterialTheme.colorScheme.surfaceVariant,
                 MaterialTheme.colorScheme.onSurfaceVariant,
                 stringResource(R.string.challenge_expired),
-                Icons.Default.Timer
+                TahoeIcons.Timer
             )
         }
         ChallengeStatus.CANCELLED -> {
@@ -398,7 +393,7 @@ internal fun ChallengeStatusBadge(
                 MaterialTheme.colorScheme.errorContainer,
                 MaterialTheme.colorScheme.onErrorContainer,
                 stringResource(R.string.challenge_cancelled),
-                Icons.Default.Timer
+                TahoeIcons.Timer
             )
         }
     }

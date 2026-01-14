@@ -25,6 +25,7 @@ import com.habittracker.domain.usecase.gamification.CalculatePointsUseCase
 import com.habittracker.domain.usecase.gamification.CheckAchievementsUseCase
 import com.habittracker.domain.usecase.gamification.UpdateUserPointsUseCase
 import com.habittracker.domain.usecase.notification.SendGroupHabitPushNotificationUseCase
+import com.habittracker.domain.provider.StringProvider
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
@@ -63,6 +64,7 @@ class MarkHabitCompletedUseCaseTest {
     private lateinit var updateChallengeProgressUseCase: UpdateChallengeProgressUseCase
     private lateinit var calculatePointsUseCase: CalculatePointsUseCase
     private lateinit var checkAchievementsUseCase: CheckAchievementsUseCase
+    private lateinit var stringProvider: StringProvider
 
     private val testHabitId = "habit1"
     private val testUserId = "user1"
@@ -77,11 +79,13 @@ class MarkHabitCompletedUseCaseTest {
         habitRepository = FakeHabitRepository()
         firestoreRepository = mock()
         notificationRepository = mock()
+        stringProvider = mock()
         sendGroupHabitPushNotificationUseCase = SendGroupHabitPushNotificationUseCase(
             socialRepository, 
             habitRepository, 
             firestoreRepository,
-            notificationRepository
+            notificationRepository,
+            stringProvider
         )
         syncManager = mock()
         syncWorkScheduler = mock()

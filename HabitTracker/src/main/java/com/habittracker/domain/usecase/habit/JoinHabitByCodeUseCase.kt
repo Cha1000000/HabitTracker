@@ -1,10 +1,12 @@
 package com.habittracker.domain.usecase.habit
 
 import android.util.Log
+import com.habittracker.R
 import com.habittracker.domain.model.Habit
 import com.habittracker.domain.model.canAddParticipants
 import com.habittracker.domain.model.isGroupHabit
 import com.habittracker.domain.model.isUserParticipant
+import com.habittracker.domain.provider.StringProvider
 import com.habittracker.domain.repository.FirestoreRepository
 import com.habittracker.domain.repository.HabitRepository
 import com.habittracker.domain.repository.ParticipantSettingsRepository
@@ -22,7 +24,8 @@ class JoinHabitByCodeUseCase @Inject constructor(
     private val generateInviteCodeUseCase: GenerateHabitInviteCodeUseCase,
     private val scheduleHabitReminderUseCase: ScheduleHabitReminderUseCase,
     private val participantSettingsRepository: ParticipantSettingsRepository,
-    private val saveParticipantJoinedNotificationUseCase: SaveParticipantJoinedNotificationUseCase
+    private val saveParticipantJoinedNotificationUseCase: SaveParticipantJoinedNotificationUseCase,
+    private val stringProvider: StringProvider
 ) {
     
     /**
@@ -38,41 +41,41 @@ class JoinHabitByCodeUseCase @Inject constructor(
         return try {
             // Проверяем формат кода
             if (!generateInviteCodeUseCase.isValidInviteCodeFormat(inviteCode)) {
-                return Result.failure(Exception("Неверный формат кода приглашения"))
+                return Result.failure(Exception(stringProvider.getString(R.string.error_invalid_code_format)))
             }
 
             // Ищем привычку по коду
             val habit = habitRepository.getHabitByInviteCode(inviteCode)
-                ?: return Result.failure(Exception("Привычка с таким кодом не найдена или неактивна"))
+                ?: return Result.failure(Exception(stringProvider.getString(R.string.error_habit_not_found_or_inactive)))
 
             // Проверяем, что привычка групповая
             if (!habit.isGroupHabit()) {
-                return Result.failure(Exception("Код приглашения действует только для групповых привычек"))
+                return Result.failure(Exception(stringProvider.getString(R.string.error_code_group_only)))
             }
 
             // Проверяем, что привычка активна
             if (!habit.isActive) {
-                return Result.failure(Exception("Привычка неактивна"))
+                return Result.failure(Exception(stringProvider.getString(R.string.error_habit_inactive)))
             }
 
             // Проверяем, что привычка публичная (доступна по коду)
             if (!habit.isPublic || habit.inviteCode != inviteCode) {
-                return Result.failure(Exception("Код приглашения недействителен"))
+                return Result.failure(Exception(stringProvider.getString(R.string.error_code_invalid)))
             }
 
             // Проверяем, что пользователь еще не участвует в привычке
             if (habit.isUserParticipant(userId)) {
-                return Result.failure(Exception("Вы уже участвуете в этой привычке"))
+                return Result.failure(Exception(stringProvider.getString(R.string.error_already_participant)))
             }
 
             // Проверяем, что есть свободные места
             if (!habit.canAddParticipants()) {
-                return Result.failure(Exception("В привычке нет свободных мест (максимум ${habit.maxParticipants} участников)"))
+                return Result.failure(Exception(stringProvider.getString(R.string.error_no_free_slots_limit, habit.maxParticipants)))
             }
 
             // Проверяем, что пользователь существует
             val user = socialRepository.getUserById(userId)
-                ?: return Result.failure(Exception("Пользователь не найден"))
+                ?: return Result.failure(Exception(stringProvider.getString(R.string.error_user_not_found)))
 
             // Добавляем пользователя к участникам привычки и синхронизируем с Firebase
             val updatedHabit = habit.copy(

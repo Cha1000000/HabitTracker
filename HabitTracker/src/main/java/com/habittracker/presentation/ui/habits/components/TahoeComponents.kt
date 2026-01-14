@@ -41,12 +41,6 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.CalendarToday
-import androidx.compose.material.icons.filled.ChevronLeft
-import androidx.compose.material.icons.filled.ChevronRight
-import androidx.compose.material.icons.filled.Clear
-import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -57,6 +51,7 @@ import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.FloatingActionButtonDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.LocalTextStyle
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.MenuDefaults
@@ -67,7 +62,6 @@ import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.TextFieldColors
 import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.runtime.Composable
@@ -116,6 +110,7 @@ import com.habittracker.presentation.ui.theme.GlassWhite40
 import com.habittracker.presentation.ui.theme.TahoeAqua
 import com.habittracker.presentation.ui.theme.TahoeDeepBlue
 import com.habittracker.presentation.ui.theme.TahoeElectricBlue
+import com.habittracker.presentation.ui.theme.TahoeIcons
 import com.habittracker.presentation.ui.theme.TahoeIndigoAccent
 import com.habittracker.presentation.ui.theme.TahoeLavender
 import com.habittracker.presentation.ui.theme.TahoeLightAccent
@@ -955,7 +950,7 @@ fun GlassmorphicSearchBar(
             },
             leadingIcon = {
                 Icon(
-                    Icons.Default.Search,
+                    TahoeIcons.MagnifyingGlass,
                     contentDescription = "Search",
                     tint = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.size(20.dp)
@@ -968,7 +963,7 @@ fun GlassmorphicSearchBar(
                         modifier = Modifier.size(36.dp)
                     ) {
                         Icon(
-                            Icons.Default.Clear,
+                            TahoeIcons.XMark,
                             contentDescription = "Clear",
                             tint = MaterialTheme.colorScheme.onSurfaceVariant,
                             modifier = Modifier.size(18.dp)
@@ -1541,7 +1536,7 @@ fun TahoeBackToTodayButton(
         isDarkTheme = isDarkTheme
     ) {
         Icon(
-            imageVector = Icons.Default.ChevronRight,
+            imageVector = TahoeIcons.ChevronRight,
             contentDescription = null,
             modifier = Modifier.size(16.dp)
         )
@@ -1628,12 +1623,13 @@ fun TahoeDatePicker(
             colors = textFieldColors,
             trailingIcon = {
                 Icon(
-                    imageVector = Icons.Default.CalendarToday,
+                    imageVector = TahoeIcons.Calendar,
                     contentDescription = stringResource(R.string.select_date),
                     tint = if (isEnabled) {
                         MaterialTheme.colorScheme.primary
                     } else {
-                        MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f)
+                        MaterialTheme.colorScheme.onSurfaceVariant
+.copy(alpha = 0.38f)
                     }
                 )
             },
@@ -1863,7 +1859,7 @@ private fun TahoeMonthSelector(
     ) {
         IconButton(onClick = onPreviousMonth) {
             Icon(
-                imageVector = Icons.Default.ChevronLeft,
+                imageVector = TahoeIcons.ChevronLeft,
                 contentDescription = "Previous month",
                 tint = if (isDarkTheme) Color(0xFF90CAF9) else Color(0xFF1976D2)
             )
@@ -1878,7 +1874,7 @@ private fun TahoeMonthSelector(
         
         IconButton(onClick = onNextMonth) {
             Icon(
-                imageVector = Icons.Default.ChevronRight,
+                imageVector = TahoeIcons.ChevronRight,
                 contentDescription = "Next month",
                 tint = if (isDarkTheme) Color(0xFF90CAF9) else Color(0xFF1976D2)
             )

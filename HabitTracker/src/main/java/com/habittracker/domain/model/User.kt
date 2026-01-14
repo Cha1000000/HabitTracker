@@ -49,6 +49,14 @@ fun User.getLevelTitle(): String = when (GamificationConstants.getLevelFromPoint
     else -> "Легенда"
 }
 
+fun User.getLevelTitleResId(): Int = when (GamificationConstants.getLevelFromPoints(points)) {
+    in 1..5 -> com.habittracker.R.string.level_title_novice
+    in 6..15 -> com.habittracker.R.string.level_title_enthusiast
+    in 16..30 -> com.habittracker.R.string.level_title_expert
+    in 31..50 -> com.habittracker.R.string.level_title_master
+    else -> com.habittracker.R.string.level_title_legend
+}
+
 fun User.isOnline(): Boolean {
     val now = Clock.System.now().toEpochMilliseconds()
     val diffMinutes = (now - lastActiveAt) / 60_000

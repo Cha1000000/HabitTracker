@@ -3,6 +3,8 @@ package com.habittracker.domain.usecase.challenge
 import com.habittracker.domain.model.Challenge
 import com.habittracker.domain.model.ChallengeStatus
 import com.habittracker.domain.model.isCompleted
+import com.habittracker.R
+import com.habittracker.domain.provider.StringProvider
 import com.habittracker.domain.repository.ChallengeRepository
 import com.habittracker.domain.repository.SocialRepository
 import kotlinx.datetime.Clock
@@ -12,7 +14,8 @@ import javax.inject.Inject
 
 class LeaveChallengeUseCase @Inject constructor(
     private val challengeRepository: ChallengeRepository,
-    private val socialRepository: SocialRepository
+    private val socialRepository: SocialRepository,
+    private val stringProvider: StringProvider
 ) {
     /**
      * Покидает челлендж
@@ -27,25 +30,25 @@ class LeaveChallengeUseCase @Inject constructor(
         return try {
             // Получаем челлендж
             val challenge = challengeRepository.getChallengeById(challengeId)
-                ?: return Result.failure(Exception("Челлендж не найден"))
+                ?: return Result.failure(Exception(stringProvider.getString(R.string.error_challenge_not_found)))
             
             // Проверяем, что пользователь участвует в челлендже
             if (!challenge.participants.contains(userId)) {
-                return Result.failure(Exception("Вы не участвуете в этом челлендже"))
+                return Result.failure(Exception(stringProvider.getString(R.string.error_not_joined_challenge)))
             }
             
             // Проверяем, что это не создатель (создатель не может покинуть свой челлендж)
             if (challenge.createdBy == userId) {
-                return Result.failure(Exception("Создатель челленджа не может его покинуть. Используйте отмену челленджа."))
+                return Result.failure(Exception(stringProvider.getString(R.string.error_creator_cannot_leave)))
             }
             
             // Проверяем статус челленджа
             if (challenge.isCompleted()) {
-                return Result.failure(Exception("Нельзя покинуть завершенный челлендж"))
+                return Result.failure(Exception(stringProvider.getString(R.string.error_cannot_leave_completed)))
             }
             
             if (challenge.status == ChallengeStatus.CANCELLED) {
-                return Result.failure(Exception("Челлендж уже отменен"))
+                return Result.failure(Exception(stringProvider.getString(R.string.error_challenge_already_cancelled)))
             }
             
             // Удаляем участника из списков
@@ -67,7 +70,7 @@ class LeaveChallengeUseCase @Inject constructor(
                 val leavingUser = socialRepository.getUserById(userId)
                 socialRepository.sendChallengeLeftNotification(
                     challenge.createdBy,
-                    leavingUser?.name ?: "Пользователь",
+                    leavingUser?.name ?: stringProvider.getString(R.string.default_user_name),
                     challenge.id,
                     challenge.title
                 )

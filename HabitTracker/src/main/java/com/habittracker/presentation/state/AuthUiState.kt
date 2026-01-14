@@ -8,5 +8,10 @@ data class AuthUiState(
     val password: String = "",
     val isLoading: Boolean = false,
     val error: String? = null,
-    val isSuccess: Boolean = false
+    val isSuccess: Boolean = false,
+    val showForgotPasswordDialog: Boolean = false,
+    val forgotPasswordEmail: String = "",
+    val forgotPasswordLoading: Boolean = false,
+    val forgotPasswordSuccess: Boolean = false,
+    val forgotPasswordError: String? = null
 )
