@@ -51,6 +51,7 @@ import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.FloatingActionButtonDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.LocalTextStyle
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.MenuDefaults
@@ -61,7 +62,6 @@ import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.TextFieldColors
 import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.runtime.Composable
@@ -110,6 +110,7 @@ import com.habittracker.presentation.ui.theme.GlassWhite40
 import com.habittracker.presentation.ui.theme.TahoeAqua
 import com.habittracker.presentation.ui.theme.TahoeDeepBlue
 import com.habittracker.presentation.ui.theme.TahoeElectricBlue
+import com.habittracker.presentation.ui.theme.TahoeIcons
 import com.habittracker.presentation.ui.theme.TahoeIndigoAccent
 import com.habittracker.presentation.ui.theme.TahoeLavender
 import com.habittracker.presentation.ui.theme.TahoeLightAccent
@@ -118,7 +119,6 @@ import com.habittracker.presentation.ui.theme.TahoeLightPurpleAccent
 import com.habittracker.presentation.ui.theme.TahoeMidnightBlue
 import com.habittracker.presentation.ui.theme.TahoeRoyalBlue
 import com.habittracker.presentation.ui.theme.TahoeSkyBlue
-import com.habittracker.presentation.ui.theme.TahoeIcons
 import kotlinx.datetime.Clock.System
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.TimeZone.Companion.currentSystemDefault

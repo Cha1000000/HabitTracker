@@ -61,6 +61,12 @@
     <string name="auth_have_account">Already have an account? Log in</string>
     <string name="auth_or">or</string>
     <string name="auth_register_title">Registration</string>
+    <string name="auth_forgot_password">Forgot password?</string>
+    <string name="auth_forgot_password_title">Password Reset</string>
+    <string name="auth_forgot_password_description">Enter your email address and we will send you a link to reset your password.</string>
+    <string name="auth_forgot_password_success">Password reset link has been sent to your email. Check your inbox.</string>
+    <string name="auth_send">Send</string>
+    <string name="ok">OK</string>
 
     <!-- Content Descriptions -->
     <string name="cd_back">Back</string>

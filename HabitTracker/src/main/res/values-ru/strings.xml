@@ -59,6 +59,12 @@
     <string name="auth_have_account">Уже есть аккаунт? Войдите</string>
     <string name="auth_or">или</string>
     <string name="auth_register_title">Регистрация</string>
+    <string name="auth_forgot_password">Забыли пароль?</string>
+    <string name="auth_forgot_password_title">Сброс пароля</string>
+    <string name="auth_forgot_password_description">Введите ваш email, и мы отправим вам ссылку для сброса пароля.</string>
+    <string name="auth_forgot_password_success">Ссылка для сброса пароля отправлена на ваш email. Проверьте почту.</string>
+    <string name="auth_send">Отправить</string>
+    <string name="ok">ОК</string>
     
     <!-- Content Descriptions -->
     <string name="cd_back">Назад</string>

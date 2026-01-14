@@ -12,6 +12,7 @@ import com.habittracker.domain.util.ErrorLogger
 import com.habittracker.domain.usecase.LoginUseCase
 import com.habittracker.domain.usecase.RegisterUseCase
 import com.habittracker.domain.usecase.SignInWithGoogleUseCase
+import com.habittracker.domain.usecase.SendPasswordResetEmailUseCase
 import com.habittracker.domain.usecase.SignOutUseCase
 import com.habittracker.domain.usecase.notification.ManageFCMTokenUseCase
 import com.habittracker.presentation.state.AuthUiState
@@ -29,6 +30,10 @@ sealed class AuthEvent {
     object Register : AuthEvent()
     object SignInWithGoogle : AuthEvent()
     object SignOut : AuthEvent()
+    object ShowForgotPasswordDialog : AuthEvent()
+    object HideForgotPasswordDialog : AuthEvent()
+    data class ForgotPasswordEmailChanged(val email: String) : AuthEvent()
+    object SendPasswordResetEmail : AuthEvent()
 }
 
 sealed class AuthState {
@@ -44,6 +49,7 @@ class AuthViewModel @Inject constructor(
     private val registerUseCase: RegisterUseCase,
     private val signInWithGoogleUseCase: SignInWithGoogleUseCase,
     private val signOutUseCase: SignOutUseCase,
+    private val sendPasswordResetEmailUseCase: SendPasswordResetEmailUseCase,
     private val manageFCMTokenUseCase: ManageFCMTokenUseCase,
     private val authRepository: AuthRepository,
     private val analyticsManager: AnalyticsManager,
@@ -100,6 +106,37 @@ class AuthViewModel @Inject constructor(
             
             AuthEvent.SignOut -> {
                 signOut()
+            }
+            
+            AuthEvent.ShowForgotPasswordDialog -> {
+                _uiState.update { 
+                    it.copy(
+                        showForgotPasswordDialog = true,
+                        forgotPasswordEmail = it.email,
+                        forgotPasswordSuccess = false,
+                        forgotPasswordError = null
+                    ) 
+                }
+            }
+            
+            AuthEvent.HideForgotPasswordDialog -> {
+                _uiState.update { 
+                    it.copy(
+                        showForgotPasswordDialog = false,
+                        forgotPasswordEmail = "",
+                        forgotPasswordLoading = false,
+                        forgotPasswordSuccess = false,
+                        forgotPasswordError = null
+                    ) 
+                }
+            }
+            
+            is AuthEvent.ForgotPasswordEmailChanged -> {
+                _uiState.update { it.copy(forgotPasswordEmail = event.email, forgotPasswordError = null) }
+            }
+            
+            AuthEvent.SendPasswordResetEmail -> {
+                sendPasswordResetEmail()
             }
         }
     }
@@ -193,6 +230,36 @@ class AuthViewModel @Inject constructor(
                 result.onFailure { error ->
                     _authState.value = AuthState.Error(error.message ?: "Sign out failed")
                     _uiState.update { it.copy(isLoading = false) }
+                }
+            }
+        }
+    }
+
+    private fun sendPasswordResetEmail() {
+        val email = uiState.value.forgotPasswordEmail.trim()
+        if (email.isEmpty()) {
+            _uiState.update { it.copy(forgotPasswordError = "Введите email") }
+            return
+        }
+        
+        viewModelScope.launch {
+            _uiState.update { it.copy(forgotPasswordLoading = true, forgotPasswordError = null) }
+            sendPasswordResetEmailUseCase(email).collect { result ->
+                result.onSuccess {
+                    _uiState.update { 
+                        it.copy(
+                            forgotPasswordLoading = false,
+                            forgotPasswordSuccess = true
+                        ) 
+                    }
+                }
+                result.onFailure { error ->
+                    _uiState.update { 
+                        it.copy(
+                            forgotPasswordLoading = false,
+                            forgotPasswordError = error.message ?: "Ошибка отправки письма"
+                        ) 
+                    }
                 }
             }
         }

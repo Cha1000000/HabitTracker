@@ -159,4 +159,13 @@ class AuthRepositoryImpl @Inject constructor(
             emit(Result.failure(e))
         }
     }
+
+    override suspend fun sendPasswordResetEmail(email: String): Flow<Result<Unit>> = flow {
+        try {
+            firebaseAuth.sendPasswordResetEmail(email).await()
+            emit(Result.success(Unit))
+        } catch (e: Exception) {
+            emit(Result.failure(e))
+        }
+    }
 }
