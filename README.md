@@ -1,6 +1,6 @@
 <!--suppress HtmlDeprecatedAttribute -->
 <p align="center">
-  <img src="art/icons/progress_pie_teal_indigo_square.svg" alt="HabitTracker Logo" width="128" />
+  <img src="art/icons/app_blue_glass_sphere_icon.png" alt="HabitTracker Logo" width="512" />
 </p>
 
 <!--suppress HtmlDeprecatedAttribute -->

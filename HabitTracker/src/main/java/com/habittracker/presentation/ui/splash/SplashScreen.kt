@@ -118,7 +118,7 @@ fun SplashScreen(
                     )
                     
                     Image(
-                        painter = painterResource(id = R.drawable.ic_launcher_foreground),
+                        painter = painterResource(id = R.drawable.ic_launcher_round),
                         contentDescription = stringResource(R.string.cd_app_logo),
                         modifier = Modifier.size(100.dp)
                     )
@@ -176,7 +176,7 @@ fun SplashScreen(
             Box(
                 modifier = Modifier
                     .fillMaxSize()
-                    .padding(bottom = 40.dp)
+                    .padding(bottom = 60.dp)
                     .alpha(subtitleAlpha.value),
                 contentAlignment = Alignment.BottomCenter
             ) {
