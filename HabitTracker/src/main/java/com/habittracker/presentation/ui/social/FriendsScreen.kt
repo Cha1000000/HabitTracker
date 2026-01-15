@@ -126,7 +126,8 @@ fun FriendsScreen(
         // 🎨 Modern Header с статистикой
         FriendsHeader(
             friendsCount = uiState.friends.size,
-            pendingRequestsCount = uiState.incomingRequests.size
+            incomingRequestsCount = uiState.incomingRequests.size,
+            outgoingRequestsCount = uiState.outgoingRequests.size
         )
         // 📱 Tab Navigation
         TabRow(
@@ -436,7 +437,8 @@ private fun SearchTab(
 @Composable
 private fun FriendsHeader(
     friendsCount: Int,
-    pendingRequestsCount: Int
+    incomingRequestsCount: Int,
+    outgoingRequestsCount: Int
 ) {
     val isDarkTheme = isSystemInDarkTheme()
     
@@ -462,7 +464,7 @@ private fun FriendsHeader(
             Spacer(modifier = Modifier.height(12.dp))
             
             Row(
-                horizontalArrangement = Arrangement.spacedBy(32.dp)
+                horizontalArrangement = Arrangement.spacedBy(24.dp)
             ) {
                 // Статистика друзей
                 StatCard(
@@ -471,11 +473,18 @@ private fun FriendsHeader(
                     label = stringResource(id = R.string.friends_count_label)
                 )
                 
-                // Статистика запросов
+                // Входящие запросы (стрелка вниз к пользователю)
                 StatCard(
-                    icon = TahoeIcons.UserPlus,
-                    count = pendingRequestsCount,
-                    label = stringResource(id = R.string.requests_label)
+                    icon = TahoeIcons.Envelope,
+                    count = incomingRequestsCount,
+                    label = stringResource(id = R.string.incoming_requests_label)
+                )
+                
+                // Отправленные запросы (стрелка от пользователя)
+                StatCard(
+                    icon = TahoeIcons.PaperAirplane,
+                    count = outgoingRequestsCount,
+                    label = stringResource(id = R.string.outgoing_requests_label)
                 )
             }
         }
