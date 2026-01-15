@@ -3,8 +3,6 @@ package com.habittracker.data.analytics
 import android.content.Context
 import android.os.Bundle
 import com.google.firebase.analytics.FirebaseAnalytics
-import com.google.firebase.analytics.ktx.analytics
-import com.google.firebase.ktx.Firebase
 import com.habittracker.domain.util.AnalyticsManager
 import dagger.hilt.android.qualifiers.ApplicationContext
 import javax.inject.Inject
@@ -15,7 +13,7 @@ class FirebaseAnalyticsManager @Inject constructor(
     @ApplicationContext private val context: Context
 ) : AnalyticsManager {
 
-    private val firebaseAnalytics = Firebase.analytics
+    private val firebaseAnalytics = FirebaseAnalytics.getInstance(context)
 
     override fun logEvent(name: String, params: Map<String, Any>) {
         val bundle = Bundle().apply {

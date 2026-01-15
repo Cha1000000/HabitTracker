@@ -69,7 +69,18 @@ class FriendsViewModel @Inject constructor(
         // Получаем текущего пользователя асинхронно
         viewModelScope.launch {
             authRepository.getCurrentUser().collectLatest { currentUser ->
-                _currentUserId.value = currentUser?.id ?: ""
+                val userId = currentUser?.id ?: ""
+                _currentUserId.value = userId
+                
+                // Пересчитываем friendsCount при открытии экрана друзей
+                // для исправления возможных некорректных значений в Firestore
+                if (userId.isNotEmpty()) {
+                    try {
+                        socialRepository.recalculateFriendsCount(userId)
+                    } catch (e: Exception) {
+                        Log.w(TAG, "Failed to recalculate friends count: ${e.message}")
+                    }
+                }
             }
         }
     }

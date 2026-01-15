@@ -173,13 +173,36 @@ class UserRepositoryImpl @Inject constructor(
         kickSync()
     }
 
+    override suspend fun getUserFromFirestore(userId: String): User? {
+        return try {
+            val snapshot = firestore.collection("users").document(userId).get().await()
+            val data = snapshot.data
+            if (data != null) {
+                Log.d("UserRepository", "getUserFromFirestore raw data: level=${data["level"]}, points=${data["points"]}, streak=${data["streak"]}")
+                val user = UserFirestoreConverter.fromFirestore(data, snapshot.id)
+                Log.d("UserRepository", "getUserFromFirestore parsed: level=${user?.level}, points=${user?.points}, streak=${user?.streak}")
+                user
+            } else {
+                Log.d("UserRepository", "getUserFromFirestore: no data for userId=$userId")
+                null
+            }
+        } catch (e: Exception) {
+            Log.w("UserRepository", "getUserFromFirestore failed: ${e.message}")
+            null
+        }
+    }
+    
     override fun observeUser(userId: String): Flow<User?> = callbackFlow {
-        val scope = CoroutineScope(Dispatchers.IO)
+        val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
         val registration = firestore.collection("users")
             .document(userId)
             .addSnapshotListener { snapshot, error ->
-                if (error != null) return@addSnapshotListener
+                if (error != null) {
+                    // При PERMISSION_DENIED (sign out) просто игнорируем, не крашим
+                    Log.d("UserRepository", "observeUser listener error (userId=$userId): ${error.message}")
+                    return@addSnapshotListener
+                }
                 val data = snapshot?.data
                 val remote = if (data != null) UserFirestoreConverter.fromFirestore(data, snapshot.id) else null
                 if (remote != null) {

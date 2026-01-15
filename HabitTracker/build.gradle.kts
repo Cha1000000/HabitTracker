@@ -151,6 +151,7 @@ android {
             excludes += "/META-INF/LICENSE.md"
             excludes += "/META-INF/NOTICE.md"
             excludes += "/META-INF/LICENSE-notice.md"
+            excludes += "/META-INF/INDEX.LIST"
         }
     }
 
@@ -281,6 +282,9 @@ dependencies {
     
     // Google Auth для FCM OAuth 2.0
     implementation(libs.google.auth.oauth2)
+    
+    // gRPC (форсируем версию для совместимости с Firebase Firestore)
+    implementation(libs.grpc.okhttp)
     
     // Credentials (нужны для Auth)
     implementation(libs.androidx.credentials)

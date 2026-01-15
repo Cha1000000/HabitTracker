@@ -173,6 +173,8 @@ class HabitsScreenTest {
             getGroupHabitProgressUseCase = getGroupHabitProgressUseCase,
             setHabitRestDayUseCase = setHabitRestDayUseCase,
             userPreferencesRepository = userPreferencesRepository,
+            analyticsManager = mockk(relaxed = true),
+            errorLogger = mockk(relaxed = true),
             application = composeRule.activity.application
         )
 
@@ -213,7 +215,9 @@ class HabitsScreenTest {
         friendsViewModel = FriendsViewModel(
             socialRepository = socialRepository,
             authRepository = authRepoForFriends,
-            leaveSharedHabitsWithFriendUseCase = leaveSharedHabitsWithFriendUseCase
+            leaveSharedHabitsWithFriendUseCase = leaveSharedHabitsWithFriendUseCase,
+            analyticsManager = mockk(relaxed = true),
+            errorLogger = mockk(relaxed = true)
         )
 
         // Set content with our VMs

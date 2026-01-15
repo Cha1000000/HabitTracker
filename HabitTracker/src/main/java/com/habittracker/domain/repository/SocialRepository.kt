@@ -16,6 +16,7 @@ interface SocialRepository {
     suspend fun getUserByIdFromFirestore(userId: String): User?
     suspend fun updateUserFcmToken(userId: String, token: String)
     suspend fun updateFriendsCount(userId: String, count: Int)
+    suspend fun recalculateFriendsCount(userId: String)
     
     // Friend requests
     suspend fun sendFriendRequest(fromUserId: String, toUserId: String, message: String?): Result<FriendRequest>

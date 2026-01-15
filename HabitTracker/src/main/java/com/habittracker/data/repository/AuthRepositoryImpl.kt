@@ -14,6 +14,7 @@ import com.google.firebase.auth.GoogleAuthProvider
 import com.google.firebase.messaging.FirebaseMessaging
 import com.habittracker.domain.model.User
 import com.habittracker.domain.repository.AuthRepository
+import com.habittracker.domain.repository.UserRepository
 import com.habittracker.domain.usecase.auth.UpsertSignedInUserUseCase
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.Flow
@@ -28,6 +29,7 @@ class AuthRepositoryImpl @Inject constructor(
     private val firebaseAuth: FirebaseAuth,
     private val firebaseMessaging: FirebaseMessaging,
     private val upsertSignedInUser: UpsertSignedInUserUseCase,
+    private val userRepository: UserRepository,
     @ApplicationContext private val context: Context,
     private val getGoogleIdOption: GetGoogleIdOption
 ) : AuthRepository {
@@ -63,7 +65,39 @@ class AuthRepositoryImpl @Inject constructor(
 
     override suspend fun login(email: String, password: String): Flow<Result<Unit>> = flow {
         try {
-            firebaseAuth.signInWithEmailAndPassword(email, password).await()
+            val authResult = firebaseAuth.signInWithEmailAndPassword(email, password).await()
+            val firebaseUser = authResult.user
+            
+            if (firebaseUser != null) {
+                val now = Clock.System.now()
+                val nowMillis = now.toEpochMilliseconds()
+                val today = now.toLocalDateTime(TimeZone.currentSystemDefault()).date
+                
+                // Загружаем существующие данные пользователя напрямую из Firestore
+                val existingUser = userRepository.getUserFromFirestore(firebaseUser.uid)
+                
+                // Если пользователь существует в Firestore, используем его данные (включая аватар)
+                // Если нет - создаём нового с данными из Firebase Auth
+                val user = if (existingUser != null) {
+                    existingUser.copy(
+                        lastActiveAt = nowMillis
+                    )
+                } else {
+                    User(
+                        id = firebaseUser.uid,
+                        name = firebaseUser.displayName ?: email.substringBefore("@"),
+                        email = firebaseUser.email ?: email,
+                        avatarUrl = firebaseUser.photoUrl?.toString(),
+                        avatarThumbnailUrl = firebaseUser.photoUrl?.toString(),
+                        createdAt = today,
+                        lastActiveAt = nowMillis
+                    )
+                }
+                
+                val token = try { firebaseMessaging.token.await() } catch (_: Exception) { null }
+                upsertSignedInUser(user, token)
+            }
+            
             emit(Result.success(Unit))
         } catch (e: Exception) {
             emit(Result.failure(e))

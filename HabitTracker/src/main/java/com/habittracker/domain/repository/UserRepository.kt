@@ -30,6 +30,12 @@ interface UserRepository {
      * Realtime наблюдение за профилем пользователя: Firestore -> Room merge -> Flow из Room.
      */
     fun observeUser(userId: String): Flow<User?>
+    
+    /**
+     * Загружает пользователя напрямую из Firestore (без кэша Room).
+     * Используется при логине для получения актуальных данных.
+     */
+    suspend fun getUserFromFirestore(userId: String): User?
 
     /**
      * Optional maintenance: проставляет avatarThumbnailUrl = avatarUrl для существующих пользователей,
