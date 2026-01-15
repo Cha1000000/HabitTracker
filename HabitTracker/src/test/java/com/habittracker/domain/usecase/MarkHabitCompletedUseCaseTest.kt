@@ -229,6 +229,7 @@ class FakeSocialRepository : SocialRepository {
     override suspend fun searchUsers(query: String, currentUserId: String): List<User> = emptyList()
     override suspend fun updateUserFcmToken(userId: String, token: String) {}
     override suspend fun updateFriendsCount(userId: String, count: Int) {}
+    override suspend fun recalculateFriendsCount(userId: String) {}
     override suspend fun sendFriendRequest(fromUserId: String, toUserId: String, message: String?): Result<FriendRequest> = Result.failure(NotImplementedError())
     override suspend fun acceptFriendRequest(requestId: String): Result<Friendship> = Result.failure(NotImplementedError())
     override suspend fun declineFriendRequest(requestId: String): Result<FriendRequest> = Result.failure(NotImplementedError())
@@ -316,4 +317,6 @@ class FakeUserRepository : UserRepository {
     override suspend fun backfillAvatarThumbnails(): Result<Int> = Result.success(0)
 
     override suspend fun updateLastActive(userId: String) {}
+
+    override suspend fun getUserFromFirestore(userId: String): User? = users[userId]
 }
