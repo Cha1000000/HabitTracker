@@ -29,7 +29,7 @@ ksp {
 }
 
 // Единый источник versionName для использования и в defaultConfig, и в имени APK
-val appVersionName = "1.3.8"
+val appVersionName = "1.3.9"
 
 android {
     namespace = "com.habittracker"
@@ -39,7 +39,7 @@ android {
         applicationId = "com.habittracker"
         minSdk = 26
         targetSdk = 35
-        versionCode = 3
+        versionCode = 5
         versionName = appVersionName
 
         testInstrumentationRunner = "com.habittracker.HiltTestRunner"
@@ -151,6 +151,7 @@ android {
             excludes += "/META-INF/LICENSE.md"
             excludes += "/META-INF/NOTICE.md"
             excludes += "/META-INF/LICENSE-notice.md"
+            excludes += "/META-INF/INDEX.LIST"
         }
     }
 
@@ -281,6 +282,9 @@ dependencies {
     
     // Google Auth для FCM OAuth 2.0
     implementation(libs.google.auth.oauth2)
+    
+    // gRPC (форсируем версию для совместимости с Firebase Firestore)
+    implementation(libs.grpc.okhttp)
     
     // Credentials (нужны для Auth)
     implementation(libs.androidx.credentials)

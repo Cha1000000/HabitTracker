@@ -324,6 +324,12 @@ class SocialRepositoryImpl @Inject constructor(
         }
     }
 
+    override suspend fun recalculateFriendsCount(userId: String) {
+        val actualCount = friendshipDao.getFriendsCount(userId).first()
+        updateFriendsCount(userId, actualCount)
+        Log.d("SocialRepository", "recalculateFriendsCount: userId=$userId, actualCount=$actualCount")
+    }
+
     override suspend fun sendFriendRequest(
         fromUserId: String,
         toUserId: String,
@@ -493,11 +499,11 @@ class SocialRepositoryImpl @Inject constructor(
                 Log.w("SocialRepository", "scheduleOneTimeSync() failed after enqueueUpsert(friendship in acceptFriendRequest): ${e.message}", e)
             }
 
-            // Обновляем счетчики друзей
+            // Обновляем счетчики друзей (getFriendsCount уже возвращает актуальное значение после вставки)
             val user1FriendsCount = friendshipDao.getFriendsCount(friendship.userId1).first()
             val user2FriendsCount = friendshipDao.getFriendsCount(friendship.userId2).first()
-            updateFriendsCount(friendship.userId1, user1FriendsCount + 1)
-            updateFriendsCount(friendship.userId2, user2FriendsCount + 1)
+            updateFriendsCount(friendship.userId1, user1FriendsCount)
+            updateFriendsCount(friendship.userId2, user2FriendsCount)
 
             Result.success(friendship)
         } catch (e: Exception) {
@@ -606,7 +612,7 @@ class SocialRepositoryImpl @Inject constructor(
 
     override fun getIncomingFriendRequests(userId: String): Flow<List<FriendRequestWithUsers>> {
         return callbackFlow {
-            val scope = CoroutineScope(Dispatchers.IO)
+            val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
             // Слушаем входящие friend_requests для текущего пользователя
             val registration = firestore.collection("friend_requests")
                 .whereEqualTo("toUserId", userId)
@@ -694,7 +700,7 @@ class SocialRepositoryImpl @Inject constructor(
 
     override fun getOutgoingFriendRequests(userId: String): Flow<List<FriendRequestWithUsers>> {
         return callbackFlow {
-            val scope = CoroutineScope(Dispatchers.IO)
+            val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
             // Слушаем исходящие friend_requests от текущего пользователя
             val registration = firestore.collection("friend_requests")
                 .whereEqualTo("fromUserId", userId)
@@ -841,11 +847,11 @@ class SocialRepositoryImpl @Inject constructor(
                 Log.w("SocialRepository", "scheduleOneTimeSync() failed after enqueueDelete(friendship): ${e.message}", e)
             }
 
-            // Обновляем счетчики друзей
+            // Обновляем счетчики друзей (getFriendsCount уже возвращает актуальное значение после удаления)
             val user1FriendsCount = friendshipDao.getFriendsCount(currentUserId).first()
             val user2FriendsCount = friendshipDao.getFriendsCount(friendId).first()
-            updateFriendsCount(currentUserId, user1FriendsCount - 1)
-            updateFriendsCount(friendId, user2FriendsCount - 1)
+            updateFriendsCount(currentUserId, user1FriendsCount)
+            updateFriendsCount(friendId, user2FriendsCount)
 
             Result.success(Unit)
         } catch (e: Exception) {
@@ -916,7 +922,7 @@ class SocialRepositoryImpl @Inject constructor(
 
     override fun getFriends(userId: String): Flow<List<FriendshipWithUsers>> {
         return callbackFlow {
-            val scope = CoroutineScope(Dispatchers.IO)
+            val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
             // Накопление ключей из обоих слушателей для reconcile
             var lastKeys1: Set<String> = emptySet()
             var lastKeys2: Set<String> = emptySet()
@@ -944,7 +950,10 @@ class SocialRepositoryImpl @Inject constructor(
             val reg1 = firestore.collection("friendships")
                 .whereEqualTo("userId1", userId)
                 .addSnapshotListener { snapshot, error ->
-                    if (error != null) return@addSnapshotListener
+                    if (error != null) {
+                        Log.d("SocialRepository", "Friends listener1 error: ${error.message}")
+                        return@addSnapshotListener
+                    }
                     val docs = snapshot?.documents ?: emptyList()
                     scope.launch {
                         listener1Received = true
@@ -1017,7 +1026,10 @@ class SocialRepositoryImpl @Inject constructor(
             val reg2 = firestore.collection("friendships")
                 .whereEqualTo("userId2", userId)
                 .addSnapshotListener { snapshot, error ->
-                    if (error != null) return@addSnapshotListener
+                    if (error != null) {
+                        Log.d("SocialRepository", "Friends listener2 error: ${error.message}")
+                        return@addSnapshotListener
+                    }
                     val docs = snapshot?.documents ?: emptyList()
                     scope.launch {
                         listener2Received = true
@@ -1552,7 +1564,7 @@ class SocialRepositoryImpl @Inject constructor(
         // Реальное время: слушаем Firestore и мержим в локальный Room, отдаём Flow из Room
         return callbackFlow {
             // Отдельный scope для DAO-коллекции внутри callbackFlow
-            val scope = CoroutineScope(Dispatchers.IO)
+            val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
             // 1) Стартуем слушатель Firestore
             val registration = firestore.collection("habit_invitations")
@@ -1639,7 +1651,7 @@ class SocialRepositoryImpl @Inject constructor(
 
     override fun getOutgoingHabitInvitations(userId: String): Flow<List<HabitInvitation>> {
         return callbackFlow {
-            val scope = CoroutineScope(Dispatchers.IO)
+            val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
             // Firestore listener: исходящие приглашения от пользователя
             val registration = firestore.collection("habit_invitations")
@@ -1712,7 +1724,7 @@ class SocialRepositoryImpl @Inject constructor(
 
     override fun getHabitInvitations(habitId: String): Flow<List<HabitInvitation>> {
         return callbackFlow {
-            val scope = CoroutineScope(Dispatchers.IO)
+            val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
             // Firestore listener: все приглашения для конкретной привычки
             val registration = firestore.collection("habit_invitations")

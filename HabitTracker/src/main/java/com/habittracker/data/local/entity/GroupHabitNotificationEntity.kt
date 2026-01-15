@@ -1,5 +1,6 @@
 package com.habittracker.data.local.entity
 
+import androidx.annotation.StringRes
 import androidx.room.Entity
 import androidx.room.Index
 import androidx.room.PrimaryKey
@@ -28,5 +29,7 @@ data class GroupHabitNotificationEntity(
     val message: String,
     val isRead: Boolean = false,
     val readAt: Long? = null,
-    val createdAt: Long
+    val createdAt: Long,
+    @StringRes val titleResId: Int? = null,
+    @StringRes val descriptionResId: Int? = null
 )

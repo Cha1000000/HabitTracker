@@ -589,8 +589,21 @@ fun StoredNotificationItem(
                 Column(
                     modifier = Modifier.weight(1f)
                 ) {
+                    // Для уведомлений о достижениях используем локализованные тексты
+                    val displayTitle = if (notification.type == "ACHIEVEMENT_UNLOCKED" && notification.titleResId != null) {
+                        stringResource(notification.titleResId)
+                    } else {
+                        notification.habitTitle
+                    }
+                    
+                    val displayMessage = if (notification.type == "ACHIEVEMENT_UNLOCKED" && notification.descriptionResId != null) {
+                        stringResource(R.string.achievement_unlocked_message_format, stringResource(notification.descriptionResId))
+                    } else {
+                        notification.message
+                    }
+                    
                     Text(
-                        text = notification.habitTitle,
+                        text = displayTitle,
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = if (notification.isRead) FontWeight.Normal else FontWeight.Bold,
                         color = if (notification.isRead) 
@@ -602,7 +615,7 @@ fun StoredNotificationItem(
                     )
                     
                     Text(
-                        text = notification.message,
+                        text = displayMessage,
                         style = MaterialTheme.typography.bodyMedium,
                         color = if (notification.isRead) 
                             MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
@@ -645,14 +658,15 @@ fun StoredNotificationItem(
 /**
  * Форматирует timestamp в читаемый формат
  */
+@Composable
 private fun formatTimestamp(timestamp: Long): String {
     val now = System.currentTimeMillis()
     val diff = now - timestamp
     
     return when {
-        diff < 60_000 -> "Только что"
-        diff < 3600_000 -> "${diff / 60_000} мин назад"
-        diff < 86400_000 -> "${diff / 3600_000} ч назад"
-        else -> "${diff / 86400_000} дн назад"
+        diff < 60_000 -> stringResource(R.string.time_just_now)
+        diff < 3600_000 -> stringResource(R.string.time_minutes_ago, diff / 60_000)
+        diff < 86400_000 -> stringResource(R.string.time_hours_ago, diff / 3600_000)
+        else -> stringResource(R.string.time_days_ago, diff / 86400_000)
     }
 }

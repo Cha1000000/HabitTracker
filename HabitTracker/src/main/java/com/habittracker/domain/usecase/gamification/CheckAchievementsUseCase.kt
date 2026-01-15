@@ -96,7 +96,9 @@ class CheckAchievementsUseCase @Inject constructor(
                         title = achievement.title,
                         description = achievement.description,
                         icon = achievement.icon,
-                        pointsReward = achievement.pointsReward
+                        pointsReward = achievement.pointsReward,
+                        titleResId = achievement.titleResId,
+                        descriptionResId = achievement.descriptionResId
                     )
                 )
             } catch (e: Exception) {
@@ -114,7 +116,9 @@ class CheckAchievementsUseCase @Inject constructor(
                 habitTitle = achievement.title,
                 message = message,
                 createdAt = Clock.System.now().toEpochMilliseconds(),
-                isRead = false
+                isRead = false,
+                titleResId = achievement.titleResId,
+                descriptionResId = achievement.descriptionResId
             )
             groupHabitNotificationRepository.saveNotification(notification)
 

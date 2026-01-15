@@ -210,6 +210,7 @@ class CloseExpiredChallengesUseCaseTest {
         override suspend fun getUserByIdFromFirestore(userId: String): User? = getUserById(userId)
         override suspend fun updateUserFcmToken(userId: String, token: String) = Unit
         override suspend fun updateFriendsCount(userId: String, count: Int) = Unit
+        override suspend fun recalculateFriendsCount(userId: String) = Unit
 
         override suspend fun sendFriendRequest(fromUserId: String, toUserId: String, message: String?) =
             Result.failure<FriendRequest>(Exception("not used"))

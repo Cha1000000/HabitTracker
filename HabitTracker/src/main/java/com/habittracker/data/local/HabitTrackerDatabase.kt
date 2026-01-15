@@ -54,7 +54,7 @@ import com.habittracker.data.local.entity.UserEntity
         NotificationReadStatusEntity::class,
         GroupHabitNotificationEntity::class
     ],
-    version = 14,
+    version = 15,
     exportSchema = false
 )
 @TypeConverters(Converters::class)
@@ -180,6 +180,13 @@ abstract class HabitTrackerDatabase : RoomDatabase() {
             }
         }
 
+        private val MIGRATION_14_15 = object : Migration(14, 15) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE group_habit_notifications ADD COLUMN titleResId INTEGER DEFAULT NULL")
+                db.execSQL("ALTER TABLE group_habit_notifications ADD COLUMN descriptionResId INTEGER DEFAULT NULL")
+            }
+        }
+
         @Volatile
         private var INSTANCE: HabitTrackerDatabase? = null
 
@@ -206,7 +213,8 @@ abstract class HabitTrackerDatabase : RoomDatabase() {
                     MIGRATION_10_11,
                     MIGRATION_11_12,
                     MIGRATION_12_13,
-                    MIGRATION_13_14
+                    MIGRATION_13_14,
+                    MIGRATION_14_15
                 )
 
                 val instance = builder.build()

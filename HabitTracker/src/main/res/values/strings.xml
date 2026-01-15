@@ -916,6 +916,8 @@
 
     <!-- Social Stats Labels -->
     <string name="friends_count_label">Friends</string>
+    <string name="incoming_requests_label">Incoming</string>
+    <string name="outgoing_requests_label">Sent</string>
     <string name="group_habits_count">Group Habits</string>
     <string name="challenges_participated">Participated</string>
     <string name="challenges_won">Won</string>
@@ -986,6 +988,7 @@
 
     <!-- Achievement Status -->
     <string name="achievement_unlocked_title">Achievement Unlocked!</string>
+    <string name="achievement_unlocked_message_format">You unlocked achievement: %1$s</string>
     <string name="points_label">points</string>
     <string name="achievement_reward">+%1$d points</string>
 

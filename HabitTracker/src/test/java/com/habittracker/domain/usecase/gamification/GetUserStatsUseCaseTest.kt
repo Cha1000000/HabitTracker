@@ -109,6 +109,7 @@ class GetUserStatsUseCaseTest {
                 override fun observeUser(userId: String): Flow<User?> = flowOf(null)
                 override suspend fun backfillAvatarThumbnails(): Result<Int> = Result.success(0)
                 override suspend fun updateLastActive(userId: String) {}
+                override suspend fun getUserFromFirestore(userId: String): User? = null
             },
             habitRepository = object : HabitRepository {
                 override suspend fun insertHabit(habit: Habit) {}
@@ -185,6 +186,7 @@ class GetUserStatsUseCaseTest {
                 override suspend fun getUserByIdFromFirestore(userId: String): User? = getUserById(userId)
                 override suspend fun updateUserFcmToken(userId: String, token: String) {}
                 override suspend fun updateFriendsCount(userId: String, count: Int) {}
+                override suspend fun recalculateFriendsCount(userId: String) {}
 
                 override suspend fun sendFriendRequest(fromUserId: String, toUserId: String, message: String?) =
                     Result.success(

@@ -914,6 +914,8 @@
     
     <!-- Social Stats Labels -->
     <string name="friends_count_label">Друзей</string>
+    <string name="incoming_requests_label">Входящих</string>
+    <string name="outgoing_requests_label">Исходящих</string>
     <string name="group_habits_count">Групповых привычек</string>
     <string name="challenges_participated">Челленджей участвовал</string>
     <string name="challenges_won">Челленджей выиграл</string>
@@ -984,6 +986,7 @@
     
     <!-- Achievement Status -->
     <string name="achievement_unlocked_title">Достижение разблокировано!</string>
+    <string name="achievement_unlocked_message_format">Вы получили достижение: %1$s</string>
     <string name="points_label">очков</string>
     <string name="achievement_reward">+%1$d очков</string>
     

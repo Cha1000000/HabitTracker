@@ -207,7 +207,7 @@ class FirestoreRepositoryImpl @Inject constructor(
                     Log.e(TAG, "❌ [getUserHabits] Error getting habits for user: $userId", error)
                     Log.e(TAG, "❌ [getUserHabits] Error code: ${error.code}")
                     Log.e(TAG, "❌ [getUserHabits] Error message: ${error.message}")
-                    close(error)
+                    // При PERMISSION_DENIED (sign out) просто игнорируем, не крашим
                     return@addSnapshotListener
                 }
 
@@ -266,7 +266,7 @@ class FirestoreRepositoryImpl @Inject constructor(
             .addSnapshotListener { snapshot, error ->
                 if (error != null) {
                     Log.e(TAG, "Error getting habit entries", error)
-                    close(error)
+                    // При PERMISSION_DENIED (sign out) просто игнорируем
                     return@addSnapshotListener
                 }
 

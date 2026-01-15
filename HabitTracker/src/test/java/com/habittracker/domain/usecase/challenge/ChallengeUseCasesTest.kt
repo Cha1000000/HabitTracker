@@ -195,6 +195,7 @@ class ChallengeUseCasesTest {
         override suspend fun getUserByIdFromFirestore(userId: String): User? = getUserById(userId)
         override suspend fun updateUserFcmToken(userId: String, token: String) {}
         override suspend fun updateFriendsCount(userId: String, count: Int) {}
+        override suspend fun recalculateFriendsCount(userId: String) {}
 
         // Friend requests
         override suspend fun sendFriendRequest(fromUserId: String, toUserId: String, message: String?) = Result.failure<FriendRequest>(Exception("not used"))

@@ -95,7 +95,7 @@ class HabitEntryRepositoryImpl @Inject constructor(
 
     override fun getEntriesForHabit(habitId: String): Flow<List<HabitEntry>> {
         return callbackFlow {
-            val scope = CoroutineScope(Dispatchers.IO)
+            val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
             val registration = firestore.collection("habit_entries")
                 .whereEqualTo("habitId", habitId)
@@ -137,7 +137,7 @@ class HabitEntryRepositoryImpl @Inject constructor(
 
     override fun getEntriesForUser(userId: String): Flow<List<HabitEntry>> {
         return callbackFlow {
-            val scope = CoroutineScope(Dispatchers.IO)
+            val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
             val registration = firestore.collection("habit_entries")
                 .whereEqualTo("userId", userId)
@@ -177,7 +177,7 @@ class HabitEntryRepositoryImpl @Inject constructor(
 
     override fun getEntriesForUserAndHabit(userId: String, habitId: String): Flow<List<HabitEntry>> {
         return callbackFlow {
-            val scope = CoroutineScope(Dispatchers.IO)
+            val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
             val registration = firestore.collection("habit_entries")
                 .whereEqualTo("habitId", habitId)
