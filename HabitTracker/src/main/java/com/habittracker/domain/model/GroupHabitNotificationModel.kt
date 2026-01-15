@@ -1,5 +1,7 @@
 package com.habittracker.domain.model
 
+import androidx.annotation.StringRes
+
 /**
  * Модель уведомления групповой привычки для отображения на экране
  */
@@ -14,5 +16,7 @@ data class GroupHabitNotificationModel(
     val message: String,
     val isRead: Boolean = false,
     val readAt: Long? = null,
-    val createdAt: Long
+    val createdAt: Long,
+    @StringRes val titleResId: Int? = null,
+    @StringRes val descriptionResId: Int? = null
 )

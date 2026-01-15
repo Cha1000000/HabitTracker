@@ -29,7 +29,7 @@ ksp {
 }
 
 // Единый источник versionName для использования и в defaultConfig, и в имени APK
-val appVersionName = "1.3.8"
+val appVersionName = "1.3.9"
 
 android {
     namespace = "com.habittracker"
@@ -39,7 +39,7 @@ android {
         applicationId = "com.habittracker"
         minSdk = 26
         targetSdk = 35
-        versionCode = 4
+        versionCode = 5
         versionName = appVersionName
 
         testInstrumentationRunner = "com.habittracker.HiltTestRunner"

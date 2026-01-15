@@ -239,7 +239,9 @@ class GroupHabitNotificationRepositoryImpl @Inject constructor(
             message = message,
             isRead = isRead,
             readAt = readAt,
-            createdAt = createdAt
+            createdAt = createdAt,
+            titleResId = titleResId,
+            descriptionResId = descriptionResId
         )
     }
 }

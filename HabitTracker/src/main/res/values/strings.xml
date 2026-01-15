@@ -988,6 +988,7 @@
 
     <!-- Achievement Status -->
     <string name="achievement_unlocked_title">Achievement Unlocked!</string>
+    <string name="achievement_unlocked_message_format">You unlocked achievement: %1$s</string>
     <string name="points_label">points</string>
     <string name="achievement_reward">+%1$d points</string>
 

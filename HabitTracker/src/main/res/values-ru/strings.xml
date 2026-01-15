@@ -986,6 +986,7 @@
     
     <!-- Achievement Status -->
     <string name="achievement_unlocked_title">Достижение разблокировано!</string>
+    <string name="achievement_unlocked_message_format">Вы получили достижение: %1$s</string>
     <string name="points_label">очков</string>
     <string name="achievement_reward">+%1$d очков</string>
     

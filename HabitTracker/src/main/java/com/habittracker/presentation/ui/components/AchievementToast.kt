@@ -1,5 +1,6 @@
 package com.habittracker.presentation.ui.components
 
+import androidx.annotation.StringRes
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloatAsState
@@ -58,7 +59,9 @@ data class AchievementToastData(
     val title: String,
     val description: String,
     val icon: String,
-    val pointsReward: Int
+    val pointsReward: Int,
+    @StringRes val titleResId: Int? = null,
+    @StringRes val descriptionResId: Int? = null
 )
 
 /**
@@ -210,7 +213,7 @@ private fun AchievementToastContent(
                     Spacer(modifier = Modifier.height(4.dp))
                     
                     Text(
-                        text = achievement.title,
+                        text = achievement.titleResId?.let { stringResource(it) } ?: achievement.title,
                         style = MaterialTheme.typography.titleMedium,
                         color = Color.White,
                         fontWeight = FontWeight.Bold,
@@ -219,7 +222,7 @@ private fun AchievementToastContent(
                     )
                     
                     Text(
-                        text = achievement.description,
+                        text = achievement.descriptionResId?.let { stringResource(it) } ?: achievement.description,
                         style = MaterialTheme.typography.bodySmall,
                         color = Color.White.copy(alpha = 0.8f),
                         maxLines = 2,
