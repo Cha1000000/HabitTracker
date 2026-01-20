@@ -23,6 +23,7 @@ import kotlinx.coroutines.tasks.await
 import kotlinx.datetime.Clock
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toLocalDateTime
+import timber.log.Timber
 import javax.inject.Inject
 
 class AuthRepositoryImpl @Inject constructor(
@@ -127,7 +128,7 @@ class AuthRepositoryImpl @Inject constructor(
             
             emit(Result.success(Unit))
         } catch (e: Exception) {
-            android.util.Log.e("AuthRepository", "❌ Registration failed: ${e.message}")
+            Timber.tag("AuthRepository").e("❌ Registration failed: ${e.message}")
             emit(Result.failure(e))
         }
     }
@@ -153,15 +154,37 @@ class AuthRepositoryImpl @Inject constructor(
                             val result = firebaseAuth.signInWithCredential(firebaseCredential).await()
                             val firebaseUser = result.user
                             if (firebaseUser != null) {
-                                val user = User(
-                                    id = firebaseUser.uid,
-                                    name = firebaseUser.displayName ?: firebaseUser.email?.substringBefore("@") ?: "",
-                                    email = firebaseUser.email ?: "",
-                                    avatarUrl = firebaseUser.photoUrl?.toString(),
-                                    avatarThumbnailUrl = firebaseUser.photoUrl?.toString(),
-                                    createdAt = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault()).date,
-                                    lastActiveAt = Clock.System.now().toEpochMilliseconds()
-                                )
+                                val now = Clock.System.now()
+                                val nowMillis = now.toEpochMilliseconds()
+                                val today = now.toLocalDateTime(TimeZone.currentSystemDefault()).date
+                                
+                                // Загружаем существующие данные пользователя из Firestore
+                                val existingUser = userRepository.getUserFromFirestore(firebaseUser.uid)
+                                Timber.d("signInWithGoogle: existingUser from Firestore: level=${existingUser?.level}, points=${existingUser?.points}, streak=${existingUser?.streak}")
+                                
+                                // Если пользователь существует в Firestore — используем его данные (level, points и т.д.)
+                                // Если нет — создаём нового с данными из Google аккаунта
+                                val user = if (existingUser != null) {
+                                    existingUser.copy(
+                                        // Обновляем только те поля, которые могут измениться в Google аккаунте
+                                        name = existingUser.name.ifBlank { firebaseUser.displayName ?: firebaseUser.email?.substringBefore("@") ?: "" },
+                                        email = firebaseUser.email ?: existingUser.email,
+                                        avatarUrl = firebaseUser.photoUrl?.toString() ?: existingUser.avatarUrl,
+                                        avatarThumbnailUrl = firebaseUser.photoUrl?.toString() ?: existingUser.avatarThumbnailUrl,
+                                        lastActiveAt = nowMillis
+                                    )
+                                } else {
+                                    User(
+                                        id = firebaseUser.uid,
+                                        name = firebaseUser.displayName ?: firebaseUser.email?.substringBefore("@") ?: "",
+                                        email = firebaseUser.email ?: "",
+                                        avatarUrl = firebaseUser.photoUrl?.toString(),
+                                        avatarThumbnailUrl = firebaseUser.photoUrl?.toString(),
+                                        createdAt = today,
+                                        lastActiveAt = nowMillis
+                                    )
+                                }
+                                
                                 val token = try { firebaseMessaging.token.await() } catch (_: Exception) { null }
                                 upsertSignedInUser(user, token)
                             }
