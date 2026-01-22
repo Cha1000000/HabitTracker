@@ -337,12 +337,12 @@ class PublicHabitsViewModel @Inject constructor(
         val combined = "$titleLower $descriptionLower"
         
         return when {
-            combined.containsAny("спорт", "фитнес", "трениров", "бег", "физич", "плава", "кататься на", "sport", "fitness", "train", "run", "swim", "ride", "gym", "exercise", "workout") -> HabitCategory.SPORT
+            combined.containsAny("спорт", "фитнес", "трениров", "бег", "физич", "плава", "кататься на", "отжима", "приседа", "подтягива", "sport", "fitness", "train", "run", "swim", "ride", "gym", "exercise", "workout") -> HabitCategory.SPORT
             combined.containsAny("здоров", "питан", "сон", "вода", "витамин", "health", "nutrition", "sleep", "water", "vitamin", "diet") -> HabitCategory.HEALTH
-            combined.containsAny("учеб", "книг", "чтен", "курс", "язык", "study", "book", "read", "course", "learn", "language") -> HabitCategory.EDUCATION
-            combined.containsAny("работ", "продуктив", "планирова", "задач", "work", "productiv", "plan", "task", "focus") -> HabitCategory.PRODUCTIVITY
+            combined.containsAny("учеб", "книг", "чтен", "чит", "курс", "язык", "образование", "study", "book", "read", "course", "learn", "language") -> HabitCategory.EDUCATION
+            combined.containsAny("работ", "продуктив", "планирова", "составлять план", "задач", "work", "productiv", "plan", "task", "focus") -> HabitCategory.PRODUCTIVITY
             combined.containsAny("медитац", "йог", "дыхан", "осознан", "meditation", "yoga", "breath", "mindful") -> HabitCategory.MINDFULNESS
-            combined.containsAny("рисован", "музык", "творч", "искусств", "дизайн", "draw", "music", "creat", "art", "design", "paint") -> HabitCategory.CREATIVITY
+            combined.containsAny("рисова", "музык", "творч", "искусств", "дизайн", "draw", "music", "creat", "art", "design", "paint") -> HabitCategory.CREATIVITY
             combined.containsAny("друз", "семь", "общен", "встреч", "кореш", "свидан", "friend", "family", "social", "meet", "date", "call") -> HabitCategory.SOCIAL
             else -> HabitCategory.OTHER
         }

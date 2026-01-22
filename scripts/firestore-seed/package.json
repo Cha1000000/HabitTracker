@@ -1,0 +1,11 @@
+{
+  "name": "firestore-seed",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "seed:public-habits": "node seed_public_habits.js"
+  },
+  "dependencies": {
+    "firebase-admin": "^12.7.0"
+  }
+}
