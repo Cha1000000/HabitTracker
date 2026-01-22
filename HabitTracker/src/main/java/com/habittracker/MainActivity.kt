@@ -4,7 +4,6 @@ import android.Manifest
 import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
-import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
@@ -38,6 +37,7 @@ import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.launch
 import javax.inject.Inject
+import timber.log.Timber
 
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
@@ -73,7 +73,7 @@ class MainActivity : ComponentActivity() {
         splash.setKeepOnScreenCondition { false }
         // Ранний захват deep link из push до инициализации UI/подписок
         intent?.getStringExtra("navigate_to")?.let { deep ->
-            Log.d("MainActivity", "[push-nav] pre-UI handle navigate_to=$deep")
+            Timber.tag("MainActivity").d("[push-nav] pre-UI handle navigate_to=$deep")
             handleIntentForNavigation(intent)
         }
         enableEdgeToEdge()
@@ -116,7 +116,7 @@ class MainActivity : ComponentActivity() {
                     dailyReminderScheduler.scheduleIfNotSet(prefs.dailyReminderTime)
                 }
             }.onFailure { e ->
-                Log.e("MainActivity", "Error scheduling daily reminder on startup", e)
+                Timber.tag("MainActivity").e(e, "Error scheduling daily reminder on startup")
             }
         }
 
@@ -127,7 +127,7 @@ class MainActivity : ComponentActivity() {
                     when (state) {
                         is AuthState.Success -> {
                             val userId = authRepository.getCurrentUserId()
-                            Log.d("MainActivity", "[bootstrap] AuthState.Success observed. currentUserId=$userId")
+                            Timber.tag("MainActivity").d("[bootstrap] AuthState.Success observed. currentUserId=$userId")
                             launch(Dispatchers.IO) {
                                 runCatching { PendingNotificationManager.deliverForCurrentUser(applicationContext, authRepository) }
                             }
@@ -135,10 +135,7 @@ class MainActivity : ComponentActivity() {
                                 startSocialRealtimeSync(userId)
                                 // Если есть отложенная навигация — выполним её
                                 pendingNavigation?.let { nav ->
-                                    Log.d(
-                                        "MainActivity",
-                                        "[push-nav] executing pendingNavigation after auth success"
-                                    )
+                                    Timber.tag("MainActivity").d("[push-nav] executing pendingNavigation after auth success")
                                     nav()
                                     pendingNavigation = null
                                 } ?: run {
@@ -147,7 +144,7 @@ class MainActivity : ComponentActivity() {
                                         // Если push/deeplink не ставил отложенную навигацию, идём на Habits
                                         val action: () -> Unit = {
                                             navController?.let { controller ->
-                                                Log.d("MainActivity", "[bootstrap] default navigate to Habits")
+                                                Timber.tag("MainActivity").d("[bootstrap] default navigate to Habits")
                                                 runCatching {
                                                     controller.navigate(Screen.Habits.route) {
                                                         popUpTo(controller.graph.startDestinationId) { inclusive = true }
@@ -157,22 +154,22 @@ class MainActivity : ComponentActivity() {
                                             }
                                         }
                                         if (navController != null) {
-                                            Log.d("MainActivity", "[bootstrap] navController ready -> execute default nav")
+                                            Timber.tag("MainActivity").d("[bootstrap] navController ready -> execute default nav")
                                             action()
                                         } else {
-                                            Log.d("MainActivity", "[bootstrap] navController null -> set pending default nav to Habits")
+                                            Timber.tag("MainActivity").d("[bootstrap] navController null -> set pending default nav to Habits")
                                             pendingNavigation = action
                                         }
                                     } else {
-                                        Log.d("MainActivity", "[bootstrap] deep link present ($deep) -> skip default Habits nav")
+                                        Timber.tag("MainActivity").d("[bootstrap] deep link present ($deep) -> skip default Habits nav")
                                     }
                                 }
                             } else {
-                                Log.w("MainActivity", "[bootstrap] Cannot start social realtime sync: currentUserId is null")
+                                Timber.tag("MainActivity").w("[bootstrap] Cannot start social realtime sync: currentUserId is null")
                             }
                         }
                         is AuthState.Unauthenticated, is AuthState.Error -> {
-                            Log.d("MainActivity", "[bootstrap] AuthState=${state::class.simpleName}. Stopping social realtime sync if active…")
+                            Timber.tag("MainActivity").d("[bootstrap] AuthState=${state::class.simpleName}. Stopping social realtime sync if active…")
                             stopSocialRealtimeSync()
                         }
                         else -> Unit
@@ -184,8 +181,7 @@ class MainActivity : ComponentActivity() {
 
     override fun onNewIntent(intent: android.content.Intent) {
         super.onNewIntent(intent)
-        Log.d(
-            "MainActivity",
+        Timber.tag("MainActivity").d(
             "[push-nav] onNewIntent action=${intent.action} extras=${intent.extras?.keySet()?.joinToString()}"
         )
         // Обновляем текущий intent, чтобы Compose-экраны (LoginScreen) могли читать navigate_to
@@ -210,7 +206,7 @@ class MainActivity : ComponentActivity() {
             }
             
             if (!inviteCode.isNullOrBlank()) {
-                Log.d("MainActivity", "[deep-link] Invite code detected: $inviteCode")
+                Timber.tag("MainActivity").d("[deep-link] Invite code detected: $inviteCode")
                 intent.putExtra("navigate_to", "join_by_code")
                 intent.putExtra("invite_code", inviteCode)
             }
@@ -237,8 +233,7 @@ class MainActivity : ComponentActivity() {
             else -> null
         }
 
-        Log.d(
-            "MainActivity",
+        Timber.tag("MainActivity").d(
             "[push-nav] handleIntentForNavigation navigate_to=$navigateTo habitId=$habitId -> route=${route ?: "<null>"}"
         )
 
@@ -255,18 +250,17 @@ class MainActivity : ComponentActivity() {
                     }
                     val currentRoute = controller.currentBackStackEntry?.destination?.route
                     val currentTab = controller.currentBackStackEntry?.arguments?.getString("tab")
-                    Log.d("MainActivity", "[push-nav] navigate('$route') success=${result.isSuccess} -> current=${currentRoute} tab=${currentTab}")
+                    Timber.tag("MainActivity").d("[push-nav] navigate('$route') success=${result.isSuccess} -> current=${currentRoute} tab=${currentTab}")
                     // После успешной навигации очищаем deep link extras, чтобы они не мешали дефолтной навигации позже
                     clearDeepLinkExtras()
                 }
             }
             val isAuthenticated = (authViewModel.authState.value is AuthState.Success)
             if (navController != null && isAuthenticated) {
-                Log.d("MainActivity", "[push-nav] navController ready & authed=true -> execute now")
+                Timber.tag("MainActivity").d("[push-nav] navController ready & authed=true -> execute now")
                 action()
             } else {
-                Log.d(
-                    "MainActivity",
+                Timber.tag("MainActivity").d(
                     "[push-nav] navController ready=${navController != null} authed=$isAuthenticated -> postpone"
                 )
                 // Очищаем extras сразу, чтобы не блокировать дефолтную навигацию после логина
@@ -276,8 +270,7 @@ class MainActivity : ComponentActivity() {
         } else if (navigateTo != null) {
             // Если navigate_to пришёл, но наш роут не распознан — очищаем extras,
             // чтобы не блокировать дефолтную навигацию на Habits после авторизации
-            Log.d(
-                "MainActivity",
+            Timber.tag("MainActivity").d(
                 "[push-nav] unknown navigate_to='$navigateTo' -> clear extras to allow default nav"
             )
             clearDeepLinkExtras()
@@ -295,10 +288,10 @@ class MainActivity : ComponentActivity() {
             intent?.removeExtra("challenge_id")
             intent?.removeExtra("challengeId")
             if (hadNavigateTo || hadHabitId || hadChallengeId) {
-                Log.d("MainActivity", "[push-nav] cleared deep link extras (navigate_to/habit_id/challenge_id)")
+                Timber.tag("MainActivity").d("[push-nav] cleared deep link extras (navigate_to/habit_id/challenge_id)")
             }
         } catch (e: Exception) {
-            Log.w("MainActivity", "[push-nav] failed to clear deep link extras: ${e.message}", e)
+            Timber.tag("MainActivity").w(e, "[push-nav] failed to clear deep link extras: ${e.message}")
         }
     }
 
@@ -314,11 +307,11 @@ class MainActivity : ComponentActivity() {
     // Ранний запуск подписок на социальные данные после логина для регистрации Firestore listeners
     private fun startSocialRealtimeSync(userId: String) {
         if (socialSyncJob?.isActive == true) {
-            Log.d("MainActivity", "[bootstrap] Social realtime sync already active. Skip start for user=$userId")
+            Timber.tag("MainActivity").d("[bootstrap] Social realtime sync already active. Skip start for user=$userId")
             return
         }
         socialSyncJob = lifecycleScope.launch(Dispatchers.IO) {
-            Log.d("MainActivity", "[bootstrap] Start social realtime sync for user=$userId")
+            Timber.tag("MainActivity").d("[bootstrap] Start social realtime sync for user=$userId")
             try {
                 coroutineScope {
                     // Эти collect лишь регистрируют snapshot listeners и наполняют Room. UI не используется здесь.
@@ -327,9 +320,9 @@ class MainActivity : ComponentActivity() {
                     launch { socialRepository.getOutgoingFriendRequests(userId).collect { } }
                 }
             } catch (e: Exception) {
-                Log.w("MainActivity", "[bootstrap] Social sync error: ${e.message}", e)
+                Timber.tag("MainActivity").w(e, "[bootstrap] Social sync error: ${e.message}")
             } finally {
-                Log.d("MainActivity", "[bootstrap] Social sync finished for user=$userId")
+                Timber.tag("MainActivity").d("[bootstrap] Social sync finished for user=$userId")
             }
         }
     }
@@ -337,7 +330,7 @@ class MainActivity : ComponentActivity() {
     private fun stopSocialRealtimeSync() {
         socialSyncJob?.cancel()
         socialSyncJob = null
-        Log.d("MainActivity", "[bootstrap] Social realtime sync stopped")
+        Timber.tag("MainActivity").d("[bootstrap] Social realtime sync stopped")
     }
 
     override fun onResume() {

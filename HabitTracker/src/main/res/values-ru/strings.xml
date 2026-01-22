@@ -674,7 +674,7 @@
     <string name="error_accept_invitation">Ошибка принятия приглашения</string>
     <string name="success_invitation_declined">Приглашение отклонено</string>
     <string name="error_decline_invitation">Ошибка отклонения приглашения</string>
-    <string name="error_update_habit">Ошибка обновления привычки</string>
+    <string name="error_update_habit">Ошибка обновления привычки: %1$s</string>
     
     <!-- Dialogs -->
     <string name="enter_value_title">Указать количество</string>

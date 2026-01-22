@@ -69,8 +69,8 @@ class UpdateHabitUseCaseTest {
 
         override suspend fun insertHabit(habit: Habit) = throw NotImplementedError()
         override fun getHabitsByUserId(userId: String) = throw NotImplementedError()
-        override suspend fun getHabitById(id: String): Habit? {
-            return habits.find { it.id == id }
+        override suspend fun getHabitById(habitId: String): Habit? {
+            return habits.find { it.id == habitId }
         }
         
         override suspend fun getHabitByInviteCode(inviteCode: String): Habit? {

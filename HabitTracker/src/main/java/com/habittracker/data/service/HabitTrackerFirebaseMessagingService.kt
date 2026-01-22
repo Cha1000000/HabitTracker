@@ -4,10 +4,8 @@ import android.annotation.SuppressLint
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.PendingIntent
-import android.content.Context
 import android.content.Intent
 import android.os.Build
-import android.util.Log
 import androidx.core.app.NotificationCompat
 import com.google.firebase.messaging.FirebaseMessagingService
 import com.google.firebase.messaging.RemoteMessage
@@ -25,6 +23,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
+import timber.log.Timber
 import javax.inject.Inject
 
 /**
@@ -62,7 +61,7 @@ class HabitTrackerFirebaseMessagingService : FirebaseMessagingService() {
             try {
                 deliverPendingForCurrentUser()
             } catch (e: Exception) {
-                Log.w(TAG, "Не удалось доставить отложенные при старте", e)
+                Timber.tag(TAG).w(e, "Не удалось доставить отложенные при старте")
             }
         }
     }
@@ -72,7 +71,7 @@ class HabitTrackerFirebaseMessagingService : FirebaseMessagingService() {
      */
     override fun onNewToken(token: String) {
         super.onNewToken(token)
-        Log.d(TAG, "Получен новый FCM токен: $token")
+        Timber.tag(TAG).d("Получен новый FCM токен: $token")
         
         // Сохраняем токен в базе данных
         serviceScope.launch {
@@ -80,12 +79,12 @@ class HabitTrackerFirebaseMessagingService : FirebaseMessagingService() {
                 val currentUserId = authRepository.getCurrentUserId()
                 if (currentUserId != null) {
                     socialRepository.updateUserFcmToken(currentUserId, token)
-                    Log.d(TAG, "FCM токен успешно обновлен для пользователя: $currentUserId")
+                    Timber.tag(TAG).d("FCM токен успешно обновлен для пользователя: $currentUserId")
                 } else {
-                    Log.w(TAG, "Пользователь не авторизован, токен не сохранен")
+                    Timber.tag(TAG).w("Пользователь не авторизован, токен не сохранен")
                 }
             } catch (e: Exception) {
-                Log.e(TAG, "Ошибка сохранения FCM токена", e)
+                Timber.tag(TAG).e(e, "Ошибка сохранения FCM токена")
             }
         }
     }
@@ -96,7 +95,7 @@ class HabitTrackerFirebaseMessagingService : FirebaseMessagingService() {
     override fun onMessageReceived(remoteMessage: RemoteMessage) {
         super.onMessageReceived(remoteMessage)
         
-        Log.d(TAG, "Получено push-уведомление от: ${remoteMessage.from}")
+        Timber.tag(TAG).d("Получено push-уведомление от: ${remoteMessage.from}")
         
         // Обрабатываем данные уведомления
         val data = remoteMessage.data
@@ -105,18 +104,18 @@ class HabitTrackerFirebaseMessagingService : FirebaseMessagingService() {
         // Определяем тип уведомления
         val notificationType = data["type"] ?: "unknown"
         
-        Log.d(TAG, "Тип уведомления: $notificationType")
-        Log.d(TAG, "Данные: $data")
+        Timber.tag(TAG).d("Тип уведомления: $notificationType")
+        Timber.tag(TAG).d("Данные: $data")
 
         // Если указали целевого пользователя в payload, не показываем уведомление не тому пользователю
         val recipientUserId = data["recipientUserId"]
         if (recipientUserId != null) {
             val currentUserId = try { authRepository.getCurrentUserId() } catch (e: Exception) {
-                Log.w(TAG, "authRepository.getCurrentUserId() failed in onMessageReceived", e)
+                Timber.tag(TAG).w(e, "authRepository.getCurrentUserId() failed in onMessageReceived")
                 null
             }
             if (currentUserId == null || currentUserId != recipientUserId) {
-                Log.d(TAG, "Уведомление не для текущего пользователя. current=$currentUserId, recipient=$recipientUserId — сохраняем в очередь")
+                Timber.tag(TAG).d("Уведомление не для текущего пользователя. current=$currentUserId, recipient=$recipientUserId — сохраняем в очередь")
                 // Сохраняем в локальную очередь
                 serviceScope.launch {
                     try {
@@ -131,7 +130,7 @@ class HabitTrackerFirebaseMessagingService : FirebaseMessagingService() {
                             ttlSeconds = 3600L
                         )
                     } catch (e: Exception) {
-                        Log.e(TAG, "Ошибка сохранения отложенного уведомления", e)
+                        Timber.tag(TAG).e(e, "Ошибка сохранения отложенного уведомления")
                     }
                 }
                 return
@@ -161,9 +160,9 @@ class HabitTrackerFirebaseMessagingService : FirebaseMessagingService() {
                 body = bodyToShow,
                 data = data
             )
-            Log.d(TAG, "Notification shown: type=$notificationType, alwaysShow=${notificationType in alwaysShowTypes}")
+            Timber.tag(TAG).d("Notification shown: type=$notificationType, alwaysShow=${notificationType in alwaysShowTypes}")
         } else {
-            Log.d(TAG, "Notification suppressed: HabitsScreen is active, type=$notificationType")
+            Timber.tag(TAG).d("Notification suppressed: HabitsScreen is active, type=$notificationType")
         }
         
         // Сохраняем уведомление в базу данных для отображения на экране уведомлений
@@ -182,7 +181,7 @@ class HabitTrackerFirebaseMessagingService : FirebaseMessagingService() {
                 try {
                     saveGroupHabitNotification(data, notificationType)
                 } catch (e: Exception) {
-                    Log.e(TAG, "Ошибка сохранения уведомления в базу", e)
+                    Timber.tag(TAG).e(e, "Ошибка сохранения уведомления в базу")
                 }
             }
         }
@@ -192,7 +191,7 @@ class HabitTrackerFirebaseMessagingService : FirebaseMessagingService() {
             try {
                 deliverPendingForCurrentUser()
             } catch (e: Exception) {
-                Log.w(TAG, "Не удалось доставить отложенные после показа", e)
+                Timber.tag(TAG).w(e, "Не удалось доставить отложенные после показа")
             }
         }
     }
@@ -214,10 +213,10 @@ class HabitTrackerFirebaseMessagingService : FirebaseMessagingService() {
                 setShowBadge(true)
             }
             
-            val notificationManager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+            val notificationManager = getSystemService(NOTIFICATION_SERVICE) as NotificationManager
             notificationManager.createNotificationChannel(channel)
             
-            Log.d(TAG, "Канал уведомлений создан: $CHANNEL_ID")
+            Timber.tag(TAG).d("Канал уведомлений создан: $CHANNEL_ID")
         }
     }
 
@@ -277,7 +276,7 @@ class HabitTrackerFirebaseMessagingService : FirebaseMessagingService() {
         
         notificationManager.notify(notificationId, notificationBuilder.build())
         
-        Log.d(TAG, "Уведомление показано: $title")
+        Timber.tag(TAG).d("Уведомление показано: $title")
     }
 
     private suspend fun savePendingNotification(
@@ -318,13 +317,13 @@ class HabitTrackerFirebaseMessagingService : FirebaseMessagingService() {
 
     private suspend fun deliverPendingForCurrentUser() {
         val currentUserId = try { authRepository.getCurrentUserId() } catch (e: Exception) {
-            Log.w(TAG, "authRepository.getCurrentUserId() failed in deliverPendingForCurrentUser", e)
+            Timber.tag(TAG).w(e, "authRepository.getCurrentUserId() failed in deliverPendingForCurrentUser")
             null
         } ?: return
         pendingDao.deleteExpired(System.currentTimeMillis())
         val items = pendingDao.getAllForUser(currentUserId)
         if (items.isEmpty()) return
-        Log.d(TAG, "Доставка отложенных уведомлений: count=${items.size} для user=$currentUserId")
+        Timber.tag(TAG).d("Доставка отложенных уведомлений: count=${items.size} для user=$currentUserId")
         val mapType = object : TypeToken<Map<String, String>>() {}.type
         items.forEach { item ->
             val map: Map<String, String> = runCatching {
@@ -394,7 +393,7 @@ class HabitTrackerFirebaseMessagingService : FirebaseMessagingService() {
 
         val dbgNavigateTo = intent.getStringExtra("navigate_to")
         val dbgHabitId = intent.getStringExtra("habit_id")
-        Log.d(TAG, "[push-nav] Built intent navigate_to=${dbgNavigateTo} habit_id=${dbgHabitId}")
+        Timber.tag(TAG).d("[push-nav] Built intent navigate_to=${dbgNavigateTo} habit_id=${dbgHabitId}")
         return intent
     }
     
@@ -451,7 +450,7 @@ class HabitTrackerFirebaseMessagingService : FirebaseMessagingService() {
             else -> return
         }
 
-        Log.d(TAG, "Push-уведомление получено: type=$type, entityId=$entityId (синхронизация через Firestore)")
+        Timber.tag(TAG).d("Push-уведомление получено: type=$type, entityId=$entityId (синхронизация через Firestore)")
         
         // Сохраняем уведомление в базу данных
         if (notificationType.startsWith("challenge_")) {
@@ -485,9 +484,9 @@ class HabitTrackerFirebaseMessagingService : FirebaseMessagingService() {
                     createdAt = System.currentTimeMillis()
                 )
                 groupHabitNotificationDao.insertNotification(notification)
-                Log.d(TAG, "Уведомление о челлендже сохранено в базу: $type")
+                Timber.tag(TAG).d("Уведомление о челлендже сохранено в базу: $type")
             } catch (e: Exception) {
-                Log.e(TAG, "Ошибка сохранения уведомления о челлендже", e)
+                Timber.tag(TAG).e(e, "Ошибка сохранения уведомления о челлендже")
             }
         }
     }

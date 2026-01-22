@@ -675,7 +675,7 @@
     <string name="error_accept_invitation">Error accepting invitation</string>
     <string name="success_invitation_declined">Invitation declined</string>
     <string name="error_decline_invitation">Error declining invitation</string>
-    <string name="error_update_habit">Error updating habit</string>
+    <string name="error_update_habit">Error updating habit: %1$s</string>
 
     <!-- Dialogs -->
     <string name="enter_value_title">Enter Amount</string>

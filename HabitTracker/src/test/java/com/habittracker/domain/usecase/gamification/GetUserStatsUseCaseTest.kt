@@ -21,8 +21,8 @@ import kotlinx.datetime.LocalDateTime
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.atStartOfDayIn
 import kotlinx.datetime.plus
-import kotlinx.datetime.todayIn
 import kotlinx.datetime.toLocalDateTime
+import kotlinx.datetime.todayIn
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
 import org.junit.Test
@@ -100,7 +100,7 @@ class GetUserStatsUseCaseTest {
                 override suspend fun insertUser(user: User) {}
                 override suspend fun updateUser(user: User) {}
                 override suspend fun deleteUser(userId: String) {}
-                override suspend fun getUserById(userId: String): User? = User(id = userId, name = "Test", level = 2, points = 150)
+                override suspend fun getUserById(userId: String): User = User(id = userId, name = "Test", level = 2, points = 150)
                 override suspend fun getUserByEmail(email: String): User? = null
                 override fun getAllUsers(): Flow<List<User>> = flowOf(emptyList())
                 override suspend fun searchUsersByName(query: String): List<User> = emptyList()
@@ -139,6 +139,10 @@ class GetUserStatsUseCaseTest {
                 override fun getEntriesForHabit(habitId: String): Flow<List<HabitEntry>> = flowOf(entries.filter { it.habitId == habitId })
                 override fun getEntriesForUser(userId: String): Flow<List<HabitEntry>> = flowOf(entries)
                 override fun getEntriesForUserAndHabit(userId: String, habitId: String): Flow<List<HabitEntry>> = flowOf(entries.filter { it.userId == userId && it.habitId == habitId })
+                override suspend fun getEntriesForUserAndHabitOnce(userId: String, habitId: String): List<HabitEntry> =
+                    entries.filter { it.userId == userId && it.habitId == habitId }
+
+                override suspend fun deleteEntriesForUserAndHabit(userId: String, habitId: String) {}
                 override suspend fun getEntriesForUserAndPeriod(habitId: String, userId: String, startDate: LocalDate, endDate: LocalDate): List<HabitEntry> = entries
                 override suspend fun getEntriesWithUsersForHabitAndDate(habitId: String, date: LocalDate) = emptyList<com.habittracker.domain.model.HabitEntryWithUser>()
                 override suspend fun getCompletionRateForHabit(habitId: String, userId: String, startDate: LocalDate, endDate: LocalDate): Float = 0f

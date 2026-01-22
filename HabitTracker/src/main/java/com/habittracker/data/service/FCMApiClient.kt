@@ -1,16 +1,15 @@
 package com.habittracker.data.service
 
-import android.util.Log
 import com.google.auth.oauth2.GoogleCredentials
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.ExperimentalSerializationApi
-import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
+import timber.log.Timber
 import java.io.ByteArrayInputStream
 import java.nio.charset.StandardCharsets
 import java.util.concurrent.TimeUnit
@@ -35,7 +34,6 @@ class FCMApiClient @Inject constructor() {
         private const val FCM_URL = "https://fcm.googleapis.com/v1/projects/habitttracker-505b6/messages:send"
         private const val FCM_SCOPE = "https://www.googleapis.com/auth/firebase.messaging"
         private const val DEFAULT_TTL = "3600s" // 1 час на доставку
-        private const val CHANNEL_ID = "habit_tracker_notifications"
     }
 
     private fun maskToken(token: String?): String {
@@ -87,7 +85,7 @@ class FCMApiClient @Inject constructor() {
             credentials.refreshIfExpired()
             credentials.accessToken.tokenValue
         } catch (e: Exception) {
-            Log.e(TAG, "Ошибка получения access token", e)
+            Timber.tag(TAG).e(e, "Ошибка получения access token")
             throw e
         }
     }
@@ -131,22 +129,22 @@ class FCMApiClient @Inject constructor() {
                 .post(requestBody)
                 .build()
 
-            Log.d(TAG, "Отправка FCM HTTP v1 сообщения (payloadSize=${requestBody.contentLength()} bytes, to=${maskToken(fcmToken)})")
+            Timber.tag(TAG).d("Отправка FCM HTTP v1 сообщения (payloadSize=${requestBody.contentLength()} bytes, to=${maskToken(fcmToken)})")
 
             val response = httpClient.newCall(request).execute()
             val responseBody = response.body?.string() ?: ""
 
-            Log.d(TAG, "FCM HTTP v1 ответ: ${response.code}")
+            Timber.tag(TAG).d("FCM HTTP v1 ответ: ${response.code}")
 
             if (response.isSuccessful) {
-                Log.d(TAG, "✅ Push-уведомление успешно отправлено")
+                Timber.tag(TAG).d("✅ Push-уведомление успешно отправлено")
                 Result.success(Unit)
             } else {
-                Log.w(TAG, "❌ Ошибка FCM HTTP v1: ${response.code}")
+                Timber.tag(TAG).w("❌ Ошибка FCM HTTP v1: ${response.code}")
                 
                 // Проверяем, является ли ошибка UNREGISTERED
                 if (responseBody.contains("UNREGISTERED")) {
-                    Log.w(TAG, "🔄 Токен UNREGISTERED, требуется обновление токена на устройстве получателя")
+                    Timber.tag(TAG).w("🔄 Токен UNREGISTERED, требуется обновление токена на устройстве получателя")
                     // Возвращаем специальную ошибку для обработки
                     Result.failure(UnregisteredTokenException("FCM token is unregistered: ${response.code}"))
                 } else {
@@ -154,7 +152,7 @@ class FCMApiClient @Inject constructor() {
                 }
             }
         } catch (e: Exception) {
-            Log.e(TAG, "❌ Критическая ошибка FCM HTTP v1", e)
+            Timber.tag(TAG).e(e, "❌ Критическая ошибка FCM HTTP v1")
             Result.failure(e)
         }
     }
@@ -210,14 +208,14 @@ class FCMApiClient @Inject constructor() {
 
                     if (response.isSuccessful) {
                         results.add(SingleResult(token, true, null))
-                        Log.d(TAG, "✅ Отправлено на токен: ${token.take(20)}...")
+                        Timber.tag(TAG).d("✅ Отправлено на токен: ${token.take(20)}...")
                     } else {
                         results.add(SingleResult(token, false, "HTTP ${response.code}: $responseBody"))
-                        Log.w(TAG, "❌ Ошибка для токена ${token.take(20)}...: ${response.code} - $responseBody")
+                        Timber.tag(TAG).w("❌ Ошибка для токена ${token.take(20)}...: ${response.code} - $responseBody")
                     }
                 } catch (e: Exception) {
                     results.add(SingleResult(token, false, e.message ?: "Unknown error"))
-                    Log.e(TAG, "❌ Исключение для токена ${token.take(20)}...", e)
+                    Timber.tag(TAG).e(e, "❌ Исключение для токена ${token.take(20)}...")
                 }
             }
 
@@ -231,62 +229,10 @@ class FCMApiClient @Inject constructor() {
                 results = results
             )
 
-            Log.d(TAG, "📊 Батч результат: $successCount успешных, $failureCount ошибок из ${results.size}")
+            Timber.tag(TAG).d("📊 Батч результат: $successCount успешных, $failureCount ошибок из ${results.size}")
             Result.success(batchResult)
         } catch (e: Exception) {
-            Log.e(TAG, "❌ Критическая ошибка батч отправки", e)
-            Result.failure(e)
-        }
-    }
-
-    /**
-     * Отправляет уведомление на топик
-     */
-    suspend fun sendTopicNotification(
-        topic: String,
-        title: String,
-        body: String,
-        data: Map<String, String> = emptyMap()
-    ): Result<Unit> = withContext(Dispatchers.IO) {
-        try {
-            val accessToken = getAccessToken()
-
-            val fcmMessage = FCMV1Message(
-                message = FCMV1MessageData(
-                    token = "/topics/$topic",
-                    notification = null,
-                    data = data + mapOf(
-                        "title" to title,
-                        "body" to body
-                    ),
-                    android = AndroidConfig(
-                        priority = "high"
-                    )
-                )
-            )
-
-            val requestBody = json.encodeToString(fcmMessage)
-                .toRequestBody("application/json".toMediaType())
-
-            val request = Request.Builder()
-                .url(FCM_URL)
-                .addHeader("Authorization", "Bearer $accessToken")
-                .addHeader("Content-Type", "application/json")
-                .post(requestBody)
-                .build()
-
-            val response = httpClient.newCall(request).execute()
-            
-            if (response.isSuccessful) {
-                Log.d(TAG, "Топик уведомление отправлено: $topic")
-                Result.success(Unit)
-            } else {
-                val errorBody = response.body?.string()
-                Log.e(TAG, "Ошибка топик уведомления: ${response.code} - $errorBody")
-                Result.failure(Exception("Topic notification error: ${response.code}"))
-            }
-        } catch (e: Exception) {
-            Log.e(TAG, "Исключение при отправке топик уведомления", e)
+            Timber.tag(TAG).e(e, "❌ Критическая ошибка батч отправки")
             Result.failure(e)
         }
     }

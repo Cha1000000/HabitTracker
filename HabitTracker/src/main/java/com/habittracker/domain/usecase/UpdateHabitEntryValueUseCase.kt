@@ -1,6 +1,5 @@
 package com.habittracker.domain.usecase
 
-import android.util.Log
 import com.habittracker.data.sync.SyncManager
 import com.habittracker.data.sync.SyncWorkScheduler
 import com.habittracker.domain.model.HabitEntry
@@ -20,6 +19,7 @@ import kotlinx.datetime.LocalDate
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toLocalDateTime
 import javax.inject.Inject
+import timber.log.Timber
 
 /**
  * Use case для обновления значения выполнения привычки (для измеримых привычек).
@@ -34,7 +34,7 @@ class UpdateHabitEntryValueUseCase @Inject constructor(
     private val updateChallengeProgressUseCase: UpdateChallengeProgressUseCase,
     private val syncManager: SyncManager,
     private val syncWorkScheduler: SyncWorkScheduler,
-    private val coroutineScope: CoroutineScope
+    coroutineScope: CoroutineScope
 ) {
     private val backgroundTasksScope = coroutineScope
 
@@ -99,12 +99,12 @@ class UpdateHabitEntryValueUseCase @Inject constructor(
         try {
             syncWorkScheduler.scheduleOneTimeSync()
         } catch (e: Exception) {
-            Log.w("UpdateHabitValue", "scheduleOneTimeSync failed", e)
+            Timber.tag("UpdateHabitValue").w(e, "scheduleOneTimeSync failed")
         }
 
         backgroundTasksScope.launch {
             try { syncManager.drainPending() } catch (e: Exception) {
-                Log.d("UpdateHabitValue", "drainPending failed", e)
+                Timber.tag("UpdateHabitValue").d(e, "drainPending failed")
             }
         }
 
@@ -131,7 +131,7 @@ class UpdateHabitEntryValueUseCase @Inject constructor(
                         }
                     }
                 } catch (e: Exception) {
-                    Log.w("UpdateHabitValue", "Streak calc failed", e)
+                    Timber.tag("UpdateHabitValue").w(e, "Streak calc failed")
                 }
 
                 sendGroupHabitPushNotificationUseCase(habitId, userId)
@@ -145,14 +145,14 @@ class UpdateHabitEntryValueUseCase @Inject constructor(
             try {
                 updateChallengeProgressUseCase(habitId, userId)
             } catch (e: Exception) {
-                Log.w("UpdateHabitValue", "updateChallengeProgress failed", e)
+                Timber.tag("UpdateHabitValue").w(e, "updateChallengeProgress failed")
             }
 
             // Проверяем достижения
             try {
                 checkAchievementsUseCase(userId)
             } catch (e: Exception) {
-                Log.w("UpdateHabitValue", "checkAchievements failed", e)
+                Timber.tag("UpdateHabitValue").w(e, "checkAchievements failed")
             }
         }
     }

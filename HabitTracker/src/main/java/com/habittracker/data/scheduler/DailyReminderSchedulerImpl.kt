@@ -5,7 +5,6 @@ import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
 import android.os.Build
-import android.util.Log
 import com.habittracker.data.receiver.DailyReminderReceiver
 import com.habittracker.domain.scheduler.DailyReminderScheduler
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -13,6 +12,7 @@ import kotlinx.datetime.LocalTime
 import java.util.Calendar
 import javax.inject.Inject
 import javax.inject.Singleton
+import timber.log.Timber
 
 /**
  * Реализация планировщика ежедневных напоминаний на базе AlarmManager.
@@ -35,7 +35,7 @@ class DailyReminderSchedulerImpl @Inject constructor(
         
         val triggerTimeMillis = calculateNextTriggerTime(time)
         
-        Log.d(TAG, "Scheduling daily reminder at $time (trigger in ${(triggerTimeMillis - System.currentTimeMillis()) / 1000 / 60} min)")
+        Timber.tag(TAG).d("Scheduling daily reminder at $time (trigger in ${(triggerTimeMillis - System.currentTimeMillis()) / 1000 / 60} min)")
 
         val pendingIntent = createPendingIntent()
 
@@ -54,7 +54,7 @@ class DailyReminderSchedulerImpl @Inject constructor(
             )
         }
         
-        Log.d(TAG, "Daily reminder scheduled successfully")
+        Timber.tag(TAG).d("Daily reminder scheduled successfully")
     }
 
     override fun scheduleIfNotSet(time: LocalTime) {
@@ -70,7 +70,7 @@ class DailyReminderSchedulerImpl @Inject constructor(
         )
         
         if (existingIntent != null) {
-            Log.d(TAG, "Daily reminder already scheduled, skipping")
+            Timber.tag(TAG).d("Daily reminder already scheduled, skipping")
             return
         }
         
@@ -78,7 +78,7 @@ class DailyReminderSchedulerImpl @Inject constructor(
     }
 
     override fun cancel() {
-        Log.d(TAG, "Cancelling daily reminder")
+        Timber.tag(TAG).d("Cancelling daily reminder")
         val pendingIntent = createPendingIntent()
         alarmManager.cancel(pendingIntent)
         pendingIntent.cancel()

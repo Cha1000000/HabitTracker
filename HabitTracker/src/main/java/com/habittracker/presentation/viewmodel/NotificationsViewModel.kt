@@ -1,6 +1,5 @@
 package com.habittracker.presentation.viewmodel
 
-import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.habittracker.R
@@ -23,6 +22,7 @@ import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import javax.inject.Inject
+import timber.log.Timber
 
 /**
  * ViewModel для экрана уведомлений групповых привычек
@@ -70,18 +70,18 @@ class NotificationsViewModel @Inject constructor(
      * Загружает уведомления из базы данных (синхронизированные через Firestore)
      */
     private fun loadStoredNotifications() {
-        Log.d(TAG, "loadStoredNotifications called")
+        Timber.tag(TAG).d("loadStoredNotifications called")
         viewModelScope.launch {
             try {
                 val currentUserId = authRepository.getCurrentUserId()
                     ?: throw Exception("Пользователь не авторизован")
                 
-                Log.d(TAG, "Loading notifications for user: $currentUserId")
+                Timber.tag(TAG).d("Loading notifications for user: $currentUserId")
                 
                 // Наблюдаем за уведомлениями из базы данных
                 groupHabitNotificationRepository.getNotificationsForUser(currentUserId)
                     .collect { notifications ->
-                        Log.d(TAG, "Received ${notifications.size} notifications from DB")
+                        Timber.tag(TAG).d("Received ${notifications.size} notifications from DB")
                         val unreadCount = notifications.count { !it.isRead }
                         
                         // Обновляем состояние
@@ -94,7 +94,7 @@ class NotificationsViewModel @Inject constructor(
                         }
                     }
             } catch (e: Exception) {
-                Log.e(TAG, "Error loading notifications", e)
+                Timber.tag(TAG).e(e, "Error loading notifications")
                 _uiState.update { it.copy(isLoading = false, errorResId = R.string.error_loading_notifications) }
             }
         }
@@ -111,7 +111,7 @@ class NotificationsViewModel @Inject constructor(
                 getHabitInvitationsUseCase.getPendingInvitationsCount(currentUserId)
                     .collect { count -> pendingInvitationsCount.value = count }
             } catch (e: Exception) {
-                Log.d("NotificationsVM", "observeInvitationsCount failed (non-fatal): ${e.message}")
+                Timber.tag("NotificationsVM").d("observeInvitationsCount failed (non-fatal): ${e.message}")
             }
         }
     }
@@ -209,9 +209,9 @@ class NotificationsViewModel @Inject constructor(
                     )
                 }
                 
-                Log.d(TAG, "All read notifications deleted: ${readNotifications.size}")
+                Timber.tag(TAG).d("All read notifications deleted: ${readNotifications.size}")
             } catch (e: Exception) {
-                Log.e(TAG, "Error deleting read notifications", e)
+                Timber.tag(TAG).e(e, "Error deleting read notifications")
                 _uiState.update { it.copy(errorResId = R.string.error_delete_notifications) }
             }
         }
@@ -261,9 +261,9 @@ class NotificationsViewModel @Inject constructor(
                     )
                 }
                 
-                Log.d(TAG, "All notifications marked as read")
+                Timber.tag(TAG).d("All notifications marked as read")
             } catch (e: Exception) {
-                Log.e(TAG, "Error marking all notifications as read", e)
+                Timber.tag(TAG).e(e, "Error marking all notifications as read")
                 _uiState.update { it.copy(errorResId = R.string.error_mark_all_notifications) }
             }
         }
@@ -314,7 +314,7 @@ class NotificationsViewModel @Inject constructor(
      * Обновляет уведомления (pull-to-refresh)
      */
     fun refreshNotifications() {
-        Log.d(TAG, "refreshNotifications called")
+        Timber.tag(TAG).d("refreshNotifications called")
         // Уведомления автоматически обновляются через Firestore listener
         loadInvitations()
     }
@@ -340,9 +340,9 @@ class NotificationsViewModel @Inject constructor(
         viewModelScope.launch {
             try {
                 groupHabitNotificationRepository.markAsRead(notificationId)
-                Log.d(TAG, "Notification marked as read: $notificationId")
+                Timber.tag(TAG).d("Notification marked as read: $notificationId")
             } catch (e: Exception) {
-                Log.e(TAG, "Error marking notification as read", e)
+                Timber.tag(TAG).e(e, "Error marking notification as read")
             }
         }
     }
@@ -354,9 +354,9 @@ class NotificationsViewModel @Inject constructor(
         viewModelScope.launch {
             try {
                 groupHabitNotificationRepository.deleteNotification(notificationId)
-                Log.d(TAG, "Notification deleted: $notificationId")
+                Timber.tag(TAG).d("Notification deleted: $notificationId")
             } catch (e: Exception) {
-                Log.e(TAG, "Error deleting notification", e)
+                Timber.tag(TAG).e(e, "Error deleting notification")
                 _uiState.update { it.copy(errorResId = R.string.error_delete_notification) }
             }
         }
@@ -371,9 +371,9 @@ class NotificationsViewModel @Inject constructor(
                 val currentUserId = authRepository.getCurrentUserId() ?: return@launch
                 val oneDayAgo = System.currentTimeMillis() - (24 * 60 * 60 * 1000)
                 groupHabitNotificationRepository.deleteReadNotificationsOlderThan(currentUserId, oneDayAgo)
-                Log.d(TAG, "Old notifications cleaned up")
+                Timber.tag(TAG).d("Old notifications cleaned up")
             } catch (e: Exception) {
-                Log.e(TAG, "Error cleaning up old notifications", e)
+                Timber.tag(TAG).e(e, "Error cleaning up old notifications")
             }
         }
     }

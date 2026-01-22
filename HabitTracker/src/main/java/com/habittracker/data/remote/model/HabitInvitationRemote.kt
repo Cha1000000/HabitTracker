@@ -1,12 +1,12 @@
 package com.habittracker.data.remote.model
 
-import android.util.Log
 import com.habittracker.domain.model.HabitInvitation
 import com.habittracker.domain.model.HabitInvitationStatus
 import kotlinx.datetime.Instant
 import kotlinx.datetime.LocalDateTime
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toLocalDateTime
+import timber.log.Timber
 
 // Firestore DTO with no-arg constructor (all fields nullable with defaults)
 // Не логируем чувствительные данные, валидация обязательна на маппере
@@ -81,7 +81,7 @@ data class HabitInvitationRemote(
                 runCatching { Instant.fromEpochMilliseconds(value.toLong()).toLocalDateTime(TimeZone.currentSystemDefault()) }.getOrNull()
             }
             else -> {
-                Log.w("HabitInvitationRemote", "Unexpected type for $fieldName: ${value?.javaClass?.simpleName}")
+                Timber.tag("HabitInvitationRemote").w("Unexpected type for $fieldName: ${value?.javaClass?.simpleName}")
                 null
             }
         }

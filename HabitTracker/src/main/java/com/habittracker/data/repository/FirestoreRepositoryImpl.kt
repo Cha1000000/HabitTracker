@@ -1,6 +1,5 @@
 package com.habittracker.data.repository
 
-import android.util.Log
 import com.google.firebase.firestore.DocumentSnapshot
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.Query
@@ -25,6 +24,7 @@ import kotlinx.datetime.toLocalDateTime
 import javax.inject.Inject
 import javax.inject.Singleton
 import kotlin.coroutines.resume
+import timber.log.Timber
 
 /**
  * Реализация FirestoreRepository для работы с Firebase Firestore.
@@ -118,7 +118,7 @@ class FirestoreRepositoryImpl @Inject constructor(
                 try {
                     parse(it)
                 } catch (_: Exception) {
-                    Log.w(TAG, "Failed to parse createdAt: $it")
+                    Timber.tag(TAG).w("Failed to parse createdAt: $it")
                     Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault()).date
                 }
             } ?: Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault()).date
@@ -127,7 +127,7 @@ class FirestoreRepositoryImpl @Inject constructor(
                 try {
                     parse(it)
                 } catch (_: Exception) {
-                    Log.w(TAG, "Failed to parse updatedAt: $it")
+                    Timber.tag(TAG).w("Failed to parse updatedAt: $it")
                     createdAt
                 }
             } ?: createdAt
@@ -137,7 +137,7 @@ class FirestoreRepositoryImpl @Inject constructor(
                 try {
                     parse(it)
                 } catch (_: Exception) {
-                    Log.w(TAG, "Failed to parse startDate: $it")
+                    Timber.tag(TAG).w("Failed to parse startDate: $it")
                     null
                 }
             }
@@ -146,7 +146,7 @@ class FirestoreRepositoryImpl @Inject constructor(
                 try {
                     parse(it)
                 } catch (_: Exception) {
-                    Log.w(TAG, "Failed to parse endDate: $it")
+                    Timber.tag(TAG).w("Failed to parse endDate: $it")
                     null
                 }
             }
@@ -190,13 +190,13 @@ class FirestoreRepositoryImpl @Inject constructor(
                 goalType = goalType
             )
         } catch (e: Exception) {
-            Log.e(TAG, "❌ [parseHabitSafely] Error parsing habit: ${doc.id}", e)
+            Timber.tag(TAG).e(e, "❌ [parseHabitSafely] Error parsing habit: ${doc.id}")
             null
         }
     }
 
     override fun getUserHabits(userId: String): Flow<List<Habit>> = callbackFlow {
-        Log.d(TAG, "🔄 [getUserHabits] Starting listener for user: $userId")
+        Timber.tag(TAG).d("🔄 [getUserHabits] Starting listener for user: $userId")
         
         // Важно: Firestore не поддерживает простой OR по полям (createdBy OR participants contains).
         // Берем все документы и фильтруем на клиенте. При желании можно добавить whereEqualTo("active", true),
@@ -204,14 +204,14 @@ class FirestoreRepositoryImpl @Inject constructor(
         val listener = firestore.collection(HABITS_COLLECTION)
             .addSnapshotListener { snapshot, error ->
                 if (error != null) {
-                    Log.e(TAG, "❌ [getUserHabits] Error getting habits for user: $userId", error)
-                    Log.e(TAG, "❌ [getUserHabits] Error code: ${error.code}")
-                    Log.e(TAG, "❌ [getUserHabits] Error message: ${error.message}")
+                    Timber.tag(TAG).e(error, "❌ [getUserHabits] Error getting habits for user: $userId")
+                    Timber.tag(TAG).e("❌ [getUserHabits] Error code: ${error.code}")
+                    Timber.tag(TAG).e("❌ [getUserHabits] Error message: ${error.message}")
                     // При PERMISSION_DENIED (sign out) просто игнорируем, не крашим
                     return@addSnapshotListener
                 }
 
-                Log.d(TAG, "📊 [getUserHabits] Firestore listener triggered for user: $userId, documents count: ${snapshot?.documents?.size ?: 0}")
+                Timber.tag(TAG).d("📊 [getUserHabits] Firestore listener triggered for user: $userId, documents count: ${snapshot?.documents?.size ?: 0}")
 
                 val habits = snapshot?.documents?.mapNotNull { doc ->
                     parseHabitSafely(doc)
@@ -220,15 +220,15 @@ class FirestoreRepositoryImpl @Inject constructor(
                     (habit.createdBy == userId || habit.participants.contains(userId))
                 }?.sortedByDescending { it.updatedAtMillis } ?: emptyList()
 
-                Log.d(TAG, "✅ [getUserHabits] Sending ${habits.size} habits to Flow for user: $userId")
+                Timber.tag(TAG).d("✅ [getUserHabits] Sending ${habits.size} habits to Flow for user: $userId")
                 habits.forEach { habit ->
-                    Log.d(TAG, "   📋 Habit: ${habit.title} (${habit.id}), participants: ${habit.participants}")
+                    Timber.tag(TAG).d("   📋 Habit: ${habit.title} (${habit.id}), participants: ${habit.participants}")
                 }
                 trySend(habits)
             }
 
         awaitClose { 
-            Log.d(TAG, "🔒 [getUserHabits] Closing listener for user: $userId")
+            Timber.tag(TAG).d("🔒 [getUserHabits] Closing listener for user: $userId")
             listener.remove() 
         }
     }
@@ -236,7 +236,7 @@ class FirestoreRepositoryImpl @Inject constructor(
 
     override suspend fun getHabitById(habitId: String): Habit? {
         return try {
-            Log.d(TAG, "Getting habit by ID: $habitId")
+            Timber.tag(TAG).d("Getting habit by ID: $habitId")
             val document = firestore.collection(HABITS_COLLECTION)
                 .document(habitId)
                 .get()
@@ -246,18 +246,18 @@ class FirestoreRepositoryImpl @Inject constructor(
                 // Используем безопасный парсер, чтобы корректно обработать возможные различия форматов
                 parseHabitSafely(document)
             } else {
-                Log.d(TAG, "Habit not found: $habitId")
+                Timber.tag(TAG).d("Habit not found: $habitId")
                 null
             }
         } catch (e: Exception) {
-            Log.e(TAG, "Error getting habit: $habitId", e)
+            Timber.tag(TAG).e(e, "Error getting habit: $habitId")
             throw e
         }
     }
 
 
     override fun getHabitEntries(habitId: String, userId: String): Flow<List<HabitEntry>> = callbackFlow {
-        Log.d(TAG, "Getting habit entries for habit: $habitId, user: $userId")
+        Timber.tag(TAG).d("Getting habit entries for habit: $habitId, user: $userId")
         
         val listener = firestore.collection(HABIT_ENTRIES_COLLECTION)
             .whereEqualTo("habitId", habitId)
@@ -265,7 +265,7 @@ class FirestoreRepositoryImpl @Inject constructor(
             .orderBy("date", Query.Direction.DESCENDING)
             .addSnapshotListener { snapshot, error ->
                 if (error != null) {
-                    Log.e(TAG, "Error getting habit entries", error)
+                    Timber.tag(TAG).e(error, "Error getting habit entries")
                     // При PERMISSION_DENIED (sign out) просто игнорируем
                     return@addSnapshotListener
                 }
@@ -274,12 +274,12 @@ class FirestoreRepositoryImpl @Inject constructor(
                     try {
                         doc.toObject(FirebaseHabitEntry::class.java)?.toDomain()
                     } catch (e: Exception) {
-                        Log.e(TAG, "Error parsing habit entry: ${doc.id}", e)
+                        Timber.tag(TAG).e(e, "Error parsing habit entry: ${doc.id}")
                         null
                     }
                 } ?: emptyList()
 
-                Log.d(TAG, "Loaded ${entries.size} habit entries from Firestore")
+                Timber.tag(TAG).d("Loaded ${entries.size} habit entries from Firestore")
                 trySend(entries)
             }
 
@@ -288,7 +288,7 @@ class FirestoreRepositoryImpl @Inject constructor(
 
     override suspend fun getHabitEntry(habitId: String, userId: String, date: LocalDate): HabitEntry? {
         return try {
-            Log.d(TAG, "Getting habit entry for: $habitId, $userId, $date")
+            Timber.tag(TAG).d("Getting habit entry for: $habitId, $userId, $date")
             val entryId = "${habitId}_${userId}_$date"
             val document = firestore.collection(HABIT_ENTRIES_COLLECTION)
                 .document(entryId)
@@ -298,14 +298,14 @@ class FirestoreRepositoryImpl @Inject constructor(
             if (document.exists()) {
                 document.toObject(FirebaseHabitEntry::class.java)?.toDomain()
             } else {
-                Log.d(TAG, "Habit entry not found: $entryId")
+                Timber.tag(TAG).d("Habit entry not found: $entryId")
                 null
             }
         } catch (e: CancellationException) {
-            Log.d(TAG, "getHabitEntry cancelled: habit=$habitId user=$userId date=$date")
+            Timber.tag(TAG).d("getHabitEntry cancelled: habit=$habitId user=$userId date=$date")
             throw e
         } catch (e: Exception) {
-            Log.e(TAG, "Error getting habit entry", e)
+            Timber.tag(TAG).e(e, "Error getting habit entry")
             throw e
         }
     }
@@ -313,7 +313,7 @@ class FirestoreRepositoryImpl @Inject constructor(
     override suspend fun syncData() {
         // Базовая синхронизация - в будущем можно расширить
         // для более сложной логики конфликтов и офлайн-поддержки
-        Log.d(TAG, "Data sync completed (basic implementation)")
+        Timber.tag(TAG).d("Data sync completed (basic implementation)")
     }
 
     // region Participant settings
@@ -355,10 +355,10 @@ class FirestoreRepositoryImpl @Inject constructor(
                 updatedAt = updatedAt
             )
         } catch (_: CancellationException) {
-            Log.d(TAG, "getParticipantSettings cancelled: habit=$habitId user=$userId")
+            Timber.tag(TAG).d("getParticipantSettings cancelled: habit=$habitId user=$userId")
             null
         } catch (e: Exception) {
-            Log.e(TAG, "Error getParticipantSettings: habit=$habitId user=$userId", e)
+            Timber.tag(TAG).e(e, "Error getParticipantSettings: habit=$habitId user=$userId")
             null
         }
     }
@@ -373,7 +373,7 @@ class FirestoreRepositoryImpl @Inject constructor(
 
             val listener = query.addSnapshotListener { snapshot, error ->
                 if (error != null) {
-                    Log.e(TAG, "Error getting public habits", error)
+                    Timber.tag(TAG).e(error, "Error getting public habits")
                     trySend(emptyList())
                     return@addSnapshotListener
                 }
@@ -390,7 +390,7 @@ class FirestoreRepositoryImpl @Inject constructor(
                         }
                     }
                     
-                    Log.d(TAG, "Got ${habits.size} public habits from Firestore")
+                    Timber.tag(TAG).d("Got ${habits.size} public habits from Firestore")
                     trySend(habits)
                 } else {
                     trySend(emptyList())
@@ -399,13 +399,13 @@ class FirestoreRepositoryImpl @Inject constructor(
             
             awaitClose { listener.remove() }
         } catch (e: Exception) {
-            Log.e(TAG, "Error in getAllPublicHabits", e)
+            Timber.tag(TAG).e(e, "Error in getAllPublicHabits")
             trySend(emptyList())
         }
     }
     
     override suspend fun getHabitByInviteCode(inviteCode: String): Habit? = suspendCancellableCoroutine { continuation ->
-        Log.d(TAG, "🔍 [getHabitByInviteCode] Searching for habit with invite code: $inviteCode")
+        Timber.tag(TAG).d("🔍 [getHabitByInviteCode] Searching for habit with invite code: $inviteCode")
         
         firestore.collection(HABITS_COLLECTION)
             .whereEqualTo("inviteCode", inviteCode)
@@ -417,15 +417,15 @@ class FirestoreRepositoryImpl @Inject constructor(
                 }
                 
                 if (habit != null) {
-                    Log.d(TAG, "✅ [getHabitByInviteCode] Found habit: ${habit.title} (${habit.id})")
+                    Timber.tag(TAG).d("✅ [getHabitByInviteCode] Found habit: ${habit.title} (${habit.id})")
                 } else {
-                    Log.d(TAG, "❌ [getHabitByInviteCode] No habit found with code: $inviteCode")
+                    Timber.tag(TAG).d("❌ [getHabitByInviteCode] No habit found with code: $inviteCode")
                 }
                 
                 continuation.resume(habit)
             }
             .addOnFailureListener { exception ->
-                Log.e(TAG, "❌ [getHabitByInviteCode] Error searching for habit", exception)
+                Timber.tag(TAG).e(exception, "❌ [getHabitByInviteCode] Error searching for habit")
                 continuation.resume(null)
             }
     }

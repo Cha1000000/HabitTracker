@@ -1,7 +1,6 @@
 package com.habittracker
 
 import android.app.Application
-import android.util.Log
 import androidx.hilt.work.HiltWorkerFactory
 import androidx.work.Configuration
 import com.google.firebase.appcheck.FirebaseAppCheck
@@ -61,18 +60,18 @@ class HabitTrackerApplication : Application(), Configuration.Provider {
         }
 
         if (BuildConfig.DEBUG) {
-            Log.d("HabitTrackerApp", "Application onCreate() called")
+            Timber.tag("HabitTrackerApp").d("Application onCreate() called")
         }
         
         // Touch AppCheck to ensure debug provider is installed (see FirebaseModule)
         if (BuildConfig.DEBUG) {
-            Log.d("HabitTrackerApp", "FirebaseAppCheck injected: ${::firebaseAppCheck.isInitialized}")
+            Timber.tag("HabitTrackerApp").d("FirebaseAppCheck injected: ${::firebaseAppCheck.isInitialized}")
         }
         // Initialize FCM token once on app start (safe: use case checks auth internally)
         applicationScope.launch {
             manageFCMTokenUseCase.initializeFCMToken().onFailure { e ->
                 if (BuildConfig.DEBUG) {
-                    Log.d("HabitTrackerApp", "FCM init skipped/failed: ${e.message}")
+                    Timber.tag("HabitTrackerApp").d("FCM init skipped/failed: ${e.message}")
                 }
             }
         }
@@ -83,7 +82,7 @@ class HabitTrackerApplication : Application(), Configuration.Provider {
                 achievementSeeder.seedIfNeeded()
             } catch (e: Exception) {
                 if (BuildConfig.DEBUG) {
-                    Log.d("HabitTrackerApp", "Achievement seeding failed: ${e.message}")
+                    Timber.tag("HabitTrackerApp").d("Achievement seeding failed: ${e.message}")
                 }
             }
         }
@@ -94,7 +93,7 @@ class HabitTrackerApplication : Application(), Configuration.Provider {
             syncWorkScheduler.scheduleOneTimeSync()
         } catch (e: Exception) {
             if (BuildConfig.DEBUG) {
-                Log.d("HabitTrackerApp", "Sync scheduling failed: ${e.message}")
+                Timber.tag("HabitTrackerApp").d("Sync scheduling failed: ${e.message}")
             }
         }
 
@@ -104,7 +103,7 @@ class HabitTrackerApplication : Application(), Configuration.Provider {
             challengeExpirationWorkScheduler.scheduleOneTimeNow()
         } catch (e: Exception) {
             if (BuildConfig.DEBUG) {
-                Log.d("HabitTrackerApp", "Challenge expiration scheduling failed: ${e.message}")
+                Timber.tag("HabitTrackerApp").d("Challenge expiration scheduling failed: ${e.message}")
             }
         }
     }
@@ -112,13 +111,13 @@ class HabitTrackerApplication : Application(), Configuration.Provider {
     override val workManagerConfiguration: Configuration
         get() {
             if (BuildConfig.DEBUG) {
-                Log.d("HabitTrackerApp", "workManagerConfiguration called")
-                Log.d("HabitTrackerApp", "HiltWorkerFactory initialized: ${::workerFactory.isInitialized}")
+                Timber.tag("HabitTrackerApp").d("workManagerConfiguration called")
+                Timber.tag("HabitTrackerApp").d("HiltWorkerFactory initialized: ${::workerFactory.isInitialized}")
             }
             
             return Configuration.Builder()
                 .setWorkerFactory(workerFactory)
-                .setMinimumLoggingLevel(if (BuildConfig.DEBUG) Log.DEBUG else Log.ERROR)
+                .setMinimumLoggingLevel(if (BuildConfig.DEBUG) 3 else 6)
                 .build()
         }
 }

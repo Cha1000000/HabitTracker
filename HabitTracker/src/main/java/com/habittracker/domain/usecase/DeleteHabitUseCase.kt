@@ -1,6 +1,5 @@
 package com.habittracker.domain.usecase
 
-import android.util.Log
 import com.habittracker.data.sync.SyncManager
 import com.habittracker.data.sync.SyncWorkScheduler
 import com.habittracker.domain.model.Habit
@@ -10,6 +9,7 @@ import kotlinx.datetime.Clock
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toLocalDateTime
 import javax.inject.Inject
+import timber.log.Timber
 
 /**
  * Use case для удаления привычки.
@@ -21,7 +21,6 @@ class DeleteHabitUseCase @Inject constructor(
     private val syncManager: SyncManager,
     private val syncWorkScheduler: SyncWorkScheduler,
     private val cancelHabitReminderUseCase: CancelHabitReminderUseCase,
-    private val updateHabitUseCase: UpdateHabitUseCase,
     private val sendGroupHabitPushNotificationUseCase: com.habittracker.domain.usecase.notification.SendGroupHabitPushNotificationUseCase
 ) {
     // Decision policy for GROUP habits — pure domain logic without side-effects
@@ -65,7 +64,7 @@ class DeleteHabitUseCase @Inject constructor(
 
         // На текущем устройстве больше не должно быть локальных уведомлений по этой привычке
         try { cancelHabitReminderUseCase(habitId) } catch (e: Exception) {
-            Log.w("DeleteHabitUseCase", "cancelHabitReminder failed: ${e.message}", e)
+            Timber.tag("DeleteHabitUseCase").w(e, "cancelHabitReminder failed: ${e.message}")
         }
 
         if (habit.type == HabitType.PERSONAL) {
@@ -110,17 +109,17 @@ class DeleteHabitUseCase @Inject constructor(
                 
                 if (isUserLeaving) {
                     // Отправляем уведомление оставшимся участникам о выходе пользователя
-                    Log.d("DeleteHabitUseCase", "User $userId is leaving habit ${habit.title}, sending notifications to remaining participants")
+                    Timber.tag("DeleteHabitUseCase").d("User $userId is leaving habit ${habit.title}, sending notifications to remaining participants")
                     try {
                         val allRemainingParticipants = (listOf(decision.newCreatedBy) + decision.participants).distinct()
-                        Log.d("DeleteHabitUseCase", "Remaining participants: $allRemainingParticipants")
+                        Timber.tag("DeleteHabitUseCase").d("Remaining participants: $allRemainingParticipants")
                         sendGroupHabitPushNotificationUseCase.sendParticipantLeftNotification(
                             habitId = habitId,
                             leftUserId = userId,
                             remainingParticipants = allRemainingParticipants
                         )
                     } catch (e: Exception) {
-                        Log.w("DeleteHabitUseCase", "Failed to send participant left notification: ${e.message}")
+                        Timber.tag("DeleteHabitUseCase").w("Failed to send participant left notification: ${e.message}")
                     }
                 }
             }
@@ -129,10 +128,10 @@ class DeleteHabitUseCase @Inject constructor(
 
     private suspend fun kickSync() {
         try { syncWorkScheduler.scheduleOneTimeSync() } catch (e: Exception) {
-            Log.w("DeleteHabitUseCase", "scheduleOneTimeSync failed: ${e.message}", e)
+            Timber.tag("DeleteHabitUseCase").w(e, "scheduleOneTimeSync failed: ${e.message}")
         }
         try { syncManager.drainPending() } catch (e: Exception) {
-            Log.w("DeleteHabitUseCase", "drainPending failed: ${e.message}", e)
+            Timber.tag("DeleteHabitUseCase").w(e, "drainPending failed: ${e.message}")
         }
     }
 }

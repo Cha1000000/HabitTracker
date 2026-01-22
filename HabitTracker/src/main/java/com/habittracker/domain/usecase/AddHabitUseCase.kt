@@ -3,10 +3,10 @@ package com.habittracker.domain.usecase
 import com.habittracker.domain.model.Habit
 import com.habittracker.domain.model.HabitType
 import com.habittracker.domain.model.gamification.GamificationEvent
-import com.habittracker.domain.repository.FirestoreRepository
 import com.habittracker.domain.repository.HabitRepository
 import com.habittracker.domain.usecase.gamification.CheckAchievementsUseCase
 import com.habittracker.domain.usecase.gamification.UpdateUserPointsUseCase
+import timber.log.Timber
 import javax.inject.Inject
 
 /**
@@ -24,18 +24,18 @@ class AddHabitUseCase @Inject constructor(
      * @param habit Привычка для добавления.
      */
     suspend operator fun invoke(habit: Habit) {
-        android.util.Log.d("AddHabitUseCase", "📅 Saving habit '${habit.title}' with startDate=${habit.startDate}, endDate=${habit.endDate}")
+        Timber.tag("AddHabitUseCase").d("📅 Saving habit '${habit.title}' with startDate=${habit.startDate}, endDate=${habit.endDate}")
         
         // Сохраняем через репозиторий (Local + Outbox)
         habitRepository.insertHabit(habit)
-        android.util.Log.d("AddHabitUseCase", "✅ Habit saved successfully (Local + Outbox)")
+        Timber.tag("AddHabitUseCase").d("✅ Habit saved successfully (Local + Outbox)")
 
         // Начисление очков за создание групповой привычки
         if (habit.type == HabitType.GROUP) {
             try {
                 updateUserPointsUseCase(habit.createdBy, GamificationEvent.GroupHabitCreated)
                 checkAchievementsUseCase(habit.createdBy)
-            } catch (e: Exception) {
+            } catch (_: Exception) {
                 // Ignore gamification errors
             }
         }

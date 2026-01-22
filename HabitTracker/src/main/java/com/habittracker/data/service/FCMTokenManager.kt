@@ -1,6 +1,5 @@
 package com.habittracker.data.service
 
-import android.util.Log
 import com.google.firebase.messaging.FirebaseMessaging
 import com.habittracker.BuildConfig
 import com.habittracker.domain.repository.AuthRepository
@@ -13,6 +12,7 @@ import kotlinx.coroutines.withContext
 import java.util.concurrent.atomic.AtomicBoolean
 import javax.inject.Inject
 import javax.inject.Singleton
+import timber.log.Timber
 
 /**
  * Менеджер для управления FCM токенами
@@ -37,7 +37,7 @@ class FCMTokenManager @Inject constructor(
     suspend fun refreshToken(forceRefresh: Boolean = false): Result<String> {
         if (!isRefreshing.compareAndSet(false, true)) {
             // Already refreshing; avoid duplicate work
-            Log.d(TAG, "Refresh already in progress, skipping")
+            Timber.tag(TAG).d("Refresh already in progress, skipping")
             return Result.failure(IllegalStateException("FCM refresh in progress"))
         }
         return try {
@@ -45,7 +45,7 @@ class FCMTokenManager @Inject constructor(
                 ?: return Result.failure(Exception("Пользователь не авторизован"))
 
             if (BuildConfig.DEBUG) {
-                Log.d(TAG, "[fcm] Start token refresh for user=$currentUserId")
+                Timber.tag(TAG).d("[fcm] Start token refresh for user=$currentUserId")
             }
 
             var result: Result<String>? = null
@@ -59,22 +59,22 @@ class FCMTokenManager @Inject constructor(
                         try {
                             FirebaseMessaging.getInstance().deleteToken().await()
                             if (BuildConfig.DEBUG) {
-                                Log.d(TAG, "[fcm] Deleted old token to force refresh")
+                                Timber.tag(TAG).d("[fcm] Deleted old token to force refresh")
                             }
                         } catch (e: Exception) {
-                            Log.w(TAG, "[fcm] Failed to delete old token: ${e.message}")
+                            Timber.tag(TAG).w("[fcm] Failed to delete old token: ${e.message}")
                         }
                     }
                     
                     val token = FirebaseMessaging.getInstance().token.await()
                     if (BuildConfig.DEBUG) {
                         val masked = if (token.length > 8) "${token.take(4)}****${token.takeLast(4)}" else "****"
-                        Log.d(TAG, "[fcm] Got token (masked): $masked on attempt $attempt")
+                        Timber.tag(TAG).d("[fcm] Got token (masked): $masked on attempt $attempt")
                     }
 
                     // Обновляем токен в базе данных (неотменяемо!)
                     if (BuildConfig.DEBUG) {
-                        Log.d(TAG, "[fcm] Updating token for user=$currentUserId")
+                        Timber.tag(TAG).d("[fcm] Updating token for user=$currentUserId")
                     }
 
                     // Используем NonCancellable, чтобы гарантировать сохранение токена
@@ -82,20 +82,20 @@ class FCMTokenManager @Inject constructor(
                         socialRepository.updateUserFcmToken(currentUserId, token)
                     }
                     if (BuildConfig.DEBUG) {
-                        Log.d(TAG, "[fcm] Token saved for user=$currentUserId")
+                        Timber.tag(TAG).d("[fcm] Token saved for user=$currentUserId")
                     }
                     result = Result.success(token)
                     break
                 } catch (e: CancellationException) {
                     if (BuildConfig.DEBUG) {
-                        Log.i(TAG, "FCM token refresh cancelled: ${e.message ?: "cancelled"}")
+                        Timber.tag(TAG).i("FCM token refresh cancelled: ${e.message ?: "cancelled"}")
                     }
                     result = Result.failure(e)
                     break
                 } catch (e: Exception) {
                     lastError = e
                     if (BuildConfig.DEBUG) {
-                        Log.d(TAG, "[fcm] Attempt $attempt/3 failed: ${e.message}")
+                        Timber.tag(TAG).d("[fcm] Attempt $attempt/3 failed: ${e.message}")
                     }
                     if (attempt < 3) {
                         try { delay(backoff) } catch (_: CancellationException) { /* propagate later */ }
@@ -107,7 +107,7 @@ class FCMTokenManager @Inject constructor(
             if (result != null) {
                 result
             } else {
-                Log.e(TAG, "Ошибка получения FCM токена", lastError)
+                Timber.tag(TAG).e(lastError, "Ошибка получения FCM токена")
                 Result.failure(lastError ?: Exception("FCM token refresh failed"))
             }
         } finally {
@@ -125,11 +125,11 @@ class FCMTokenManager @Inject constructor(
         return try {
             val currentUserId = authRepository.getCurrentUserId()
             if (BuildConfig.DEBUG) {
-                Log.d(TAG, "clearToken(): skip deleting token to keep receiving critical notifications. user=$currentUserId")
+                Timber.tag(TAG).d("clearToken(): skip deleting token to keep receiving critical notifications. user=$currentUserId")
             }
             Result.success(Unit)
         } catch (e: Exception) {
-            Log.e(TAG, "Ошибка при clearToken()", e)
+            Timber.tag(TAG).e(e, "Ошибка при clearToken()")
             Result.failure(e)
         }
     }
@@ -140,10 +140,10 @@ class FCMTokenManager @Inject constructor(
     suspend fun subscribeToTopic(topic: String): Result<Unit> {
         return try {
             FirebaseMessaging.getInstance().subscribeToTopic(topic).await()
-            Log.d(TAG, "Подписка на топик: $topic")
+            Timber.tag(TAG).d("Подписка на топик: $topic")
             Result.success(Unit)
         } catch (e: Exception) {
-            Log.e(TAG, "Ошибка подписки на топик: $topic", e)
+            Timber.tag(TAG).e(e, "Ошибка подписки на топик: $topic")
             Result.failure(e)
         }
     }
@@ -154,10 +154,10 @@ class FCMTokenManager @Inject constructor(
     suspend fun unsubscribeFromTopic(topic: String): Result<Unit> {
         return try {
             FirebaseMessaging.getInstance().unsubscribeFromTopic(topic).await()
-            Log.d(TAG, "Отписка от топика: $topic")
+            Timber.tag(TAG).d("Отписка от топика: $topic")
             Result.success(Unit)
         } catch (e: Exception) {
-            Log.e(TAG, "Ошибка отписки от топика: $topic", e)
+            Timber.tag(TAG).e(e, "Ошибка отписки от топика: $topic")
             Result.failure(e)
         }
     }
@@ -171,10 +171,10 @@ class FCMTokenManager @Inject constructor(
                 val topic = "habit_$habitId"
                 subscribeToTopic(topic)
             }
-            Log.d(TAG, "Подписка на ${habitIds.size} привычек для пользователя: $userId")
+            Timber.tag(TAG).d("Подписка на ${habitIds.size} привычек для пользователя: $userId")
             Result.success(Unit)
         } catch (e: Exception) {
-            Log.e(TAG, "Ошибка подписки на привычки пользователя", e)
+            Timber.tag(TAG).e(e, "Ошибка подписки на привычки пользователя")
             Result.failure(e)
         }
     }

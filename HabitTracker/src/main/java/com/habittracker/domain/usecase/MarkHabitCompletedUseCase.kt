@@ -1,6 +1,5 @@
 package com.habittracker.domain.usecase
 
-import android.util.Log
 import com.habittracker.data.sync.SyncManager
 import com.habittracker.data.sync.SyncWorkScheduler
 import com.habittracker.domain.model.gamification.GamificationEvent
@@ -18,6 +17,7 @@ import kotlinx.datetime.LocalDate
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toLocalDateTime
 import javax.inject.Inject
+import timber.log.Timber
 
 /**
  * Use case для отметки привычки как выполненной.
@@ -67,13 +67,13 @@ class MarkHabitCompletedUseCase @Inject constructor(
         try {
             syncWorkScheduler.scheduleOneTimeSync()
         } catch (e: Exception) {
-            Log.w("MarkHabitCompleted", "scheduleOneTimeSync failed: ${e.message}", e)
+            Timber.tag("MarkHabitCompleted").w(e, "scheduleOneTimeSync failed: ${e.message}")
         }
 
         // 3) Немедленный неблокирующий дренаж outbox для ускорения синка
         backgroundTasksScope.launch {
             try { syncManager.drainPending() } catch (e: Exception) {
-                Log.d("MarkHabitCompleted", "drainPending failed (non-fatal): ${e.message}")
+                Timber.tag("MarkHabitCompleted").d("drainPending failed (non-fatal): ${e.message}")
             }
         }
 
@@ -102,7 +102,7 @@ class MarkHabitCompletedUseCase @Inject constructor(
                             }
                         }
                     } catch (e: Exception) {
-                        Log.w("MarkHabitCompleted", "Streak bonus calculation failed: ${e.message}", e)
+                        Timber.tag("MarkHabitCompleted").w(e, "Streak bonus calculation failed: ${e.message}")
                     }
                 }
                 sendGroupHabitPushNotificationUseCase.invoke(habitId, userId)
@@ -111,14 +111,14 @@ class MarkHabitCompletedUseCase @Inject constructor(
                 try {
                     updateChallengeProgressUseCase(habitId, userId)
                 } catch (e: Exception) {
-                    Log.w("MarkHabitCompleted", "updateChallengeProgress failed: ${e.message}", e)
+                    Timber.tag("MarkHabitCompleted").w(e, "updateChallengeProgress failed: ${e.message}")
                 }
 
                 // Проверяем достижения
                 try {
                     checkAchievementsUseCase(userId)
                 } catch (e: Exception) {
-                    Log.w("MarkHabitCompleted", "checkAchievements failed: ${e.message}", e)
+                    Timber.tag("MarkHabitCompleted").w(e, "checkAchievements failed: ${e.message}")
                 }
             }
     }

@@ -1,7 +1,6 @@
 package com.habittracker.di
 
 import android.content.Context
-import android.util.Log
 import com.google.firebase.FirebaseApp
 import com.google.firebase.appcheck.FirebaseAppCheck
 import com.google.android.libraries.identity.googleid.GetGoogleIdOption
@@ -16,6 +15,7 @@ import dagger.hilt.InstallIn
 import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.components.SingletonComponent
 import javax.inject.Singleton
+import timber.log.Timber
 
 import com.habittracker.data.analytics.CrashlyticsErrorLogger
 import com.habittracker.data.analytics.FirebaseAnalyticsManager
@@ -61,7 +61,7 @@ object FirebaseModule {
     fun provideFirebaseStorage(): FirebaseStorage {
         // Resolve bucket from FirebaseApp options to support both appspot.com and firebasestorage.app
         val bucket = try { FirebaseApp.getInstance().options.storageBucket } catch (e: Exception) {
-            Log.w("FirebaseModule", "Failed to read storageBucket from FirebaseApp options", e)
+            Timber.tag("FirebaseModule").w(e, "Failed to read storageBucket from FirebaseApp options")
             null
         }
         return if (!bucket.isNullOrBlank()) {

@@ -23,6 +23,7 @@ import kotlinx.coroutines.launch
 import kotlinx.datetime.Clock
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toLocalDateTime
+import timber.log.Timber
 import javax.inject.Inject
 
 /**
@@ -212,7 +213,7 @@ class PublicHabitsViewModel @Inject constructor(
                         }
                     } catch (e: Exception) {
                         // Логируем ошибку, но не прерываем процесс присоединения
-                        android.util.Log.e("PublicHabitsViewModel", "Failed to send join notifications", e)
+                        Timber.tag("PublicHabitsViewModel").e(e, "Failed to send join notifications")
                     }
                     
                     _uiState.update {

@@ -5,7 +5,7 @@ import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.net.Uri
 import android.util.Base64
-import android.util.Log
+import androidx.core.graphics.scale
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -18,20 +18,21 @@ import com.habittracker.domain.repository.UserRepository
 import com.habittracker.domain.usecase.auth.UpsertSignedInUserUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
-import javax.inject.Inject
+import timber.log.Timber
 import java.io.ByteArrayOutputStream
+import javax.inject.Inject
 
 @HiltViewModel
 class ProfileViewModel @Inject constructor(
-    private val savedStateHandle: SavedStateHandle,
+    savedStateHandle: SavedStateHandle,
     private val authRepository: AuthRepository,
     private val userRepository: UserRepository,
     private val socialRepository: SocialRepository,
@@ -59,9 +60,10 @@ class ProfileViewModel @Inject constructor(
 
     private val currentUserId: String? get() = authRepository.getCurrentUserId()
 
-    private val viewedUserId: String? = savedStateHandle.get<String>("userId")
+    private var viewedUserId: String? = null
 
     init {
+        viewedUserId = savedStateHandle.get<String>("userId")
         observeUser()
         refreshFriendship()
     }
@@ -107,7 +109,7 @@ class ProfileViewModel @Inject constructor(
             }
             null
         } catch (e: Exception) {
-            if (BuildConfig.DEBUG) Log.e("ProfileVM", "Thumbnail generation failed: ${e.message}")
+            if (BuildConfig.DEBUG) Timber.tag("ProfileVM").e("Thumbnail generation failed: ${e.message}")
             null
         }
     }
@@ -117,7 +119,7 @@ class ProfileViewModel @Inject constructor(
         if (ratio >= 1f) return this
         val w = (width * ratio).toInt().coerceAtLeast(1)
         val h = (height * ratio).toInt().coerceAtLeast(1)
-        return Bitmap.createScaledBitmap(this, w, h, true)
+        return this.scale(w, h)
     }
 
     private fun refreshFriendship() {
@@ -129,7 +131,7 @@ class ProfileViewModel @Inject constructor(
                 val friends = socialRepository.areFriends(selfId, otherId)
                 _state.value = _state.value.copy(isFriend = friends, isRequestSent = if (friends) false else _state.value.isRequestSent)
             } catch (e: Exception) {
-                if (BuildConfig.DEBUG) Log.d("ProfileVM", "refreshFriendship.areFriends failed (non-fatal): ${e.message}")
+                if (BuildConfig.DEBUG) Timber.tag("ProfileVM").d("refreshFriendship.areFriends failed (non-fatal): ${e.message}")
             }
         }
     }
@@ -169,28 +171,28 @@ class ProfileViewModel @Inject constructor(
                 val picked = _state.value.pendingAvatarUri
                 if (picked != null) {
                     val bucket = try { storage.reference.bucket } catch (e: Exception) {
-                        if (BuildConfig.DEBUG) Log.d("ProfileVM", "read storage.reference.bucket failed: ${e.message}")
+                        if (BuildConfig.DEBUG) Timber.tag("ProfileVM").d("read storage.reference.bucket failed: ${e.message}")
                         "<unknown>"
                     }
                     val optBucket = try { storage.app.options.storageBucket } catch (e: Exception) {
-                        if (BuildConfig.DEBUG) Log.d("ProfileVM", "read storage.app.options.storageBucket failed: ${e.message}")
+                        if (BuildConfig.DEBUG) Timber.tag("ProfileVM").d("read storage.app.options.storageBucket failed: ${e.message}")
                         null
                     }
                     val path = "user_avatars/${user.id}/${System.currentTimeMillis()}.jpg"
                     if (BuildConfig.DEBUG) {
-                        Log.d("ProfileVM", "Uploading avatar to bucket=${bucket}, optBucket=${optBucket}, path=${path}, uri=${picked}")
+                        Timber.tag("ProfileVM").d("Uploading avatar to bucket=${bucket}, optBucket=${optBucket}, path=${path}, uri=${picked}")
                     }
                     try {
                         val ref = storage.reference.child(path)
                         ref.putFile(picked).await()
                         avatarUrl = ref.downloadUrl.await().toString()
                         if (BuildConfig.DEBUG) {
-                            Log.d("ProfileVM", "Upload success, url=${avatarUrl}")
+                            Timber.tag("ProfileVM").d("Upload success, url=${avatarUrl}")
                         }
                     } catch (e: Exception) {
                         // Fallback: создаём миниатюру и сохраняем как data URL в Firestore
                         if (BuildConfig.DEBUG) {
-                            Log.w("ProfileVM", "Upload failed, using Firestore data URL fallback: ${e.message}")
+                            Timber.tag("ProfileVM").w("Upload failed, using Firestore data URL fallback: ${e.message}")
                         }
                         avatarThumbDataUrl = createThumbnailDataUrl(picked)
                     }

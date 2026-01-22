@@ -1,7 +1,6 @@
 package com.habittracker.domain.usecase
 
 import com.habittracker.domain.model.Habit
-import com.habittracker.domain.model.HabitEntry
 import com.habittracker.domain.model.HabitFrequency
 import com.habittracker.domain.model.HabitParticipantSettings
 import com.habittracker.domain.model.HabitType
@@ -144,9 +143,9 @@ class GetHabitByIdUseCaseTest {
         var habitToReturn: Habit? = null
         private val habits = mutableListOf<Habit>()
 
-        override suspend fun getHabitById(id: String): Habit? {
+        override suspend fun getHabitById(habitId: String): Habit? {
             getHabitByIdCalled = true
-            return habitToReturn ?: habits.find { it.id == id }
+            return habitToReturn ?: habits.find { it.id == habitId }
         }
 
         override suspend fun getHabitByInviteCode(inviteCode: String): Habit? {

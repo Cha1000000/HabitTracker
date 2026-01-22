@@ -1,10 +1,10 @@
 package com.habittracker.domain.usecase.habit
 
-import android.util.Log
 import com.habittracker.domain.model.isGroupHabit
 import com.habittracker.domain.model.isUserParticipant
 import com.habittracker.domain.repository.HabitRepository
 import javax.inject.Inject
+import timber.log.Timber
 
 /**
  * Use case для массового выхода из всех совместных привычек с конкретным другом.
@@ -30,7 +30,7 @@ class LeaveSharedHabitsWithFriendUseCase @Inject constructor(
         friendId: String
     ): Result<Int> {
         return try {
-            Log.d(TAG, "Starting bulk leave from shared habits: currentUser=$currentUserId, friend=$friendId")
+            Timber.tag(TAG).d("Starting bulk leave from shared habits: currentUser=$currentUserId, friend=$friendId")
             
             // Получаем все групповые привычки текущего пользователя
             val userHabits = habitRepository.getHabitsByUserId(currentUserId)
@@ -52,7 +52,7 @@ class LeaveSharedHabitsWithFriendUseCase @Inject constructor(
                 // Пропускаем привычки, созданные текущим пользователем
                 // (он не может "выйти" из своей привычки)
                 if (habit.createdBy == currentUserId) {
-                    Log.d(TAG, "Skipping habit ${habit.id} - created by current user")
+                    Timber.tag(TAG).d("Skipping habit ${habit.id} - created by current user")
                     continue
                 }
                 
@@ -60,16 +60,16 @@ class LeaveSharedHabitsWithFriendUseCase @Inject constructor(
                 try {
                     habitRepository.removeParticipantFromHabit(habit.id, currentUserId)
                     leftCount++
-                    Log.d(TAG, "Left habit: ${habit.title} (${habit.id})")
+                    Timber.tag(TAG).d("Left habit: ${habit.title} (${habit.id})")
                 } catch (e: Exception) {
-                    Log.w(TAG, "Failed to leave habit ${habit.id}: ${e.message}")
+                    Timber.tag(TAG).w("Failed to leave habit ${habit.id}: ${e.message}")
                 }
             }
             
-            Log.d(TAG, "Bulk leave completed: left $leftCount habits")
+            Timber.tag(TAG).d("Bulk leave completed: left $leftCount habits")
             Result.success(leftCount)
         } catch (e: Exception) {
-            Log.e(TAG, "Bulk leave failed: ${e.message}", e)
+            Timber.tag(TAG).e(e, "Bulk leave failed: ${e.message}")
             Result.failure(e)
         }
     }

@@ -1,6 +1,5 @@
 package com.habittracker.data.repository
 
-import android.util.Log
 import com.google.firebase.firestore.FirebaseFirestore
 import com.habittracker.data.firestore.UserFirestoreConverter
 import com.habittracker.data.local.dao.UserDao
@@ -25,6 +24,7 @@ import javax.inject.Inject
 import javax.inject.Singleton
 import com.habittracker.data.local.mappers.toDomain as userToDomain
 import com.habittracker.data.local.mappers.toEntity as userToEntity
+import timber.log.Timber
 
 @Singleton
 class UserRepositoryImpl @Inject constructor(
@@ -123,10 +123,10 @@ class UserRepositoryImpl @Inject constructor(
                 )
                 kickSync()
             } catch (e: Exception) {
-                Log.e("UserRepository", "Failed to enqueue sync for updateUserLevel", e)
+                Timber.tag("UserRepository").e(e, "Failed to enqueue sync for updateUserLevel")
             }
         } else {
-            Log.w("UserRepository", "updateUserLevel: User $userId not found locally after update")
+            Timber.tag("UserRepository").w("updateUserLevel: User $userId not found locally after update")
         }
     }
 
@@ -166,7 +166,7 @@ class UserRepositoryImpl @Inject constructor(
                     updatedAt = now
                 )
             } catch (e: Exception) {
-                Log.w("UserRepository", "upsertUserRemoteAndLocal: fcmToken update failed (non-fatal): ${e.message}")
+                Timber.tag("UserRepository").w("upsertUserRemoteAndLocal: fcmToken update failed (non-fatal): ${e.message}")
             }
         }
 
@@ -178,16 +178,16 @@ class UserRepositoryImpl @Inject constructor(
             val snapshot = firestore.collection("users").document(userId).get().await()
             val data = snapshot.data
             if (data != null) {
-                Log.d("UserRepository", "getUserFromFirestore raw data: level=${data["level"]}, points=${data["points"]}, streak=${data["streak"]}")
+                Timber.tag("UserRepository").d("getUserFromFirestore raw data: level=${data["level"]}, points=${data["points"]}, streak=${data["streak"]}")
                 val user = UserFirestoreConverter.fromFirestore(data, snapshot.id)
-                Log.d("UserRepository", "getUserFromFirestore parsed: level=${user?.level}, points=${user?.points}, streak=${user?.streak}")
+                Timber.tag("UserRepository").d("getUserFromFirestore parsed: level=${user?.level}, points=${user?.points}, streak=${user?.streak}")
                 user
             } else {
-                Log.d("UserRepository", "getUserFromFirestore: no data for userId=$userId")
+                Timber.tag("UserRepository").d("getUserFromFirestore: no data for userId=$userId")
                 null
             }
         } catch (e: Exception) {
-            Log.w("UserRepository", "getUserFromFirestore failed: ${e.message}")
+            Timber.tag("UserRepository").w("getUserFromFirestore failed: ${e.message}")
             null
         }
     }
@@ -200,7 +200,7 @@ class UserRepositoryImpl @Inject constructor(
             .addSnapshotListener { snapshot, error ->
                 if (error != null) {
                     // При PERMISSION_DENIED (sign out) просто игнорируем, не крашим
-                    Log.d("UserRepository", "observeUser listener error (userId=$userId): ${error.message}")
+                    Timber.tag("UserRepository").d("observeUser listener error (userId=$userId): ${error.message}")
                     return@addSnapshotListener
                 }
                 val data = snapshot?.data
@@ -211,14 +211,14 @@ class UserRepositoryImpl @Inject constructor(
                             val hasPending = try {
                                 syncManager.hasPendingOperations("user", remote.id)
                             } catch (e: Exception) {
-                                Log.w("UserRepository", "observeUser: hasPendingOperations failed (userId=${remote.id}): ${e.message}")
+                                Timber.tag("UserRepository").w("observeUser: hasPendingOperations failed (userId=${remote.id}): ${e.message}")
                                 false
                             }
                             if (!hasPending) {
                                 upsertLocal(remote.userToEntity())
                             }
                         } catch (e: Exception) {
-                            Log.d("UserRepository", "observeUser: local insert failed (non-fatal): ${e.message}")
+                            Timber.tag("UserRepository").d("observeUser: local insert failed (non-fatal): ${e.message}")
                         }
                     }
                 }
@@ -274,7 +274,7 @@ class UserRepositoryImpl @Inject constructor(
                             updated++
                         }
                     } catch (e: Exception) {
-                        Log.d("UserRepository", "backfillAvatarThumbnails: skipping doc=${id}, reason=${e.message}")
+                        Timber.tag("UserRepository").d("backfillAvatarThumbnails: skipping doc=${id}, reason=${e.message}")
                     }
                 }
             }
@@ -303,7 +303,7 @@ class UserRepositoryImpl @Inject constructor(
 
             kickSync()
         } catch (e: Exception) {
-            Log.d("UserRepository", "updateLastActive failed: ${e.message}")
+            Timber.tag("UserRepository").d("updateLastActive failed: ${e.message}")
         }
     }
 }

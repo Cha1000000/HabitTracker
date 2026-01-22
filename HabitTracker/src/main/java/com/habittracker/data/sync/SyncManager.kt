@@ -1,6 +1,5 @@
 package com.habittracker.data.sync
 
-import android.util.Log
 import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.FirebaseFirestore
 import com.habittracker.data.local.dao.SyncOutboxDao
@@ -16,6 +15,7 @@ import javax.inject.Inject
 import javax.inject.Singleton
 import kotlin.coroutines.resume
 import kotlin.coroutines.resumeWithException
+import timber.log.Timber
 
 /**
  * SyncManager: Outbox-подход для надежной синхронизации Room -> Firestore
@@ -33,8 +33,7 @@ class SyncManager @Inject constructor(
         updatedAt: Long,
         operationId: String = UUID.randomUUID().toString()
     ) = withContext(Dispatchers.IO) {
-        Log.d(
-            "SyncManager",
+        Timber.tag("SyncManager").d(
             "[enqueueUpsert] type=$entityType id=$entityId opId=$operationId updatedAt=$updatedAt payloadSize=${payloadJson.length}"
         )
         outboxDao.insert(
@@ -103,8 +102,7 @@ class SyncManager @Inject constructor(
         updatedAt: Long,
         operationId: String = UUID.randomUUID().toString()
     ) = withContext(Dispatchers.IO) {
-        Log.d(
-            "SyncManager",
+        Timber.tag("SyncManager").d(
             "[enqueueDelete] type=$entityType id=$entityId opId=$operationId updatedAt=$updatedAt"
         )
         outboxDao.insert(
@@ -132,8 +130,7 @@ class SyncManager @Inject constructor(
             .put("notBefore", notBeforeMillis)
             .put("maxRetries", maxRetries)
             .toString()
-        Log.d(
-            "SyncManager",
+        Timber.tag("SyncManager").d(
             "[enqueueSafeDelete] type=$entityType id=$entityId opId=$operationId notBefore=$notBeforeMillis maxRetries=$maxRetries"
         )
         outboxDao.insert(
@@ -156,11 +153,10 @@ class SyncManager @Inject constructor(
     // Дренаж очереди: вызывать WorkManager'ом периодически и вручную при старте/онбординге
     suspend fun drainPending(maxBatch: Int = 50) = withContext(Dispatchers.IO) {
         val batch = outboxDao.getByState("PENDING", maxBatch)
-        Log.d("SyncManager", "[drainPending] fetched=${batch.size}")
+        Timber.tag("SyncManager").d("[drainPending] fetched=${batch.size}")
         for (item in batch) {
             try {
-                Log.d(
-                    "SyncManager",
+                Timber.tag("SyncManager").d(
                     "[drainPending] process id=${item.id} op=${item.opType} type=${item.entityType} entity=${item.entityId} updatedAt=${item.updatedAt}"
                 )
                 // Для отложенных DELETE — пропускаем до наступления notBefore
@@ -171,13 +167,13 @@ class SyncManager @Inject constructor(
                             val notBefore = payloadObj.getLong("notBefore")
                             val now = System.currentTimeMillis()
                             if (now < notBefore) {
-                                Log.d("SyncManager", "[drainPending] skip DELETE id=${item.id} until notBefore=$notBefore")
+                                Timber.tag("SyncManager").d("[drainPending] skip DELETE id=${item.id} until notBefore=$notBefore")
                                 continue
                             }
                         }
                     } catch (e: Exception) {
                         // игнорируем, нет валидного payload — выполняем немедленно, но залогируем для диагностики
-                        Log.w("SyncManager", "[drainPending] invalid DELETE payload for id=${item.id}, executing immediately: ${e.message}")
+                        Timber.tag("SyncManager").w("[drainPending] invalid DELETE payload for id=${item.id}, executing immediately: ${e.message}")
                     }
                 }
                 outboxDao.updateState(item.id, "IN_PROGRESS")
@@ -188,7 +184,7 @@ class SyncManager @Inject constructor(
                     "ARRAY_REMOVE" -> pushArrayUpdate(item, isUnion = false)
                 }
                 outboxDao.deleteById(item.id)
-                Log.d("SyncManager", "[drainPending] done id=${item.id}")
+                Timber.tag("SyncManager").d("[drainPending] done id=${item.id}")
             } catch (e: Exception) {
                 val nowTs = System.currentTimeMillis()
                 // Для DELETE учитываем лимит попыток
@@ -198,22 +194,20 @@ class SyncManager @Inject constructor(
                         val payloadObj = JSONObject(item.payloadJson)
                         if (payloadObj.has("maxRetries")) maxRetries = payloadObj.getInt("maxRetries")
                     } catch (e: Exception) {
-                        Log.w("SyncManager", "[drainPending] failed to parse maxRetries for id=${item.id}: ${e.message}")
+                        Timber.tag("SyncManager").w("[drainPending] failed to parse maxRetries for id=${item.id}: ${e.message}")
                     }
                     val nextState = if (item.retryCount + 1 >= maxRetries) "FAILED" else "PENDING"
                     outboxDao.markRetry(item.id, e.message, nextState, nowTs)
-                    Log.w(
-                        "SyncManager",
-                        "[drainPending] DELETE failed id=${item.id} retries=${item.retryCount + 1}/$maxRetries -> $nextState: ${e.message}",
-                        e
+                    Timber.tag("SyncManager").w(
+                        e,
+                        "[drainPending] DELETE failed id=${item.id} retries=${item.retryCount + 1}/$maxRetries -> $nextState: ${e.message}"
                     )
                 } else {
                     // Для UPSERT — оставляем в PENDING, чтобы WorkManager повторял
                     outboxDao.markRetry(item.id, e.message, "PENDING", nowTs)
-                    Log.w(
-                        "SyncManager",
-                        "[drainPending] UPSERT failed id=${item.id} -> PENDING retry: ${e.message}",
-                        e
+                    Timber.tag("SyncManager").w(
+                        e,
+                        "[drainPending] UPSERT failed id=${item.id} -> PENDING retry: ${e.message}"
                     )
                 }
             }
@@ -224,30 +218,30 @@ class SyncManager @Inject constructor(
     private suspend fun pushUpsert(item: SyncOutboxEntity) {
         val (collection, docId) = route(item.entityType, item.entityId)
         val map = jsonToMap(item.payloadJson)
-        Log.d("SyncManager", "[pushUpsert] ${item.entityType} -> $collection/$docId payloadKeys=${map.keys}")
+        Timber.tag("SyncManager").d("[pushUpsert] ${item.entityType} -> $collection/$docId payloadKeys=${map.keys}")
         val docRef = firestore.collection(collection).document(docId)
         // Принудительно обновляем только актуальный флаг активности isActive
         val flagUpdates = mutableMapOf<String, Any>()
         map["isActive"]?.let { flagUpdates["isActive"] = it }
         if (flagUpdates.isNotEmpty()) {
             try {
-                Log.d("SyncManager", "[pushUpsert] update flags=$flagUpdates")
+                Timber.tag("SyncManager").d("[pushUpsert] update flags=$flagUpdates")
                 docRef.update(flagUpdates as Map<String, Any>)
                     .awaitUnit()
-                Log.d("SyncManager", "[pushUpsert] flags updated")
+                Timber.tag("SyncManager").d("[pushUpsert] flags updated")
             } catch (e: Exception) {
-                Log.w("SyncManager", "[pushUpsert] flag update failed, will rely on merge(): ${e.message}")
+                Timber.tag("SyncManager").w("[pushUpsert] flag update failed, will rely on merge(): ${e.message}")
             }
         }
         // Затем делаем общий merge всех полей
         docRef.set(map, com.google.firebase.firestore.SetOptions.merge())
             .awaitUnit()
-        Log.d("SyncManager", "[pushUpsert] DONE ${item.entityType} -> $collection/$docId")
+        Timber.tag("SyncManager").d("[pushUpsert] DONE ${item.entityType} -> $collection/$docId")
     }
 
     private suspend fun pushDelete(item: SyncOutboxEntity) {
         val (collection, docId) = route(item.entityType, item.entityId)
-        Log.d("SyncManager", "[pushDelete] ${item.entityType} -> $collection/$docId")
+        Timber.tag("SyncManager").d("[pushDelete] ${item.entityType} -> $collection/$docId")
         when (item.entityType) {
             "habit", "challenge" -> {
                 val updates = mapOf(
@@ -267,7 +261,7 @@ class SyncManager @Inject constructor(
                     .awaitUnit()
             }
         }
-        Log.d("SyncManager", "[pushDelete] DONE ${item.entityType} -> $collection/$docId")
+        Timber.tag("SyncManager").d("[pushDelete] DONE ${item.entityType} -> $collection/$docId")
     }
 
     private suspend fun pushArrayUpdate(item: SyncOutboxEntity, isUnion: Boolean) {
@@ -315,7 +309,7 @@ class SyncManager @Inject constructor(
                 "habits/${parts[0]}/participants/${parts[1]}/meta" to "settings"
             } else {
                 // Fallback or error logging
-                Log.e("SyncManager", "Invalid entityId format for habit_participant_settings: $entityId")
+                Timber.tag("SyncManager").e("Invalid entityId format for habit_participant_settings: $entityId")
                 "invalid_path" to entityId
             }
         }

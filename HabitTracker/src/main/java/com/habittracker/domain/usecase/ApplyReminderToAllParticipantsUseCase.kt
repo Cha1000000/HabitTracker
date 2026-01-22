@@ -1,6 +1,5 @@
 package com.habittracker.domain.usecase
 
-import android.util.Log
 import com.habittracker.domain.model.Habit
 import com.habittracker.domain.model.HabitParticipantSettings
 import com.habittracker.domain.repository.HabitRepository
@@ -8,6 +7,7 @@ import com.habittracker.domain.repository.ParticipantSettingsRepository
 import kotlinx.datetime.DayOfWeek
 import kotlinx.datetime.LocalTime
 import javax.inject.Inject
+import timber.log.Timber
 
 class ApplyReminderToAllParticipantsUseCase @Inject constructor(
     private val getHabitByIdUseCase: GetHabitByIdUseCase,
@@ -41,7 +41,7 @@ class ApplyReminderToAllParticipantsUseCase @Inject constructor(
                     val repoParticipants = habitRepository.getHabitParticipants(updatedHabit.id)
                     participants = (repoParticipants + updatedHabit.createdBy).toSet()
                 } catch (e: Exception) {
-                    Log.w("ApplyReminderAllUC", "fallback participants failed: ${e.message}")
+                    Timber.tag("ApplyReminderAllUC").w("fallback participants failed: ${e.message}")
                 }
             }
             for (userId in participants) {
@@ -63,7 +63,7 @@ class ApplyReminderToAllParticipantsUseCase @Inject constructor(
             try {
                 scheduleHabitReminderUseCase(updatedHabit)
             } catch (e: Exception) {
-                Log.w("ApplyReminderAllUC", "schedule failed locally: ${e.message}")
+                Timber.tag("ApplyReminderAllUC").w("schedule failed locally: ${e.message}")
             }
 
             Result.success(Unit)

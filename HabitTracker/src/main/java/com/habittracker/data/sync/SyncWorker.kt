@@ -1,13 +1,13 @@
 package com.habittracker.data.sync
 
 import android.content.Context
-import android.util.Log
 import androidx.work.CoroutineWorker
 import androidx.work.WorkerParameters
 import dagger.hilt.EntryPoint
 import dagger.hilt.InstallIn
 import dagger.hilt.android.EntryPointAccessors
 import dagger.hilt.components.SingletonComponent
+import timber.log.Timber
 
 class SyncWorker(
     appContext: Context,
@@ -30,12 +30,12 @@ class SyncWorker(
 
     override suspend fun doWork(): Result {
         return try {
-            Log.d("SyncWorker", "Start drainPending()")
+            Timber.tag("SyncWorker").d("Start drainPending()")
             syncManager.drainPending()
-            Log.d("SyncWorker", "drainPending() completed")
+            Timber.tag("SyncWorker").d("drainPending() completed")
             Result.success()
         } catch (e: Exception) {
-            Log.w("SyncWorker", "Sync failed: ${e.message}", e)
+            Timber.tag("SyncWorker").w(e, "Sync failed: ${e.message}")
             Result.retry()
         }
     }

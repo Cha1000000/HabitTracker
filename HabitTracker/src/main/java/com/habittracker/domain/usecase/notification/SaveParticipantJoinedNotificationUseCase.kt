@@ -1,8 +1,8 @@
 package com.habittracker.domain.usecase.notification
 
-import android.util.Log
 import com.habittracker.domain.repository.SocialRepository
 import javax.inject.Inject
+import timber.log.Timber
 
 /**
  * Use case для отправки уведомлений о присоединении участника к привычке
@@ -40,17 +40,17 @@ class SaveParticipantJoinedNotificationUseCase @Inject constructor(
                             habitTitle = habitTitle,
                             habitId = habitId
                         )
-                        Log.d(TAG, "Push-уведомление отправлено: userId=$participantId, joinedUser=$joinedUserName")
+                        Timber.tag(TAG).d("Push-уведомление отправлено: userId=$participantId, joinedUser=$joinedUserName")
                     } catch (e: Exception) {
-                        Log.e(TAG, "Ошибка отправки push для userId=$participantId", e)
+                        Timber.tag(TAG).e(e, "Ошибка отправки push для userId=$participantId")
                     }
                 }
             }
             
-            Log.d(TAG, "Push-уведомления о присоединении отправлены для ${participantIds.size - 1} участников")
+            Timber.tag(TAG).d("Push-уведомления о присоединении отправлены для ${participantIds.size - 1} участников")
             Result.success(Unit)
         } catch (e: Exception) {
-            Log.e(TAG, "Ошибка отправки уведомлений о присоединении", e)
+            Timber.tag(TAG).e(e, "Ошибка отправки уведомлений о присоединении")
             Result.failure(e)
         }
     }

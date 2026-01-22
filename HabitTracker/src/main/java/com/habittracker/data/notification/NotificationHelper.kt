@@ -6,13 +6,13 @@ import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
 import android.os.Build
-import android.util.Log
 import androidx.core.app.NotificationCompat
 import com.habittracker.MainActivity
 import com.habittracker.R
 import dagger.hilt.android.qualifiers.ApplicationContext
 import javax.inject.Inject
 import javax.inject.Singleton
+import timber.log.Timber
 
 /**
  * Помощник для работы с уведомлениями о привычках
@@ -51,7 +51,7 @@ class NotificationHelper @Inject constructor(
             }
             
             notificationManager.createNotificationChannel(channel)
-            Log.d("NotificationHelper", "Уведомительный канал создан")
+            Timber.tag("NotificationHelper").d("Уведомительный канал создан")
         }
     }
 
@@ -116,7 +116,7 @@ class NotificationHelper @Inject constructor(
         val notificationId = if (isFollowUp) habitId.hashCode() + 1 else habitId.hashCode()
         
         notificationManager.notify(notificationId, notification)
-        Log.d("NotificationHelper", "Уведомление показано для привычки $habitId (followUp=$isFollowUp)")
+        Timber.tag("NotificationHelper").d("Уведомление показано для привычки $habitId (followUp=$isFollowUp)")
     }
 
     /**
@@ -153,7 +153,7 @@ class NotificationHelper @Inject constructor(
             .build()
 
         notificationManager.notify(DAILY_REMINDER_NOTIFICATION_ID, notification)
-        Log.d("NotificationHelper", "Ежедневное напоминание показано")
+        Timber.tag("NotificationHelper").d("Ежедневное напоминание показано")
     }
 
     /**
@@ -161,7 +161,7 @@ class NotificationHelper @Inject constructor(
      */
     fun cancelHabitNotification(habitId: String) {
         notificationManager.cancel(habitId.hashCode())
-        Log.d("NotificationHelper", "Уведомление отменено для привычки $habitId")
+        Timber.tag("NotificationHelper").d("Уведомление отменено для привычки $habitId")
     }
 
     /**
