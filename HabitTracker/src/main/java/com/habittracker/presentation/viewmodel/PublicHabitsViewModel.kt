@@ -5,6 +5,7 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.habittracker.R
 import com.habittracker.domain.model.Habit
+import com.habittracker.domain.model.isGroupHabit
 import com.habittracker.domain.repository.AuthRepository
 import com.habittracker.domain.repository.HabitRepository
 import com.habittracker.domain.repository.SocialRepository
@@ -156,6 +157,17 @@ class PublicHabitsViewModel @Inject constructor(
                 _uiState.update { it.copy(isLoading = true) }
                 
                 try {
+                    // Присоединяться можно только к групповой привычке
+                    if (!habit.isGroupHabit()) {
+                        _uiState.update {
+                            it.copy(
+                                isLoading = false,
+                                error = getApplication<Application>().getString(R.string.error_code_group_only)
+                            )
+                        }
+                        return@launch
+                    }
+
                     // Проверяем, не является ли пользователь уже участником
                     if (habit.participants.contains(userId)) {
                         _uiState.update {
@@ -180,6 +192,7 @@ class PublicHabitsViewModel @Inject constructor(
                     
                     // Присоединяемся к привычке
                     val updatedHabit = habit.copy(
+                        createdBy = if (habit.createdBy.isBlank()) userId else habit.createdBy,
                         participants = habit.participants + userId
                     )
                     // Используем UpdateHabitUseCase для синхронизации с Firestore

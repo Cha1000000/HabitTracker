@@ -2,7 +2,6 @@ package com.habittracker.presentation.viewmodel
 
 import android.app.Application
 import android.content.Intent
-import android.util.Log
 import androidx.core.graphics.toColorInt
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.SavedStateHandle
@@ -18,6 +17,7 @@ import com.habittracker.domain.model.HabitValidation
 import com.habittracker.domain.model.HabitValidation.HabitField
 import com.habittracker.domain.model.User
 import com.habittracker.domain.repository.AuthRepository
+import com.habittracker.domain.repository.HabitEntryRepository
 import com.habittracker.domain.usecase.AddHabitUseCase
 import com.habittracker.domain.usecase.ApplyReminderToAllParticipantsUseCase
 import com.habittracker.domain.usecase.CancelHabitReminderUseCase
@@ -54,6 +54,7 @@ import kotlinx.datetime.LocalDate
 import kotlinx.datetime.LocalTime
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toLocalDateTime
+import timber.log.Timber
 import java.util.UUID
 import javax.inject.Inject
 
@@ -63,6 +64,7 @@ class AddEditHabitViewModel @Inject constructor(
     private val addHabitUseCase: AddHabitUseCase,
     private val updateHabitUseCase: UpdateHabitUseCase,
     private val getHabitByIdUseCase: GetHabitByIdUseCase,
+    private val habitEntryRepository: HabitEntryRepository,
     private val scheduleHabitReminderUseCase: ScheduleHabitReminderUseCase,
     private val cancelHabitReminderUseCase: CancelHabitReminderUseCase,
     private val getMyHabitReminderSettingsUseCase: GetMyHabitReminderSettingsUseCase,
@@ -86,6 +88,25 @@ class AddEditHabitViewModel @Inject constructor(
     private var currentHabit: Habit? = null
     private var friendsJob: Job? = null
 
+    private fun updateRemoveFromPublicCatalogVisibility(persisted: Habit?, state: AddEditHabitUiState): AddEditHabitUiState {
+        if (persisted == null) {
+            return state.copy(
+                showRemoveFromPublicCatalogOption = false,
+                removeFromPublicCatalog = false,
+            )
+        }
+
+        val currentUserId = authRepository.getCurrentUserId()
+        val isAuthor = currentUserId != null && persisted.createdBy == currentUserId
+        val shouldShow = isAuthor && persisted.type == HabitType.GROUP && persisted.isPublic && state.type == HabitType.PERSONAL
+
+        return if (shouldShow) {
+            state.copy(showRemoveFromPublicCatalogOption = true)
+        } else {
+            state.copy(showRemoveFromPublicCatalogOption = false, removeFromPublicCatalog = false)
+        }
+    }
+
     init {
         val habitId: String? = savedStateHandle["habitId"]
         val startDateParam: String? = savedStateHandle["startDate"]
@@ -100,7 +121,7 @@ class AddEditHabitViewModel @Inject constructor(
                 try {
                     LocalDate.parse(dateStr)
                 } catch (_: Exception) {
-                    Log.w("AddEditHabitViewModel", "Failed to parse startDate from navigation: $dateStr")
+                    Timber.tag("AddEditHabitViewModel").w("Failed to parse startDate from navigation: $dateStr")
                     null
                 }
             }
@@ -110,7 +131,7 @@ class AddEditHabitViewModel @Inject constructor(
                 try {
                     HabitGoalType.valueOf(typeStr)
                 } catch (_: Exception) {
-                    Log.w("AddEditHabitViewModel", "Failed to parse goalType from navigation: $typeStr")
+                    Timber.tag("AddEditHabitViewModel").w("Failed to parse goalType from navigation: $typeStr")
                     HabitGoalType.SIMPLE
                 }
             } ?: HabitGoalType.SIMPLE
@@ -124,7 +145,7 @@ class AddEditHabitViewModel @Inject constructor(
             ) }
 
             if (initialStartDate != null) {
-                Log.d("AddEditHabitViewModel", "Initialized with startDate from navigation: $initialStartDate")
+                Timber.tag("AddEditHabitViewModel").d("Initialized with startDate from navigation: $initialStartDate")
             }
         }
     }
@@ -221,7 +242,7 @@ class AddEditHabitViewModel @Inject constructor(
                     }
 
                     _uiState.update { state ->
-                        state.copy(
+                        val base = state.copy(
                             habitId = habit.id,
                             title = habit.title,
                             description = habit.description,
@@ -253,6 +274,8 @@ class AddEditHabitViewModel @Inject constructor(
                             selectedTimesOfDay = setOf(habit.timeOfDay),
                             isEditMode = true
                         )
+
+                        updateRemoveFromPublicCatalogVisibility(habit, base)
                     }
                     // Переопределяем/гарантируем персональные настройки через use case
                     try {
@@ -279,11 +302,10 @@ class AddEditHabitViewModel @Inject constructor(
                         }
                         _uiState.update { it.copy(isInitialized = true) }
                     } catch (e: Exception) {
-                        Log.d("AddEditHabitViewModel", "ensureMySettingsForHabitUseCase failed (non-fatal): ${e.message}")
+                        Timber.tag("AddEditHabitViewModel").d("ensureMySettingsForHabitUseCase failed (non-fatal): ${e.message}")
                     }
 
-                    Log.d(
-                        "AddEditHabitViewModel",
+                    Timber.tag("AddEditHabitViewModel").d(
                         "[loadHabit] ui: enabled=${_uiState.value.reminderEnabled}, time=${_uiState.value.reminderTime}, days=${_uiState.value.reminderDaysInput}"
                     )
                 } ?: run {
@@ -330,7 +352,7 @@ class AddEditHabitViewModel @Inject constructor(
                     // Генерируем timeGroupId только если выбрано несколько периодов
                     val timeGroupId = if (selectedTimes.size > 1) UUID.randomUUID().toString() else null
                     
-                    Log.d("AddEditHabitViewModel", "Creating ${selectedTimes.size} habit(s) with startDate=$effectiveStartDate, timeGroupId=$timeGroupId")
+                    Timber.tag("AddEditHabitViewModel").d("Creating ${selectedTimes.size} habit(s) with startDate=$effectiveStartDate, timeGroupId=$timeGroupId")
 
                     var firstHabit: Habit? = null
                     
@@ -364,9 +386,9 @@ class AddEditHabitViewModel @Inject constructor(
                             timeGroupId = timeGroupId
                         )
                         
-                        Log.d("AddEditHabitViewModel", "Calling addHabitUseCase for habit: ${newHabit.id}, timeOfDay=$timeOfDay")
+                        Timber.tag("AddEditHabitViewModel").d("Calling addHabitUseCase for habit: ${newHabit.id}, timeOfDay=$timeOfDay")
                         addHabitUseCase(newHabit)
-                        Log.d("AddEditHabitViewModel", "Habit saved successfully: ${newHabit.id}")
+                        Timber.tag("AddEditHabitViewModel").d("Habit saved successfully: ${newHabit.id}")
                         
                         analyticsManager.logEvent(
                             AnalyticsEvents.HABIT_CREATED,
@@ -391,10 +413,10 @@ class AddEditHabitViewModel @Inject constructor(
                                     )
                                 )
                             } catch (e: Exception) {
-                                Log.w("AddEditHabitViewModel", "updateMyHabitReminderSettingsUseCase failed for habit ${newHabit.id}: ${e.message}", e)
+                                Timber.tag("AddEditHabitViewModel").w(e, "updateMyHabitReminderSettingsUseCase failed for habit ${newHabit.id}: ${e.message}")
                             }
                             scheduleHabitReminderUseCase(newHabit)
-                            Log.d("AddEditHabitViewModel", "Reminder scheduled for habit ${newHabit.id}")
+                            Timber.tag("AddEditHabitViewModel").d("Reminder scheduled for habit ${newHabit.id}")
                         }
                     }
                     
@@ -415,6 +437,9 @@ class AddEditHabitViewModel @Inject constructor(
                     val effectiveFrequency = if (currentHabit!!.type == HabitType.GROUP && !isAuthor) {
                         currentHabit!!.frequency
                     } else currentState.frequency
+
+                    val isAuthorConvertingGroupToPersonal =
+                        isAuthor && currentHabit!!.type == HabitType.GROUP && currentState.type == HabitType.PERSONAL
                     // Обрабатываем дату начала
                     val effectiveStartDate = when {
                         // Если можно редактировать и задана дата - используем её
@@ -427,6 +452,116 @@ class AddEditHabitViewModel @Inject constructor(
                         else -> Clock.System.now()
                             .toLocalDateTime(TimeZone.currentSystemDefault())
                             .date
+                    }
+
+                    val shouldRemoveFromPublicCatalog = currentState.showRemoveFromPublicCatalogOption && currentState.removeFromPublicCatalog
+                    val shouldSplitIntoPersonalCopy =
+                        isAuthorConvertingGroupToPersonal && currentHabit!!.isPublic && !shouldRemoveFromPublicCatalog
+
+                    if (shouldSplitIntoPersonalCopy) {
+                        val authorId = currentUserIdForUpdate
+                        val personalHabitId = UUID.randomUUID().toString()
+
+                        val personalHabit = currentHabit!!.copy(
+                            id = personalHabitId,
+                            title = currentState.title,
+                            description = currentState.description,
+                            icon = currentState.icon,
+                            color = "#%06X".format(0xFFFFFF and currentState.color),
+                            type = HabitType.PERSONAL,
+                            goalType = currentState.goalType,
+                            frequency = currentState.frequency,
+                            reminderTime = if (currentState.reminderEnabled) currentState.reminderTime else null,
+                            reminderEnabled = currentState.reminderEnabled,
+                            reminderDays = currentState.reminderDaysInput,
+                            followUpReminderEnabled = currentState.followUpReminderEnabled,
+                            followUpReminderDuration = currentState.followUpReminderDuration,
+                            targetValue = currentState.targetValue,
+                            unit = currentState.unit,
+                            maxParticipants = currentState.maxParticipants,
+                            inviteCode = null,
+                            isPublic = false,
+                            participants = emptyList(),
+                            createdBy = authorId,
+                            updatedAt = today,
+                            startDate = effectiveStartDate,
+                            endDate = currentState.endDate,
+                            timeOfDay = currentHabit!!.timeOfDay
+                        )
+
+                        val nextParticipants = safeParticipants.filterNot { it == authorId }
+                        val nextOwnerId = nextParticipants.firstOrNull().orEmpty()
+
+                        val publicGroupHabit = currentHabit!!.copy(
+                            title = currentState.title,
+                            description = currentState.description,
+                            icon = currentState.icon,
+                            color = "#%06X".format(0xFFFFFF and currentState.color),
+                            type = HabitType.GROUP,
+                            goalType = currentState.goalType,
+                            frequency = effectiveFrequency,
+                            maxParticipants = currentState.maxParticipants,
+                            // inviteCode оставляем, чтобы привычка оставалась joinable
+                            inviteCode = currentHabit!!.inviteCode,
+                            isPublic = true,
+                            participants = nextParticipants,
+                            createdBy = nextOwnerId,
+                            updatedAt = today,
+                            startDate = effectiveStartDate,
+                            endDate = currentState.endDate,
+                            timeOfDay = currentHabit!!.timeOfDay
+                        )
+
+                        // 1) Обновляем публичную GROUP-копию (тот же id)
+                        updateHabitUseCase(publicGroupHabit)
+                        // 2) Создаём личную копию автора (новый id)
+                        addHabitUseCase(personalHabit)
+
+                        // 3) Переносим историю выполнения автора в личную копию
+                        try {
+                            val oldHabitId = currentHabit!!.id
+                            val entries = habitEntryRepository.getEntriesForUserAndHabitOnce(authorId, oldHabitId)
+                            for (e in entries) {
+                                habitEntryRepository.insertEntry(e.copy(habitId = personalHabitId))
+                            }
+                            habitEntryRepository.deleteEntriesForUserAndHabit(authorId, oldHabitId)
+                        } catch (e: Exception) {
+                            Timber.tag("AddEditHabitViewModel").w(e, "Failed to migrate habit entries to personal copy: ${e.message}")
+                        }
+
+                        // 4) Обновляем персональные настройки напоминаний и перепланируем
+                        try {
+                            updateMyHabitReminderSettingsUseCase(
+                                HabitParticipantSettings(
+                                    habitId = personalHabit.id,
+                                    userId = authorId,
+                                    reminderTime = personalHabit.reminderTime,
+                                    reminderEnabled = personalHabit.reminderEnabled,
+                                    reminderDays = personalHabit.reminderDays
+                                )
+                            )
+                            if (personalHabit.reminderTime != null) scheduleHabitReminderUseCase(personalHabit)
+                        } catch (e: Exception) {
+                            Timber.tag("AddEditHabitViewModel").w(e, "Failed to reschedule reminders for personal copy: ${e.message}")
+                        }
+
+                        currentHabit = personalHabit
+                        _uiState.update {
+                            val base = it.copy(
+                                habitId = personalHabit.id,
+                                isPublic = false,
+                                removeFromPublicCatalog = false
+                            )
+                            updateRemoveFromPublicCatalogVisibility(personalHabit, base)
+                        }
+                        _uiState.update {
+                            it.copy(
+                                isHabitSaved = true,
+                                isLoading = false,
+                                successMessage = getApplication<Application>().getString(R.string.habit_updated)
+                            )
+                        }
+                        return@launch
                     }
 
                     val updatedHabit = currentHabit!!.copy(
@@ -457,9 +592,9 @@ class AddEditHabitViewModel @Inject constructor(
                         targetValue = currentState.targetValue,
                         unit = currentState.unit,
                         maxParticipants = currentState.maxParticipants,
-                        inviteCode = currentState.inviteCode,
-                        isPublic = currentState.isPublic,
-                        participants = safeParticipants,
+                        inviteCode = if (isAuthorConvertingGroupToPersonal) null else currentState.inviteCode,
+                        isPublic = if (shouldRemoveFromPublicCatalog) false else currentState.isPublic,
+                        participants = if (isAuthorConvertingGroupToPersonal) emptyList() else safeParticipants,
                         updatedAt = today,
                         startDate = effectiveStartDate, // Всегда сохраняем валидную дату начала
                         endDate = currentState.endDate,
@@ -481,14 +616,21 @@ class AddEditHabitViewModel @Inject constructor(
                             )
                         )
                         scheduleHabitReminderUseCase(updatedHabit)
-                        Log.d("AddEditHabitViewModel", "Personal reminders updated and rescheduled")
+                        Timber.tag("AddEditHabitViewModel").d("Personal reminders updated and rescheduled")
                     } catch (e: Exception) {
-                        Log.w("AddEditHabitViewModel", "updateMyHabitReminderSettingsUseCase/scheduleHabitReminderUseCase failed: ${e.message}", e)
+                        Timber.tag("AddEditHabitViewModel").w(e, "updateMyHabitReminderSettingsUseCase/scheduleHabitReminderUseCase failed: ${e.message}")
                     }
                     // Обновим ссылку на текущую привычку
                     currentHabit = updatedHabit
                     // Обновляем habitId в uiState для корректной работы методов после сохранения
-                    _uiState.update { it.copy(habitId = updatedHabit.id) }
+                    _uiState.update {
+                        val base = it.copy(
+                            habitId = updatedHabit.id,
+                            isPublic = updatedHabit.isPublic,
+                            removeFromPublicCatalog = false
+                        )
+                        updateRemoveFromPublicCatalogVisibility(updatedHabit, base)
+                    }
                 }
 
                 _uiState.update { it.copy(
@@ -504,10 +646,7 @@ class AddEditHabitViewModel @Inject constructor(
                     stateAfterSave.type == HabitType.GROUP &&
                     currentHabit?.id != null
                 ) {
-                    Log.d(
-                        "AddEditHabitViewModel",
-                        "[saveHabit] Trigger sendInvitations() after save: habitId=${currentHabit?.id}, selected=${stateAfterSave.selectedFriendsToInvite.size}"
-                    )
+                    Timber.tag("AddEditHabitViewModel").d("[saveHabit] Trigger sendInvitations() after save: habitId=${currentHabit?.id}, selected=${stateAfterSave.selectedFriendsToInvite.size}")
                     // Сбрасываем флаг перед отправкой, чтобы не зациклиться при последующих сохранениях
                     _uiState.update { it.copy(sendInvitesAfterSave = false) }
                     sendInvitations()
@@ -532,7 +671,10 @@ class AddEditHabitViewModel @Inject constructor(
     }
 
     override fun onTypeChange(type: HabitType) {
-        _uiState.update { it.copy(type = type, hasUnsavedChanges = true) }
+        _uiState.update { state ->
+            val base = state.copy(type = type, hasUnsavedChanges = true)
+            updateRemoveFromPublicCatalogVisibility(currentHabit, base)
+        }
     }
 
     override fun onGoalTypeChange(goalType: HabitGoalType) {
@@ -659,7 +801,7 @@ class AddEditHabitViewModel @Inject constructor(
                     ) ?: return@launch
                     
                     scheduleHabitReminderUseCase(tempHabit)
-                    Log.d("AddEditHabitViewModel", "Напоминание запланировано")
+                    Timber.tag("AddEditHabitViewModel").d("Напоминание запланировано")
                 }
             } catch (e: Exception) {
                 _uiState.update { it.copy(error = getApplication<Application>().getString(R.string.error_scheduling_reminder, e.localizedMessage ?: "")) }
@@ -684,7 +826,7 @@ class AddEditHabitViewModel @Inject constructor(
                     )
                     // Отменяем запланированные задачи
                     cancelHabitReminderUseCase(habit.id)
-                    Log.d("AddEditHabitViewModel", "Персональные напоминания отключены и отменены")
+                    Timber.tag("AddEditHabitViewModel").d("Персональные напоминания отключены и отменены")
                 }
             } catch (e: Exception) {
                 _uiState.update { it.copy(error = getApplication<Application>().getString(R.string.error_canceling_reminder, e.localizedMessage ?: "")) }
@@ -710,7 +852,7 @@ class AddEditHabitViewModel @Inject constructor(
                 )
                 // Перепланируем напоминание с учётом перс. настроек
                 scheduleHabitReminderUseCase(habit)
-                Log.d("AddEditHabitViewModel", "Персональные напоминания обновлены и перепланированы")
+                Timber.tag("AddEditHabitViewModel").d("Персональные напоминания обновлены и перепланированы")
             } catch (e: Exception) {
                 _uiState.update { it.copy(error = getApplication<Application>().getString(R.string.error_updating_reminder, e.localizedMessage ?: "")) }
             }
@@ -757,9 +899,10 @@ class AddEditHabitViewModel @Inject constructor(
     override fun onReminderDayToggle(day: DayOfWeek) {
         _uiState.update { state ->
             val current = state.reminderDaysInput.toMutableSet()
-            val toggled = if (current.contains(day)) {
-                current.remove(day)
-                current
+            val toggled: Set<DayOfWeek> = if (current.contains(day)) {
+                // Нельзя снять последний выбранный период
+                if (current.size > 1) current.remove(day)
+                current.toSet()
             } else {
                 // Добавляем с учетом ограничений по частоте
                 when (state.frequency) {
@@ -767,10 +910,10 @@ class AddEditHabitViewModel @Inject constructor(
                     HabitFrequency.TWICE_A_WEEK -> {
                         if (current.size >= 2) {
                             // Не добавляем больше 2
-                            current
+                            current.toSet()
                         } else {
                             current.add(day)
-                            current
+                            current.toSet()
                         }
                     }
                     HabitFrequency.WEEKDAYS -> setOf(
@@ -783,7 +926,7 @@ class AddEditHabitViewModel @Inject constructor(
                     HabitFrequency.WEEKENDS -> setOf(DayOfWeek.SATURDAY, DayOfWeek.SUNDAY)
                     HabitFrequency.CUSTOM, HabitFrequency.DAILY -> {
                         current.add(day)
-                        current
+                        current.toSet()
                     }
                 }
             }
@@ -819,11 +962,11 @@ class AddEditHabitViewModel @Inject constructor(
                     ?: throw Exception("Пользователь не авторизован")
                 
                 // Используем habitId из uiState для корректной работы после отключения кода
-                Log.d("AddEditHabitViewModel", "[generateInviteCode] currentState.habitId=${currentState.habitId}, currentHabit?.id=${currentHabit?.id}")
+                Timber.tag("AddEditHabitViewModel").d("[generateInviteCode] currentState.habitId=${currentState.habitId}, currentHabit?.id=${currentHabit?.id}")
                 val habitId = currentState.habitId 
                     ?: currentHabit?.id 
                     ?: throw Exception("Привычка не найдена")
-                Log.d("AddEditHabitViewModel", "[generateInviteCode] Using habitId=$habitId")
+                Timber.tag("AddEditHabitViewModel").d("[generateInviteCode] Using habitId=$habitId")
                 
                 val result = generateHabitInviteCodeUseCase.invoke(habitId, currentUserId)
                 result.onSuccess { inviteCode: String ->
@@ -989,7 +1132,14 @@ class AddEditHabitViewModel @Inject constructor(
     }
     
     override fun onIsPublicChange(isPublic: Boolean) {
-        _uiState.update { it.copy(isPublic = isPublic) }
+        _uiState.update { state ->
+            val base = state.copy(isPublic = isPublic)
+            updateRemoveFromPublicCatalogVisibility(currentHabit, base)
+        }
+    }
+
+    override fun onRemoveFromPublicCatalogChange(remove: Boolean) {
+        _uiState.update { it.copy(removeFromPublicCatalog = remove, hasUnsavedChanges = true) }
     }
 
     override fun onShowFriendSelector(show: Boolean) {
@@ -1063,7 +1213,7 @@ class AddEditHabitViewModel @Inject constructor(
         invitationScope.launch {
             try {
                 _uiState.update { it.copy(isSendingInvitations = true, error = null) }
-                Log.d("AddEditHabitViewModel", "[sendInvitations] start")
+                Timber.tag("AddEditHabitViewModel").d("[sendInvitations] start")
                 
                 val currentState = _uiState.value
                 
@@ -1094,10 +1244,7 @@ class AddEditHabitViewModel @Inject constructor(
                     ?: throw Exception("Пользователь не авторизован")
                 
                 val habitId = currentHabit?.id ?: throw Exception("Привычка не найдена")
-                Log.d(
-                    "AddEditHabitViewModel",
-                    "[sendInvitations] will send: habitId=$habitId, from=$currentUserId, friends=${currentState.selectedFriendsToInvite.map { it.id }}"
-                )
+                Timber.tag("AddEditHabitViewModel").d("[sendInvitations] will send: habitId=$habitId, from=$currentUserId, friends=${currentState.selectedFriendsToInvite.map { it.id }}")
                 
                 // Отправляем приглашения по одному для лучшего контроля
                 var successCount = 0
@@ -1106,20 +1253,20 @@ class AddEditHabitViewModel @Inject constructor(
                 
                 for (friend in currentState.selectedFriendsToInvite) {
                     try {
-                        Log.d("AddEditHabitViewModel", "[sendInvitations] -> to=${friend.id} (${friend.name})")
+                        Timber.tag("AddEditHabitViewModel").d("[sendInvitations] -> to=${friend.id} (${friend.name})")
                         val result = sendHabitInvitationUseCase(habitId, currentUserId, friend.id)
                         result.onSuccess {
                             successCount++
-                            Log.d("AddEditHabitViewModel", "[sendInvitations] <- SUCCESS to=${friend.id}")
-                        }.onFailure { error: Throwable ->
+                            Timber.tag("AddEditHabitViewModel").d("[sendInvitations] <- SUCCESS to=${friend.id}")
+                        }.onFailure { exception ->
                             errorCount++
-                            errors.add("${friend.name}: ${error.message}")
-                            Log.w("AddEditHabitViewModel", "[sendInvitations] <- FAILURE to=${friend.id}: ${error.message}", error)
+                            errors.add("${friend.name}: ${exception.message}")
+                            Timber.tag("AddEditHabitViewModel").w("[sendInvitations] <- FAILURE to=${friend.id}: ${exception.message}")
                         }
                     } catch (e: Exception) {
                         errorCount++
                         errors.add("${friend.name}: ${e.message}")
-                        Log.w("AddEditHabitViewModel", "[sendInvitations] <- EXCEPTION to=${friend.id}: ${e.message}", e)
+                        Timber.tag("AddEditHabitViewModel").w("[sendInvitations] <- EXCEPTION to=${friend.id}: ${e.message}")
                     }
                 }
                 
@@ -1142,7 +1289,7 @@ class AddEditHabitViewModel @Inject constructor(
                         hasUnsavedChanges = successCount > 0
                     )
                 }
-                Log.d("AddEditHabitViewModel", "[sendInvitations] done: success=$successCount errors=$errorCount")
+                Timber.tag("AddEditHabitViewModel").d("[sendInvitations] done: success=$successCount errors=$errorCount")
                 
             } catch (e: Exception) {
                 _uiState.update { 
@@ -1151,7 +1298,7 @@ class AddEditHabitViewModel @Inject constructor(
                         error = "Ошибка отправки приглашений: ${e.message}"
                     )
                 }
-                Log.w("AddEditHabitViewModel", "[sendInvitations] FAILED: ${e.message}", e)
+                Timber.tag("AddEditHabitViewModel").w(e, "[sendInvitations] FAILED: ${e.message}")
             }
         }
     }
@@ -1256,7 +1403,7 @@ class AddEditHabitViewModel @Inject constructor(
     
     // Методы для работы с датами привычек
     override fun onStartDateChange(date: LocalDate?) {
-        Log.d("AddEditHabitViewModel", "📅 [onStartDateChange] New start date selected: $date")
+        Timber.tag("AddEditHabitViewModel").d("📅 [onStartDateChange] New start date selected: $date")
         _uiState.update { currentState ->
             // Если дата окончания установлена и она раньше новой даты начала, сбрасываем её
             val newEndDate = if (date != null && currentState.endDate != null && currentState.endDate < date) {
@@ -1271,7 +1418,7 @@ class AddEditHabitViewModel @Inject constructor(
                 hasUnsavedChanges = true
             )
         }
-        Log.d("AddEditHabitViewModel", "📅 [onStartDateChange] UI State updated: startDate=${_uiState.value.startDate}")
+        Timber.tag("AddEditHabitViewModel").d("📅 [onStartDateChange] UI State updated: startDate=${_uiState.value.startDate}")
     }
     
     override fun onEndDateChange(date: LocalDate?) {

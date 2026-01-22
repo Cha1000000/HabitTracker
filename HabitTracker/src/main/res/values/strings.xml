@@ -99,6 +99,8 @@
     <string name="habit_name_label">Name</string>
     <string name="habit_description_label">Description (optional)</string>
     <string name="habit_type_label">Habit Type</string>
+    <string name="remove_from_public_catalog_title">Remove from public catalog</string>
+    <string name="remove_from_public_catalog_subtitle">If enabled, this habit will no longer be shown in the catalog</string>
     <string name="habit_frequency_label">Frequency</string>
     <string name="habit_target_value_label">Target Value</string>
     <string name="habit_unit_label">Unit</string>

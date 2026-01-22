@@ -1,18 +1,17 @@
 package com.habittracker.domain.usecase.habit
 
-import android.util.Log
 import com.habittracker.R
 import com.habittracker.domain.model.Habit
 import com.habittracker.domain.model.canAddParticipants
 import com.habittracker.domain.model.isGroupHabit
 import com.habittracker.domain.model.isUserParticipant
 import com.habittracker.domain.provider.StringProvider
-import com.habittracker.domain.repository.FirestoreRepository
 import com.habittracker.domain.repository.HabitRepository
 import com.habittracker.domain.repository.ParticipantSettingsRepository
 import com.habittracker.domain.repository.SocialRepository
 import com.habittracker.domain.usecase.ScheduleHabitReminderUseCase
 import com.habittracker.domain.usecase.notification.SaveParticipantJoinedNotificationUseCase
+import timber.log.Timber
 import javax.inject.Inject
 
 /**
@@ -79,6 +78,7 @@ class JoinHabitByCodeUseCase @Inject constructor(
 
             // Добавляем пользователя к участникам привычки и синхронизируем с Firebase
             val updatedHabit = habit.copy(
+                createdBy = habit.createdBy.ifBlank { userId },
                 participants = habit.participants + userId
             )
             
@@ -89,13 +89,13 @@ class JoinHabitByCodeUseCase @Inject constructor(
             try {
                 if (habit.reminderTime != null) {
                     participantSettingsRepository.upsertDefaultsFromHabit(habit, userId)
-                    Log.d("JoinHabitByCodeUC", "[reminder] scheduling for habit=${habit.id}")
+                    Timber.tag("JoinHabitByCodeUC").d("[reminder] scheduling for habit=${habit.id}")
                     scheduleHabitReminderUseCase(habit)
                 } else {
-                    Log.d("JoinHabitByCodeUC", "[reminder] skip: no reminderTime for habit=${habit.id}")
+                    Timber.tag("JoinHabitByCodeUC").d("[reminder] skip: no reminderTime for habit=${habit.id}")
                 }
             } catch (e: Exception) {
-                Log.w("JoinHabitByCodeUC", "[reminder] failed to schedule: ${e.message}", e)
+                Timber.tag("JoinHabitByCodeUC").w(e, "[reminder] failed to schedule: ${e.message}")
             }
 
             // Сохраняем уведомления для всех участников
@@ -108,7 +108,8 @@ class JoinHabitByCodeUseCase @Inject constructor(
                     participantIds = habit.participants
                 )
             } catch (e: Exception) {
-                Log.e("JoinHabitByCodeUC", "Failed to save join notifications: ${e.message}", e)
+                Timber.tag("JoinHabitByCodeUC")
+                    .e(e, "Failed to save join notifications: ${e.message}")
             }
 
             // Возвращаем обновленную привычку из базы данных

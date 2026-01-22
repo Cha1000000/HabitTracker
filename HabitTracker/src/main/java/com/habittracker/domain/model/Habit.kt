@@ -68,10 +68,9 @@ enum class HabitFrequency {
 }
 
 // Extension functions для работы с привычками
-fun Habit.isGroupHabit(): Boolean = type == HabitType.GROUP || participants.size > 1
+fun Habit.isGroupHabit(): Boolean = type == HabitType.GROUP
 
-fun Habit.isUserParticipant(userId: String): Boolean =
-    createdBy == userId || participants.contains(userId)
+fun Habit.isUserParticipant(userId: String): Boolean = participants.contains(userId)
 
 /**
  * Проверяет, активна ли привычка в указанный день недели

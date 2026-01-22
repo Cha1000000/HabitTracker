@@ -250,6 +250,10 @@ class PreviewAddEditHabitViewModel @Inject constructor(
         updateValidationState()
     }
 
+    override fun onRemoveFromPublicCatalogChange(remove: Boolean) {
+        _uiState.update { it.copy(removeFromPublicCatalog = remove, hasUnsavedChanges = true) }
+    }
+
     override fun onShowFriendSelector(show: Boolean) {
         _uiState.update { it.copy(showFriendSelector = show) }
     }

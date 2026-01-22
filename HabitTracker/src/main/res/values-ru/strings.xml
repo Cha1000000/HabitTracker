@@ -97,6 +97,8 @@
     <string name="habit_name_label">Название</string>
     <string name="habit_description_label">Описание (необязательно)</string>
     <string name="habit_type_label">Тип привычки</string>
+    <string name="remove_from_public_catalog_title">Удалить из каталога публичных привычек</string>
+    <string name="remove_from_public_catalog_subtitle">Если включить, привычка перестанет отображаться в каталоге</string>
     <string name="habit_frequency_label">Частота</string>
     <string name="habit_target_value_label">Целевое значение</string>
     <string name="habit_unit_label">Ед. изм.</string>

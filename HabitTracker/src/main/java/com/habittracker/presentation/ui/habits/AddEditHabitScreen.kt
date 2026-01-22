@@ -32,6 +32,7 @@ import androidx.compose.material3.ExposedDropdownMenuAnchorType
 import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FilterChipDefaults
+import androidx.compose.material3.Checkbox
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -998,6 +999,39 @@ fun AddEditHabitScreen(
                         onTypeSelected = { viewModel.onTypeChange(it) },
                         modifier = Modifier.fillMaxWidth()
                     )
+
+                    if (uiState.showRemoveFromPublicCatalogOption) {
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable(enabled = !uiState.isLoading && !uiState.isHabitSaved) {
+                                    viewModel.onRemoveFromPublicCatalogChange(!uiState.removeFromPublicCatalog)
+                                },
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Checkbox(
+                                checked = uiState.removeFromPublicCatalog,
+                                onCheckedChange = {
+                                    viewModel.onRemoveFromPublicCatalogChange(it)
+                                },
+                                enabled = !uiState.isLoading && !uiState.isHabitSaved
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(
+                                    text = stringResource(R.string.remove_from_public_catalog_title),
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = MaterialTheme.colorScheme.onSurface
+                                )
+                                Text(
+                                    text = stringResource(R.string.remove_from_public_catalog_subtitle),
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                        }
+                    }
                 }
 
                 item {

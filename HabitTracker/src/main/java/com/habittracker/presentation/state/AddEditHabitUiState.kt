@@ -59,6 +59,8 @@ data class AddEditHabitUiState(
     val maxParticipantsInput: String = GroupHabitConstants.DEFAULT_MAX_PARTICIPANTS.toString(),
     val inviteCode: String? = null,
     val isPublic: Boolean = false,
+    val showRemoveFromPublicCatalogOption: Boolean = false,
+    val removeFromPublicCatalog: Boolean = false,
     val participants: List<User> = emptyList(),
     val selectedFriendsToInvite: List<User> = emptyList(),
     val showFriendSelector: Boolean = false,
