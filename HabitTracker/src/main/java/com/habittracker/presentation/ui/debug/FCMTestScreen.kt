@@ -31,10 +31,9 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import com.habittracker.util.TestNotificationType
 
 /**
@@ -46,7 +45,6 @@ import com.habittracker.util.TestNotificationType
 fun FCMTestScreen(
     viewModel: FCMTestViewModel = hiltViewModel()
 ) {
-    val context = LocalContext.current
     var fcmToken by remember { mutableStateOf("") }
     val uiState by viewModel.uiState.collectAsState()
     

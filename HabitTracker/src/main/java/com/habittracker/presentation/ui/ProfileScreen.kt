@@ -56,7 +56,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.navigation.NavController
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
@@ -73,6 +73,7 @@ import com.habittracker.presentation.viewmodel.AuthEvent
 import com.habittracker.presentation.viewmodel.AuthState
 import com.habittracker.presentation.viewmodel.AuthViewModel
 import com.habittracker.presentation.viewmodel.ProfileViewModel
+import timber.log.Timber
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -136,8 +137,8 @@ fun ProfileScreen(
                     // Launcher для выбора изображения
                     val imagePicker = rememberLauncherForActivityResult(
                         contract = ActivityResultContracts.GetContent()
-                    ) { uri -> 
-                        android.util.Log.d("ProfileScreen", "Image picked: $uri")
+                    ) { uri ->
+                        Timber.tag("ProfileScreen").d("Image picked: $uri")
                         profileViewModel.onAvatarPicked(uri) 
                     }
                     
@@ -145,7 +146,7 @@ fun ProfileScreen(
                     val permissionLauncher = rememberLauncherForActivityResult(
                         contract = ActivityResultContracts.RequestPermission()
                     ) { isGranted ->
-                        android.util.Log.d("ProfileScreen", "Permission result: $isGranted")
+                        Timber.tag("ProfileScreen").d("Permission result: $isGranted")
                         if (isGranted) {
                             imagePicker.launch("image/*")
                         } else {

@@ -9,7 +9,6 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
-import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavHostController
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
@@ -20,6 +19,9 @@ import com.habittracker.presentation.ui.ProfileScreen
 import com.habittracker.presentation.ui.achievements.AchievementsScreen
 import com.habittracker.presentation.ui.auth.LoginScreen
 import com.habittracker.presentation.ui.auth.RegisterScreen
+import com.habittracker.presentation.ui.challenges.ChallengeDetailScreen
+import com.habittracker.presentation.ui.challenges.ChallengesScreen
+import com.habittracker.presentation.ui.challenges.CreateChallengeScreen
 import com.habittracker.presentation.ui.components.AchievementEventManager
 import com.habittracker.presentation.ui.components.AchievementToastData
 import com.habittracker.presentation.ui.components.AchievementUnlockedToast
@@ -29,13 +31,10 @@ import com.habittracker.presentation.ui.habits.AddEditHabitScreen
 import com.habittracker.presentation.ui.habits.GroupHabitDetailScreen
 import com.habittracker.presentation.ui.habits.HabitsScreen
 import com.habittracker.presentation.ui.notifications.NotificationsScreen
+import com.habittracker.presentation.ui.settings.NotificationSettingsScreen
 import com.habittracker.presentation.ui.social.FriendsScreen
 import com.habittracker.presentation.ui.splash.SplashScreen
 import com.habittracker.presentation.ui.stats.StatsScreen
-import com.habittracker.presentation.ui.challenges.ChallengeDetailScreen
-import com.habittracker.presentation.ui.challenges.ChallengesScreen
-import com.habittracker.presentation.ui.challenges.CreateChallengeScreen
-import com.habittracker.presentation.ui.settings.NotificationSettingsScreen
 import kotlinx.coroutines.flow.collectLatest
 
 /**

@@ -36,7 +36,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
@@ -103,10 +103,12 @@ fun NotificationsScreen(
         }
     }
     // Ошибки по ресурсам (общие)
-    LaunchedEffect(uiState.errorResId) {
-        uiState.errorResId?.let { resId ->
+    val errorResId = uiState.errorResId
+    val errorMessage = errorResId?.let { stringResource(it) }
+    LaunchedEffect(errorResId) {
+        errorMessage?.let { message ->
             snackbarHostState.showSnackbar(
-                message = context.getString(resId),
+                message = message,
                 duration = SnackbarDuration.Long
             )
             viewModel.onErrorShown()
@@ -123,10 +125,12 @@ fun NotificationsScreen(
         }
     }
     // Ошибки секции приглашений по ресурсам
-    LaunchedEffect(uiState.invitesErrorResId) {
-        uiState.invitesErrorResId?.let { resId ->
+    val invitesErrorResId = uiState.invitesErrorResId
+    val invitesErrorMessage = invitesErrorResId?.let { stringResource(it) }
+    LaunchedEffect(invitesErrorResId) {
+        invitesErrorMessage?.let { message ->
             snackbarHostState.showSnackbar(
-                message = context.getString(resId),
+                message = message,
                 duration = SnackbarDuration.Long
             )
             viewModel.onErrorShown()
@@ -144,10 +148,12 @@ fun NotificationsScreen(
         }
     }
     // Успехи по ресурсам
-    LaunchedEffect(uiState.successResId) {
-        uiState.successResId?.let { resId ->
+    val successResId = uiState.successResId
+    val successMessage = successResId?.let { stringResource(it) }
+    LaunchedEffect(successResId) {
+        successMessage?.let { message ->
             snackbarHostState.showSnackbar(
-                message = context.getString(resId),
+                message = message,
                 duration = SnackbarDuration.Short
             )
             viewModel.onSuccessMessageShown()

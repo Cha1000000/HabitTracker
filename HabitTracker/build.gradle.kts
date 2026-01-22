@@ -128,7 +128,7 @@ android {
     kotlinOptions {
         jvmTarget = "17"
     }
-    @Suppress("UnstableApiUsage")
+    //@Suppress("UnstableApiUsage")
     testOptions {
         unitTests {
             isReturnDefaultValues = true  // Возвращать default значения для Android методов вместо исключений
@@ -220,6 +220,7 @@ dependencies {
     ksp(libs.hilt.compiler)
     ksp(libs.hilt.android.compiler)
     implementation(libs.hilt.navigation.compose)
+    implementation(libs.hilt.lifecycle.viewmodel.compose)
     implementation(libs.hilt.work)
     
     // Room database

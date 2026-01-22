@@ -16,7 +16,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
@@ -42,7 +41,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.habittracker.R
 import com.habittracker.domain.model.gamification.ChallengeStats
@@ -424,7 +423,6 @@ private fun ActivityChartCard(last7Days: List<Pair<kotlinx.datetime.LocalDate, I
                             kotlinx.datetime.DayOfWeek.FRIDAY -> stringResource(R.string.weekday_fri)
                             kotlinx.datetime.DayOfWeek.SATURDAY -> stringResource(R.string.weekday_sat)
                             kotlinx.datetime.DayOfWeek.SUNDAY -> stringResource(R.string.weekday_sun)
-                            else -> ""
                         }
                         Text(
                             text = dayName,

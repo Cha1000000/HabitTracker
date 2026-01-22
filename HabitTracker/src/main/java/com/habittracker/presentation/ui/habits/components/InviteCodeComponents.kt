@@ -155,6 +155,7 @@ private fun InviteCodeDisplay(
     onDisableCode: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    @Suppress("DEPRECATION")
     val clipboardManager = LocalClipboardManager.current
     
     Column(modifier = modifier) {
@@ -290,9 +291,9 @@ private fun InviteCodeGeneration(
  */
 @Composable
 fun JoinByCodeCard(
+    modifier: Modifier = Modifier,
     onJoinByCode: (String) -> Unit,
     isLoading: Boolean = false,
-    modifier: Modifier = Modifier
 ) {
     var codeInput by remember { mutableStateOf("") }
     
