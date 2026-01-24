@@ -1073,4 +1073,39 @@
     <string name="error_challenge_max_participants_limit">Максимальное количество участников: 10</string>
     <string name="error_end_date_before_start">Дата окончания не может быть раньше даты начала</string>
     <string name="error_end_date_past">Дата окончания должна быть в будущем</string>
+
+    <!-- Habit Statistics Screens -->
+    <string name="habit_statistics_title">Статистика привычки</string>
+    <string name="group_habit_statistics_title">Статистика групповой привычки</string>
+    <string name="cd_habit_statistics">Статистика</string>
+    <string name="habit_stat_period">Период</string>
+    <string name="habit_stat_period_week">Неделя</string>
+    <string name="habit_stat_period_month">Месяц</string>
+    <string name="habit_stat_period_custom">Произвольный</string>
+    <string name="habit_stat_summary">Сводка</string>
+    <string name="habit_stat_completion_rate">Процент выполнения</string>
+    <string name="habit_stat_completed">Выполнено</string>
+    <string name="habit_stat_missed">Пропущено</string>
+    <string name="habit_stat_rest_days">Выходные</string>
+    <string name="habit_stat_current_streak">Текущая серия</string>
+    <string name="habit_stat_best_streak">Лучшая серия</string>
+    <string name="habit_stat_total_value">Всего</string>
+    <string name="habit_stat_active_days">Активных дней</string>
+    <string name="habit_stat_calendar">Календарь</string>
+    <string name="habit_stat_legend">Легенда</string>
+    <string name="habit_stat_legend_completed">Выполнено</string>
+    <string name="habit_stat_legend_missed">Пропущено</string>
+    <string name="habit_stat_legend_rest">Выходной</string>
+    <string name="habit_stat_legend_partial">Частично</string>
+    <string name="habit_stat_participants_count">%1$d участников</string>
+    <string name="habit_stat_compare_participants">Сравнить с участниками</string>
+    <string name="habit_stat_compare_participants_desc">Показать статистику других участников</string>
+    <string name="habit_stat_my_statistics">Моя статистика</string>
+    <string name="habit_stat_my_calendar">Мой календарь</string>
+    <string name="habit_stat_filter_participants">Фильтр участников</string>
+    <string name="habit_stat_show_all">Показать всех</string>
+    <string name="habit_stat_completion_short">выполнено</string>
+    <string name="habit_stat_completed_short">Выполнено</string>
+    <string name="habit_stat_missed_short">Пропущено</string>
+    <string name="habit_stat_streak_short">Серия</string>
 </resources>

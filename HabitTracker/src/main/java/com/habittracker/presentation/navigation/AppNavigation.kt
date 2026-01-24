@@ -34,6 +34,8 @@ import com.habittracker.presentation.ui.notifications.NotificationsScreen
 import com.habittracker.presentation.ui.settings.NotificationSettingsScreen
 import com.habittracker.presentation.ui.social.FriendsScreen
 import com.habittracker.presentation.ui.splash.SplashScreen
+import com.habittracker.presentation.ui.stats.GroupHabitStatScreen
+import com.habittracker.presentation.ui.stats.SelfHabitStatScreen
 import com.habittracker.presentation.ui.stats.StatsScreen
 import kotlinx.coroutines.flow.collectLatest
 
@@ -78,6 +80,13 @@ sealed class Screen(val route: String) {
     object HabitSettings : Screen("habit_settings_screen")
     // Debug screens (только для debug сборки)
     object FCMTest : Screen("fcm_test_screen")
+    // Habit Statistics
+    object SelfHabitStat : Screen("self_habit_stat_screen/{habitId}?isGroup={isGroup}") {
+        fun createRoute(habitId: String, isGroup: Boolean = false) = "self_habit_stat_screen/$habitId?isGroup=$isGroup"
+    }
+    object GroupHabitStat : Screen("group_habit_stat_screen/{habitId}?isGroup={isGroup}") {
+        fun createRoute(habitId: String, isGroup: Boolean = true) = "group_habit_stat_screen/$habitId?isGroup=$isGroup"
+    }
 }
 
 /**
@@ -296,6 +305,43 @@ fun AppNavHost(
 
         composable(route = Screen.HabitSettings.route) {
             com.habittracker.presentation.ui.settings.HabitSettingsScreen(navController = navController)
+        }
+
+        // Habit Statistics Screens
+        composable(
+            route = Screen.SelfHabitStat.route,
+            arguments = listOf(
+                navArgument("habitId") {
+                    type = NavType.StringType
+                    nullable = false
+                },
+                navArgument("isGroup") {
+                    type = NavType.BoolType
+                    defaultValue = false
+                }
+            )
+        ) {
+            SelfHabitStatScreen(
+                onNavigateBack = { navController.popBackStack() }
+            )
+        }
+
+        composable(
+            route = Screen.GroupHabitStat.route,
+            arguments = listOf(
+                navArgument("habitId") {
+                    type = NavType.StringType
+                    nullable = false
+                },
+                navArgument("isGroup") {
+                    type = NavType.BoolType
+                    defaultValue = true
+                }
+            )
+        ) {
+            GroupHabitStatScreen(
+                onNavigateBack = { navController.popBackStack() }
+            )
         }
     }
         

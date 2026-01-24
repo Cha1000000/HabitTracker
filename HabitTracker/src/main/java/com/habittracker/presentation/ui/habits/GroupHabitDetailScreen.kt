@@ -149,6 +149,19 @@ fun GroupHabitDetailScreen(
                         }
                     },
                     actions = {
+                        // Кнопка статистики
+                        if (uiState.habit != null) {
+                            IconButton(
+                                onClick = {
+                                    navController.navigate("group_habit_stat_screen/$habitId?isGroup=true")
+                                }
+                            ) {
+                                Icon(
+                                    imageVector = TahoeIcons.ChartBar,
+                                    contentDescription = stringResource(R.string.cd_habit_statistics)
+                                )
+                            }
+                        }
                         // Меню действий
                         if (uiState.isOwner) {
                             IconButton(

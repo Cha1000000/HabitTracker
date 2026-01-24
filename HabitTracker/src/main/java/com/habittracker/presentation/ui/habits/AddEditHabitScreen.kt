@@ -852,6 +852,24 @@ fun AddEditHabitScreen(
                         scrolledContainerColor = Color.Transparent
                     ),
                     actions = {
+                        // Кнопка статистики (только для существующих привычек)
+                        if (uiState.habitId != null && !uiState.isLoading) {
+                            IconButton(
+                                onClick = {
+                                    // Навигация на экран статистики
+                                    if (uiState.type == HabitType.GROUP) {
+                                        navController.navigate("group_habit_stat_screen/${uiState.habitId}?isGroup=true")
+                                    } else {
+                                        navController.navigate("self_habit_stat_screen/${uiState.habitId}?isGroup=false")
+                                    }
+                                }
+                            ) {
+                                Icon(
+                                    imageVector = TahoeIcons.ChartBar,
+                                    contentDescription = stringResource(R.string.cd_habit_statistics)
+                                )
+                            }
+                        }
                         if (uiState.isLoading) {
                             CircularProgressIndicator(
                                 modifier = Modifier
