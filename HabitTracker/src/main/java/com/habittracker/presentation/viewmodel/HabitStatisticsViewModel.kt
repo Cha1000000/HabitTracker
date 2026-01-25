@@ -9,6 +9,8 @@ import com.habittracker.domain.model.StatisticsPeriod
 import com.habittracker.domain.model.User
 import com.habittracker.domain.repository.AuthRepository
 import com.habittracker.domain.usecase.habit.GetHabitStatisticsUseCase
+import com.habittracker.domain.util.AnalyticsEvents
+import com.habittracker.domain.util.AnalyticsManager
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -58,6 +60,7 @@ data class GroupHabitStatUiState(
 class HabitStatisticsViewModel @Inject constructor(
     private val getHabitStatisticsUseCase: GetHabitStatisticsUseCase,
     private val authRepository: AuthRepository,
+    private val analyticsManager: AnalyticsManager,
     savedStateHandle: SavedStateHandle
 ) : ViewModel() {
 
@@ -266,6 +269,19 @@ class HabitStatisticsViewModel @Inject constructor(
      */
     fun onClearParticipantFilter() {
         _groupStatUiState.update { it.copy(selectedParticipantIds = emptySet()) }
+    }
+
+    /**
+     * Трекинг раскрытия календаря статистики участника
+     */
+    fun onParticipantCalendarExpanded(participantId: String) {
+        analyticsManager.logEvent(
+            AnalyticsEvents.PARTICIPANT_CALENDAR_EXPANDED,
+            mapOf(
+                AnalyticsEvents.Params.HABIT_ID to habitId,
+                AnalyticsEvents.Params.PARTICIPANT_ID to participantId
+            )
+        )
     }
 
     private fun calculateDateRange(

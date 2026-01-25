@@ -837,6 +837,15 @@ class HabitsViewModel @Inject constructor(
                     deletion.habitWithCompletion.habit.id,
                     currentUserId
                 )
+                
+                // Track deletion event
+                analyticsManager.logEvent(
+                    AnalyticsEvents.HABIT_DELETED,
+                    mapOf(
+                        AnalyticsEvents.Params.HABIT_ID to deletion.habitWithCompletion.habit.id,
+                        AnalyticsEvents.Params.HABIT_TYPE to deletion.habitWithCompletion.habit.type.name
+                    )
+                )
             } catch (e: Exception) {
                 _uiState.value = _uiState.value.copy(
                     habitsWithCompletion = restoreDeduped(
@@ -882,6 +891,15 @@ class HabitsViewModel @Inject constructor(
         viewModelScope.launch {
             try {
                 deleteHabitUseCase(habitId, currentUserId)
+                
+                // Track deletion event
+                analyticsManager.logEvent(
+                    AnalyticsEvents.HABIT_DELETED,
+                    mapOf(
+                        AnalyticsEvents.Params.HABIT_ID to habitId,
+                        AnalyticsEvents.Params.HABIT_TYPE to removedItem.habit.type.name
+                    )
+                )
             } catch (e: Exception) {
                 // Откатываем
                 _uiState.value = _uiState.value.copy(
@@ -981,6 +999,12 @@ class HabitsViewModel @Inject constructor(
 
                 joinHabitByCodeUseCase(code, userId)
                     .onSuccess { habit ->
+                        // Track group habit joined event
+                        analyticsManager.logEvent(
+                            AnalyticsEvents.GROUP_HABIT_JOINED,
+                            mapOf(AnalyticsEvents.Params.HABIT_ID to habit.id)
+                        )
+                        
                         _uiState.value = _uiState.value.copy(
                             isLoading = false,
                             error = null,

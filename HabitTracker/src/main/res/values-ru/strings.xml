@@ -93,7 +93,7 @@
     <!-- Add/Edit Habit Screen -->
     <string name="habit_new_title">Новая привычка</string>
     <string name="habit_edit_title">Редактировать привычку</string>
-    <string name="habit_saving">Сохранение...</string>
+    <string name="habit_saving">Сохранение…</string>
     <string name="habit_name_label">Название</string>
     <string name="habit_description_label">Описание (необязательно)</string>
     <string name="habit_type_label">Тип привычки</string>
@@ -247,7 +247,7 @@
     <!-- Animation Labels -->
     <string name="animation_fab_scale">fab_scale</string>
     <string name="animation_fab_color">fab_color</string>
-    <string name="animation_saving">Сохранение...</string>
+    <string name="animation_saving">Сохранение…</string>
     
     <!-- Social Features -->
     <string name="friends">Друзья</string>
@@ -276,7 +276,7 @@
     <string name="friends_empty_hint_search">Найдите друзей во вкладке &quot;Поиск&quot;</string>
     <string name="no_requests_title">Нет запросов</string>
     <string name="no_requests_subtitle">Здесь будут отображаться запросы дружбы</string>
-    <string name="search_placeholder_friends">Найти друзей по имени...</string>
+    <string name="search_placeholder_friends">Найти друзей по имени…</string>
     <string name="search_nothing_found_title">Ничего не найдено</string>
     <string name="search_try_different_query">Попробуйте изменить поисковый запрос</string>
     <string name="search_enter_name_prompt">Введите имя пользователя для поиска</string>
@@ -417,9 +417,9 @@
     <string name="stats_challenges_created">Создано</string>
 
     <!-- Time labels -->
-    <string name="stats_time_morning">Утром (5-11)</string>
-    <string name="stats_time_afternoon">Днем (12-17)</string>
-    <string name="stats_time_evening">Вечером (18-22)</string>
+    <string name="stats_time_morning">Утром (5–11)</string>
+    <string name="stats_time_afternoon">Днем (12–17)</string>
+    <string name="stats_time_evening">Вечером (18–22)</string>
     <string name="stats_time_consistency">Оценка постоянства</string>
     <string name="stats_time_average">Среднее время</string>
     <string name="stats_time_best_hour">Лучший час</string>
@@ -535,13 +535,13 @@
     <string name="share_code">Поделиться</string>
     <string name="disable_code">Отключить код</string>
     <string name="no_invite_code">У этой привычки пока нет кода приглашения</string>
-    <string name="generating_code">Генерируем...</string>
+    <string name="generating_code">Генерируем…</string>
     <string name="generate_invite_code">Создать код приглашения</string>
     <string name="invite_code_after_save">У этой привычки пока нет кода приглашения</string>
     <string name="invite_code_can_generate_after_save">Код приглашения можно создать после сохранения привычки</string>
     <string name="join_habit_by_code">Присоединиться по коду</string>
     <string name="join_habit_by_code_description">Введите код приглашения, чтобы присоединиться к групповой привычке</string>
-    <string name="joining">Присоединяемся...</string>
+    <string name="joining">Присоединяемся…</string>
     <string name="join_habit">Присоединиться</string>
 
     <!-- Notifications -->
@@ -707,7 +707,7 @@
     <string name="public_habits_title">Публичные привычки</string>
     <string name="public_habits_subtitle">Найдите привычки, которые вам интересны</string>
     <string name="public_habits_found">Найдено</string>
-    <string name="public_habits_search_hint">Поиск привычек...</string>
+    <string name="public_habits_search_hint">Поиск привычек…</string>
     <string name="public_habits_category_all">Все</string>
     <string name="public_habits_category_health">Здоровье</string>
     <string name="public_habits_category_sport">Спорт</string>
@@ -723,7 +723,7 @@
     <string name="public_habits_participants_one">участник</string>
     <string name="public_habits_participants_few">участника</string>
     <string name="public_habits_no_habits">Нет доступных публичных привычек</string>
-    <string name="public_habits_loading">Загрузка...</string>
+    <string name="public_habits_loading">Загрузка…</string>
     <string name="public_habits_join">Присоединиться</string>
     <string name="public_habits_details">Подробности</string>
     <string name="public_habits_created_by">Создано:</string>
@@ -737,7 +737,7 @@
     
     <!-- Public Habits View Model Messages -->
     <string name="public_habits_error_load">Не удалось загрузить публичные привычки</string>
-    <string name="public_habits_joining">Присоединяемся...</string>
+    <string name="public_habits_joining">Присоединяемся…</string>
     <string name="public_habits_join_success">Вы присоединились к привычке!</string>
     <string name="public_habits_join_error">Не удалось присоединиться к привычке</string>
     <string name="error_already_participating">Вы уже участвуете в этой привычке</string>
@@ -764,7 +764,7 @@
     <string name="validation_has_errors">Есть ошибки</string>
     <string name="validation_form_invalid">Форма содержит ошибки</string>
     <string name="validation_form_valid">Форма готова к отправке</string>
-    <string name="validation_checking">Проверка данных...</string>
+    <string name="validation_checking">Проверка данных…</string>
 
     <!-- Group Habit Detail Screen -->
     <string name="group_habit_details">Детали групповой привычки</string>
@@ -931,9 +931,9 @@
     <string name="created_challenges">Создано</string>
     
     <!-- Time Stats Labels -->
-    <string name="morning_completions">Утром (5-11)</string>
-    <string name="afternoon_completions">Днем (12-17)</string>
-    <string name="evening_completions">Вечером (18-22)</string>
+    <string name="morning_completions">Утром (5–11)</string>
+    <string name="afternoon_completions">Днем (12–17)</string>
+    <string name="evening_completions">Вечером (18–22)</string>
     <string name="consistency_score">Оценка постоянства</string>
     <string name="average_completion_time">Среднее время</string>
     <string name="most_productive_hour">Лучший час</string>

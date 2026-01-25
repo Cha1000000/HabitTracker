@@ -10,6 +10,8 @@ import com.habittracker.domain.usecase.notification.NotificationType
 import com.habittracker.data.local.entity.GroupHabitNotificationEntity
 import com.habittracker.presentation.ui.components.AchievementEventManager
 import com.habittracker.presentation.ui.components.AchievementToastData
+import com.habittracker.domain.util.AnalyticsEvents
+import com.habittracker.domain.util.AnalyticsManager
 import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.datetime.Clock
 import java.util.UUID
@@ -26,7 +28,8 @@ class CheckAchievementsUseCase @Inject constructor(
     private val userRepository: UserRepository,
     private val socialRepository: SocialRepository,
     private val groupHabitNotificationRepository: GroupHabitNotificationRepository,
-    private val achievementEventManager: AchievementEventManager
+    private val achievementEventManager: AchievementEventManager,
+    private val analyticsManager: AnalyticsManager
 ) {
 
     /**
@@ -69,6 +72,12 @@ class CheckAchievementsUseCase @Inject constructor(
     private suspend fun unlockAchievement(userId: String, achievement: Achievement) {
         // Разблокируем достижение
         achievementRepository.unlockAchievement(userId, achievement.id)
+        
+        // Track achievement unlocked event
+        analyticsManager.logEvent(
+            AnalyticsEvents.ACHIEVEMENT_UNLOCKED,
+            mapOf(AnalyticsEvents.Params.ACHIEVEMENT_ID to achievement.id)
+        )
         
         // Начисляем очки за достижение
         val user = userRepository.getUserById(userId)

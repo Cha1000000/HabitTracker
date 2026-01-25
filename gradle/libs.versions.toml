@@ -44,6 +44,7 @@ splashscreen = "1.2.0"
 konfetti = "2.0.5"
 timber = "5.0.1"
 profileinstaller = "1.4.1"
+appmetrica = "8.0.0"
 
 [libraries]
 # Core
@@ -155,6 +156,9 @@ play-services-auth = { group = "com.google.android.gms", name = "play-services-a
 androidx-credentials = { group = "androidx.credentials", name = "credentials", version.ref = "androidxCredentials" }
 androidx-credentials-play-services-auth = { group = "androidx.credentials", name = "credentials-play-services-auth", version.ref = "androidxCredentials" }
 googleid = { group = "com.google.android.libraries.identity.googleid", name = "googleid", version.ref = "googleid" }
+
+# AppMetrica Analytics
+appmetrica-analytics = { group = "io.appmetrica.analytics", name = "analytics", version.ref = "appmetrica" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }

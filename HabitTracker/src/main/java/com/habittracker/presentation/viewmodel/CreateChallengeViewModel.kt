@@ -18,6 +18,8 @@ import com.habittracker.domain.usecase.social.GetFriendsUseCase
 import com.habittracker.domain.usecase.challenge.CreateChallengeUseCase
 import com.habittracker.presentation.state.CreateChallengeUiState
 import com.habittracker.presentation.state.DatePickerType
+import com.habittracker.domain.util.AnalyticsEvents
+import com.habittracker.domain.util.AnalyticsManager
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -38,7 +40,8 @@ class CreateChallengeViewModel @Inject constructor(
     private val getCurrentUserUseCase: GetCurrentUserUseCase,
     private val getHabitsUseCase: GetHabitsUseCase,
     private val getFriendsUseCase: GetFriendsUseCase,
-    private val createChallengeUseCase: CreateChallengeUseCase
+    private val createChallengeUseCase: CreateChallengeUseCase,
+    private val analyticsManager: AnalyticsManager
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(CreateChallengeUiState())
@@ -313,6 +316,13 @@ class CreateChallengeViewModel @Inject constructor(
                 if (result.isSuccess) {
                     val challenge = result.getOrNull()!!
                     Timber.tag("CreateChallengeVM").d("Challenge created successfully: id=${challenge.id}")
+                    
+                    // Track challenge created event
+                    analyticsManager.logEvent(
+                        AnalyticsEvents.CHALLENGE_CREATED,
+                        mapOf(AnalyticsEvents.Params.CHALLENGE_ID to challenge.id)
+                    )
+                    
                     _uiState.value = _uiState.value.copy(
                         isCreating = false,
                         createdChallengeId = challenge.id

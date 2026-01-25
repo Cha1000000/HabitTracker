@@ -47,6 +47,7 @@ signing/*.properties
 credentials.json
 service-account.json
 serviceAccountKey.json
+yandex-app-metrica.txt
 
 # Artifacts
 *.apk

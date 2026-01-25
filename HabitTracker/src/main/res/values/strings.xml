@@ -374,7 +374,7 @@
     <string name="achievement_perfect_month_title">Perfect Month</string>
     <string name="achievement_perfect_month_desc">Complete all habits for a month — you\'re amazing!</string>
     <string name="achievement_consistency_master_title">Consistency Master</string>
-    <string name="achievement_consistency_master_desc">Achieve 90% habit completion for a month</string>
+    <string name="achievement_consistency_master_desc">Achieve 90%% habit completion for a month</string>
     <string name="achievement_level_5_title">Experienced</string>
     <string name="achievement_level_5_desc">Reach level 5</string>
     <string name="achievement_level_10_title">Master</string>
@@ -850,7 +850,7 @@
     <string name="progress">Progress</string>
 
     <!-- Challenge types -->
-    <string name="completion_rate">% completion</string>
+    <string name="completion_rate">%% completion</string>
     <string name="streak_challenge">Streak</string>
     <string name="total_days">Total days</string>
     <string name="first_to_target">First to target</string>

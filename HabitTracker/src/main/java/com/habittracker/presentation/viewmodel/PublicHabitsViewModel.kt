@@ -14,6 +14,8 @@ import com.habittracker.domain.usecase.habit.JoinHabitByCodeUseCase
 import com.habittracker.domain.usecase.notification.SaveParticipantJoinedNotificationUseCase
 import com.habittracker.presentation.state.PublicHabitsUiState
 import com.habittracker.presentation.ui.discover.HabitCategory
+import com.habittracker.domain.util.AnalyticsEvents
+import com.habittracker.domain.util.AnalyticsManager
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -38,7 +40,8 @@ class PublicHabitsViewModel @Inject constructor(
     private val socialRepository: SocialRepository,
     private val updateHabitUseCase: UpdateHabitUseCase,
     private val joinHabitByCodeUseCase: JoinHabitByCodeUseCase,
-    private val saveParticipantJoinedNotificationUseCase: SaveParticipantJoinedNotificationUseCase
+    private val saveParticipantJoinedNotificationUseCase: SaveParticipantJoinedNotificationUseCase,
+    private val analyticsManager: AnalyticsManager
 ) : AndroidViewModel(application) {
     
     private val _uiState = MutableStateFlow(PublicHabitsUiState())
@@ -215,6 +218,12 @@ class PublicHabitsViewModel @Inject constructor(
                         // Логируем ошибку, но не прерываем процесс присоединения
                         Timber.tag("PublicHabitsViewModel").e(e, "Failed to send join notifications")
                     }
+                    
+                    // Track group habit joined event
+                    analyticsManager.logEvent(
+                        AnalyticsEvents.GROUP_HABIT_JOINED,
+                        mapOf(AnalyticsEvents.Params.HABIT_ID to habit.id)
+                    )
                     
                     _uiState.update {
                         it.copy(

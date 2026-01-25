@@ -15,6 +15,7 @@ import com.habittracker.domain.model.StatisticsPeriod
 import com.habittracker.domain.model.User
 import com.habittracker.domain.repository.AuthRepository
 import com.habittracker.domain.usecase.habit.GetHabitStatisticsUseCase
+import com.habittracker.domain.util.AnalyticsManager
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
@@ -41,6 +42,7 @@ class HabitStatisticsViewModelTest {
     private lateinit var getHabitStatisticsUseCase: GetHabitStatisticsUseCase
     private lateinit var authRepository: AuthRepository
     private lateinit var savedStateHandle: SavedStateHandle
+    private lateinit var analyticsManager: AnalyticsManager
 
     private val testUserId = "test-user-id"
     private val testHabitId = "test-habit-id"
@@ -102,6 +104,7 @@ class HabitStatisticsViewModelTest {
     fun setUp() {
         getHabitStatisticsUseCase = mock()
         authRepository = mock()
+        analyticsManager = mock()
     }
 
     private fun createViewModel(habitId: String = testHabitId, isGroup: Boolean = false): HabitStatisticsViewModel {
@@ -114,6 +117,7 @@ class HabitStatisticsViewModelTest {
         return HabitStatisticsViewModel(
             getHabitStatisticsUseCase,
             authRepository,
+            analyticsManager,
             savedStateHandle
         )
     }
@@ -387,6 +391,7 @@ class HabitStatisticsViewModelTest {
         val viewModel = HabitStatisticsViewModel(
             getHabitStatisticsUseCase,
             authRepository,
+            analyticsManager,
             savedStateHandle
         )
         advanceUntilIdle()

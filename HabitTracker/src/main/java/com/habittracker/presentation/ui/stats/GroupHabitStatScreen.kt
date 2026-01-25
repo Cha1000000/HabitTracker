@@ -170,6 +170,7 @@ fun GroupHabitStatScreen(
                         onToggleParticipantsComparison = viewModel::onToggleParticipantsComparison,
                         onToggleParticipantSelection = viewModel::onToggleParticipantSelection,
                         onClearParticipantFilter = viewModel::onClearParticipantFilter,
+                        onParticipantCalendarExpanded = viewModel::onParticipantCalendarExpanded,
                         isDarkTheme = isDarkTheme,
                         modifier = Modifier.padding(paddingValues)
                     )
@@ -191,6 +192,7 @@ private fun GroupStatisticsContent(
     onToggleParticipantsComparison: () -> Unit,
     onToggleParticipantSelection: (String) -> Unit,
     onClearParticipantFilter: () -> Unit,
+    onParticipantCalendarExpanded: (String) -> Unit,
     isDarkTheme: Boolean,
     modifier: Modifier = Modifier
 ) {
@@ -305,7 +307,8 @@ private fun GroupStatisticsContent(
                         ParticipantStatisticsCard(
                             user = user,
                             statistics = participantStats,
-                            isDarkTheme = isDarkTheme
+                            isDarkTheme = isDarkTheme,
+                            onCalendarExpanded = { onParticipantCalendarExpanded(userId) }
                         )
                     }
                 }
@@ -892,7 +895,8 @@ private fun ParticipantChip(
 private fun ParticipantStatisticsCard(
     user: User,
     statistics: HabitStatisticsData,
-    isDarkTheme: Boolean
+    isDarkTheme: Boolean,
+    onCalendarExpanded: () -> Unit = {}
 ) {
     var isExpanded by remember { mutableStateOf(false) }
 
@@ -900,7 +904,13 @@ private fun ParticipantStatisticsCard(
         modifier = Modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(16.dp))
-            .clickable { isExpanded = !isExpanded }
+            .clickable { 
+                val wasExpanded = isExpanded
+                isExpanded = !isExpanded
+                if (!wasExpanded && isExpanded) {
+                    onCalendarExpanded()
+                }
+            }
             .animateContentSize(),
         isDarkTheme = isDarkTheme,
         cornerRadius = 16.dp,

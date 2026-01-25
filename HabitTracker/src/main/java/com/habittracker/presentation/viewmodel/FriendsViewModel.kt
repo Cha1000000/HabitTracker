@@ -191,6 +191,8 @@ class FriendsViewModel @Inject constructor(
         viewModelScope.launch {
             socialRepository.acceptFriendRequest(requestId).fold(
                 onSuccess = {
+                    // Track friend request accepted event
+                    analyticsManager.logEvent(AnalyticsEvents.FRIEND_REQUEST_ACCEPTED)
                     // Запрос принят - состояние обновится через Flow
                 },
                 onFailure = { error ->

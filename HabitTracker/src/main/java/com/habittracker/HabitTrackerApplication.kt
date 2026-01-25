@@ -11,6 +11,8 @@ import com.habittracker.data.local.seed.AchievementSeeder
 import com.habittracker.domain.usecase.notification.ManageFCMTokenUseCase
 import com.habittracker.data.logging.ReleaseTree
 import com.habittracker.domain.util.ErrorLogger
+import io.appmetrica.analytics.AppMetrica
+import io.appmetrica.analytics.AppMetricaConfig
 import timber.log.Timber
 import dagger.hilt.android.HiltAndroidApp
 import kotlinx.coroutines.CoroutineScope
@@ -58,6 +60,9 @@ class HabitTrackerApplication : Application(), Configuration.Provider {
         } else {
             Timber.plant(ReleaseTree(errorLogger))
         }
+
+        // Initialize AppMetrica SDK
+        initAppMetrica()
 
         if (BuildConfig.DEBUG) {
             Timber.tag("HabitTrackerApp").d("Application onCreate() called")
@@ -120,4 +125,29 @@ class HabitTrackerApplication : Application(), Configuration.Provider {
                 .setMinimumLoggingLevel(if (BuildConfig.DEBUG) 3 else 6)
                 .build()
         }
+    
+    private fun initAppMetrica() {
+        val apiKey = BuildConfig.APPMETRICA_API_KEY
+        if (apiKey.isBlank()) {
+            Timber.tag("HabitTrackerApp").w("AppMetrica API key is not configured. Analytics disabled.")
+            return
+        }
+        
+        try {
+            val config = AppMetricaConfig.newConfigBuilder(apiKey)
+                .withLogs()
+                .withSessionTimeout(300) // 5 minutes session timeout
+                .withCrashReporting(true)
+                .withAppVersion(BuildConfig.VERSION_NAME)
+                .build()
+            
+            AppMetrica.activate(this, config)
+            
+            if (BuildConfig.DEBUG) {
+                Timber.tag("HabitTrackerApp").d("AppMetrica SDK initialized successfully")
+            }
+        } catch (e: Exception) {
+            Timber.tag("HabitTrackerApp").e(e, "Failed to initialize AppMetrica SDK")
+        }
+    }
 }
