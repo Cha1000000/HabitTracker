@@ -28,6 +28,7 @@ import com.habittracker.presentation.ui.theme.HabitTrackerTheme
 import com.habittracker.presentation.util.SoundManager
 import com.habittracker.presentation.viewmodel.AuthState
 import com.habittracker.presentation.viewmodel.AuthViewModel
+import com.habittracker.domain.util.AnalyticsEvents
 import com.habittracker.domain.util.AnalyticsManager
 import com.habittracker.domain.util.ErrorLogger
 import dagger.hilt.android.AndroidEntryPoint
@@ -84,8 +85,9 @@ class MainActivity : ComponentActivity() {
                         navController = controller
                         // Track screen changes
                         controller.addOnDestinationChangedListener { _, destination, _ ->
+                            val screenName = mapRouteToScreenName(destination.route)
                             analyticsManager.logScreenView(
-                                screenName = destination.route ?: "unknown",
+                                screenName = screenName,
                                 screenClass = destination.label?.toString()
                             )
                         }
@@ -357,4 +359,36 @@ class MainActivity : ComponentActivity() {
         registerForActivityResult(ActivityResultContracts.RequestPermission()) { _ ->
             // Ничего не делаем: UI не зависит от этого разрешения немедленно
         }
+    
+    /**
+     * Маппинг route навигации в константы AnalyticsEvents.Screens
+     */
+    private fun mapRouteToScreenName(route: String?): String {
+        if (route == null) return "unknown"
+        
+        return when {
+            route.startsWith("habits_screen") -> AnalyticsEvents.Screens.HABITS
+            route.startsWith("add_edit_habit_screen") -> {
+                if (route.contains("habitId")) AnalyticsEvents.Screens.EDIT_HABIT 
+                else AnalyticsEvents.Screens.ADD_HABIT
+            }
+            route.startsWith("login_screen") -> AnalyticsEvents.Screens.AUTH
+            route.startsWith("register_screen") -> AnalyticsEvents.Screens.AUTH
+            route.startsWith("profile_screen") -> AnalyticsEvents.Screens.PROFILE
+            route.startsWith("friends_screen") -> AnalyticsEvents.Screens.FRIENDS
+            route.startsWith("notifications_screen") -> AnalyticsEvents.Screens.NOTIFICATIONS
+            route.startsWith("stats_screen") -> AnalyticsEvents.Screens.HABIT_STATISTICS
+            route.startsWith("achievements_screen") -> AnalyticsEvents.Screens.ACHIEVEMENTS
+            route.startsWith("group_habit_detail_screen") -> AnalyticsEvents.Screens.GROUP_HABIT_DETAIL
+            route.startsWith("group_habit_stat_screen") -> AnalyticsEvents.Screens.GROUP_HABIT_STATISTICS
+            route.startsWith("self_habit_stat_screen") -> AnalyticsEvents.Screens.HABIT_STATISTICS
+            route.startsWith("public_habits_screen") -> AnalyticsEvents.Screens.PUBLIC_HABITS
+            route.startsWith("challenges_screen") -> AnalyticsEvents.Screens.CHALLENGES
+            route.startsWith("create_challenge_screen") -> AnalyticsEvents.Screens.CREATE_CHALLENGE
+            route.startsWith("challenge_detail_screen") -> AnalyticsEvents.Screens.CHALLENGE_DETAIL
+            route.startsWith("notification_settings_screen") -> AnalyticsEvents.Screens.SETTINGS
+            route.startsWith("habit_settings_screen") -> AnalyticsEvents.Screens.SETTINGS
+            else -> route
+        }
+    }
 }

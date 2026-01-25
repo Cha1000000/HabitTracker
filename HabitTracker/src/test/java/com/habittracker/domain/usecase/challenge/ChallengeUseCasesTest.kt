@@ -16,11 +16,12 @@ import com.habittracker.domain.model.HabitInvitation
 import com.habittracker.domain.model.HabitParticipantSettings
 import com.habittracker.domain.model.HabitType
 import com.habittracker.domain.model.User
+import com.habittracker.domain.provider.StringProvider
 import com.habittracker.domain.repository.ChallengeRepository
 import com.habittracker.domain.repository.HabitEntryRepository
 import com.habittracker.domain.repository.HabitRepository
 import com.habittracker.domain.repository.SocialRepository
-import com.habittracker.domain.provider.StringProvider
+import com.habittracker.domain.util.AnalyticsManager
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -48,7 +49,7 @@ class ChallengeUseCasesTest {
     // Mock StringProvider for tests
     private val fakeStringProvider = object : StringProvider {
         override fun getString(resId: Int): String = "test_string_$resId"
-        override fun getString(resId: Int, vararg formatArgs: Any): String = "test_string_$resId"
+        override fun getString(resId: Int, vararg args: Any): String = "test_string_$resId"
     }
 
     private class FakeChallengeRepository : ChallengeRepository {
@@ -193,8 +194,8 @@ class ChallengeUseCasesTest {
 
         // User search and management
         override suspend fun searchUsers(query: String, currentUserId: String) = emptyList<User>()
-        override suspend fun getUserById(userId: String): User? = User(id = userId, name = "User$userId")
-        override suspend fun getUserByIdFromFirestore(userId: String): User? = getUserById(userId)
+        override suspend fun getUserById(userId: String): User = User(id = userId, name = "User$userId")
+        override suspend fun getUserByIdFromFirestore(userId: String): User = getUserById(userId)
         override suspend fun updateUserFcmToken(userId: String, token: String) {}
         override suspend fun updateFriendsCount(userId: String, count: Int) {}
         override suspend fun recalculateFriendsCount(userId: String) {}
@@ -373,7 +374,7 @@ class ChallengeUseCasesTest {
         val resultsUseCase = GetChallengeResultsUseCase(challengeRepo, habitEntryRepo, habitRepo, socialRepo, fakeStringProvider)
 
         // закончился вчера
-        val yesterday = kotlinx.datetime.Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault()).date.minus(1, DateTimeUnit.DAY)
+        val yesterday = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault()).date.minus(1, DateTimeUnit.DAY)
         val ch = Challenge(
             id = UUID.randomUUID().toString(),
             habitId = "h1",
@@ -392,7 +393,21 @@ class ChallengeUseCasesTest {
         )
         challengeRepo.insertChallenge(ch)
 
-        val useCase = UpdateChallengeProgressUseCase(challengeRepo, habitEntryRepo, socialRepo, resultsUseCase, fakeStringProvider)
+        val analyticsManager = object : AnalyticsManager {
+            override fun logEvent(name: String, params: Map<String, Any>) = Unit
+            override fun setUserProperty(name: String, value: String) = Unit
+            override fun setUserId(userId: String?) = Unit
+            override fun logScreenView(screenName: String, screenClass: String?) = Unit
+        }
+
+        val useCase = UpdateChallengeProgressUseCase(
+            challengeRepo,
+            habitEntryRepo,
+            socialRepo,
+            resultsUseCase,
+            fakeStringProvider,
+            analyticsManager
+        )
         val res = useCase("h1", "creator")
         assertTrue(res.isSuccess)
         val updated = challengeRepo.getChallengeById(ch.id)!!

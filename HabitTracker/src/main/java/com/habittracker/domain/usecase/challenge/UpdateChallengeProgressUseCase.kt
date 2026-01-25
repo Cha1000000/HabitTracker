@@ -1,14 +1,16 @@
 package com.habittracker.domain.usecase.challenge
 
+import com.habittracker.R
 import com.habittracker.domain.model.Challenge
 import com.habittracker.domain.model.ChallengeStatus
 import com.habittracker.domain.model.ChallengeType
 import com.habittracker.domain.model.isCompleted
-import com.habittracker.R
 import com.habittracker.domain.provider.StringProvider
 import com.habittracker.domain.repository.ChallengeRepository
 import com.habittracker.domain.repository.HabitEntryRepository
 import com.habittracker.domain.repository.SocialRepository
+import com.habittracker.domain.util.AnalyticsEvents
+import com.habittracker.domain.util.AnalyticsManager
 import kotlinx.datetime.Clock
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toLocalDateTime
@@ -20,7 +22,8 @@ class UpdateChallengeProgressUseCase @Inject constructor(
     private val habitEntryRepository: HabitEntryRepository,
     private val socialRepository: SocialRepository,
     private val getChallengeResultsUseCase: GetChallengeResultsUseCase,
-    private val stringProvider: StringProvider
+    private val stringProvider: StringProvider,
+    private val analyticsManager: AnalyticsManager
 ) {
     /**
      * Обновляет прогресс челленджа после выполнения/невыполнения привычки
@@ -88,6 +91,14 @@ class UpdateChallengeProgressUseCase @Inject constructor(
             
             challengeRepository.updateChallenge(updatedChallenge)
             
+            // Track challenge completed event
+            if (hasProgress) {
+                analyticsManager.logEvent(
+                    AnalyticsEvents.CHALLENGE_COMPLETED,
+                    mapOf(AnalyticsEvents.Params.CHALLENGE_ID to challenge.id)
+                )
+            }
+            
             // Отправляем уведомления участникам
             if (hasProgress) {
                 sendChallengeCompletedNotifications(updatedChallenge, results.participants)
@@ -106,7 +117,7 @@ class UpdateChallengeProgressUseCase @Inject constructor(
                 }
             }
             
-        } catch (e: Exception) {
+        } catch (_: Exception) {
             // Логируем ошибку, но не прерываем выполнение
         }
     }

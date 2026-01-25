@@ -3,6 +3,7 @@ package com.habittracker.data.analytics
 import android.content.Context
 import android.os.Bundle
 import com.google.firebase.analytics.FirebaseAnalytics
+import com.habittracker.domain.util.AnalyticsEvents
 import com.habittracker.domain.util.AnalyticsManager
 import dagger.hilt.android.qualifiers.ApplicationContext
 import io.appmetrica.analytics.AppMetrica
@@ -67,8 +68,8 @@ class FirebaseAnalyticsManager @Inject constructor(
         
         // AppMetrica Analytics
         try {
-            AppMetrica.reportEvent("screen_view", mapOf(
-                "screen_name" to screenName,
+            AppMetrica.reportEvent(AnalyticsEvents.SCREEN_VIEW, mapOf(
+                AnalyticsEvents.Params.SCREEN_NAME to screenName,
                 "screen_class" to (screenClass ?: screenName)
             ))
         } catch (e: Exception) {

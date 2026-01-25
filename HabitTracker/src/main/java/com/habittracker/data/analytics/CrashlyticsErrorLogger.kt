@@ -1,6 +1,7 @@
 package com.habittracker.data.analytics
 
 import com.google.firebase.crashlytics.FirebaseCrashlytics
+import com.habittracker.domain.util.AnalyticsEvents
 import com.habittracker.domain.util.ErrorLogger
 import io.appmetrica.analytics.AppMetrica
 import timber.log.Timber
@@ -19,9 +20,9 @@ class CrashlyticsErrorLogger @Inject constructor() : ErrorLogger {
         
         // AppMetrica Analytics - track error event
         try {
-            AppMetrica.reportEvent("error_occurred", mapOf(
-                "error_type" to (throwable::class.simpleName ?: "Unknown"),
-                "error_message" to (message ?: throwable.message ?: "No message")
+            AppMetrica.reportEvent(AnalyticsEvents.ERROR_OCCURRED, mapOf(
+                AnalyticsEvents.Params.ERROR_TYPE to (throwable::class.simpleName ?: "Unknown"),
+                AnalyticsEvents.Params.ERROR_MESSAGE to (message ?: throwable.message ?: "No message")
             ))
             AppMetrica.reportError(message ?: "Error", throwable)
         } catch (e: Exception) {
@@ -36,7 +37,7 @@ class CrashlyticsErrorLogger @Inject constructor() : ErrorLogger {
         // AppMetrica Analytics
         try {
             AppMetrica.reportEvent("non_fatal_error", mapOf(
-                "message" to message
+                AnalyticsEvents.Params.ERROR_MESSAGE to message
             ))
         } catch (e: Exception) {
             Timber.tag("ErrorLogger").e(e, "Failed to report non-fatal to AppMetrica")
