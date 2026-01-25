@@ -54,7 +54,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import com.habittracker.R
 import com.habittracker.domain.model.FriendRequestWithUsers
 import com.habittracker.domain.model.User
@@ -130,6 +130,7 @@ fun FriendsScreen(
             outgoingRequestsCount = uiState.outgoingRequests.size
         )
         // 📱 Tab Navigation
+        @Suppress("DEPRECATION")
         TabRow(
             modifier = Modifier.fillMaxWidth(),
             selectedTabIndex = selectedTab,

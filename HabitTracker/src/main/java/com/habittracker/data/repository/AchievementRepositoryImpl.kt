@@ -1,31 +1,28 @@
 package com.habittracker.data.repository
 
-import android.util.Log
 import com.google.firebase.firestore.FirebaseFirestore
 import com.habittracker.data.local.dao.AchievementDao
 import com.habittracker.data.local.dao.UserAchievementDao
 import com.habittracker.data.local.entity.UserAchievementEntity
 import com.habittracker.data.local.mappers.toDomain
+import com.habittracker.data.sync.SyncManager
+import com.habittracker.data.sync.SyncWorkScheduler
 import com.habittracker.domain.model.Achievement
 import com.habittracker.domain.model.UserAchievement
 import com.habittracker.domain.repository.AchievementRepository
 import com.habittracker.domain.repository.AchievementStats
+import com.habittracker.domain.util.SyncPayloads
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
-import kotlinx.coroutines.cancel
-import kotlinx.coroutines.flow.onStart
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.tasks.await
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.onStart
+import kotlinx.coroutines.launch
 import kotlinx.datetime.Clock
+import timber.log.Timber
 import javax.inject.Inject
 import javax.inject.Singleton
-import com.habittracker.data.sync.SyncManager
-import com.habittracker.data.sync.SyncWorkScheduler
-import com.habittracker.domain.util.SyncPayloads
-import kotlinx.datetime.Instant
 
 @Singleton
 class AchievementRepositoryImpl @Inject constructor(
@@ -55,7 +52,7 @@ class AchievementRepositoryImpl @Inject constructor(
             .whereEqualTo("userId", userId)
             .addSnapshotListener { snapshot, error ->
                 if (error != null) {
-                    Log.w("AchievementRepo", "user_achievements listener error: ${error.message}")
+                    Timber.tag("AchievementRepo").w("user_achievements listener error: ${error.message}")
                     return@addSnapshotListener
                 }
                 val docs = snapshot?.documents ?: emptyList()
@@ -99,7 +96,7 @@ class AchievementRepositoryImpl @Inject constructor(
                             )
                             userAchievementDao.insertUserAchievement(merged)
                         } catch (e: Exception) {
-                            Log.w("AchievementRepo", "user_achievements merge failed: ${e.message}")
+                            Timber.tag("AchievementRepo").w("user_achievements merge failed: ${e.message}")
                         }
                     }
                 }
@@ -219,7 +216,7 @@ class AchievementRepositoryImpl @Inject constructor(
             kickSync()
         } catch (e: Exception) {
             // Log error but don't crash, local data is already saved
-            android.util.Log.e("AchievementRepo", "Failed to enqueue sync", e)
+            Timber.tag("AchievementRepo").e(e, "Failed to enqueue sync")
         }
     }
 

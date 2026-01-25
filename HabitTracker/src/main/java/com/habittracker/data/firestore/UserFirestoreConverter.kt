@@ -1,6 +1,5 @@
 package com.habittracker.data.firestore
 
-import android.util.Log
 import com.habittracker.domain.model.User
 import kotlinx.datetime.Clock
 import kotlinx.datetime.Instant.Companion.fromEpochMilliseconds
@@ -8,6 +7,7 @@ import kotlinx.datetime.LocalDate
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.atStartOfDayIn
 import kotlinx.datetime.toLocalDateTime
+import timber.log.Timber
 
 /**
  * Firestore-конвертер для User модели.
@@ -80,7 +80,7 @@ object UserFirestoreConverter {
                 timezone = extractString(data, "timezone")
             )
         } catch (e: Exception) {
-            Log.e("UserFirestoreConverter", "❌ Failed to convert document $documentId: ${e.message}")
+            Timber.tag("UserFirestoreConverter").e("❌ Failed to convert document $documentId: ${e.message}")
             null
         }
     }
@@ -195,14 +195,14 @@ object UserFirestoreConverter {
                         null
                     }
                 } catch (e: Exception) {
-                    Log.w("UserFirestoreConverter", "⚠️ Failed to extract date from Map for $key: ${e.message}")
+                    Timber.tag("UserFirestoreConverter").w("⚠️ Failed to extract date from Map for $key: ${e.message}")
                     null
                 }
             }
             
             null -> null
             else -> {
-                Log.w("UserFirestoreConverter", "⚠️ Unknown date format for $key: ${value::class.java}")
+                Timber.tag("UserFirestoreConverter").w("⚠️ Unknown date format for $key: ${value::class.java}")
                 null
             }
         }

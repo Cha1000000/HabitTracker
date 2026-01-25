@@ -21,6 +21,7 @@ import com.habittracker.domain.usecase.habit.GenerateHabitInviteCodeUseCase
 import com.habittracker.domain.usecase.habit.SendHabitInvitationUseCase
 import com.habittracker.domain.usecase.social.GetFriendsUseCase
 import com.habittracker.domain.repository.AuthRepository
+import com.habittracker.domain.repository.HabitEntryRepository
 import com.habittracker.domain.model.HabitValidation
 import com.habittracker.domain.provider.StringProvider
 import com.habittracker.domain.util.AnalyticsManager
@@ -52,6 +53,7 @@ class AddEditHabitViewModelTest {
     private val addHabitUseCase: AddHabitUseCase = mock()
     private val updateHabitUseCase: UpdateHabitUseCase = mock()
     private val getHabitByIdUseCase: GetHabitByIdUseCase = mock()
+    private val habitEntryRepository: HabitEntryRepository = mock()
     private val scheduleHabitReminderUseCase: ScheduleHabitReminderUseCase = mock()
     private val cancelHabitReminderUseCase: CancelHabitReminderUseCase = mock()
     private val getMyHabitReminderSettingsUseCase: GetMyHabitReminderSettingsUseCase = mock()
@@ -121,6 +123,7 @@ class AddEditHabitViewModelTest {
             addHabitUseCase = addHabitUseCase,
             updateHabitUseCase = updateHabitUseCase,
             getHabitByIdUseCase = getHabitByIdUseCase,
+            habitEntryRepository = habitEntryRepository,
             scheduleHabitReminderUseCase = scheduleHabitReminderUseCase,
             cancelHabitReminderUseCase = cancelHabitReminderUseCase,
             getMyHabitReminderSettingsUseCase = getMyHabitReminderSettingsUseCase,

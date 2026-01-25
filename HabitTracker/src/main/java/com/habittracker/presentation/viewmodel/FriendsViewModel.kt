@@ -2,18 +2,18 @@
 
 package com.habittracker.presentation.viewmodel
 
-import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.habittracker.domain.model.User
 import com.habittracker.domain.repository.AuthRepository
 import com.habittracker.domain.repository.SocialRepository
 import com.habittracker.domain.usecase.habit.LeaveSharedHabitsWithFriendUseCase
-import com.habittracker.presentation.state.FriendsUiState
 import com.habittracker.domain.util.AnalyticsEvents
 import com.habittracker.domain.util.AnalyticsManager
 import com.habittracker.domain.util.ErrorLogger
+import com.habittracker.presentation.state.FriendsUiState
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -22,8 +22,8 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.stateIn
-import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
+import timber.log.Timber
 import javax.inject.Inject
 
 /**
@@ -78,7 +78,7 @@ class FriendsViewModel @Inject constructor(
                     try {
                         socialRepository.recalculateFriendsCount(userId)
                     } catch (e: Exception) {
-                        Log.w(TAG, "Failed to recalculate friends count: ${e.message}")
+                        Timber.tag(TAG).w("Failed to recalculate friends count: ${e.message}")
                     }
                 }
             }
@@ -149,7 +149,7 @@ class FriendsViewModel @Inject constructor(
             try {
                 val users = socialRepository.searchUsers(query, _currentUserId.value)
                 _searchResults.value = users
-            } catch (error: Exception) {
+            } catch (_: Exception) {
                 // Обработка ошибки поиска
                 _searchResults.value = emptyList()
             } finally {
@@ -177,7 +177,7 @@ class FriendsViewModel @Inject constructor(
                 },
                 onFailure = { error ->
                     errorLogger.logError(error, "Failed to send friend request to $userId")
-                    Log.e(TAG, "Failed to send friend request", error)
+                    Timber.tag(TAG).e(error, "Failed to send friend request")
                     _errorMessage.value = "Не удалось отправить запрос дружбы"
                 }
             )
@@ -191,10 +191,12 @@ class FriendsViewModel @Inject constructor(
         viewModelScope.launch {
             socialRepository.acceptFriendRequest(requestId).fold(
                 onSuccess = {
+                    // Track friend request accepted event
+                    analyticsManager.logEvent(AnalyticsEvents.FRIEND_REQUEST_ACCEPTED)
                     // Запрос принят - состояние обновится через Flow
                 },
                 onFailure = { error ->
-                    Log.e(TAG, "Failed to accept friend request", error)
+                    Timber.tag(TAG).e(error, "Failed to accept friend request")
                     _errorMessage.value = "Не удалось принять запрос дружбы"
                 }
             )
@@ -211,7 +213,7 @@ class FriendsViewModel @Inject constructor(
                     // Запрос отклонен - состояние обновится через Flow
                 },
                 onFailure = { error ->
-                    Log.e(TAG, "Failed to decline friend request", error)
+                    Timber.tag(TAG).e(error, "Failed to decline friend request")
                     _errorMessage.value = "Не удалось отклонить запрос дружбы"
                 }
             )
@@ -228,7 +230,7 @@ class FriendsViewModel @Inject constructor(
                     // Запрос отменен - состояние обновится через Flow
                 },
                 onFailure = { error ->
-                    Log.e(TAG, "Failed to cancel friend request", error)
+                    Timber.tag(TAG).e(error, "Failed to cancel friend request")
                     _errorMessage.value = "Не удалось отменить запрос дружбы"
                 }
             )
@@ -245,7 +247,7 @@ class FriendsViewModel @Inject constructor(
                     // Друг удален - состояние обновится через Flow
                 },
                 onFailure = { error ->
-                    Log.e(TAG, "Failed to remove friend", error)
+                    Timber.tag(TAG).e(error, "Failed to remove friend")
                     _errorMessage.value = "Не удалось удалить друга"
                 }
             )
@@ -263,10 +265,10 @@ class FriendsViewModel @Inject constructor(
                 if (leaveGroupHabits) {
                     leaveSharedHabitsWithFriendUseCase(_currentUserId.value, friendId).fold(
                         onSuccess = { leftCount ->
-                            Log.d(TAG, "Left $leftCount shared habits with friend $friendId")
+                            Timber.tag(TAG).d("Left $leftCount shared habits with friend $friendId")
                         },
                         onFailure = { error ->
-                            Log.w(TAG, "Failed to leave some shared habits: ${error.message}")
+                            Timber.tag(TAG).w("Failed to leave some shared habits: ${error.message}")
                         }
                     )
                 }
@@ -274,10 +276,10 @@ class FriendsViewModel @Inject constructor(
                 // Затем удаляем друга
                 socialRepository.removeFriend(_currentUserId.value, friendId).fold(
                     onSuccess = {
-                        Log.d(TAG, "Friend $friendId removed successfully")
+                        Timber.tag(TAG).d("Friend $friendId removed successfully")
                     },
                     onFailure = { error ->
-                        Log.e(TAG, "Failed to remove friend with options", error)
+                        Timber.tag(TAG).e(error, "Failed to remove friend with options")
                         _errorMessage.value = "Не удалось удалить друга"
                     }
                 )

@@ -1,6 +1,5 @@
 package com.habittracker.domain.usecase.notification
 
-import android.util.Log
 import com.habittracker.R
 import com.habittracker.data.local.entity.GroupHabitNotificationEntity
 import com.habittracker.domain.model.Habit
@@ -13,6 +12,7 @@ import com.habittracker.domain.repository.SocialRepository
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
+import timber.log.Timber
 import java.util.UUID
 import javax.inject.Inject
 
@@ -39,29 +39,29 @@ class SendGroupHabitPushNotificationUseCase @Inject constructor(
         completedByUserId: String
     ): Result<Unit> {
         return try {
-            Log.d(TAG, "invoke: habitId=$habitId, completedByUserId=$completedByUserId")
+            Timber.tag(TAG).d("invoke: habitId=$habitId, completedByUserId=$completedByUserId")
             
             // ВСЕГДА загружаем привычку из Firestore для получения актуального списка участников
             // Локальная БД может быть не синхронизирована
-            Log.d(TAG, "Loading habit from Firestore to get fresh participant list...")
+            Timber.tag(TAG).d("Loading habit from Firestore to get fresh participant list...")
             var habit = firestoreRepository.getHabitById(habitId)
-            Log.d(TAG, "Firestore result: ${if (habit != null) "found ${habit.title}" else "not found"}")
+            Timber.tag(TAG).d("Firestore result: ${if (habit != null) "found ${habit.title}" else "not found"}")
             
             // Если не нашли в Firestore, пробуем локальную БД (fallback)
             if (habit == null) {
-                Log.d(TAG, "Habit not found in Firestore, trying local DB...")
+                Timber.tag(TAG).d("Habit not found in Firestore, trying local DB...")
                 habit = habitRepository.getHabitById(habitId)
             }
             
             val completedByUser = socialRepository.getUserById(completedByUserId)
             
-            Log.d(TAG, "Habit loaded: ${habit?.title}, type=${habit?.type}, isGroup=${habit?.isGroupHabit()}, participants=${habit?.participants?.size}")
-            Log.d(TAG, "User loaded: ${completedByUser?.name}")
+            Timber.tag(TAG).d("Habit loaded: ${habit?.title}, type=${habit?.type}, isGroup=${habit?.isGroupHabit()}, participants=${habit?.participants?.size}")
+            Timber.tag(TAG).d("User loaded: ${completedByUser?.name}")
 
             if (habit != null && completedByUser != null && habit.isGroupHabit()) {
-                Log.d(TAG, "Habit details: createdBy=${habit.createdBy}, participants=${habit.participants}, completedBy=$completedByUserId")
+                Timber.tag(TAG).d("Habit details: createdBy=${habit.createdBy}, participants=${habit.participants}, completedBy=$completedByUserId")
                 val participants = getHabitParticipants(habit, completedByUserId)
-                Log.d(TAG, "Sending push to ${participants.size} participants: ${participants.map { "${it.name}(${it.id})" }}")
+                Timber.tag(TAG).d("Sending push to ${participants.size} participants: ${participants.map { "${it.name}(${it.id})" }}")
 
                 val message = stringProvider.getString(R.string.push_habit_completed_body, completedByUser.name)
                 val currentTime = System.currentTimeMillis()
@@ -69,7 +69,7 @@ class SendGroupHabitPushNotificationUseCase @Inject constructor(
                 coroutineScope {
                     participants.map { participant ->
                         async {
-                            Log.d(TAG, "Sending push to participant: ${participant.name} (${participant.id})")
+                            Timber.tag(TAG).d("Sending push to participant: ${participant.name} (${participant.id})")
                             sendPushNotification(
                                 toUserId = participant.id,
                                 type = "group_habit_completed",
@@ -99,161 +99,19 @@ class SendGroupHabitPushNotificationUseCase @Inject constructor(
                                     createdAt = currentTime
                                 )
                                 notificationRepository.saveNotification(notificationEntity)
-                                Log.d(TAG, "Notification saved to DB for user: ${participant.id}")
+                                Timber.tag(TAG).d("Notification saved to DB for user: ${participant.id}")
                             } catch (e: Exception) {
-                                Log.w(TAG, "Failed to save notification to DB: ${e.message}")
+                                Timber.tag(TAG).w("Failed to save notification to DB: ${e.message}")
                             }
                         }
                     }.awaitAll()
                 }
             } else {
-                Log.w(TAG, "Push not sent: habit=${habit != null}, user=${completedByUser != null}, isGroup=${habit?.isGroupHabit()}")
+                Timber.tag(TAG).w("Push not sent: habit=${habit != null}, user=${completedByUser != null}, isGroup=${habit?.isGroupHabit()}")
             }
             Result.success(Unit)
         } catch (e: Exception) {
-            Log.e(TAG, "Error sending push notification", e)
-            Result.failure(e)
-        }
-    }
-
-    /**
-     * Отправляет уведомление о групповом достижении
-     */
-    suspend fun sendGroupAchievementNotification(
-        habitId: String,
-        excludeUserId: String? = null
-    ): Result<Unit> {
-        return try {
-            val habit = habitRepository.getHabitById(habitId)
-            val participants = getHabitParticipants(habit, excludeUserId)
-
-            coroutineScope {
-                participants.map { participant ->
-                    async {
-                        sendPushNotification(
-                            toUserId = participant.id,
-                            type = "group_achievement",
-                            title = stringProvider.getString(R.string.push_group_achievement_title),
-                            body = stringProvider.getString(R.string.push_group_achievement_body, habit?.title ?: ""),
-                            data = mapOf(
-                                "habit_id" to habitId,
-                                "habit_title" to (habit?.title ?: ""),
-                                "screen" to "group_habit_detail"
-                            )
-                        )
-                    }
-                }.awaitAll()
-            }
-            Result.success(Unit)
-        } catch (e: Exception) {
-            Result.failure(e)
-        }
-    }
-
-    /**
-     * Отправляет уведомление о серии участника
-     */
-    suspend fun sendParticipantStreakNotification(
-        habitId: String,
-        streakUserId: String,
-        streak: Int,
-        excludeUserId: String? = null
-    ): Result<Unit> {
-        return try {
-            val habit = habitRepository.getHabitById(habitId)
-            val streakUser = socialRepository.getUserById(streakUserId)
-            val participants = getHabitParticipants(habit, excludeUserId)
-
-            coroutineScope {
-                participants.map { participant ->
-                    async {
-                        sendPushNotification(
-                            toUserId = participant.id,
-                            type = "participant_streak",
-                            title = stringProvider.getString(R.string.push_streak_title),
-                            body = stringProvider.getString(R.string.push_streak_body, streakUser?.name ?: "", streak, habit?.title ?: ""),
-                            data = mapOf(
-                                "habit_id" to habitId,
-                                "habit_title" to (habit?.title ?: ""),
-                                "participant_name" to (streakUser?.name ?: ""),
-                                "streak" to streak.toString(),
-                                "screen" to "group_habit_detail"
-                            )
-                        )
-                    }
-                }.awaitAll()
-            }
-            Result.success(Unit)
-        } catch (e: Exception) {
-            Result.failure(e)
-        }
-    }
-
-    /**
-     * Отправляет уведомление о новом участнике в группе
-     */
-    suspend fun sendNewParticipantNotification(
-        habitId: String,
-        newParticipantId: String,
-        excludeUserId: String? = null
-    ): Result<Unit> {
-        return try {
-            val habit = habitRepository.getHabitById(habitId)
-            val newParticipant = socialRepository.getUserById(newParticipantId)
-            val participants = getHabitParticipants(habit, excludeUserId)
-
-            coroutineScope {
-                participants.map { participant ->
-                    async {
-                        sendPushNotification(
-                            toUserId = participant.id,
-                            type = "new_participant",
-                            title = stringProvider.getString(R.string.push_new_participant_title),
-                            body = stringProvider.getString(R.string.push_new_participant_body, newParticipant?.name ?: "", habit?.title ?: ""),
-                            data = mapOf(
-                                "habit_id" to habitId,
-                                "habit_title" to (habit?.title ?: ""),
-                                "participant_name" to (newParticipant?.name ?: ""),
-                                "screen" to "group_habit_detail"
-                            )
-                        )
-                    }
-                }.awaitAll()
-            }
-            Result.success(Unit)
-        } catch (e: Exception) {
-            Result.failure(e)
-        }
-    }
-
-    /**
-     * Отправляет уведомление о приглашении в привычку
-     */
-    suspend fun sendHabitInvitationNotification(
-        habitId: String,
-        fromUserId: String,
-        toUserId: String,
-        invitationId: String
-    ): Result<Unit> {
-        return try {
-            val habit = habitRepository.getHabitById(habitId)
-            val fromUser = socialRepository.getUserById(fromUserId)
-
-            sendPushNotification(
-                toUserId = toUserId,
-                type = "habit_invitation",
-                title = stringProvider.getString(R.string.push_invitation_title),
-                body = stringProvider.getString(R.string.push_invitation_body, fromUser?.name ?: "", habit?.title ?: ""),
-                data = mapOf(
-                    "habit_id" to habitId,
-                    "habit_title" to (habit?.title ?: ""),
-                    "from_user_name" to (fromUser?.name ?: ""),
-                    "invitation_id" to invitationId,
-                    "screen" to "notifications"
-                )
-            )
-            Result.success(Unit)
-        } catch (e: Exception) {
+            Timber.tag(TAG).e(e, "Error sending push notification")
             Result.failure(e)
         }
     }
@@ -308,9 +166,9 @@ class SendGroupHabitPushNotificationUseCase @Inject constructor(
                                     createdAt = currentTime
                                 )
                                 notificationRepository.saveNotification(notificationEntity)
-                                Log.d(TAG, "Notification saved to DB for user: $participantId")
+                                Timber.tag(TAG).d("Notification saved to DB for user: $participantId")
                             } catch (e: Exception) {
-                                Log.w(TAG, "Failed to save notification to DB: ${e.message}")
+                                Timber.tag(TAG).w("Failed to save notification to DB: ${e.message}")
                             }
                         }
                     }.awaitAll()
@@ -318,7 +176,7 @@ class SendGroupHabitPushNotificationUseCase @Inject constructor(
             }
             Result.success(Unit)
         } catch (e: Exception) {
-            Log.e(TAG, "Failed to send participant left notification", e)
+            Timber.tag(TAG).e(e, "Failed to send participant left notification")
             Result.failure(e)
         }
     }
@@ -351,18 +209,18 @@ class SendGroupHabitPushNotificationUseCase @Inject constructor(
         data: Map<String, String>
     ): Result<Unit> {
         return try {
-            Log.d(TAG, "sendPushNotification to user: $toUserId")
+            Timber.tag(TAG).d("sendPushNotification to user: $toUserId")
             
             // ВСЕГДА загружаем актуальный токен из Firestore для push-уведомлений
             // Это критично, так как токены часто обновляются
-            Log.d(TAG, "Fetching fresh token from Firestore for user: $toUserId")
+            Timber.tag(TAG).d("Fetching fresh token from Firestore for user: $toUserId")
             val user = socialRepository.getUserByIdFromFirestore(toUserId)
             val fcmToken = user?.fcmToken
             
-            Log.d(TAG, "User FCM token: ${if (fcmToken.isNullOrBlank()) "EMPTY" else "EXISTS (masked: ${fcmToken.take(8)}...${fcmToken.takeLast(4)})"}") 
+            Timber.tag(TAG).d("User FCM token: ${if (fcmToken.isNullOrBlank()) "EMPTY" else "EXISTS (masked: ${fcmToken.take(8)}...${fcmToken.takeLast(4)})"}") 
 
             if (fcmToken != null && fcmToken.isNotBlank()) {
-                Log.d(TAG, "Sending push via socialRepository: $title")
+                Timber.tag(TAG).d("Sending push via socialRepository: $title")
                 socialRepository.sendPushNotification(
                     fcmToken = fcmToken,
                     title = title,
@@ -374,13 +232,13 @@ class SendGroupHabitPushNotificationUseCase @Inject constructor(
                         "recipientUserId" to toUserId
                     )
                 )
-                Log.d(TAG, "Push sent successfully to $toUserId")
+                Timber.tag(TAG).d("Push sent successfully to $toUserId")
             } else {
-                Log.w(TAG, "FCM token is empty for user $toUserId even after Firestore fetch")
+                Timber.tag(TAG).w("FCM token is empty for user $toUserId even after Firestore fetch")
             }
             Result.success(Unit)
         } catch (e: Exception) {
-            Log.e(TAG, "Failed to send push to $toUserId", e)
+            Timber.tag(TAG).e(e, "Failed to send push to $toUserId")
             Result.failure(e)
         }
     }

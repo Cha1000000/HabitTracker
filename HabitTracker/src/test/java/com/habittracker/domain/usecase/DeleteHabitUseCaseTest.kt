@@ -1,6 +1,5 @@
 package com.habittracker.domain.usecase
 
-import com.google.gson.JsonParser
 import com.habittracker.data.sync.SyncManager
 import com.habittracker.data.sync.SyncWorkScheduler
 import com.habittracker.domain.model.Habit
@@ -8,7 +7,6 @@ import com.habittracker.domain.model.HabitFrequency
 import com.habittracker.domain.model.HabitType
 import com.habittracker.domain.repository.HabitRepository
 import kotlinx.coroutines.ExperimentalCoroutinesApi
-import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
 import kotlinx.datetime.Clock
 import kotlinx.datetime.TimeZone
@@ -19,7 +17,6 @@ import org.junit.Before
 import org.junit.Test
 import org.mockito.kotlin.any
 import org.mockito.kotlin.argumentCaptor
-import org.mockito.kotlin.eq
 import org.mockito.kotlin.mock
 import org.mockito.kotlin.never
 import org.mockito.kotlin.verify
@@ -34,7 +31,6 @@ class DeleteHabitUseCaseTest {
     private lateinit var syncManager: SyncManager
     private lateinit var scheduler: SyncWorkScheduler
     private lateinit var cancelHabitReminderUseCase: CancelHabitReminderUseCase
-    private lateinit var updateHabitUseCase: UpdateHabitUseCase
     private lateinit var sendGroupHabitPushNotificationUseCase: com.habittracker.domain.usecase.notification.SendGroupHabitPushNotificationUseCase
 
     @Before
@@ -43,14 +39,12 @@ class DeleteHabitUseCaseTest {
         syncManager = mock()
         scheduler = mock()
         cancelHabitReminderUseCase = mock()
-        updateHabitUseCase = mock()
         sendGroupHabitPushNotificationUseCase = mock()
         useCase = DeleteHabitUseCase(
             repo,
             syncManager,
             scheduler,
             cancelHabitReminderUseCase,
-            updateHabitUseCase,
             sendGroupHabitPushNotificationUseCase
         )
     }

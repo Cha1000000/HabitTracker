@@ -29,7 +29,7 @@ ksp {
 }
 
 // Единый источник versionName для использования и в defaultConfig, и в имени APK
-val appVersionName = "1.3.9"
+val appVersionName = "1.4.1"
 
 android {
     namespace = "com.habittracker"
@@ -38,8 +38,8 @@ android {
     defaultConfig {
         applicationId = "com.habittracker"
         minSdk = 26
-        targetSdk = 35
-        versionCode = 5
+        targetSdk = 36
+        versionCode = 7
         versionName = appVersionName
 
         testInstrumentationRunner = "com.habittracker.HiltTestRunner"
@@ -57,6 +57,12 @@ android {
         // Дополнительные Firebase конфигурации из local.properties
         val firebaseProjectId = localProperties.getProperty("FIREBASE_PROJECT_ID") ?: "habitttracker-505b6"
         buildConfigField("String", "FIREBASE_PROJECT_ID", "\"$firebaseProjectId\"")
+        
+        // AppMetrica API Key
+        val appmetricaApiKey = localProperties.getProperty("APPMETRICA_API_KEY")
+            ?: System.getenv("APPMETRICA_API_KEY")
+            ?: ""
+        buildConfigField("String", "APPMETRICA_API_KEY", "\"$appmetricaApiKey\"")
     }
 
     // Release signing via local.properties or environment variables
@@ -128,7 +134,7 @@ android {
     kotlinOptions {
         jvmTarget = "17"
     }
-    @Suppress("UnstableApiUsage")
+    //@Suppress("UnstableApiUsage")
     testOptions {
         unitTests {
             isReturnDefaultValues = true  // Возвращать default значения для Android методов вместо исключений
@@ -220,6 +226,7 @@ dependencies {
     ksp(libs.hilt.compiler)
     ksp(libs.hilt.android.compiler)
     implementation(libs.hilt.navigation.compose)
+    implementation(libs.hilt.lifecycle.viewmodel.compose)
     implementation(libs.hilt.work)
     
     // Room database
@@ -266,6 +273,9 @@ dependencies {
 
     // Logging
     implementation(libs.timber)
+
+    // AppMetrica Analytics
+    implementation(libs.appmetrica.analytics)
 
     // Firebase
     implementation(platform(libs.firebase.bom))

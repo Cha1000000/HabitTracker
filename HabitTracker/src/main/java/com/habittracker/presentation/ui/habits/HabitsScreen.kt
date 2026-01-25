@@ -1,6 +1,5 @@
 package com.habittracker.presentation.ui.habits
 
-import android.util.Log
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -61,7 +60,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.zIndex
-import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
@@ -103,6 +102,7 @@ import kotlinx.coroutines.launch
 import kotlinx.datetime.Clock
 import kotlinx.datetime.TimeZone.Companion.currentSystemDefault
 import kotlinx.datetime.toLocalDateTime
+import timber.log.Timber
 import kotlin.math.abs
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterialApi::class)
@@ -157,7 +157,8 @@ fun HabitsScreen(
     
     // Логирование для отладки
     LaunchedEffect(uiState.selectedDate) {
-        Log.d("HabitsScreen", "🎯 selectedDate changed: ${uiState.selectedDate}, computed: $selectedDate, isToday: $isToday")
+        Timber.tag("HabitsScreen")
+            .d("🎯 selectedDate changed: ${uiState.selectedDate}, computed: $selectedDate, isToday: $isToday")
     }
     
     val lifecycleOwner = LocalLifecycleOwner.current
@@ -576,6 +577,7 @@ private fun HabitItemRow(
     recomposeKey: Int
 ) {
     var showDeleteDialog by remember { mutableStateOf(false) }
+    @Suppress("DEPRECATION")
     val dismissState = rememberSwipeToDismissBoxState(
         confirmValueChange = { value ->
             if (value == SwipeToDismissBoxValue.EndToStart) {

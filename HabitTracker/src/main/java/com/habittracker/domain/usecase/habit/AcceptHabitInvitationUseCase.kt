@@ -1,6 +1,5 @@
 package com.habittracker.domain.usecase.habit
 
-import android.util.Log
 import com.habittracker.domain.model.HabitInvitation
 import com.habittracker.domain.model.isExpired
 import com.habittracker.domain.model.isPending
@@ -9,6 +8,7 @@ import com.habittracker.domain.usecase.ScheduleHabitReminderUseCase
 import com.habittracker.domain.repository.ParticipantSettingsRepository
 import com.habittracker.domain.repository.SocialRepository
 import javax.inject.Inject
+import timber.log.Timber
 
 /**
  * Use case для принятия приглашения в групповую привычку
@@ -65,13 +65,13 @@ class AcceptHabitInvitationUseCase @Inject constructor(
                     if (habit != null && habit.reminderTime != null) {
                         // Инициализируем персональные настройки из текущей привычки
                         participantSettingsRepository.upsertDefaultsFromHabit(habit, userId)
-                        Log.d("AcceptHabitInvitationUC", "[reminder] scheduling for habit=$habitId")
+                        Timber.tag("AcceptHabitInvitationUC").d("[reminder] scheduling for habit=$habitId")
                         scheduleHabitReminderUseCase(habit)
                     } else {
-                        Log.d("AcceptHabitInvitationUC", "[reminder] skip: habit null or no reminderTime for habit=$habitId")
+                        Timber.tag("AcceptHabitInvitationUC").d("[reminder] skip: habit null or no reminderTime for habit=$habitId")
                     }
                 } catch (e: Exception) {
-                    Log.w("AcceptHabitInvitationUC", "[reminder] failed to schedule: ${e.message}", e)
+                    Timber.tag("AcceptHabitInvitationUC").w(e, "[reminder] failed to schedule: ${e.message}")
                 }
             }
 

@@ -1,12 +1,12 @@
 package com.habittracker.domain.usecase
 
-import android.util.Log
 import com.habittracker.domain.model.Habit
 import com.habittracker.domain.model.isActiveOnDate
 import com.habittracker.domain.model.isActiveOnDayOfWeek
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 import kotlinx.datetime.LocalDate
+import timber.log.Timber
 import javax.inject.Inject
 
 /**
@@ -40,13 +40,15 @@ class GetHabitsForDateUseCase @Inject constructor(
                 
                 // Логируем для отладки
                 if (habit.startDate != null && habit.startDate > date) {
-                    Log.d("GetHabitsForDateUseCase",
-                        "📅 Habit '${habit.title}' has future startDate=${habit.startDate}, currentDate=$date, isActive=$isActive")
+                    Timber.tag("GetHabitsForDateUseCase").d(
+                        "📅 Habit '${habit.title}' has future startDate=${habit.startDate}, currentDate=$date, isActive=$isActive"
+                    )
                 }
                 
                 if (!isActiveByDayOfWeek) {
-                    Log.d("GetHabitsForDateUseCase",
-                        "📆 Habit '${habit.title}' is not active on ${date.dayOfWeek} (frequency=${habit.frequency})")
+                    Timber.tag("GetHabitsForDateUseCase").d(
+                        "📆 Habit '${habit.title}' is not active on ${date.dayOfWeek} (frequency=${habit.frequency})"
+                    )
                 }
                 
                 isActive

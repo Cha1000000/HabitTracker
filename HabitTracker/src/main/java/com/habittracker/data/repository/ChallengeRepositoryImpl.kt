@@ -1,6 +1,5 @@
 package com.habittracker.data.repository
 
-import android.util.Log
 import com.google.firebase.firestore.FirebaseFirestore
 import com.habittracker.data.local.dao.ChallengeDao
 import com.habittracker.data.local.dao.HabitEntryDao
@@ -25,8 +24,8 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.minus
-import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
+import timber.log.Timber
 import javax.inject.Inject
 import javax.inject.Singleton
 import com.habittracker.data.local.mappers.toDomain as challengeToDomain
@@ -54,7 +53,7 @@ class ChallengeRepositoryImpl @Inject constructor(
     
     override suspend fun insertChallenge(challenge: Challenge) {
         val now = System.currentTimeMillis()
-        Log.d(TAG, "insertChallenge: id=${challenge.id}, participants=${challenge.participants}")
+        Timber.tag(TAG).d("insertChallenge: id=${challenge.id}, participants=${challenge.participants}")
         challengeDao.insertChallenge(challenge.challengeToEntity(updatedAtMillis = now))
         
         // Use Outbox for reliable sync
@@ -236,12 +235,12 @@ class ChallengeRepositoryImpl @Inject constructor(
             .whereArrayContains("participants", userId)
             .addSnapshotListener { snapshot, error ->
                 if (error != null) {
-                    Log.w(TAG, "Challenges listener error: ${error.message}", error)
+                    Timber.tag(TAG).w(error, "Challenges listener error: ${error.message}")
                     return@addSnapshotListener
                 }
 
                 val docs = snapshot?.documents ?: emptyList()
-                Log.d(TAG, "Challenges listener: userId=$userId, docs=${docs.size}")
+                Timber.tag(TAG).d("Challenges listener: userId=$userId, docs=${docs.size}")
 
                 scope.launch {
                     // Получаем ID челленджей из Firestore, где пользователь участник
@@ -258,11 +257,11 @@ class ChallengeRepositoryImpl @Inject constructor(
                             val hasPending = try {
                                 syncManager.hasPendingOperations("challenge", localChallenge.id)
                             } catch (e: Exception) {
-                                Log.w(TAG, "Pending check failed for challenge=${localChallenge.id}: ${e.message}")
+                                Timber.tag(TAG).w("Pending check failed for challenge=${localChallenge.id}: ${e.message}")
                                 false
                             }
                             if (!hasPending) {
-                                Log.d(TAG, "Removing challenge ${localChallenge.id} - user no longer participant")
+                                Timber.tag(TAG).d("Removing challenge ${localChallenge.id} - user no longer participant")
                                 val now = System.currentTimeMillis()
                                 challengeDao.softDeleteChallengeById(localChallenge.id, deletedAtMillis = now, updatedAtMillis = now)
                             }
@@ -276,7 +275,7 @@ class ChallengeRepositoryImpl @Inject constructor(
                                 val hasPending = try {
                                     syncManager.hasPendingOperations("challenge", remoteChallenge.id)
                                 } catch (e: Exception) {
-                                    Log.w(TAG, "Pending check failed for challenge=${remoteChallenge.id}: ${e.message}")
+                                    Timber.tag(TAG).w("Pending check failed for challenge=${remoteChallenge.id}: ${e.message}")
                                     false
                                 }
                                 if (hasPending) continue
@@ -284,11 +283,11 @@ class ChallengeRepositoryImpl @Inject constructor(
                                 val local = challengeDao.getChallengeById(remoteChallenge.id)
                                 if (local == null || remoteChallenge.updatedAtMillis >= local.updatedAtMillis) {
                                     challengeDao.insertChallenge(remoteChallenge)
-                                    Log.d(TAG, "Merged challenge from Firestore: ${remoteChallenge.id}")
+                                    Timber.tag(TAG).d("Merged challenge from Firestore: ${remoteChallenge.id}")
                                 }
                             }
                         } catch (e: Exception) {
-                            Log.e(TAG, "Error processing challenge doc: ${doc.id}", e)
+                            Timber.tag(TAG).e(e, "Error processing challenge doc: ${doc.id}")
                         }
                     }
                 }
@@ -299,12 +298,12 @@ class ChallengeRepositoryImpl @Inject constructor(
             .whereEqualTo("createdBy", userId)
             .addSnapshotListener { snapshot, error ->
                 if (error != null) {
-                    Log.w(TAG, "CreatedBy challenges listener error: ${error.message}", error)
+                    Timber.tag(TAG).w(error, "CreatedBy challenges listener error: ${error.message}")
                     return@addSnapshotListener
                 }
 
                 val docs = snapshot?.documents ?: emptyList()
-                Log.d(TAG, "CreatedBy challenges listener: userId=$userId, docs=${docs.size}")
+                Timber.tag(TAG).d("CreatedBy challenges listener: userId=$userId, docs=${docs.size}")
 
                 scope.launch {
                     for (doc in docs) {
@@ -314,7 +313,7 @@ class ChallengeRepositoryImpl @Inject constructor(
                                 val hasPending = try {
                                     syncManager.hasPendingOperations("challenge", remoteChallenge.id)
                                 } catch (e: Exception) {
-                                    Log.w(TAG, "Pending check failed for challenge=${remoteChallenge.id}: ${e.message}")
+                                    Timber.tag(TAG).w("Pending check failed for challenge=${remoteChallenge.id}: ${e.message}")
                                     false
                                 }
                                 if (hasPending) continue
@@ -324,7 +323,7 @@ class ChallengeRepositoryImpl @Inject constructor(
                                 }
                             }
                         } catch (e: Exception) {
-                            Log.e(TAG, "Error processing createdBy challenge doc: ${doc.id}", e)
+                            Timber.tag(TAG).e(e, "Error processing createdBy challenge doc: ${doc.id}")
                         }
                     }
                 }
@@ -372,7 +371,7 @@ class ChallengeRepositoryImpl @Inject constructor(
                 deletedAtMillis = deletedAtMillis
             )
         } catch (e: Exception) {
-            Log.e(TAG, "Error converting Firestore doc to ChallengeEntity: ${this.id}", e)
+            Timber.tag(TAG).e(e, "Error converting Firestore doc to ChallengeEntity: ${this.id}")
             null
         }
     }
@@ -440,7 +439,7 @@ class ChallengeRepositoryImpl @Inject constructor(
             
             snapshot.documents.size
         } catch (e: Exception) {
-            Log.e(TAG, "Error getting completed days from Firestore: ${e.message}", e)
+            Timber.tag(TAG).e(e, "Error getting completed days from Firestore: ${e.message}")
             0
         }
     }
@@ -477,7 +476,7 @@ class ChallengeRepositoryImpl @Inject constructor(
             }
             streak
         } catch (e: Exception) {
-            Log.e(TAG, "Error getting current streak from Firestore: ${e.message}", e)
+            Timber.tag(TAG).e(e, "Error getting current streak from Firestore: ${e.message}")
             0
         }
     }
@@ -538,7 +537,7 @@ class ChallengeRepositoryImpl @Inject constructor(
         return try {
             habitEntryDao.getTotalValueForPeriod(habitId, userId, startDate.toString(), endDate.toString())
         } catch (e: Exception) {
-            Log.e(TAG, "Error getting total value for user in challenge: ${e.message}", e)
+            Timber.tag(TAG).e(e, "Error getting total value for user in challenge: ${e.message}")
             0
         }
     }
@@ -562,7 +561,7 @@ class ChallengeRepositoryImpl @Inject constructor(
                 (doc.getLong("value") ?: 0L).toInt()
             }
         } catch (e: Exception) {
-            Log.e(TAG, "Error getting total value from Firestore: ${e.message}", e)
+            Timber.tag(TAG).e(e, "Error getting total value from Firestore: ${e.message}")
             0
         }
     }

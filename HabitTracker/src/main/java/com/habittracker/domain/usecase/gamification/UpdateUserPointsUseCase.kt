@@ -1,11 +1,11 @@
 package com.habittracker.domain.usecase.gamification
 
-import android.util.Log
 import com.habittracker.domain.model.gamification.GamificationConstants
 import com.habittracker.domain.model.gamification.GamificationEvent
 import com.habittracker.domain.repository.SocialRepository
 import com.habittracker.domain.repository.UserRepository
 import javax.inject.Inject
+import timber.log.Timber
 
 /**
  * Use case для обновления очков и уровня пользователя на основе игровых событий.
@@ -77,7 +77,7 @@ open class UpdateUserPointsUseCase @Inject constructor(
             val title = "🎉 Поздравляем с повышением!"
             val body = "Вы достигли $newLevel уровня! $levelTitle"
             
-            Log.d("UpdateUserPoints", "Level up: ${user.name} $oldLevel → $newLevel ($levelTitle)")
+            Timber.tag("UpdateUserPoints").d("Level up: ${user.name} $oldLevel → $newLevel ($levelTitle)")
             
             // Отправляем push-уведомление, если есть FCM токен
             user.fcmToken?.takeIf { it.isNotBlank() }?.let { token ->
@@ -91,12 +91,12 @@ open class UpdateUserPointsUseCase @Inject constructor(
                 )
                 
                 socialRepository.sendPushNotification(token, title, body, data)
-                Log.d("UpdateUserPoints", "Push notification sent for level up")
-            } ?: Log.d("UpdateUserPoints", "No FCM token, skipping push notification")
+                Timber.tag("UpdateUserPoints").d("Push notification sent for level up")
+            } ?: Timber.tag("UpdateUserPoints").d("No FCM token, skipping push notification")
             
         } catch (e: Exception) {
             // Не прерываем основной процесс при ошибке отправки уведомления
-            Log.w("UpdateUserPoints", "Failed to send level up notification: ${e.message}", e)
+            Timber.tag("UpdateUserPoints").w(e, "Failed to send level up notification: ${e.message}")
         }
     }
     

@@ -2,11 +2,12 @@ package com.habittracker.data.local.seed
 
 import android.content.Context
 import android.content.SharedPreferences
-import android.util.Log
+import androidx.core.content.edit
 import com.habittracker.data.local.dao.AchievementDao
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import timber.log.Timber
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -45,12 +46,12 @@ class AchievementSeeder @Inject constructor(
             val seededVersion = prefs.getInt(KEY_SEEDED_VERSION, 0)
             
             if (seededVersion < CURRENT_VERSION) {
-                Log.d(TAG, "Seeding achievements: current=$seededVersion, target=$CURRENT_VERSION")
+                Timber.tag(TAG).d("Seeding achievements: current=$seededVersion, target=$CURRENT_VERSION")
                 seed()
-                prefs.edit().putInt(KEY_SEEDED_VERSION, CURRENT_VERSION).apply()
-                Log.d(TAG, "Achievements seeded successfully")
+                prefs.edit { putInt(KEY_SEEDED_VERSION, CURRENT_VERSION) }
+                Timber.tag(TAG).d("Achievements seeded successfully")
             } else {
-                Log.d(TAG, "Achievements already seeded (version=$seededVersion)")
+                Timber.tag(TAG).d("Achievements already seeded (version=$seededVersion)")
             }
         }
     }
@@ -61,15 +62,15 @@ class AchievementSeeder @Inject constructor(
      */
     suspend fun forceReseed() {
         withContext(Dispatchers.IO) {
-            Log.d(TAG, "Force reseeding achievements")
+            Timber.tag(TAG).d("Force reseeding achievements")
             seed()
-            prefs.edit().putInt(KEY_SEEDED_VERSION, CURRENT_VERSION).apply()
+            prefs.edit { putInt(KEY_SEEDED_VERSION, CURRENT_VERSION) }
         }
     }
 
     private suspend fun seed() {
         val achievements = DefaultAchievements.getAll()
-        Log.d(TAG, "Inserting ${achievements.size} achievements")
+        Timber.tag(TAG).d("Inserting ${achievements.size} achievements")
         achievementDao.insertAchievements(achievements)
     }
 }

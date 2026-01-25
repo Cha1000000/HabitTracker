@@ -11,7 +11,6 @@ import com.habittracker.domain.model.HabitParticipantSettings
 import com.habittracker.domain.repository.AuthRepository
 import com.habittracker.domain.repository.FirestoreRepository
 import com.habittracker.domain.repository.HabitRepository
-import com.habittracker.domain.util.HabitEntryIds
 import com.habittracker.domain.util.SyncPayloads
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
@@ -22,7 +21,6 @@ import kotlinx.coroutines.flow.onStart
 import kotlinx.coroutines.launch
 import kotlinx.datetime.Clock
 import kotlinx.datetime.TimeZone
-import kotlinx.datetime.atStartOfDayIn
 import kotlinx.datetime.toLocalDateTime
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -183,56 +181,72 @@ class HabitRepositoryImpl @Inject constructor(
     }
     
     override suspend fun addParticipantToHabit(habitId: String, userId: String) {
-        val habit = habitDao.getHabitById(habitId)
-        if (habit != null) {
-            val participants = habit.participants.toMutableList()
-            if (!participants.contains(userId)) {
-                participants.add(userId)
-                val updatedAt = Clock.System.now().toEpochMilliseconds()
-                habitDao.updateHabitParticipants(habitId, participants, updatedAt)
-                
-                // Outbox update (partial)
-                val updatedHabit = habit.toDomain().copy(
-                    participants = participants,
-                    updatedAtMillis = updatedAt,
-                    updatedAt = kotlinx.datetime.Instant.fromEpochMilliseconds(updatedAt)
-                        .toLocalDateTime(TimeZone.currentSystemDefault()).date
-                )
-                // We can either enqueue full upsert or partial. SyncPayloads has habitPartialUpdateToJson but we can use full upsert for simplicity with conflict resolution
-                val payload = SyncPayloads.habitToJson(updatedHabit)
-                 syncManager.enqueueUpsert(
-                    entityType = "habit",
-                    entityId = habitId,
-                    payloadJson = payload,
-                    updatedAt = updatedAt
-                )
+        val localHabit = habitDao.getHabitById(habitId)
+        val baseHabit = localHabit?.toDomain() ?: firestoreRepository.getHabitById(habitId)
+        if (baseHabit == null) return
+
+        if (baseHabit.participants.contains(userId)) return
+
+        val updatedAt = Clock.System.now().toEpochMilliseconds()
+        val participants = (baseHabit.participants + userId).distinct()
+        val updatedHabit = baseHabit.copy(
+            participants = participants,
+            updatedAtMillis = updatedAt,
+            updatedAt = kotlinx.datetime.Instant.fromEpochMilliseconds(updatedAt)
+                .toLocalDateTime(TimeZone.currentSystemDefault()).date
+        )
+
+        // Local upsert (important for invited users who don't have this habit in Room yet)
+        habitDao.insertHabit(updatedHabit.toEntity())
+
+        // Outbox update (full upsert)
+        val payload = SyncPayloads.habitToJson(updatedHabit)
+        syncManager.enqueueUpsert(
+            entityType = "habit",
+            entityId = habitId,
+            payloadJson = payload,
+            updatedAt = updatedAt
+        )
+
+        // Expedite sync so participants update reaches Firestore quickly
+        try { syncWorkScheduler.scheduleOneTimeSync() } catch (_: Exception) {
+        }
+        applicationScope.launch {
+            try { syncManager.drainPending(maxBatch = 10) } catch (_: Exception) {
             }
         }
     }
     
     override suspend fun removeParticipantFromHabit(habitId: String, userId: String) {
-        val habit = habitDao.getHabitById(habitId)
-        if (habit != null) {
-            val participants = habit.participants.toMutableList()
-            if (participants.contains(userId)) {
-                participants.remove(userId)
-                val updatedAt = Clock.System.now().toEpochMilliseconds()
-                habitDao.updateHabitParticipants(habitId, participants, updatedAt)
-                
-                 // Outbox update
-                val updatedHabit = habit.toDomain().copy(
-                    participants = participants,
-                    updatedAtMillis = updatedAt,
-                    updatedAt = kotlinx.datetime.Instant.fromEpochMilliseconds(updatedAt)
-                        .toLocalDateTime(TimeZone.currentSystemDefault()).date
-                )
-                val payload = SyncPayloads.habitToJson(updatedHabit)
-                 syncManager.enqueueUpsert(
-                    entityType = "habit",
-                    entityId = habitId,
-                    payloadJson = payload,
-                    updatedAt = updatedAt
-                )
+        val localHabit = habitDao.getHabitById(habitId)
+        val baseHabit = localHabit?.toDomain() ?: firestoreRepository.getHabitById(habitId)
+        if (baseHabit == null) return
+
+        if (!baseHabit.participants.contains(userId)) return
+
+        val updatedAt = Clock.System.now().toEpochMilliseconds()
+        val participants = baseHabit.participants.filterNot { it == userId }
+        val updatedHabit = baseHabit.copy(
+            participants = participants,
+            updatedAtMillis = updatedAt,
+            updatedAt = kotlinx.datetime.Instant.fromEpochMilliseconds(updatedAt)
+                .toLocalDateTime(TimeZone.currentSystemDefault()).date
+        )
+
+        habitDao.insertHabit(updatedHabit.toEntity())
+
+        val payload = SyncPayloads.habitToJson(updatedHabit)
+        syncManager.enqueueUpsert(
+            entityType = "habit",
+            entityId = habitId,
+            payloadJson = payload,
+            updatedAt = updatedAt
+        )
+
+        try { syncWorkScheduler.scheduleOneTimeSync() } catch (_: Exception) {
+        }
+        applicationScope.launch {
+            try { syncManager.drainPending(maxBatch = 10) } catch (_: Exception) {
             }
         }
     }

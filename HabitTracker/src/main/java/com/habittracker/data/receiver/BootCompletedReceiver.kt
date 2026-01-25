@@ -3,7 +3,6 @@ package com.habittracker.data.receiver
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
-import android.util.Log
 import com.habittracker.domain.repository.UserPreferencesRepository
 import com.habittracker.domain.scheduler.DailyReminderScheduler
 import dagger.hilt.android.AndroidEntryPoint
@@ -12,6 +11,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.launch
 import javax.inject.Inject
+import timber.log.Timber
 
 /**
  * BroadcastReceiver для перепланирования напоминаний после перезагрузки устройства.
@@ -30,7 +30,7 @@ class BootCompletedReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
         if (intent.action != Intent.ACTION_BOOT_COMPLETED) return
 
-        Log.d(TAG, "Boot completed, rescheduling daily reminder if enabled")
+        Timber.tag(TAG).d("Boot completed, rescheduling daily reminder if enabled")
 
         val pendingResult = goAsync()
         
@@ -39,12 +39,12 @@ class BootCompletedReceiver : BroadcastReceiver() {
                 val prefs = userPreferencesRepository.userPreferences.firstOrNull()
                 if (prefs?.dailyReminderEnabled == true) {
                     dailyReminderScheduler.schedule(prefs.dailyReminderTime)
-                    Log.d(TAG, "Daily reminder rescheduled for ${prefs.dailyReminderTime}")
+                    Timber.tag(TAG).d("Daily reminder rescheduled for ${prefs.dailyReminderTime}")
                 } else {
-                    Log.d(TAG, "Daily reminder is disabled, not scheduling")
+                    Timber.tag(TAG).d("Daily reminder is disabled, not scheduling")
                 }
             } catch (e: Exception) {
-                Log.e(TAG, "Error rescheduling daily reminder after boot", e)
+                Timber.tag(TAG).e(e, "Error rescheduling daily reminder after boot")
             } finally {
                 pendingResult.finish()
             }

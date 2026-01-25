@@ -99,6 +99,8 @@
     <string name="habit_name_label">Name</string>
     <string name="habit_description_label">Description (optional)</string>
     <string name="habit_type_label">Habit Type</string>
+    <string name="remove_from_public_catalog_title">Remove from public catalog</string>
+    <string name="remove_from_public_catalog_subtitle">If enabled, this habit will no longer be shown in the catalog</string>
     <string name="habit_frequency_label">Frequency</string>
     <string name="habit_target_value_label">Target Value</string>
     <string name="habit_unit_label">Unit</string>
@@ -372,7 +374,7 @@
     <string name="achievement_perfect_month_title">Perfect Month</string>
     <string name="achievement_perfect_month_desc">Complete all habits for a month — you\'re amazing!</string>
     <string name="achievement_consistency_master_title">Consistency Master</string>
-    <string name="achievement_consistency_master_desc">Achieve 90% habit completion for a month</string>
+    <string name="achievement_consistency_master_desc">Achieve 90%% habit completion for a month</string>
     <string name="achievement_level_5_title">Experienced</string>
     <string name="achievement_level_5_desc">Reach level 5</string>
     <string name="achievement_level_10_title">Master</string>
@@ -673,7 +675,7 @@
     <string name="error_accept_invitation">Error accepting invitation</string>
     <string name="success_invitation_declined">Invitation declined</string>
     <string name="error_decline_invitation">Error declining invitation</string>
-    <string name="error_update_habit">Error updating habit</string>
+    <string name="error_update_habit">Error updating habit: %1$s</string>
 
     <!-- Dialogs -->
     <string name="enter_value_title">Enter Amount</string>
@@ -848,7 +850,7 @@
     <string name="progress">Progress</string>
 
     <!-- Challenge types -->
-    <string name="completion_rate">% completion</string>
+    <string name="completion_rate">%% completion</string>
     <string name="streak_challenge">Streak</string>
     <string name="total_days">Total days</string>
     <string name="first_to_target">First to target</string>
@@ -1073,4 +1075,39 @@
     <string name="error_challenge_min_participants">Select at least one participant</string>
     <string name="error_challenge_max_participants_limit">Maximum participants limit: 10</string>
     <string name="error_end_date_before_start">End date cannot be earlier than start date</string>
+
+    <!-- Habit Statistics Screens -->
+    <string name="habit_statistics_title">Habit Statistics</string>
+    <string name="group_habit_statistics_title">Group Habit Statistics</string>
+    <string name="cd_habit_statistics">Statistics</string>
+    <string name="habit_stat_period">Period</string>
+    <string name="habit_stat_period_week">Week</string>
+    <string name="habit_stat_period_month">Month</string>
+    <string name="habit_stat_period_custom">Custom</string>
+    <string name="habit_stat_summary">Summary</string>
+    <string name="habit_stat_completion_rate">Completion rate</string>
+    <string name="habit_stat_completed">Completed</string>
+    <string name="habit_stat_missed">Missed</string>
+    <string name="habit_stat_rest_days">Rest days</string>
+    <string name="habit_stat_current_streak">Current streak</string>
+    <string name="habit_stat_best_streak">Best streak</string>
+    <string name="habit_stat_total_value">Total</string>
+    <string name="habit_stat_active_days">Active days</string>
+    <string name="habit_stat_calendar">Calendar</string>
+    <string name="habit_stat_legend">Legend</string>
+    <string name="habit_stat_legend_completed">Done</string>
+    <string name="habit_stat_legend_missed">Missed</string>
+    <string name="habit_stat_legend_rest">Rest</string>
+    <string name="habit_stat_legend_partial">Partial</string>
+    <string name="habit_stat_participants_count">%1$d participants</string>
+    <string name="habit_stat_compare_participants">Compare with participants</string>
+    <string name="habit_stat_compare_participants_desc">Show statistics of other participants</string>
+    <string name="habit_stat_my_statistics">My Statistics</string>
+    <string name="habit_stat_my_calendar">My Calendar</string>
+    <string name="habit_stat_filter_participants">Filter participants</string>
+    <string name="habit_stat_show_all">Show all</string>
+    <string name="habit_stat_completion_short">completed</string>
+    <string name="habit_stat_completed_short">Done</string>
+    <string name="habit_stat_missed_short">Missed</string>
+    <string name="habit_stat_streak_short">Streak</string>
 </resources>

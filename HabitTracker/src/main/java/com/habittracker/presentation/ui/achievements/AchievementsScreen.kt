@@ -41,7 +41,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.habittracker.R
 import com.habittracker.domain.model.Achievement
@@ -139,6 +139,7 @@ fun AchievementsScreen(
                 .padding(paddingValues)
         ) {
             // Вкладки категорий
+            @Suppress("DEPRECATION")
             ScrollableTabRow(
                 modifier = Modifier.fillMaxWidth(),
                 selectedTabIndex = selectedTabIndex,

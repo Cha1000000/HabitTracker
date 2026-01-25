@@ -17,6 +17,7 @@ import com.habittracker.domain.usecase.GetCurrentUserUseCase
 import com.habittracker.domain.usecase.GetHabitsUseCase
 import com.habittracker.domain.usecase.challenge.CreateChallengeUseCase
 import com.habittracker.domain.usecase.social.GetFriendsUseCase
+import com.habittracker.domain.util.AnalyticsManager
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.test.advanceUntilIdle
@@ -56,6 +57,7 @@ class CreateChallengeViewModelTest {
     private val getHabitsUseCase: GetHabitsUseCase = mock()
     private val getFriendsUseCase: GetFriendsUseCase = mock()
     private val createChallengeUseCase: CreateChallengeUseCase = mock()
+    private val analyticsManager: AnalyticsManager = mock()
 
     private val today = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault()).date
 
@@ -147,7 +149,8 @@ class CreateChallengeViewModelTest {
             getCurrentUserUseCase = getCurrentUserUseCase,
             getHabitsUseCase = getHabitsUseCase,
             getFriendsUseCase = getFriendsUseCase,
-            createChallengeUseCase = createChallengeUseCase
+            createChallengeUseCase = createChallengeUseCase,
+            analyticsManager = analyticsManager
         )
         advanceUntilIdle()
 

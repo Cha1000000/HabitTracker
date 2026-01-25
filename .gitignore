@@ -47,6 +47,7 @@ signing/*.properties
 credentials.json
 service-account.json
 serviceAccountKey.json
+yandex-app-metrica.txt
 
 # Artifacts
 *.apk
@@ -62,3 +63,4 @@ serviceAccountKey.json
 HabitTracker/*firebase-adminsdk*.json
 **/*firebase-adminsdk*.json
 **/*adminsdk*.json
+/scripts/firestore-seed/node_modules/

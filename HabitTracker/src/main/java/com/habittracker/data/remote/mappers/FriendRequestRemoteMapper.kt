@@ -1,11 +1,11 @@
 package com.habittracker.data.remote.mappers
 
-import android.util.Log
 import com.habittracker.data.remote.model.FriendRequestRemote
 import com.habittracker.domain.model.FriendRequest
 import com.habittracker.domain.model.FriendRequestStatus
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.LocalDateTime
+import timber.log.Timber
 
 fun FriendRequestRemote.toDomain(id: String): FriendRequest? {
     val from = fromUserId
@@ -14,7 +14,7 @@ fun FriendRequestRemote.toDomain(id: String): FriendRequest? {
     val created = createdAt
     val updated = updatedAt
     if (from == null || to == null || st == null || created == null || updated == null) {
-        Log.w("SocialRepository", "Remote FR has nulls: id=$id from=$from to=$to status=$st createdAt=$created updatedAt=$updated")
+        Timber.tag("SocialRepository").w("Remote FR has nulls: id=$id from=$from to=$to status=$st createdAt=$created updatedAt=$updated")
         return null
     }
     
@@ -24,7 +24,7 @@ fun FriendRequestRemote.toDomain(id: String): FriendRequest? {
     val updatedDate = runCatching { LocalDate.parse(updated) }.getOrNull()
     
     if (createdDateTime == null || updatedDate == null) {
-        Log.w("SocialRepository", "Remote FR parse failed: id=$id createdAt=$created updatedAt=$updated")
+        Timber.tag("SocialRepository").w("Remote FR parse failed: id=$id createdAt=$created updatedAt=$updated")
         return null
     }
     

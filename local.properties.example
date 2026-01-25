@@ -32,3 +32,9 @@ FCM_SERVER_KEY=YOUR_ACTUAL_FCM_SERVER_KEY_HERE
 # RELEASE_KEY_ALIAS=your_key_alias
 # Пароль ключа
 # RELEASE_KEY_PASSWORD=your_key_password
+
+## AppMetrica Configuration
+# API ключ для Yandex AppMetrica аналитики
+# Получите ключ в AppMetrica Console → Настройки → Основное
+# https://appmetrica.yandex.ru/
+APPMETRICA_API_KEY=632ce19f-33d9-4a73-91e4-220d78254ac4

@@ -1,8 +1,6 @@
 package com.habittracker.domain.usecase
 
-import android.util.Log
 import com.habittracker.domain.model.Habit
-import com.habittracker.domain.repository.FirestoreRepository
 import com.habittracker.domain.repository.HabitRepository
 import javax.inject.Inject
 

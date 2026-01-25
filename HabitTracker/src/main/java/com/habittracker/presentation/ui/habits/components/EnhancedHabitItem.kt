@@ -69,11 +69,11 @@ import kotlinx.datetime.toLocalDateTime
 @OptIn(ExperimentalFoundationApi::class, ExperimentalMaterial3Api::class)
 @Composable
 fun EnhancedHabitItem(
+    modifier: Modifier = Modifier,
     habitWithCompletion: HabitWithCompletion,
     onHabitClick: (HabitWithCompletion) -> Unit,
     onToggleCompletion: () -> Unit,
     onToggleRestDay: () -> Unit = {},
-    modifier: Modifier = Modifier,
     onEdit: (HabitWithCompletion) -> Unit = {},
     onDelete: (HabitWithCompletion) -> Unit = {},
     showGroupProgress: Boolean = true,
@@ -92,9 +92,7 @@ fun EnhancedHabitItem(
     val isDarkTheme = isSystemInDarkTheme()
 
     // Цвета для состояния "Выходной"
-    val contentAlpha = if (isRestDay) 0.38f else 1f
     val titleColor = if (isRestDay) MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f) else if (isDone) successColor else MaterialTheme.colorScheme.onSurface
-    val iconTint = if (isRestDay) MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f) else if (isDone) successColor else MaterialTheme.colorScheme.primary
 
     Box(modifier = modifier.fillMaxWidth()) {
         val interaction = remember { MutableInteractionSource() }
@@ -202,6 +200,7 @@ fun EnhancedHabitItem(
                         )
                         Spacer(modifier = Modifier.width(16.dp))
                         Column(modifier = Modifier.weight(1f)) {
+                            val infoColor = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = if (isRestDay) 0.38f else 1f)
                             Row(verticalAlignment = Alignment.CenterVertically) {
                                 Text(
                                     text = habit.title,
@@ -224,7 +223,6 @@ fun EnhancedHabitItem(
                                 )
                             }
                             Row(horizontalArrangement = Arrangement.spacedBy(16.dp), verticalAlignment = Alignment.CenterVertically) {
-                                val infoColor = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = if (isRestDay) 0.38f else 1f)
                                 Text(
                                     text = when (habit.frequency) {
                                         HabitFrequency.DAILY -> stringResource(R.string.frequency_daily)
@@ -237,13 +235,6 @@ fun EnhancedHabitItem(
                                     style = MaterialTheme.typography.bodySmall,
                                     color = infoColor
                                 )
-                                if (habit.isGroupHabit()) {
-                                    Text(
-                                        text = stringResource(R.string.participants_count, habit.participants.size, habit.maxParticipants),
-                                        style = MaterialTheme.typography.bodySmall,
-                                        color = infoColor
-                                    )
-                                }
                                 
                                 // Отображение значения/цели для измеримых привычек
                                 if (habit.goalType == HabitGoalType.MEASURABLE) {
@@ -261,6 +252,16 @@ fun EnhancedHabitItem(
                                     // Fallback для старых/простых привычек с нестандартными единицами
                                     Text(
                                         text = "${habit.targetValue} ${habit.unit}",
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = infoColor
+                                    )
+                                }
+                            }
+                            // Отображение количества участников привычки
+                            if (habit.isGroupHabit()) {
+                                Row(horizontalArrangement = Arrangement.spacedBy(16.dp), verticalAlignment = Alignment.CenterVertically) {
+                                    Text(
+                                        text = stringResource(R.string.participants_count, habit.participants.size, habit.maxParticipants),
                                         style = MaterialTheme.typography.bodySmall,
                                         color = infoColor
                                     )

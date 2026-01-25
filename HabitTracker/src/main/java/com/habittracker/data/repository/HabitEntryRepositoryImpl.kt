@@ -1,11 +1,10 @@
 package com.habittracker.data.repository
 
-import android.util.Log
 import com.google.firebase.firestore.FirebaseFirestore
 import com.habittracker.data.local.dao.HabitEntryDao
+import com.habittracker.data.local.mappers.toDomain
 import com.habittracker.data.model.FirebaseHabitEntry
 import com.habittracker.data.model.FirebaseHabitEntry.Companion.toDomain
-import com.habittracker.data.local.mappers.toDomain
 import com.habittracker.data.sync.SyncManager
 import com.habittracker.data.sync.SyncWorkScheduler
 import com.habittracker.domain.model.HabitEntry
@@ -26,8 +25,8 @@ import kotlinx.coroutines.launch
 import kotlinx.datetime.Clock
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.TimeZone
-import kotlinx.datetime.atStartOfDayIn
 import kotlinx.datetime.toLocalDateTime
+import timber.log.Timber
 import javax.inject.Inject
 import javax.inject.Singleton
 import com.habittracker.data.local.mappers.toDomain as habitEntryToDomain
@@ -50,6 +49,32 @@ class HabitEntryRepositoryImpl @Inject constructor(
             try { syncManager.drainPending(maxBatch = 10) } catch (_: Exception) {
             }
         }
+    }
+
+    override suspend fun getEntriesForUserAndHabitOnce(userId: String, habitId: String): List<HabitEntry> {
+        return habitEntryDao.getEntriesForUserAndHabitOnce(habitId, userId).map { it.habitEntryToDomain() }
+    }
+
+    override suspend fun deleteEntriesForUserAndHabit(userId: String, habitId: String) {
+        val entries = habitEntryDao.getEntriesForUserAndHabitOnce(habitId, userId)
+        if (entries.isEmpty()) return
+
+        habitEntryDao.deleteEntriesForUserAndHabit(habitId, userId)
+
+        val updatedAt = Clock.System.now().toEpochMilliseconds()
+        for (e in entries) {
+            try {
+                val entityId = HabitEntryIds.make(e.habitId, e.userId, e.date)
+                syncManager.enqueueDelete(
+                    entityType = "habit_entry",
+                    entityId = entityId,
+                    updatedAt = updatedAt
+                )
+            } catch (ex: Exception) {
+                Timber.tag("HabitEntryRepo").w(ex, "Failed to enqueue delete for habit_entry")
+            }
+        }
+        kickSync()
     }
 
     override suspend fun insertEntry(entry: HabitEntry) {
@@ -78,7 +103,7 @@ class HabitEntryRepositoryImpl @Inject constructor(
 
             kickSync()
         } catch (e: Exception) {
-            Log.e("HabitEntryRepo", "Failed to enqueue sync for entry", e)
+            Timber.tag("HabitEntryRepo").e(e, "Failed to enqueue sync for entry")
         }
     }
 
@@ -101,14 +126,14 @@ class HabitEntryRepositoryImpl @Inject constructor(
                 .whereEqualTo("habitId", habitId)
                 .addSnapshotListener { snapshot, error ->
                     if (error != null) {
-                        Log.w("HabitEntryRepo", "Listener error (habitId=$habitId): ${error.message}", error)
+                        Timber.tag("HabitEntryRepo").w(error, "Listener error (habitId=$habitId): ${error.message}")
                         return@addSnapshotListener
                     }
                     val list = snapshot?.documents?.mapNotNull { doc ->
                         try { 
                             doc.toObject(FirebaseHabitEntry::class.java)?.toDomain()
                         } catch (e: Exception) {
-                            Log.d("HabitEntryRepo", "Map doc to HabitEntry failed: ${e.message}")
+                            Timber.tag("HabitEntryRepo").d("Map doc to HabitEntry failed: ${e.message}")
                             null
                         }
                     } ?: emptyList()
@@ -116,7 +141,7 @@ class HabitEntryRepositoryImpl @Inject constructor(
                         try {
                             mergeFirebaseEntries(list)
                         } catch (e: Exception) {
-                            Log.w("HabitEntryRepo", "Merge entries failed: ${e.message}", e)
+                            Timber.tag("HabitEntryRepo").w(e, "Merge entries failed: ${e.message}")
                         }
                     }
                 }
@@ -143,12 +168,12 @@ class HabitEntryRepositoryImpl @Inject constructor(
                 .whereEqualTo("userId", userId)
                 .addSnapshotListener { snapshot, error ->
                     if (error != null) {
-                        Log.w("HabitEntryRepo", "Listener error (userId=$userId): ${error.message}", error)
+                        Timber.tag("HabitEntryRepo").w(error, "Listener error (userId=$userId): ${error.message}")
                         return@addSnapshotListener
                     }
                     val list = snapshot?.documents?.mapNotNull { doc ->
                         try { doc.toObject(FirebaseHabitEntry::class.java)?.toDomain() } catch (e: Exception) {
-                            Log.d("HabitEntryRepo", "Map doc to HabitEntry failed: ${e.message}")
+                            Timber.tag("HabitEntryRepo").d("Map doc to HabitEntry failed: ${e.message}")
                             null
                         }
                     } ?: emptyList()
@@ -156,7 +181,7 @@ class HabitEntryRepositoryImpl @Inject constructor(
                         try {
                             mergeFirebaseEntries(list)
                         } catch (e: Exception) {
-                            Log.w("HabitEntryRepo", "Merge entries failed: ${e.message}", e)
+                            Timber.tag("HabitEntryRepo").w(e, "Merge entries failed: ${e.message}")
                         }
                     }
                 }
@@ -184,12 +209,12 @@ class HabitEntryRepositoryImpl @Inject constructor(
                 .whereEqualTo("userId", userId)
                 .addSnapshotListener { snapshot, error ->
                     if (error != null) {
-                        Log.w("HabitEntryRepo", "Listener error (userId=$userId, habitId=$habitId): ${error.message}", error)
+                        Timber.tag("HabitEntryRepo").w(error, "Listener error (userId=$userId, habitId=$habitId): ${error.message}")
                         return@addSnapshotListener
                     }
                     val list = snapshot?.documents?.mapNotNull { doc ->
                         try { doc.toObject(FirebaseHabitEntry::class.java)?.toDomain() } catch (e: Exception) {
-                            Log.d("HabitEntryRepo", "Map doc to HabitEntry failed: ${e.message}")
+                            Timber.tag("HabitEntryRepo").d("Map doc to HabitEntry failed: ${e.message}")
                             null
                         }
                     } ?: emptyList()
@@ -197,7 +222,7 @@ class HabitEntryRepositoryImpl @Inject constructor(
                         try {
                             mergeFirebaseEntries(list)
                         } catch (e: Exception) {
-                            Log.w("HabitEntryRepo", "Merge entries failed: ${e.message}", e)
+                            Timber.tag("HabitEntryRepo").w(e, "Merge entries failed: ${e.message}")
                         }
                     }
                 }
@@ -345,13 +370,13 @@ class HabitEntryRepositoryImpl @Inject constructor(
             val hasPending = try {
                 syncManager.hasPendingOperations("habit_entry", entityId)
             } catch (e: Exception) {
-                Log.w("HabitEntryRepo", "hasPendingOperations failed: ${e.message}")
+                Timber.tag("HabitEntryRepo").w("hasPendingOperations failed: ${e.message}")
                 false
             }
             
             if (hasPending) {
                 // Есть pending операции - не перезаписываем локальные данные
-                Log.d("HabitEntryRepo", "Skipping Firebase entry (pending sync): $entityId")
+                Timber.tag("HabitEntryRepo").d("Skipping Firebase entry (pending sync): $entityId")
                 continue
             }
             
@@ -366,7 +391,7 @@ class HabitEntryRepositoryImpl @Inject constructor(
                 if (entry.updatedAt > localEntry.updatedAt) {
                     entriesToInsert.add(entry)
                 } else {
-                    Log.d("HabitEntryRepo", "Skipping Firebase entry (local is newer): $entityId, local=${localEntry.updatedAt}, firebase=${entry.updatedAt}")
+                    Timber.tag("HabitEntryRepo").d("Skipping Firebase entry (local is newer): $entityId, local=${localEntry.updatedAt}, firebase=${entry.updatedAt}")
                 }
             }
         }

@@ -1,6 +1,5 @@
 package com.habittracker.domain.usecase.gamification
 
-import android.util.Log
 import com.habittracker.domain.model.Achievement
 import com.habittracker.domain.model.AchievementMetric
 import com.habittracker.domain.repository.AchievementRepository
@@ -11,10 +10,13 @@ import com.habittracker.domain.usecase.notification.NotificationType
 import com.habittracker.data.local.entity.GroupHabitNotificationEntity
 import com.habittracker.presentation.ui.components.AchievementEventManager
 import com.habittracker.presentation.ui.components.AchievementToastData
+import com.habittracker.domain.util.AnalyticsEvents
+import com.habittracker.domain.util.AnalyticsManager
 import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.datetime.Clock
 import java.util.UUID
 import javax.inject.Inject
+import timber.log.Timber
 
 /**
  * Use case для проверки и автоматической разблокировки достижений.
@@ -26,7 +28,8 @@ class CheckAchievementsUseCase @Inject constructor(
     private val userRepository: UserRepository,
     private val socialRepository: SocialRepository,
     private val groupHabitNotificationRepository: GroupHabitNotificationRepository,
-    private val achievementEventManager: AchievementEventManager
+    private val achievementEventManager: AchievementEventManager,
+    private val analyticsManager: AnalyticsManager
 ) {
 
     /**
@@ -61,7 +64,7 @@ class CheckAchievementsUseCase @Inject constructor(
             
             newUnlockedAchievements
         } catch (e: Exception) {
-            Log.e("CheckAchievements", "Error checking achievements", e)
+            Timber.tag("CheckAchievements").e(e, "Error checking achievements")
             emptyList()
         }
     }
@@ -69,6 +72,12 @@ class CheckAchievementsUseCase @Inject constructor(
     private suspend fun unlockAchievement(userId: String, achievement: Achievement) {
         // Разблокируем достижение
         achievementRepository.unlockAchievement(userId, achievement.id)
+        
+        // Track achievement unlocked event
+        analyticsManager.logEvent(
+            AnalyticsEvents.ACHIEVEMENT_UNLOCKED,
+            mapOf(AnalyticsEvents.Params.ACHIEVEMENT_ID to achievement.id)
+        )
         
         // Начисляем очки за достижение
         val user = userRepository.getUserById(userId)
@@ -86,7 +95,7 @@ class CheckAchievementsUseCase @Inject constructor(
             val title = "🏆 Достижение разблокировано!"
             val message = "Вы получили достижение: ${achievement.icon} ${achievement.title}"
             
-            Log.d("CheckAchievements", "Achievement unlocked: ${user.name} - ${achievement.title}")
+            Timber.tag("CheckAchievements").d("Achievement unlocked: ${user.name} - ${achievement.title}")
             
             // 1. Отправляем событие для показа анимированного toast
             try {
@@ -102,7 +111,7 @@ class CheckAchievementsUseCase @Inject constructor(
                     )
                 )
             } catch (e: Exception) {
-                Log.w("CheckAchievements", "Failed to emit toast event", e)
+                Timber.tag("CheckAchievements").w(e, "Failed to emit toast event")
             }
             
             // 2. Сохраняем in-app уведомление
@@ -134,7 +143,7 @@ class CheckAchievementsUseCase @Inject constructor(
                 socialRepository.sendPushNotification(token, title, message, data)
             }
         } catch (e: Exception) {
-            Log.w("CheckAchievements", "Failed to send achievement notification", e)
+            Timber.tag("CheckAchievements").w(e, "Failed to send achievement notification")
         }
     }
 

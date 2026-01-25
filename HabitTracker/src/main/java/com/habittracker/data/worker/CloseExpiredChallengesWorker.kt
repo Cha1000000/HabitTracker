@@ -1,7 +1,6 @@
 package com.habittracker.data.worker
 
 import android.content.Context
-import android.util.Log
 import androidx.work.CoroutineWorker
 import androidx.work.WorkerParameters
 import com.habittracker.domain.usecase.challenge.CloseExpiredChallengesUseCase
@@ -9,6 +8,7 @@ import dagger.hilt.EntryPoint
 import dagger.hilt.InstallIn
 import dagger.hilt.android.EntryPointAccessors
 import dagger.hilt.components.SingletonComponent
+import timber.log.Timber
 
 class CloseExpiredChallengesWorker(
     appContext: Context,
@@ -21,18 +21,19 @@ class CloseExpiredChallengesWorker(
                 val result = useCaseCall()
                 if (result.isSuccess) {
                     val count = result.getOrNull() ?: 0
-                    Log.d("CloseExpiredChallengesWorker", "closed=$count")
+                    Timber.tag("CloseExpiredChallengesWorker").d("closed=$count")
                     Result.success()
                 } else {
-                    Log.w(
-                        "CloseExpiredChallengesWorker",
-                        "failed: ${result.exceptionOrNull()?.message}",
-                        result.exceptionOrNull()
-                    )
+                    val err = result.exceptionOrNull()
+                    if (err != null) {
+                        Timber.tag("CloseExpiredChallengesWorker").w(err, "failed: ${err.message}")
+                    } else {
+                        Timber.tag("CloseExpiredChallengesWorker").w("failed")
+                    }
                     Result.retry()
                 }
             } catch (e: Exception) {
-                Log.w("CloseExpiredChallengesWorker", "failed: ${e.message}", e)
+                Timber.tag("CloseExpiredChallengesWorker").w(e, "failed: ${e.message}")
                 Result.retry()
             }
         }

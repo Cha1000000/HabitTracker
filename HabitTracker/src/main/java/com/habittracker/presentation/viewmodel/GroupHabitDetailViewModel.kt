@@ -2,7 +2,6 @@ package com.habittracker.presentation.viewmodel
 
 import android.app.Application
 import android.content.Intent
-import android.util.Log
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.habittracker.R
@@ -35,6 +34,7 @@ import kotlinx.datetime.TimeZone
 import kotlinx.datetime.minus
 import kotlinx.datetime.todayIn
 import javax.inject.Inject
+import timber.log.Timber
 
 /**
  * ViewModel для экрана детальной информации о групповой привычке
@@ -172,7 +172,7 @@ class GroupHabitDetailViewModel @Inject constructor(
             habitEntryRepository.getEntriesForHabit(habitId)
                 .catch { e ->
                     // Логируем ошибку, но не прерываем поток
-                    Log.e("GroupHabitDetailVM", "Error collecting entries", e)
+                    Timber.tag("GroupHabitDetailVM").e(e, "Error collecting entries")
                 }
                 .collect { allEntries ->
                     val today = Clock.System.todayIn(TimeZone.currentSystemDefault())
@@ -212,7 +212,7 @@ class GroupHabitDetailViewModel @Inject constructor(
         leaderboardJob = viewModelScope.launch {
             getLeaderboardUseCase.getHabitLeaderboard(habitId)
                 .catch { e ->
-                    Log.e("GroupHabitDetailVM", "Error loading leaderboard", e)
+                    Timber.tag("GroupHabitDetailVM").e(e, "Error loading leaderboard")
                 }
                 .collect { leaderboard ->
                     _uiState.update { it.copy(participantLeaderboard = leaderboard) }
@@ -424,7 +424,7 @@ class GroupHabitDetailViewModel @Inject constructor(
                 // Вызываем callback для навигации назад
                 onSuccess()
             } catch (e: Exception) {
-                Log.e("GroupHabitDetailVM", "Error leaving group", e)
+                Timber.tag("GroupHabitDetailVM").e(e, "Error leaving group")
                 _uiState.update { 
                     it.copy(
                         isLoading = false,

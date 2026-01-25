@@ -1,16 +1,14 @@
 package com.habittracker.data.repository
 
-import android.util.Log
 import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.FirebaseFirestore
+import com.habittracker.R
 import com.habittracker.data.firestore.UserFirestoreConverter
 import com.habittracker.data.local.dao.FriendRequestDao
 import com.habittracker.data.local.dao.FriendshipDao
 import com.habittracker.data.local.dao.HabitInvitationDao
-import com.habittracker.data.local.dao.UserDao
-import com.habittracker.R
-import com.habittracker.domain.provider.StringProvider
 import com.habittracker.data.local.dao.SyncOutboxDao
+import com.habittracker.data.local.dao.UserDao
 import com.habittracker.data.local.entity.UserEntity
 import com.habittracker.data.local.mappers.toDomain
 import com.habittracker.data.local.mappers.toEntity
@@ -32,6 +30,7 @@ import com.habittracker.domain.model.User
 import com.habittracker.domain.model.accept
 import com.habittracker.domain.model.createFriendship
 import com.habittracker.domain.model.isExpired
+import com.habittracker.domain.provider.StringProvider
 import com.habittracker.domain.repository.GroupHabitNotificationRepository
 import com.habittracker.domain.repository.HabitRepository
 import com.habittracker.domain.repository.SocialRepository
@@ -42,12 +41,6 @@ import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.channels.awaitClose
-import kotlinx.datetime.Clock
-import kotlinx.datetime.Instant
-import kotlinx.datetime.TimeZone
-import kotlinx.datetime.atStartOfDayIn
-import kotlinx.datetime.toInstant
-import kotlinx.datetime.toLocalDateTime
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
 import kotlinx.coroutines.flow.first
@@ -55,6 +48,13 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.tasks.await
 import kotlinx.coroutines.withContext
+import kotlinx.datetime.Clock
+import kotlinx.datetime.Instant
+import kotlinx.datetime.TimeZone
+import kotlinx.datetime.atStartOfDayIn
+import kotlinx.datetime.toInstant
+import kotlinx.datetime.toLocalDateTime
+import timber.log.Timber
 import java.util.UUID
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -86,7 +86,7 @@ class SocialRepositoryImpl @Inject constructor(
         val existing = try {
             userDao.getUserById(entity.id)
         } catch (e: Exception) {
-            Log.w("SocialRepository", "upsertLocalUser: getUserById failed for id=${entity.id}: ${e.message}")
+            Timber.tag("SocialRepository").w("upsertLocalUser: getUserById failed for id=${entity.id}: ${e.message}")
             null
         }
         if (existing == null) {
@@ -111,13 +111,13 @@ class SocialRepositoryImpl @Inject constructor(
                 kotlinx.datetime.LocalDateTime.parse(value)
                     .toInstant(TimeZone.currentSystemDefault())
                     .toEpochMilliseconds()
-            } catch (e: Exception) {
+            } catch (_: Exception) {
                 try {
                     // Try parsing as ISO 8601 LocalDate (e.g., "2025-12-16")
                     kotlinx.datetime.LocalDate.parse(value)
                         .atStartOfDayIn(TimeZone.currentSystemDefault())
                         .toEpochMilliseconds()
-                } catch (e2: Exception) {
+                } catch (_: Exception) {
                     fallback
                 }
             }
@@ -131,12 +131,12 @@ class SocialRepositoryImpl @Inject constructor(
         // Получаем список ID друзей для исключения из результатов
         val friendIds = try {
             friendshipDao.getFriendIdsForUser(currentUserId)
-        } catch (e: Exception) {
+        } catch (_: Exception) {
             emptyList()
         }
         
         return try {
-            Log.d("SocialRepository", "🔍 Searching users: query='$query', currentUserId='$currentUserId'")
+            Timber.tag("SocialRepository").d("🔍 Searching users: query='$query', currentUserId='$currentUserId'")
             
             // Загружаем всех пользователей и фильтруем локально
             // (Firestore не поддерживает поиск подстроки в середине строки)
@@ -149,7 +149,7 @@ class SocialRepositoryImpl @Inject constructor(
                 .mapNotNull { doc ->
                     try {
                         UserFirestoreConverter.fromFirestore(doc.data ?: emptyMap(), doc.id)
-                    } catch (e: Exception) {
+                    } catch (_: Exception) {
                         null
                     }
                 }
@@ -160,10 +160,10 @@ class SocialRepositoryImpl @Inject constructor(
                 }
                 .take(20)
         
-            Log.d("SocialRepository", "🎯 After filtering: ${allResults.size} users")
+            Timber.tag("SocialRepository").d("🎯 After filtering: ${allResults.size} users")
             allResults
         } catch (e: Exception) {
-            Log.e("SocialRepository", "💥 Firestore search failed: ${e.message}")
+            Timber.tag("SocialRepository").e("💥 Firestore search failed: ${e.message}")
             
             // Fallback на локальный поиск
             val localResults = userDao.searchUsers("%$queryLower%")
@@ -174,7 +174,7 @@ class SocialRepositoryImpl @Inject constructor(
                     (user.name.lowercase().contains(queryLower) || user.email.lowercase().contains(queryLower))
                 }
                 
-            Log.d("SocialRepository", "🗄️ Fallback local results: ${localResults.size} users")
+            Timber.tag("SocialRepository").d("🗄️ Fallback local results: ${localResults.size} users")
             localResults
         }
     }
@@ -182,7 +182,7 @@ class SocialRepositoryImpl @Inject constructor(
     override suspend fun getUserById(userId: String): User? {
         // Local-first: быстрее и устойчивее к отменам корутин
         val local = try { userDao.getUserById(userId)?.toDomain() } catch (e: Exception) {
-            Log.w("SocialRepository", "Local getUserById failed: $userId", e)
+            Timber.tag("SocialRepository").w(e, "Local getUserById failed: $userId")
             null
         }
         if (local != null) return local
@@ -195,19 +195,19 @@ class SocialRepositoryImpl @Inject constructor(
                 null
             }
         } catch (e: Exception) {
-            Log.w("SocialRepository", "getUserById Firestore failed for userId=$userId: ${e.message}", e)
+            Timber.tag("SocialRepository").w(e, "getUserById Firestore failed for userId=$userId: ${e.message}")
             null
         }
     }
 
     override suspend fun getUserByIdFromFirestore(userId: String): User? {
         return try {
-            Log.d("SocialRepository", "🔄 Fetching user from Firestore: $userId")
+            Timber.tag("SocialRepository").d("🔄 Fetching user from Firestore: $userId")
             val doc = firestore.collection("users").document(userId).get().await()
             if (doc.exists()) {
                 val data = doc.data ?: emptyMap()
                 val hasToken = !(data["fcmToken"] as? String).isNullOrBlank()
-                Log.d("SocialRepository", "📋 Firestore data for $userId: fcmToken=${if (hasToken) "EXISTS" else "EMPTY"}")
+                Timber.tag("SocialRepository").d("📋 Firestore data for $userId: fcmToken=${if (hasToken) "EXISTS" else "EMPTY"}")
                 
                 val user = UserFirestoreConverter.fromFirestore(data, doc.id)
                 // Обновляем локальный кэш с актуальными данными
@@ -217,24 +217,24 @@ class SocialRepositoryImpl @Inject constructor(
                         try {
                             hasPending = syncManager.hasPendingOperations("user", it.id)
                         } catch (e: Exception) {
-                            Log.w("SocialRepository", "getUserByIdFromFirestore: hasPendingOperations failed for userId=${it.id}: ${e.message}")
+                            Timber.tag("SocialRepository").w("getUserByIdFromFirestore: hasPendingOperations failed for userId=${it.id}: ${e.message}")
                         }
                         if (!hasPending) {
                             upsertLocalUser(it.toEntity())
-                            Log.d("SocialRepository", "✅ Local cache updated for user $userId")
+                            Timber.tag("SocialRepository").d("✅ Local cache updated for user $userId")
                         }
                     } catch (e: Exception) {
-                        Log.w("SocialRepository", "Failed to update local cache for user $userId", e)
+                        Timber.tag("SocialRepository").w(e, "Failed to update local cache for user $userId")
                     }
                 }
-                Log.d("SocialRepository", "✅ User fetched: ${user?.name}")
+                Timber.tag("SocialRepository").d("✅ User fetched: ${user?.name}")
                 user
             } else {
-                Log.w("SocialRepository", "❌ User not found in Firestore: $userId")
+                Timber.tag("SocialRepository").w("❌ User not found in Firestore: $userId")
                 null
             }
         } catch (e: Exception) {
-            Log.e("SocialRepository", "❌ getUserByIdFromFirestore failed for userId=$userId", e)
+            Timber.tag("SocialRepository").e(e, "❌ getUserByIdFromFirestore failed for userId=$userId")
             null
         }
     }
@@ -272,7 +272,7 @@ class SocialRepositoryImpl @Inject constructor(
                 }
             } catch (e: Exception) {
                 // Не критично: в худшем случае токен временно будет подвязан к двум аккаунтами
-                Log.w("SocialRepository", "updateUserFcmToken cleanup (remove token from other users) failed: ${e.message}", e)
+                Timber.tag("SocialRepository").w(e, "updateUserFcmToken cleanup (remove token from other users) failed: ${e.message}")
             }
 
             // 2) Добавляем токен текущему пользователю (массив + legacy)
@@ -296,7 +296,7 @@ class SocialRepositoryImpl @Inject constructor(
             )
         } catch (e: Exception) {
             // Обновляем локально (сохраним единственный токен в legacy поле)
-            Log.w("SocialRepository", "updateUserFcmToken remote update failed for user=$userId: ${e.message}", e)
+            Timber.tag("SocialRepository").w(e, "updateUserFcmToken remote update failed for user=$userId: ${e.message}")
             val user = userDao.getUserById(userId)
             user?.let {
                 userDao.updateUser(it.copy(fcmToken = token))
@@ -320,14 +320,14 @@ class SocialRepositoryImpl @Inject constructor(
                 updatedAt = now
             )
         } else {
-            Log.w("SocialRepository", "updateFriendsCount: User $userId not found locally")
+            Timber.tag("SocialRepository").w("updateFriendsCount: User $userId not found locally")
         }
     }
 
     override suspend fun recalculateFriendsCount(userId: String) {
         val actualCount = friendshipDao.getFriendsCount(userId).first()
         updateFriendsCount(userId, actualCount)
-        Log.d("SocialRepository", "recalculateFriendsCount: userId=$userId, actualCount=$actualCount")
+        Timber.tag("SocialRepository").d("recalculateFriendsCount: userId=$userId, actualCount=$actualCount")
     }
 
     override suspend fun sendFriendRequest(
@@ -336,7 +336,7 @@ class SocialRepositoryImpl @Inject constructor(
         message: String?
     ): Result<FriendRequest> {
         return try {
-            Log.d("SocialRepository", "📤 Sending friend request: from=$fromUserId, to=$toUserId")
+            Timber.tag("SocialRepository").d("📤 Sending friend request: from=$fromUserId, to=$toUserId")
             
             val now = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault())
             val friendRequest = FriendRequest(
@@ -364,19 +364,19 @@ class SocialRepositoryImpl @Inject constructor(
             try {
                 syncWorkScheduler.scheduleOneTimeSync()
             } catch (e: Exception) {
-                Log.w("SocialRepository", "scheduleOneTimeSync() failed after enqueueUpsert(friend_request): ${e.message}", e)
+                Timber.tag("SocialRepository").w(e, "scheduleOneTimeSync() failed after enqueueUpsert(friend_request): ${e.message}")
             }
 
-            Log.d("SocialRepository", "✅ Friend request enqueued successfully!")
+            Timber.tag("SocialRepository").d("✅ Friend request enqueued successfully!")
 
             // Fire-and-forget push для получателя (не блокируем основной флоу)
             repoScope.launch {
                 runCatching { sendFriendRequestPush(fromUserId = fromUserId, toUserId = toUserId, message = message) }
-                    .onFailure { e -> Log.w("SocialRepository", "Push(friend_request) failed: ${e.message}") }
+                    .onFailure { e -> Timber.tag("SocialRepository").w("Push(friend_request) failed: ${e.message}") }
             }
             Result.success(friendRequest)
         } catch (e: Exception) {
-            Log.e("SocialRepository", "❌ Failed to send friend request: ${e.message}", e)
+            Timber.tag("SocialRepository").e(e, "❌ Failed to send friend request: ${e.message}")
             Result.failure(e)
         }
     }
@@ -394,7 +394,7 @@ class SocialRepositoryImpl @Inject constructor(
             ?.let { tokens.add(it) }
 
         if (tokens.isEmpty()) {
-            Log.d("SocialRepository", "sendFriendRequestPush: no tokens for user=$toUserId — skip push")
+            Timber.tag("SocialRepository").d("sendFriendRequestPush: no tokens for user=$toUserId — skip push")
             return
         }
 
@@ -406,7 +406,7 @@ class SocialRepositoryImpl @Inject constructor(
                 (fromDoc.get("name") as? String) ?: stringProvider.getString(R.string.default_user_name)
             }
         } catch (e: Exception) {
-            Log.d("SocialRepository", "sendFriendRequestPush: resolve fromName failed for fromUserId=$fromUserId: ${e.message}")
+            Timber.tag("SocialRepository").d("sendFriendRequestPush: resolve fromName failed for fromUserId=$fromUserId: ${e.message}")
             stringProvider.getString(R.string.default_user_name)
         }
 
@@ -426,9 +426,9 @@ class SocialRepositoryImpl @Inject constructor(
         val result = fcmApiClient.sendToMultipleTokens(tokens.toList(), title, body, data)
         if (result.isSuccess) {
             val br = result.getOrNull()
-            Log.d("SocialRepository", "sendFriendRequestPush: sent=${br?.successCount ?: 0}/${br?.totalSent ?: tokens.size}")
+            Timber.tag("SocialRepository").d("sendFriendRequestPush: sent=${br?.successCount ?: 0}/${br?.totalSent ?: tokens.size}")
         } else {
-            Log.w("SocialRepository", "sendFriendRequestPush: failed ${result.exceptionOrNull()?.message}")
+            Timber.tag("SocialRepository").w("sendFriendRequestPush: failed ${result.exceptionOrNull()?.message}")
         }
     }
 
@@ -461,16 +461,16 @@ class SocialRepositoryImpl @Inject constructor(
                 if (fromUser != null) {
                     upsertLocalUser(fromUser.toEntity())
                 } else {
-                    Log.w("SocialRepository", "acceptFriendRequest: fromUser not found for id=${friendRequest.fromUserId}")
+                    Timber.tag("SocialRepository").w("acceptFriendRequest: fromUser not found for id=${friendRequest.fromUserId}")
                 }
                 
                 if (toUser != null) {
                     upsertLocalUser(toUser.toEntity())
                 } else {
-                    Log.w("SocialRepository", "acceptFriendRequest: toUser not found for id=${friendRequest.toUserId}")
+                    Timber.tag("SocialRepository").w("acceptFriendRequest: toUser not found for id=${friendRequest.toUserId}")
                 }
             } catch (e: Exception) {
-                Log.w("SocialRepository", "acceptFriendRequest: user upsert failed: ${e.message}", e)
+                Timber.tag("SocialRepository").w(e, "acceptFriendRequest: user upsert failed: ${e.message}")
             }
             
             friendshipDao.insertFriendship(friendship.toEntity())
@@ -484,7 +484,7 @@ class SocialRepositoryImpl @Inject constructor(
                 updatedAt = acceptedRequest.updatedAt.atStartOfDayIn(TimeZone.currentSystemDefault()).toEpochMilliseconds()
             )
             try { syncWorkScheduler.scheduleOneTimeSync() } catch (e: Exception) {
-                Log.w("SocialRepository", "scheduleOneTimeSync() failed after enqueueUpsert(friend_request accepted): ${e.message}", e)
+                Timber.tag("SocialRepository").w(e, "scheduleOneTimeSync() failed after enqueueUpsert(friend_request accepted): ${e.message}")
             }
 
             val ordered = if (friendship.userId1 < friendship.userId2) Pair(friendship.userId1, friendship.userId2) else Pair(friendship.userId2, friendship.userId1)
@@ -496,7 +496,7 @@ class SocialRepositoryImpl @Inject constructor(
                 updatedAt = friendship.updatedAt.atStartOfDayIn(TimeZone.currentSystemDefault()).toEpochMilliseconds()
             )
             try { syncWorkScheduler.scheduleOneTimeSync() } catch (e: Exception) {
-                Log.w("SocialRepository", "scheduleOneTimeSync() failed after enqueueUpsert(friendship in acceptFriendRequest): ${e.message}", e)
+                Timber.tag("SocialRepository").w(e, "scheduleOneTimeSync() failed after enqueueUpsert(friendship in acceptFriendRequest): ${e.message}")
             }
 
             // Обновляем счетчики друзей (getFriendsCount уже возвращает актуальное значение после вставки)
@@ -535,7 +535,7 @@ class SocialRepositoryImpl @Inject constructor(
                 updatedAt = declinedRequest.updatedAt.atStartOfDayIn(TimeZone.currentSystemDefault()).toEpochMilliseconds()
             )
             try { syncWorkScheduler.scheduleOneTimeSync() } catch (e: Exception) {
-                Log.w("SocialRepository", "scheduleOneTimeSync() failed after declineFriendRequest: ${e.message}", e)
+                Timber.tag("SocialRepository").w(e, "scheduleOneTimeSync() failed after declineFriendRequest: ${e.message}")
             }
 
             Result.success(declinedRequest)
@@ -556,7 +556,7 @@ class SocialRepositoryImpl @Inject constructor(
                 updatedAt = System.currentTimeMillis()
             )
             try { syncWorkScheduler.scheduleOneTimeSync() } catch (e: Exception) {
-                Log.w("SocialRepository", "scheduleOneTimeSync() failed after cancelFriendRequest: ${e.message}", e)
+                Timber.tag("SocialRepository").w(e, "scheduleOneTimeSync() failed after cancelFriendRequest: ${e.message}")
             }
 
             Result.success(Unit)
@@ -573,7 +573,7 @@ class SocialRepositoryImpl @Inject constructor(
                     val remote = doc.toObject(com.habittracker.data.remote.model.FriendRequestRemote::class.java)
                     remote?.toDomain(doc.id)
                 } catch (e: Exception) {
-                    Log.d("SocialRepository", "getFriendRequestById: mapping failed for doc=${doc.id}: ${e.message}")
+                    Timber.tag("SocialRepository").d("getFriendRequestById: mapping failed for doc=${doc.id}: ${e.message}")
                     // fallback к Room, если маппинг не удался
                     friendRequestDao.getFriendRequestById(requestId)?.toDomain()
                 }
@@ -581,7 +581,7 @@ class SocialRepositoryImpl @Inject constructor(
                 friendRequestDao.getFriendRequestById(requestId)?.toDomain()
             }
         } catch (e: Exception) {
-            Log.w("SocialRepository", "getFriendRequestById Firestore failed: ${e.message}", e)
+            Timber.tag("SocialRepository").w(e, "getFriendRequestById Firestore failed: ${e.message}")
             friendRequestDao.getFriendRequestById(requestId)?.toDomain()
         }
     }
@@ -600,12 +600,12 @@ class SocialRepositoryImpl @Inject constructor(
                     val remote = doc.toObject(com.habittracker.data.remote.model.FriendRequestRemote::class.java)
                     remote?.toDomain(doc.id)
                 } catch (e: Exception) {
-                    Log.d("SocialRepository", "getFriendRequestBetweenUsers: mapping failed for doc=${doc.id}: ${e.message}")
+                    Timber.tag("SocialRepository").d("getFriendRequestBetweenUsers: mapping failed for doc=${doc.id}: ${e.message}")
                     null
                 }
             }
         } catch (e: Exception) {
-            Log.w("SocialRepository", "getFriendRequestBetweenUsers Firestore failed: ${e.message}", e)
+            Timber.tag("SocialRepository").w(e, "getFriendRequestBetweenUsers Firestore failed: ${e.message}")
             friendRequestDao.getFriendRequestBetweenUsers(fromUserId, toUserId)?.toDomain()
         }
     }
@@ -619,11 +619,11 @@ class SocialRepositoryImpl @Inject constructor(
                 .whereEqualTo("status", FriendRequestStatus.PENDING.name)
                 .addSnapshotListener { snapshot, error ->
                     if (error != null) {
-                        Log.w("SocialRepository", "Incoming FR listener error: ${error.message}", error)
+                        Timber.tag("SocialRepository").w(error, "Incoming FR listener error: ${error.message}")
                         return@addSnapshotListener
                     }
                     val docs = snapshot?.documents ?: emptyList()
-                    Log.d("SocialRepository", "Incoming FR listener: toUserId=$userId, docs=${docs.size}")
+                    Timber.tag("SocialRepository").d("Incoming FR listener: toUserId=$userId, docs=${docs.size}")
                     scope.launch {
                         val remoteIds = docs.map { it.id }.toSet()
                         docs.forEach { doc ->
@@ -634,7 +634,7 @@ class SocialRepositoryImpl @Inject constructor(
                                     val hasPending = try {
                                         syncManager.hasPendingOperations("friend_request", fr.id)
                                     } catch (e: Exception) {
-                                        Log.w("SocialRepository", "Incoming FR hasPendingOperations failed (id=${fr.id}): ${e.message}")
+                                        Timber.tag("SocialRepository").w("Incoming FR hasPendingOperations failed (id=${fr.id}): ${e.message}")
                                         false
                                     }
                                     if (!hasPending) {
@@ -645,11 +645,11 @@ class SocialRepositoryImpl @Inject constructor(
                                         getUserById(fr.fromUserId)?.let { upsertLocalUser(it.toEntity()) }
                                         getUserById(fr.toUserId)?.let { upsertLocalUser(it.toEntity()) }
                                     } catch (e: Exception) {
-                                        Log.d("SocialRepository", "Incoming FR prefetch users failed (non-fatal): ${e.message}")
+                                        Timber.tag("SocialRepository").d("Incoming FR prefetch users failed (non-fatal): ${e.message}")
                                     }
                                 }
                             } catch (e: Exception) {
-                                Log.w("SocialRepository", "Incoming FR map/insert error: ${e.message}")
+                                Timber.tag("SocialRepository").w("Incoming FR map/insert error: ${e.message}")
                             }
                         }
                         // Reconcile: удаляем локальные PENDING входящие, которых нет в снапшоте
@@ -665,27 +665,27 @@ class SocialRepositoryImpl @Inject constructor(
                                 !hasPending
                             }
                             if (toDelete.isNotEmpty()) {
-                                Log.d("SocialRepository", "Incoming FR reconcile: deleting ${toDelete.size} stale records")
+                                Timber.tag("SocialRepository").d("Incoming FR reconcile: deleting ${toDelete.size} stale records")
                                 toDelete.forEach { fr -> friendRequestDao.deleteFriendRequestById(fr.id) }
                             }
                         } catch (e: Exception) {
-                            Log.w("SocialRepository", "Incoming FR reconcile failed: ${e.message}", e)
+                            Timber.tag("SocialRepository").w(e, "Incoming FR reconcile failed: ${e.message}")
                         }
                     }
                 }
 
             val job = scope.launch {
                 friendRequestDao.getIncomingFriendRequests(userId).collect { requests ->
-                    Log.d("SocialRepository", "Incoming FR Room collect: userId=$userId, count=${requests.size}")
+                    Timber.tag("SocialRepository").d("Incoming FR Room collect: userId=$userId, count=${requests.size}")
                     val list = requests.mapNotNull { requestEntity ->
                         val request = requestEntity.toDomain()
                         val fromUser = getUserById(request.fromUserId)
                         val toUser = getUserById(request.toUserId)
-                        if (fromUser == null) Log.w("SocialRepository", "Incoming FR: fromUser is null for ${request.fromUserId}")
-                        if (toUser == null) Log.w("SocialRepository", "Incoming FR: toUser is null for ${request.toUserId}")
+                        if (fromUser == null) Timber.tag("SocialRepository").w("Incoming FR: fromUser is null for ${request.fromUserId}")
+                        if (toUser == null) Timber.tag("SocialRepository").w("Incoming FR: toUser is null for ${request.toUserId}")
                         if (fromUser != null && toUser != null) FriendRequestWithUsers(request, fromUser, toUser) else null
                     }
-                    Log.d("SocialRepository", "Incoming FR mapped: userId=$userId, count=${list.size}")
+                    Timber.tag("SocialRepository").d("Incoming FR mapped: userId=$userId, count=${list.size}")
                     trySend(list)
                 }
             }
@@ -707,11 +707,11 @@ class SocialRepositoryImpl @Inject constructor(
                 .whereEqualTo("status", FriendRequestStatus.PENDING.name)
                 .addSnapshotListener { snapshot, error ->
                     if (error != null) {
-                        Log.w("SocialRepository", "Outgoing FR listener error: ${error.message}", error)
+                        Timber.tag("SocialRepository").w(error, "Outgoing FR listener error: ${error.message}")
                         return@addSnapshotListener
                     }
                     val docs = snapshot?.documents ?: emptyList()
-                    Log.d("SocialRepository", "Outgoing FR listener: fromUserId=$userId, docs=${docs.size}")
+                    Timber.tag("SocialRepository").d("Outgoing FR listener: fromUserId=$userId, docs=${docs.size}")
                     scope.launch {
                         val remoteIds = docs.map { it.id }.toSet()
                         docs.forEach { doc ->
@@ -722,7 +722,7 @@ class SocialRepositoryImpl @Inject constructor(
                                     val hasPending = try {
                                         syncManager.hasPendingOperations("friend_request", fr.id)
                                     } catch (e: Exception) {
-                                        Log.w("SocialRepository", "Outgoing FR hasPendingOperations failed (id=${fr.id}): ${e.message}")
+                                        Timber.tag("SocialRepository").w("Outgoing FR hasPendingOperations failed (id=${fr.id}): ${e.message}")
                                         false
                                     }
                                     if (!hasPending) {
@@ -733,11 +733,11 @@ class SocialRepositoryImpl @Inject constructor(
                                         getUserById(fr.fromUserId)?.let { upsertLocalUser(it.toEntity()) }
                                         getUserById(fr.toUserId)?.let { upsertLocalUser(it.toEntity()) }
                                     } catch (e: Exception) {
-                                        Log.d("SocialRepository", "Outgoing FR prefetch users failed (non-fatal): ${e.message}")
+                                        Timber.tag("SocialRepository").d("Outgoing FR prefetch users failed (non-fatal): ${e.message}")
                                     }
                                 }
                             } catch (e: Exception) {
-                                Log.w("SocialRepository", "Outgoing FR map/insert error: ${e.message}")
+                                Timber.tag("SocialRepository").w("Outgoing FR map/insert error: ${e.message}")
                             }
                         }
                         // Reconcile: удаляем локальные PENDING исходящие, которых нет в снапшоте
@@ -753,11 +753,11 @@ class SocialRepositoryImpl @Inject constructor(
                                 !hasPending
                             }
                             if (toDelete.isNotEmpty()) {
-                                Log.d("SocialRepository", "Outgoing FR reconcile: deleting ${toDelete.size} stale records")
+                                Timber.tag("SocialRepository").d("Outgoing FR reconcile: deleting ${toDelete.size} stale records")
                                 toDelete.forEach { fr -> friendRequestDao.deleteFriendRequestById(fr.id) }
                             }
                         } catch (e: Exception) {
-                            Log.w("SocialRepository", "Outgoing FR reconcile failed: ${e.message}", e)
+                            Timber.tag("SocialRepository").w(e, "Outgoing FR reconcile failed: ${e.message}")
                         }
                     }
                 }
@@ -820,7 +820,7 @@ class SocialRepositoryImpl @Inject constructor(
                 return friendshipDao.getFriendshipBetweenUsers(userId1, userId2)?.toDomain()
             }
         } catch (e: Exception) {
-            Log.w("SocialRepository", "getFriendshipBetweenUsers Firestore failed: ${e.message}", e)
+            Timber.tag("SocialRepository").w(e, "getFriendshipBetweenUsers Firestore failed: ${e.message}")
             friendshipDao.getFriendshipBetweenUsers(userId1, userId2)?.toDomain()
         }
     }
@@ -841,10 +841,10 @@ class SocialRepositoryImpl @Inject constructor(
             )
             // Force outbox drain to propagate deletion to Firestore immediately
             try {
-                Log.d("SocialRepository", "removeFriend: scheduled one-time sync for delete friendship doc=$docId")
+                Timber.tag("SocialRepository").d("removeFriend: scheduled one-time sync for delete friendship doc=$docId")
                 syncWorkScheduler.scheduleOneTimeSync()
             } catch (e: Exception) {
-                Log.w("SocialRepository", "scheduleOneTimeSync() failed after enqueueDelete(friendship): ${e.message}", e)
+                Timber.tag("SocialRepository").w(e, "scheduleOneTimeSync() failed after enqueueDelete(friendship): ${e.message}")
             }
 
             // Обновляем счетчики друзей (getFriendsCount уже возвращает актуальное значение после удаления)
@@ -951,7 +951,7 @@ class SocialRepositoryImpl @Inject constructor(
                 .whereEqualTo("userId1", userId)
                 .addSnapshotListener { snapshot, error ->
                     if (error != null) {
-                        Log.d("SocialRepository", "Friends listener1 error: ${error.message}")
+                        Timber.tag("SocialRepository").d("Friends listener1 error: ${error.message}")
                         return@addSnapshotListener
                     }
                     val docs = snapshot?.documents ?: emptyList()
@@ -976,7 +976,7 @@ class SocialRepositoryImpl @Inject constructor(
                                         upsertLocalUser(u1.toEntity())
                                     }
                                 } catch (e: Exception) {
-                                    Log.d("SocialRepository", "Prefetch user failed (userId1=$userId1): ${e.message}")
+                                    Timber.tag("SocialRepository").d("Prefetch user failed (userId1=$userId1): ${e.message}")
                                 }
                                 try {
                                     val u2 = getUserById(userId2)
@@ -984,7 +984,7 @@ class SocialRepositoryImpl @Inject constructor(
                                         upsertLocalUser(u2.toEntity())
                                     }
                                 } catch (e: Exception) {
-                                    Log.d("SocialRepository", "Prefetch user failed (userId2=$userId2): ${e.message}")
+                                    Timber.tag("SocialRepository").d("Prefetch user failed (userId2=$userId2): ${e.message}")
                                 }
                                 val status = (data["status"] as? String)?.let { runCatching { FriendshipStatus.valueOf(it.uppercase()) }.getOrNull() } ?: FriendshipStatus.PENDING
                                 val requestedBy = data["requestedBy"] as? String ?: userId1
@@ -1015,7 +1015,7 @@ class SocialRepositoryImpl @Inject constructor(
                                     friendshipDao.insertFriendship(fs.toEntity())
                                 }
                             } catch (e: Exception) {
-                                Log.w("SocialRepository", "Friends listener1 mapping error: ${e.message}")
+                                Timber.tag("SocialRepository").w("Friends listener1 mapping error: ${e.message}")
                             }
                         }
                         // Reconcile после обработки снапшота
@@ -1027,7 +1027,7 @@ class SocialRepositoryImpl @Inject constructor(
                 .whereEqualTo("userId2", userId)
                 .addSnapshotListener { snapshot, error ->
                     if (error != null) {
-                        Log.d("SocialRepository", "Friends listener2 error: ${error.message}")
+                        Timber.tag("SocialRepository").d("Friends listener2 error: ${error.message}")
                         return@addSnapshotListener
                     }
                     val docs = snapshot?.documents ?: emptyList()
@@ -1052,7 +1052,7 @@ class SocialRepositoryImpl @Inject constructor(
                                         upsertLocalUser(u1.toEntity())
                                     }
                                 } catch (e: Exception) {
-                                    Log.d("SocialRepository", "Friends listener2 prefetch user failed (userId1=$userId1): ${e.message}")
+                                    Timber.tag("SocialRepository").d("Friends listener2 prefetch user failed (userId1=$userId1): ${e.message}")
                                 }
                                 try {
                                     val u2 = getUserById(userId2)
@@ -1060,7 +1060,7 @@ class SocialRepositoryImpl @Inject constructor(
                                         upsertLocalUser(u2.toEntity())
                                     }
                                 } catch (e: Exception) {
-                                    Log.d("SocialRepository", "Friends listener2 prefetch user failed (userId2=$userId2): ${e.message}")
+                                    Timber.tag("SocialRepository").d("Friends listener2 prefetch user failed (userId2=$userId2): ${e.message}")
                                 }
                                 val status = (data["status"] as? String)?.let { runCatching { FriendshipStatus.valueOf(it.uppercase()) }.getOrNull() } ?: FriendshipStatus.PENDING
                                 val requestedBy = data["requestedBy"] as? String ?: userId1
@@ -1091,7 +1091,7 @@ class SocialRepositoryImpl @Inject constructor(
                                     friendshipDao.insertFriendship(fs.toEntity())
                                 }
                             } catch (e: Exception) {
-                                Log.w("SocialRepository", "Friends listener2 mapping error: ${e.message}")
+                                Timber.tag("SocialRepository").w("Friends listener2 mapping error: ${e.message}")
                             }
                         }
                         // Reconcile после обработки снапшота
@@ -1116,7 +1116,7 @@ class SocialRepositoryImpl @Inject constructor(
                                     FriendshipWithUsers(friendship, friendUser, currentUser)
                                 }
                             } else null
-                        } catch (e: Exception) {
+                        } catch (_: Exception) {
                             null
                         }
                     }.filter { it.friendship.status == FriendshipStatus.ACCEPTED }
@@ -1160,7 +1160,7 @@ class SocialRepositoryImpl @Inject constructor(
         try {
             friendRequestDao.expireOldRequests(thirtyDaysAgo)
         } catch (e: Exception) {
-            Log.d("SocialRepository", "expireOldFriendRequests failed (non-fatal): ${e.message}")
+            Timber.tag("SocialRepository").d("expireOldFriendRequests failed (non-fatal): ${e.message}")
         }
     }
 
@@ -1173,12 +1173,11 @@ class SocialRepositoryImpl @Inject constructor(
             val allTokens = (tokensFromArray + listOfNotNull(legacyToken)).toSet().toList()
 
             if (allTokens.isEmpty()) {
-                Log.w("SocialRepository", "FCM skip: friend_request -> to=$toUserId, tokens_absent")
+                Timber.tag("SocialRepository").w("FCM skip: friend_request -> to=$toUserId, tokens_absent")
                 return
             }
 
-            Log.d(
-                "SocialRepository",
+            Timber.tag("SocialRepository").d(
                 "FCM send: friend_request -> to=$toUserId, tokens_count=${allTokens.size}, tokens=${allTokens.map { maskToken(it) }}"
             )
 
@@ -1198,15 +1197,15 @@ class SocialRepositoryImpl @Inject constructor(
             batchResult.onSuccess { result ->
                 result.results.filter { !it.success && (it.error?.contains("UNREGISTERED", ignoreCase = true) == true) }
                     .forEach { bad ->
-                        Log.w("SocialRepository", "FCM UNREGISTERED (friend_request) -> remove token ${maskToken(bad.token)} for user=$toUserId")
+                        Timber.tag("SocialRepository").w("FCM UNREGISTERED (friend_request) -> remove token ${maskToken(bad.token)} for user=$toUserId")
                         safelyRemoveInvalidFcmToken(toUserId, bad.token)
                     }
             }.onFailure { e ->
-                Log.w("SocialRepository", "Ошибка отправки friend_request batch: ${e.message}")
+                Timber.tag("SocialRepository").w("Ошибка отправки friend_request batch: ${e.message}")
             }
         } catch (e: Exception) {
             // Логируем ошибку, но не падаем - уведомления не критичны
-            Log.w("SocialRepository", "Ошибка отправки уведомления о запросе дружбы", e)
+            Timber.tag("SocialRepository").w(e, "Ошибка отправки уведомления о запросе дружбы")
         }
     }
 
@@ -1219,12 +1218,11 @@ class SocialRepositoryImpl @Inject constructor(
             val allTokens = (tokensFromArray + listOfNotNull(legacyToken)).toSet().toList()
 
             if (allTokens.isEmpty()) {
-                Log.w("SocialRepository", "FCM skip: friend_accepted -> to=$toUserId, tokens_absent")
+                Timber.tag("SocialRepository").w("FCM skip: friend_accepted -> to=$toUserId, tokens_absent")
                 return
             }
 
-            Log.d(
-                "SocialRepository",
+            Timber.tag("SocialRepository").d(
                 "FCM send: friend_accepted -> to=$toUserId, tokens_count=${allTokens.size}, tokens=${allTokens.map { maskToken(it) }}, acceptedBy=$acceptedByName"
             )
 
@@ -1243,14 +1241,14 @@ class SocialRepositoryImpl @Inject constructor(
             batchResult.onSuccess { result ->
                 result.results.filter { !it.success && (it.error?.contains("UNREGISTERED", ignoreCase = true) == true) }
                     .forEach { bad ->
-                        Log.w("SocialRepository", "FCM UNREGISTERED (friend_accepted) -> remove token ${maskToken(bad.token)} for user=$toUserId")
+                        Timber.tag("SocialRepository").w("FCM UNREGISTERED (friend_accepted) -> remove token ${maskToken(bad.token)} for user=$toUserId")
                         safelyRemoveInvalidFcmToken(toUserId, bad.token)
                     }
             }.onFailure { e ->
-                Log.w("SocialRepository", "Ошибка отправки friend_accepted batch: ${e.message}")
+                Timber.tag("SocialRepository").w("Ошибка отправки friend_accepted batch: ${e.message}")
             }
         } catch (e: Exception) {
-            Log.w("SocialRepository", "Ошибка отправки уведомления о принятии дружбы", e)
+            Timber.tag("SocialRepository").w(e, "Ошибка отправки уведомления о принятии дружбы")
         }
     }
 
@@ -1287,15 +1285,14 @@ class SocialRepositoryImpl @Inject constructor(
             )
 
             // Room-first
-            Log.d("SocialRepository", "[sendHabitInvitation] insert Room: invitationId=${invitation.id}, habitId=${invitation.habitId}, toUserId=${invitation.toUserId}")
+            Timber.tag("SocialRepository").d("[sendHabitInvitation] insert Room: invitationId=${invitation.id}, habitId=${invitation.habitId}, toUserId=${invitation.toUserId}")
             habitInvitationDao.insert(invitation.toEntity())
-            Log.d("SocialRepository", "[sendHabitInvitation] insert Room: DONE invitationId=${invitation.id}")
+            Timber.tag("SocialRepository").d("[sendHabitInvitation] insert Room: DONE invitationId=${invitation.id}")
 
             // Enqueue UPSERT to Firestore via Outbox
             val createdAtMillis = invitation.createdAt.toInstant(TimeZone.currentSystemDefault()).toEpochMilliseconds()
             val payload = SyncPayloads.habitInvitationToJson(invitation, createdAtMillis)
-            Log.d(
-                "SocialRepository",
+            Timber.tag("SocialRepository").d(
                 "[sendHabitInvitation] enqueueUpsert Outbox: type=habit_invitation, id=${invitation.id}, payloadSize=${payload.length}"
             )
             syncManager.enqueueUpsert(
@@ -1306,30 +1303,29 @@ class SocialRepositoryImpl @Inject constructor(
             )
             // Форсируем немедленный дренаж outbox, чтобы приглашение быстрее появилось в Firestore
             try {
-                Log.d("SocialRepository", "[sendHabitInvitation] scheduleOneTimeSync() -> start")
+                Timber.tag("SocialRepository").d("[sendHabitInvitation] scheduleOneTimeSync() -> start")
                 syncWorkScheduler.scheduleOneTimeSync()
-                Log.d("SocialRepository", "[sendHabitInvitation] scheduleOneTimeSync() -> enqueued")
+                Timber.tag("SocialRepository").d("[sendHabitInvitation] scheduleOneTimeSync() -> enqueued")
             } catch (e: Exception) {
-                Log.w("SocialRepository", "[sendHabitInvitation] scheduleOneTimeSync() failed: ${e.message}", e)
+                Timber.tag("SocialRepository").w(e, "[sendHabitInvitation] scheduleOneTimeSync() failed: ${e.message}")
             }
             // Дополнительно: мгновенный дренаж в бекграунде (устойчив к задержкам WorkManager)
             repoScope.launch {
                 try {
-                    Log.d("SocialRepository", "[sendHabitInvitation] inline drainPending() -> start")
+                    Timber.tag("SocialRepository").d("[sendHabitInvitation] inline drainPending() -> start")
                     syncManager.drainPending(maxBatch = 10)
-                    Log.d("SocialRepository", "[sendHabitInvitation] inline drainPending() -> done")
+                    Timber.tag("SocialRepository").d("[sendHabitInvitation] inline drainPending() -> done")
                 } catch (e: Exception) {
-                    Log.w("SocialRepository", "[sendHabitInvitation] inline drainPending() failed: ${e.message}", e)
+                    Timber.tag("SocialRepository").w(e, "[sendHabitInvitation] inline drainPending() failed: ${e.message}")
                 }
             }
 
             // Отправляем FCM уведомление
-            Log.d(
-                "SocialRepository",
+            Timber.tag("SocialRepository").d(
                 "[sendHabitInvitation] sendHabitInvitationNotification -> to=$toUserId, from=$fromUserName, habitTitle=$habitTitle"
             )
             sendHabitInvitationNotification(toUserId, fromUserName, habitTitle)
-            Log.d("SocialRepository", "[sendHabitInvitation] sendHabitInvitationNotification -> DONE")
+            Timber.tag("SocialRepository").d("[sendHabitInvitation] sendHabitInvitationNotification -> DONE")
 
             Result.success(invitation)
         } catch (e: Exception) {
@@ -1356,14 +1352,14 @@ class SocialRepositoryImpl @Inject constructor(
             )
 
             // Room-first update
-            Log.d("SocialRepository", "[acceptHabitInvitation] update Room -> ACCEPTED: invitationId=$invitationId")
+            Timber.tag("SocialRepository").d("[acceptHabitInvitation] update Room -> ACCEPTED: invitationId=$invitationId")
             habitInvitationDao.update(acceptedInvitation.toEntity())
-            Log.d("SocialRepository", "[acceptHabitInvitation] update Room DONE: invitationId=$invitationId")
+            Timber.tag("SocialRepository").d("[acceptHabitInvitation] update Room DONE: invitationId=$invitationId")
 
             // Enqueue UPSERT for invitation status
             val nowAccepted = acceptedInvitation.respondedAt?.toInstant(TimeZone.currentSystemDefault())?.toEpochMilliseconds() ?: Clock.System.now().toEpochMilliseconds()
             val payload = SyncPayloads.habitInvitationToJson(acceptedInvitation, nowAccepted)
-            Log.d("SocialRepository", "[acceptHabitInvitation] enqueueUpsert Outbox: type=habit_invitation, id=$invitationId")
+            Timber.tag("SocialRepository").d("[acceptHabitInvitation] enqueueUpsert Outbox: type=habit_invitation, id=$invitationId")
             syncManager.enqueueUpsert(
                 entityType = "habit_invitation",
                 entityId = invitationId,
@@ -1372,20 +1368,20 @@ class SocialRepositoryImpl @Inject constructor(
             )
             // Форсируем немедленный дренаж outbox для обновления статуса приглашения
             try {
-                Log.d("SocialRepository", "[acceptHabitInvitation] scheduleOneTimeSync() -> start")
+                Timber.tag("SocialRepository").d("[acceptHabitInvitation] scheduleOneTimeSync() -> start")
                 syncWorkScheduler.scheduleOneTimeSync()
-                Log.d("SocialRepository", "[acceptHabitInvitation] scheduleOneTimeSync() -> enqueued")
+                Timber.tag("SocialRepository").d("[acceptHabitInvitation] scheduleOneTimeSync() -> enqueued")
             } catch (e: Exception) {
-                Log.w("SocialRepository", "[acceptHabitInvitation] scheduleOneTimeSync() failed: ${e.message}", e)
+                Timber.tag("SocialRepository").w(e, "[acceptHabitInvitation] scheduleOneTimeSync() failed: ${e.message}")
             }
             // Дополнительно: мгновенный дренаж в бекграунде
             repoScope.launch {
                 try {
-                    Log.d("SocialRepository", "[acceptHabitInvitation] inline drainPending() -> start")
+                    Timber.tag("SocialRepository").d("[acceptHabitInvitation] inline drainPending() -> start")
                     syncManager.drainPending(maxBatch = 10)
-                    Log.d("SocialRepository", "[acceptHabitInvitation] inline drainPending() -> done")
+                    Timber.tag("SocialRepository").d("[acceptHabitInvitation] inline drainPending() -> done")
                 } catch (e: Exception) {
-                    Log.w("SocialRepository", "[acceptHabitInvitation] inline drainPending() failed: ${e.message}", e)
+                    Timber.tag("SocialRepository").w(e, "[acceptHabitInvitation] inline drainPending() failed: ${e.message}")
                 }
             }
 
@@ -1398,11 +1394,10 @@ class SocialRepositoryImpl @Inject constructor(
                 getUserById(invitation.toUserId)?.name ?: invitation.toUserId
             }
             catch (e: Exception) {
-                Log.d("SocialRepository", "acceptHabitInvitation: resolve acceptedUserName failed (non-fatal): ${e.message}")
+                Timber.tag("SocialRepository").d("acceptHabitInvitation: resolve acceptedUserName failed (non-fatal): ${e.message}")
                 invitation.toUserId
             }
-            Log.d(
-                "SocialRepository",
+            Timber.tag("SocialRepository").d(
                 "[acceptHabitInvitation] sendHabitInvitationAcceptedNotification -> to=${invitation.fromUserId}, acceptedBy=$acceptedUserName, habit=${invitation.habitTitle}"
             )
             sendHabitInvitationAcceptedNotification(
@@ -1411,7 +1406,7 @@ class SocialRepositoryImpl @Inject constructor(
                 habitTitle = invitation.habitTitle,
                 habitId = invitation.habitId
             )
-            Log.d("SocialRepository", "[acceptHabitInvitation] sendHabitInvitationAcceptedNotification -> DONE")
+            Timber.tag("SocialRepository").d("[acceptHabitInvitation] sendHabitInvitationAcceptedNotification -> DONE")
 
             Result.success(acceptedInvitation)
         } catch (e: Exception) {
@@ -1434,9 +1429,9 @@ class SocialRepositoryImpl @Inject constructor(
             )
 
             // Room-first update
-            Log.d("SocialRepository", "[declineHabitInvitation] update Room -> DECLINED: invitationId=$invitationId")
+            Timber.tag("SocialRepository").d("[declineHabitInvitation] update Room -> DECLINED: invitationId=$invitationId")
             habitInvitationDao.update(declinedInvitation.toEntity())
-            Log.d("SocialRepository", "[declineHabitInvitation] update Room DONE: invitationId=$invitationId")
+            Timber.tag("SocialRepository").d("[declineHabitInvitation] update Room DONE: invitationId=$invitationId")
 
             // Enqueue UPSERT for invitation status
             val nowDeclined = declinedInvitation.respondedAt?.toInstant(TimeZone.currentSystemDefault())?.toEpochMilliseconds() ?: Clock.System.now().toEpochMilliseconds()
@@ -1449,20 +1444,20 @@ class SocialRepositoryImpl @Inject constructor(
             )
             // Форсируем немедленный дренаж outbox для обновления статуса приглашения
             try {
-                Log.d("SocialRepository", "[declineHabitInvitation] scheduleOneTimeSync() -> start")
+                Timber.tag("SocialRepository").d("[declineHabitInvitation] scheduleOneTimeSync() -> start")
                 syncWorkScheduler.scheduleOneTimeSync()
-                Log.d("SocialRepository", "[declineHabitInvitation] scheduleOneTimeSync() -> enqueued")
+                Timber.tag("SocialRepository").d("[declineHabitInvitation] scheduleOneTimeSync() -> enqueued")
             } catch (e: Exception) {
-                Log.w("SocialRepository", "[declineHabitInvitation] scheduleOneTimeSync() failed: ${e.message}", e)
+                Timber.tag("SocialRepository").w(e, "[declineHabitInvitation] scheduleOneTimeSync() failed: ${e.message}")
             }
             // Дополнительно: мгновенный дренаж в бекграунде
             repoScope.launch {
                 try {
-                    Log.d("SocialRepository", "[declineHabitInvitation] inline drainPending() -> start")
+                    Timber.tag("SocialRepository").d("[declineHabitInvitation] inline drainPending() -> start")
                     syncManager.drainPending(maxBatch = 10)
-                    Log.d("SocialRepository", "[declineHabitInvitation] inline drainPending() -> done")
+                    Timber.tag("SocialRepository").d("[declineHabitInvitation] inline drainPending() -> done")
                 } catch (e: Exception) {
-                    Log.w("SocialRepository", "[declineHabitInvitation] inline drainPending() failed: ${e.message}", e)
+                    Timber.tag("SocialRepository").w(e, "[declineHabitInvitation] inline drainPending() failed: ${e.message}")
                 }
             }
 
@@ -1487,14 +1482,14 @@ class SocialRepositoryImpl @Inject constructor(
             )
 
             // Room-first update
-            Log.d("SocialRepository", "[cancelHabitInvitation] update Room -> CANCELLED: invitationId=$invitationId")
+            Timber.tag("SocialRepository").d("[cancelHabitInvitation] update Room -> CANCELLED: invitationId=$invitationId")
             habitInvitationDao.update(cancelledInvitation.toEntity())
-            Log.d("SocialRepository", "[cancelHabitInvitation] update Room DONE: invitationId=$invitationId")
+            Timber.tag("SocialRepository").d("[cancelHabitInvitation] update Room DONE: invitationId=$invitationId")
 
             // Enqueue UPSERT for invitation status
             val nowCancelled = cancelledInvitation.respondedAt?.toInstant(TimeZone.currentSystemDefault())?.toEpochMilliseconds() ?: Clock.System.now().toEpochMilliseconds()
             val payload = SyncPayloads.habitInvitationToJson(cancelledInvitation, nowCancelled)
-            Log.d("SocialRepository", "[cancelHabitInvitation] enqueueUpsert Outbox: type=habit_invitation, id=$invitationId")
+            Timber.tag("SocialRepository").d("[cancelHabitInvitation] enqueueUpsert Outbox: type=habit_invitation, id=$invitationId")
             syncManager.enqueueUpsert(
                 entityType = "habit_invitation",
                 entityId = invitationId,
@@ -1503,20 +1498,20 @@ class SocialRepositoryImpl @Inject constructor(
             )
             // Форсируем немедленный дренаж outbox для обновления статуса приглашения
             try {
-                Log.d("SocialRepository", "[cancelHabitInvitation] scheduleOneTimeSync() -> start")
+                Timber.tag("SocialRepository").d("[cancelHabitInvitation] scheduleOneTimeSync() -> start")
                 syncWorkScheduler.scheduleOneTimeSync()
-                Log.d("SocialRepository", "[cancelHabitInvitation] scheduleOneTimeSync() -> enqueued")
+                Timber.tag("SocialRepository").d("[cancelHabitInvitation] scheduleOneTimeSync() -> enqueued")
             } catch (e: Exception) {
-                Log.w("SocialRepository", "[cancelHabitInvitation] scheduleOneTimeSync() failed: ${e.message}", e)
+                Timber.tag("SocialRepository").w(e, "[cancelHabitInvitation] scheduleOneTimeSync() failed: ${e.message}")
             }
             // Дополнительно: мгновенный дренаж в бекграунде
             repoScope.launch {
                 try {
-                    Log.d("SocialRepository", "[cancelHabitInvitation] inline drainPending() -> start")
+                    Timber.tag("SocialRepository").d("[cancelHabitInvitation] inline drainPending() -> start")
                     syncManager.drainPending(maxBatch = 10)
-                    Log.d("SocialRepository", "[cancelHabitInvitation] inline drainPending() -> done")
+                    Timber.tag("SocialRepository").d("[cancelHabitInvitation] inline drainPending() -> done")
                 } catch (e: Exception) {
-                    Log.w("SocialRepository", "[cancelHabitInvitation] inline drainPending() failed: ${e.message}", e)
+                    Timber.tag("SocialRepository").w(e, "[cancelHabitInvitation] inline drainPending() failed: ${e.message}")
                 }
             }
 
@@ -1536,7 +1531,7 @@ class SocialRepositoryImpl @Inject constructor(
                 habitInvitationDao.getById(invitationId)?.toDomain()
             }
         } catch (e: Exception) {
-            Log.w("SocialRepository", "getHabitInvitationById Firestore failed: ${e.message}", e)
+            Timber.tag("SocialRepository").w(e, "getHabitInvitationById Firestore failed: ${e.message}")
             habitInvitationDao.getById(invitationId)?.toDomain()
         }
     }
@@ -1555,7 +1550,7 @@ class SocialRepositoryImpl @Inject constructor(
                     ?.toDomain(doc.id)
             }
         } catch (e: Exception) {
-            Log.w("SocialRepository", "getPendingHabitInvitation Firestore failed: ${e.message}", e)
+            Timber.tag("SocialRepository").w(e, "getPendingHabitInvitation Firestore failed: ${e.message}")
             habitInvitationDao.getPendingInvitation(habitId, userId)?.toDomain()
         }
     }
@@ -1573,16 +1568,12 @@ class SocialRepositoryImpl @Inject constructor(
                 .addSnapshotListener { snapshot, error ->
                     if (error != null) {
                         // Логируем и выходим, локальные данные остаются
-                        android.util.Log.w(
-                            "SocialRepository",
-                            "[getIncomingHabitInvitations] listener error: ${error.message}",
-                            error
-                        )
+                        Timber.tag("SocialRepository").w(error, "[getIncomingHabitInvitations] listener error: ${error.message}")
                         return@addSnapshotListener
                     }
                     val docs = snapshot?.documents ?: emptyList()
                     val remoteIds = docs.map { it.id }.toSet()
-                    android.util.Log.d("SocialRepository", "[getIncomingHabitInvitations] snapshot size=${docs.size}")
+                    Timber.tag("SocialRepository").d("[getIncomingHabitInvitations] snapshot size=${docs.size}")
 
                     val list = docs.mapNotNull { doc ->
                         doc.toObject(com.habittracker.data.remote.model.HabitInvitationRemote::class.java)
@@ -1604,7 +1595,7 @@ class SocialRepositoryImpl @Inject constructor(
                             if (filtered.isNotEmpty()) {
                                 habitInvitationDao.insertAll(filtered)
                             }
-                            android.util.Log.d("SocialRepository", "[getIncomingHabitInvitations] upsert=${list.size}")
+                            Timber.tag("SocialRepository").d("[getIncomingHabitInvitations] upsert=${list.size}")
                             // Reconcile: удаляем локальные PENDING входящие, которых нет в снапшоте
                             try {
                                 val local = habitInvitationDao.getIncomingInvitations(userId).first()
@@ -1618,18 +1609,14 @@ class SocialRepositoryImpl @Inject constructor(
                                     !hasPending
                                 }
                                 if (toDelete.isNotEmpty()) {
-                                    android.util.Log.d("SocialRepository", "[getIncomingHabitInvitations] reconcile delete=${toDelete.size}")
+                                    Timber.tag("SocialRepository").d("[getIncomingHabitInvitations] reconcile delete=${toDelete.size}")
                                     toDelete.forEach { inv -> habitInvitationDao.deleteById(inv.id) }
                                 }
                             } catch (e: Exception) {
-                                android.util.Log.w("SocialRepository", "[getIncomingHabitInvitations] reconcile failed: ${e.message}", e)
+                                Timber.tag("SocialRepository").w(e, "[getIncomingHabitInvitations] reconcile failed: ${e.message}")
                             }
                         } catch (e: Exception) {
-                            android.util.Log.w(
-                                "SocialRepository",
-                                "[getIncomingHabitInvitations] insertAll failed: ${e.message}",
-                                e
-                            )
+                            Timber.tag("SocialRepository").w(e, "[getIncomingHabitInvitations] insertAll failed: ${e.message}")
                         }
                     }
                 }
@@ -1682,7 +1669,7 @@ class SocialRepositoryImpl @Inject constructor(
                             if (filtered.isNotEmpty()) {
                                 habitInvitationDao.insertAll(filtered)
                             }
-                            Log.d("SocialRepository", "[getOutgoingHabitInvitations] upsert=${list.size}")
+                            Timber.tag("SocialRepository").d("[getOutgoingHabitInvitations] upsert=${list.size}")
                             // Reconcile: удаляем локальные PENDING исходящие, которых нет в снапшоте
                             try {
                                 val local = habitInvitationDao.getOutgoingInvitations(userId).first()
@@ -1696,14 +1683,14 @@ class SocialRepositoryImpl @Inject constructor(
                                     !hasPending
                                 }
                                 if (toDelete.isNotEmpty()) {
-                                    Log.d("SocialRepository", "[getOutgoingHabitInvitations] reconcile delete=${toDelete.size}")
+                                    Timber.tag("SocialRepository").d("[getOutgoingHabitInvitations] reconcile delete=${toDelete.size}")
                                     toDelete.forEach { inv -> habitInvitationDao.deleteById(inv.id) }
                                 }
                             } catch (e: Exception) {
-                                Log.w("SocialRepository", "[getOutgoingHabitInvitations] reconcile failed: ${e.message}", e)
+                                Timber.tag("SocialRepository").w(e, "[getOutgoingHabitInvitations] reconcile failed: ${e.message}")
                             }
                         } catch (e: Exception) {
-                            Log.w("SocialRepository", "[getOutgoingHabitInvitations] insertAll failed: ${e.message}", e)
+                            Timber.tag("SocialRepository").w(e, "[getOutgoingHabitInvitations] insertAll failed: ${e.message}")
                         }
                     }
                 }
@@ -1753,7 +1740,7 @@ class SocialRepositoryImpl @Inject constructor(
                                 habitInvitationDao.insertAll(filtered)
                             }
                         } catch (e: Exception) {
-                            Log.w("SocialRepository", "[observeHabitInvitationsByHabit] insertAll failed: ${e.message}", e)
+                            Timber.tag("SocialRepository").w(e, "[observeHabitInvitationsByHabit] insertAll failed: ${e.message}")
                         }
                     }
                 }
@@ -1780,7 +1767,7 @@ class SocialRepositoryImpl @Inject constructor(
         return try {
             habitInvitationDao.getActiveOutgoingInvitationsCount(userId)
         } catch (e: Exception) {
-            Log.w("SocialRepository", "getActiveOutgoingInvitationsCount failed: ${e.message}", e)
+            Timber.tag("SocialRepository").w(e, "getActiveOutgoingInvitationsCount failed: ${e.message}")
             0
         }
     }
@@ -1791,7 +1778,7 @@ class SocialRepositoryImpl @Inject constructor(
             habitInvitationDao.expireOldInvitations(currentTime)
             habitInvitationDao.deleteOldInvitations(currentTime - (30L * 24 * 60 * 60 * 1000)) // Удаляем старые через 30 дней
         } catch (e: Exception) {
-            Log.d("SocialRepository", "expireOldHabitInvitations failed (non-fatal): ${e.message}")
+            Timber.tag("SocialRepository").d("expireOldHabitInvitations failed (non-fatal): ${e.message}")
         }
     }
 
@@ -1815,12 +1802,11 @@ class SocialRepositoryImpl @Inject constructor(
             val allTokens = (tokensFromArray + listOfNotNull(legacyToken)).toSet().toList()
 
             if (allTokens.isEmpty()) {
-                Log.w("SocialRepository", "FCM skip: habit_invitation -> to=$toUserId, tokens_absent")
+                Timber.tag("SocialRepository").w("FCM skip: habit_invitation -> to=$toUserId, tokens_absent")
                 return
             }
 
-            Log.d(
-                "SocialRepository",
+            Timber.tag("SocialRepository").d(
                 "FCM send: habit_invitation -> to=$toUserId, tokens_count=${allTokens.size}, tokens=${allTokens.map { maskToken(it) }}"
             )
 
@@ -1840,15 +1826,15 @@ class SocialRepositoryImpl @Inject constructor(
                 result.onFailure { e ->
                     val msg = e.message ?: ""
                     if (msg.contains("UNREGISTERED", ignoreCase = true)) {
-                        Log.w("SocialRepository", "FCM UNREGISTERED -> remove token ${maskToken(token)} for user=$toUserId")
+                        Timber.tag("SocialRepository").w("FCM UNREGISTERED -> remove token ${maskToken(token)} for user=$toUserId")
                         safelyRemoveInvalidFcmToken(toUserId, token)
                     } else {
-                        Log.w("SocialRepository", "FCM send failed for token ${maskToken(token)}: ${e.message}")
+                        Timber.tag("SocialRepository").w("FCM send failed for token ${maskToken(token)}: ${e.message}")
                     }
                 }
             }
         } catch (e: Exception) {
-            Log.w("SocialRepository", "Ошибка подготовки уведомления о приглашении в привычку (outer)", e)
+            Timber.tag("SocialRepository").w(e, "Ошибка подготовки уведомления о приглашении в привычку (outer)")
         }
     }
 
@@ -1876,7 +1862,7 @@ class SocialRepositoryImpl @Inject constructor(
             )
             
             notificationRepository.saveNotification(notificationEntity)
-            Log.d("SocialRepository", "Notification saved to DB: INVITATION_ACCEPTED for user $toUserId")
+            Timber.tag("SocialRepository").d("Notification saved to DB: INVITATION_ACCEPTED for user $toUserId")
             
             // Отправляем FCM push
             repoScope.launch {
@@ -1887,12 +1873,11 @@ class SocialRepositoryImpl @Inject constructor(
                     val allTokens = (tokensFromArray + listOfNotNull(legacyToken)).toSet()
 
                     if (allTokens.isEmpty()) {
-                        Log.w("SocialRepository", "FCM skip: habit_invitation_accepted -> to=$toUserId, tokens_absent")
+                        Timber.tag("SocialRepository").w("FCM skip: habit_invitation_accepted -> to=$toUserId, tokens_absent")
                         return@withContext
                     }
 
-                    Log.d(
-                        "SocialRepository",
+                    Timber.tag("SocialRepository").d(
                         "FCM send: habit_invitation_accepted -> to=$toUserId, tokens_count=${allTokens.size}, tokens=${allTokens.map { maskToken(it) }}, recipientUserId=$toUserId, acceptedBy=$acceptedByName, habit='$habitTitle'"
                     )
 
@@ -1913,17 +1898,17 @@ class SocialRepositoryImpl @Inject constructor(
                         result.onFailure { e ->
                             val msg = e.message ?: ""
                             if (msg.contains("UNREGISTERED", ignoreCase = true)) {
-                                Log.w("SocialRepository", "FCM UNREGISTERED -> remove token ${maskToken(token)} for user=$toUserId")
+                                Timber.tag("SocialRepository").w("FCM UNREGISTERED -> remove token ${maskToken(token)} for user=$toUserId")
                                 safelyRemoveInvalidFcmToken(toUserId, token)
                             } else {
-                                Log.w("SocialRepository", "FCM send failed for token ${maskToken(token)}: ${e.message}")
+                                Timber.tag("SocialRepository").w("FCM send failed for token ${maskToken(token)}: ${e.message}")
                             }
                         }
                     }
                 }
             }
         } catch (e: Exception) {
-            Log.w("SocialRepository", "Ошибка подготовки уведомления о принятии приглашения (outer)", e)
+            Timber.tag("SocialRepository").w(e, "Ошибка подготовки уведомления о принятии приглашения (outer)")
         }
     }
 
@@ -1951,7 +1936,7 @@ class SocialRepositoryImpl @Inject constructor(
             )
             
             notificationRepository.saveNotification(notificationEntity)
-            Log.d("SocialRepository", "Notification saved to DB: FRIEND_JOINED for user $toUserId")
+            Timber.tag("SocialRepository").d("Notification saved to DB: FRIEND_JOINED for user $toUserId")
             
             // Отправляем FCM push
             repoScope.launch {
@@ -1962,12 +1947,11 @@ class SocialRepositoryImpl @Inject constructor(
                     val allTokens = (tokensFromArray + listOfNotNull(legacyToken)).toSet().toList()
 
                     if (allTokens.isEmpty()) {
-                        Log.w("SocialRepository", "FCM skip: participant_joined -> to=$toUserId, tokens_absent")
+                        Timber.tag("SocialRepository").w("FCM skip: participant_joined -> to=$toUserId, tokens_absent")
                         return@withContext
                     }
 
-                    Log.d(
-                        "SocialRepository",
+                    Timber.tag("SocialRepository").d(
                         "FCM send: participant_joined -> to=$toUserId, tokens_count=${allTokens.size}, joinedUser=$joinedUserName, habit='$habitTitle'"
                     )
 
@@ -1988,17 +1972,17 @@ class SocialRepositoryImpl @Inject constructor(
                         result.onFailure { e ->
                             val msg = e.message ?: ""
                             if (msg.contains("UNREGISTERED", ignoreCase = true)) {
-                                Log.w("SocialRepository", "FCM UNREGISTERED -> remove token ${maskToken(token)} for user=$toUserId")
+                                Timber.tag("SocialRepository").w("FCM UNREGISTERED -> remove token ${maskToken(token)} for user=$toUserId")
                                 safelyRemoveInvalidFcmToken(toUserId, token)
                             } else {
-                                Log.w("SocialRepository", "FCM send failed for token ${maskToken(token)}: ${e.message}")
+                                Timber.tag("SocialRepository").w("FCM send failed for token ${maskToken(token)}: ${e.message}")
                             }
                         }
                     }
                 }
             }
         } catch (e: Exception) {
-            Log.w("SocialRepository", "Ошибка подготовки уведомления о присоединении участника (outer)", e)
+            Timber.tag("SocialRepository").w(e, "Ошибка подготовки уведомления о присоединении участника (outer)")
         }
     }
 
@@ -2015,8 +1999,7 @@ class SocialRepositoryImpl @Inject constructor(
                 val legacy = snap.getString("fcmToken")
                 val legacyMatched = legacy == badToken
 
-                Log.d(
-                    "SocialRepository",
+                Timber.tag("SocialRepository").d(
                     "FCM cleanup: start user=$userId, token=${maskToken(badToken)}, before_tokens=$beforeSize, legacy_match=$legacyMatched"
                 )
 
@@ -2026,15 +2009,11 @@ class SocialRepositoryImpl @Inject constructor(
                 }
                 tx.update(userRef, updates as Map<String, Any>)
             }.await()
-            Log.d(
-                "SocialRepository",
+            Timber.tag("SocialRepository").d(
                 "FCM cleanup: done user=$userId, removed token=${maskToken(badToken)}"
             )
         } catch (e: Exception) {
-            Log.w(
-                "SocialRepository",
-                "FCM cleanup: failed user=$userId, token=${maskToken(badToken)} -> ${e.message}"
-            )
+            Timber.tag("SocialRepository").w(e, "FCM cleanup: failed user=$userId, token=${maskToken(badToken)} -> ${e.message}")
         }
     }
 
@@ -2046,12 +2025,11 @@ class SocialRepositoryImpl @Inject constructor(
             val allTokens = (tokensFromArray + listOfNotNull(legacyToken)).toSet().toList()
 
             if (allTokens.isEmpty()) {
-                Log.w("SocialRepository", "FCM skip: challenge_invitation -> to=$toUserId, tokens_absent")
+                Timber.tag("SocialRepository").w("FCM skip: challenge_invitation -> to=$toUserId, tokens_absent")
                 return
             }
 
-            Log.d(
-                "SocialRepository",
+            Timber.tag("SocialRepository").d(
                 "FCM send: challenge_invitation -> to=$toUserId, tokens_count=${allTokens.size}, tokens=${allTokens.map { maskToken(it) }}, challenge='$challengeTitle', habit='$habitTitle'"
             )
 
@@ -2071,14 +2049,14 @@ class SocialRepositoryImpl @Inject constructor(
             batchResult.onSuccess { result ->
                 result.results.filter { !it.success && (it.error?.contains("UNREGISTERED", ignoreCase = true) == true) }
                     .forEach { bad ->
-                        Log.w("SocialRepository", "FCM UNREGISTERED (challenge_invitation) -> remove token ${maskToken(bad.token)} for user=$toUserId")
+                        Timber.tag("SocialRepository").w("FCM UNREGISTERED (challenge_invitation) -> remove token ${maskToken(bad.token)} for user=$toUserId")
                         safelyRemoveInvalidFcmToken(toUserId, bad.token)
                     }
             }.onFailure { e ->
-                Log.w("SocialRepository", "Ошибка отправки challenge_invitation batch: ${e.message}")
+                Timber.tag("SocialRepository").w("Ошибка отправки challenge_invitation batch: ${e.message}")
             }
         } catch (e: Exception) {
-            Log.w("SocialRepository", "Ошибка отправки challenge_invitation", e)
+            Timber.tag("SocialRepository").w(e, "Ошибка отправки challenge_invitation")
         }
     }
     
@@ -2090,12 +2068,11 @@ class SocialRepositoryImpl @Inject constructor(
             val allTokens = (tokensFromArray + listOfNotNull(legacyToken)).toSet().toList()
 
             if (allTokens.isEmpty()) {
-                Log.w("SocialRepository", "FCM skip: challenge_joined -> to=$toUserId, tokens_absent")
+                Timber.tag("SocialRepository").w("FCM skip: challenge_joined -> to=$toUserId, tokens_absent")
                 return
             }
 
-            Log.d(
-                "SocialRepository",
+            Timber.tag("SocialRepository").d(
                 "FCM send: challenge_joined -> to=$toUserId, tokens_count=${allTokens.size}, tokens=${allTokens.map { maskToken(it) }}, challenge='$challengeTitle', joined='$joinedUserName'"
             )
 
@@ -2114,14 +2091,14 @@ class SocialRepositoryImpl @Inject constructor(
             batchResult.onSuccess { result ->
                 result.results.filter { !it.success && (it.error?.contains("UNREGISTERED", ignoreCase = true) == true) }
                     .forEach { bad ->
-                        Log.w("SocialRepository", "FCM UNREGISTERED (challenge_joined) -> remove token ${maskToken(bad.token)} for user=$toUserId")
+                        Timber.tag("SocialRepository").w("FCM UNREGISTERED (challenge_joined) -> remove token ${maskToken(bad.token)} for user=$toUserId")
                         safelyRemoveInvalidFcmToken(toUserId, bad.token)
                     }
             }.onFailure { e ->
-                Log.w("SocialRepository", "Ошибка отправки challenge_joined batch: ${e.message}")
+                Timber.tag("SocialRepository").w("Ошибка отправки challenge_joined batch: ${e.message}")
             }
         } catch (e: Exception) {
-            Log.w("SocialRepository", "Ошибка отправки challenge_joined", e)
+            Timber.tag("SocialRepository").w(e, "Ошибка отправки challenge_joined")
         }
     }
     
@@ -2133,12 +2110,11 @@ class SocialRepositoryImpl @Inject constructor(
             val allTokens = (tokensFromArray + listOfNotNull(legacyToken)).toSet().toList()
 
             if (allTokens.isEmpty()) {
-                Log.w("SocialRepository", "FCM skip: challenge_left -> to=$toUserId, tokens_absent")
+                Timber.tag("SocialRepository").w("FCM skip: challenge_left -> to=$toUserId, tokens_absent")
                 return
             }
 
-            Log.d(
-                "SocialRepository",
+            Timber.tag("SocialRepository").d(
                 "FCM send: challenge_left -> to=$toUserId, tokens_count=${allTokens.size}, tokens=${allTokens.map { maskToken(it) }}, challenge='$challengeTitle', left='$leftUserName'"
             )
 
@@ -2157,14 +2133,14 @@ class SocialRepositoryImpl @Inject constructor(
             batchResult.onSuccess { result ->
                 result.results.filter { !it.success && (it.error?.contains("UNREGISTERED", ignoreCase = true) == true) }
                     .forEach { bad ->
-                        Log.w("SocialRepository", "FCM UNREGISTERED (challenge_left) -> remove token ${maskToken(bad.token)} for user=$toUserId")
+                        Timber.tag("SocialRepository").w("FCM UNREGISTERED (challenge_left) -> remove token ${maskToken(bad.token)} for user=$toUserId")
                         safelyRemoveInvalidFcmToken(toUserId, bad.token)
                     }
             }.onFailure { e ->
-                Log.w("SocialRepository", "Ошибка отправки challenge_left batch: ${e.message}")
+                Timber.tag("SocialRepository").w("Ошибка отправки challenge_left batch: ${e.message}")
             }
         } catch (e: Exception) {
-            Log.w("SocialRepository", "Ошибка отправки challenge_left", e)
+            Timber.tag("SocialRepository").w(e, "Ошибка отправки challenge_left")
         }
     }
     
@@ -2176,7 +2152,7 @@ class SocialRepositoryImpl @Inject constructor(
             val allTokens = (tokensFromArray + listOfNotNull(legacyToken)).toSet().toList()
 
             if (allTokens.isEmpty()) {
-                Log.w("SocialRepository", "FCM skip: challenge_completed -> to=$toUserId, tokens_absent")
+                Timber.tag("SocialRepository").w("FCM skip: challenge_completed -> to=$toUserId, tokens_absent")
                 return
             }
 
@@ -2185,8 +2161,7 @@ class SocialRepositoryImpl @Inject constructor(
             } else {
                 stringProvider.getString(R.string.notification_challenge_completed_title)
             }
-            Log.d(
-                "SocialRepository",
+            Timber.tag("SocialRepository").d(
                 "FCM send: challenge_completed -> to=$toUserId, tokens_count=${allTokens.size}, tokens=${allTokens.map { maskToken(it) }}, challenge='$challengeTitle', isWinner=$isWinner"
             )
 
@@ -2206,14 +2181,14 @@ class SocialRepositoryImpl @Inject constructor(
             batchResult.onSuccess { result ->
                 result.results.filter { !it.success && (it.error?.contains("UNREGISTERED", ignoreCase = true) == true) }
                     .forEach { bad ->
-                        Log.w("SocialRepository", "FCM UNREGISTERED (challenge_completed) -> remove token ${maskToken(bad.token)} for user=$toUserId")
+                        Timber.tag("SocialRepository").w("FCM UNREGISTERED (challenge_completed) -> remove token ${maskToken(bad.token)} for user=$toUserId")
                         safelyRemoveInvalidFcmToken(toUserId, bad.token)
                     }
             }.onFailure { e ->
-                Log.w("SocialRepository", "Ошибка отправки challenge_completed batch: ${e.message}")
+                Timber.tag("SocialRepository").w("Ошибка отправки challenge_completed batch: ${e.message}")
             }
         } catch (e: Exception) {
-            Log.w("SocialRepository", "Ошибка отправки challenge_completed", e)
+            Timber.tag("SocialRepository").w(e, "Ошибка отправки challenge_completed")
         }
     }
     
@@ -2225,12 +2200,11 @@ class SocialRepositoryImpl @Inject constructor(
             val allTokens = (tokensFromArray + listOfNotNull(legacyToken)).toSet().toList()
 
             if (allTokens.isEmpty()) {
-                Log.w("SocialRepository", "FCM skip: challenge_cancelled -> to=$toUserId, tokens_absent")
+                Timber.tag("SocialRepository").w("FCM skip: challenge_cancelled -> to=$toUserId, tokens_absent")
                 return
             }
 
-            Log.d(
-                "SocialRepository",
+            Timber.tag("SocialRepository").d(
                 "FCM send: challenge_cancelled -> to=$toUserId, tokens_count=${allTokens.size}, tokens=${allTokens.map { maskToken(it) }}, challenge='$challengeTitle'"
             )
 
@@ -2250,14 +2224,14 @@ class SocialRepositoryImpl @Inject constructor(
             batchResult.onSuccess { result ->
                 result.results.filter { !it.success && (it.error?.contains("UNREGISTERED", ignoreCase = true) == true) }
                     .forEach { bad ->
-                        Log.w("SocialRepository", "FCM UNREGISTERED (challenge_cancelled) -> remove token ${maskToken(bad.token)} for user=$toUserId")
+                        Timber.tag("SocialRepository").w("FCM UNREGISTERED (challenge_cancelled) -> remove token ${maskToken(bad.token)} for user=$toUserId")
                         safelyRemoveInvalidFcmToken(toUserId, bad.token)
                     }
             }.onFailure { e ->
-                Log.w("SocialRepository", "Ошибка отправки challenge_cancelled batch: ${e.message}")
+                Timber.tag("SocialRepository").w("Ошибка отправки challenge_cancelled batch: ${e.message}")
             }
         } catch (e: Exception) {
-            Log.w("SocialRepository", "Ошибка отправки challenge_cancelled", e)
+            Timber.tag("SocialRepository").w(e, "Ошибка отправки challenge_cancelled")
         }
     }
 
@@ -2268,17 +2242,17 @@ class SocialRepositoryImpl @Inject constructor(
         data: Map<String, String>
     ) {
         try {
-            Log.d(TAG, "sendPushNotification: Sending to FCM, title=$title, body=$body")
+            Timber.tag(TAG).d("sendPushNotification: Sending to FCM, title=$title, body=$body")
             // Используем FCMApiClient для реальной отправки
             val result = fcmApiClient.sendPushNotification(fcmToken, title, body, data)
             
             result.onSuccess {
-                Log.d(TAG, "Push notification sent successfully: $title")
+                Timber.tag(TAG).d("Push notification sent successfully: $title")
             }.onFailure { error ->
                 when (error) {
                     is UnregisteredTokenException -> {
                         // Токен невалиден - удаляем его из базы
-                        Log.w(TAG, "FCM token is UNREGISTERED (${maskToken(fcmToken)}). Removing from database...")
+                        Timber.tag(TAG).w("FCM token is UNREGISTERED (${maskToken(fcmToken)}). Removing from database...")
                         // Находим пользователя по токену и удаляем невалидный токен
                         repoScope.launch {
                             try {
@@ -2288,7 +2262,7 @@ class SocialRepositoryImpl @Inject constructor(
                                     .get().await()
                                 
                                 usersQuery.documents.forEach { doc ->
-                                    Log.d(TAG, "Found user ${doc.id} with UNREGISTERED token, removing...")
+                                    Timber.tag(TAG).d("Found user ${doc.id} with UNREGISTERED token, removing...")
                                     safelyRemoveInvalidFcmToken(doc.id, fcmToken)
                                 }
                                 
@@ -2298,24 +2272,24 @@ class SocialRepositoryImpl @Inject constructor(
                                     .get().await()
                                 
                                 tokensQuery.documents.forEach { doc ->
-                                    Log.d(TAG, "Found user ${doc.id} with UNREGISTERED token in array, removing...")
+                                    Timber.tag(TAG).d("Found user ${doc.id} with UNREGISTERED token in array, removing...")
                                     safelyRemoveInvalidFcmToken(doc.id, fcmToken)
                                 }
                             } catch (e: Exception) {
-                                Log.w(TAG, "Failed to remove UNREGISTERED token: ${e.message}")
+                                Timber.tag(TAG).w("Failed to remove UNREGISTERED token: ${e.message}")
                             }
                         }
                     }
                     else -> {
                         // Логируем другие ошибки
-                        Log.e(TAG, "Error sending push notification: ${error.message}", error)
+                        Timber.tag(TAG).e(error, "Error sending push notification: ${error.message}")
                     }
                 }
             }
             
         } catch (e: Exception) {
             // Логируем ошибку, но не прерываем выполнение
-            Log.e(TAG, "Exception while sending push notification: ${e.message}", e)
+            Timber.tag(TAG).e(e, "Exception while sending push notification: ${e.message}")
         }
     }
     

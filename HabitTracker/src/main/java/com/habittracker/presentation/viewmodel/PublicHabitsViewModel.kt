@@ -5,6 +5,7 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.habittracker.R
 import com.habittracker.domain.model.Habit
+import com.habittracker.domain.model.isGroupHabit
 import com.habittracker.domain.repository.AuthRepository
 import com.habittracker.domain.repository.HabitRepository
 import com.habittracker.domain.repository.SocialRepository
@@ -13,6 +14,8 @@ import com.habittracker.domain.usecase.habit.JoinHabitByCodeUseCase
 import com.habittracker.domain.usecase.notification.SaveParticipantJoinedNotificationUseCase
 import com.habittracker.presentation.state.PublicHabitsUiState
 import com.habittracker.presentation.ui.discover.HabitCategory
+import com.habittracker.domain.util.AnalyticsEvents
+import com.habittracker.domain.util.AnalyticsManager
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -22,6 +25,7 @@ import kotlinx.coroutines.launch
 import kotlinx.datetime.Clock
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toLocalDateTime
+import timber.log.Timber
 import javax.inject.Inject
 
 /**
@@ -36,7 +40,8 @@ class PublicHabitsViewModel @Inject constructor(
     private val socialRepository: SocialRepository,
     private val updateHabitUseCase: UpdateHabitUseCase,
     private val joinHabitByCodeUseCase: JoinHabitByCodeUseCase,
-    private val saveParticipantJoinedNotificationUseCase: SaveParticipantJoinedNotificationUseCase
+    private val saveParticipantJoinedNotificationUseCase: SaveParticipantJoinedNotificationUseCase,
+    private val analyticsManager: AnalyticsManager
 ) : AndroidViewModel(application) {
     
     private val _uiState = MutableStateFlow(PublicHabitsUiState())
@@ -156,6 +161,17 @@ class PublicHabitsViewModel @Inject constructor(
                 _uiState.update { it.copy(isLoading = true) }
                 
                 try {
+                    // Присоединяться можно только к групповой привычке
+                    if (!habit.isGroupHabit()) {
+                        _uiState.update {
+                            it.copy(
+                                isLoading = false,
+                                error = getApplication<Application>().getString(R.string.error_code_group_only)
+                            )
+                        }
+                        return@launch
+                    }
+
                     // Проверяем, не является ли пользователь уже участником
                     if (habit.participants.contains(userId)) {
                         _uiState.update {
@@ -180,6 +196,7 @@ class PublicHabitsViewModel @Inject constructor(
                     
                     // Присоединяемся к привычке
                     val updatedHabit = habit.copy(
+                        createdBy = if (habit.createdBy.isBlank()) userId else habit.createdBy,
                         participants = habit.participants + userId
                     )
                     // Используем UpdateHabitUseCase для синхронизации с Firestore
@@ -199,8 +216,14 @@ class PublicHabitsViewModel @Inject constructor(
                         }
                     } catch (e: Exception) {
                         // Логируем ошибку, но не прерываем процесс присоединения
-                        android.util.Log.e("PublicHabitsViewModel", "Failed to send join notifications", e)
+                        Timber.tag("PublicHabitsViewModel").e(e, "Failed to send join notifications")
                     }
+                    
+                    // Track group habit joined event
+                    analyticsManager.logEvent(
+                        AnalyticsEvents.GROUP_HABIT_JOINED,
+                        mapOf(AnalyticsEvents.Params.HABIT_ID to habit.id)
+                    )
                     
                     _uiState.update {
                         it.copy(
@@ -323,12 +346,12 @@ class PublicHabitsViewModel @Inject constructor(
         val combined = "$titleLower $descriptionLower"
         
         return when {
-            combined.containsAny("спорт", "фитнес", "трениров", "бег", "физич", "плава", "кататься на", "sport", "fitness", "train", "run", "swim", "ride", "gym", "exercise", "workout") -> HabitCategory.SPORT
+            combined.containsAny("спорт", "фитнес", "трениров", "бег", "физич", "плава", "кататься на", "отжима", "приседа", "подтягива", "sport", "fitness", "train", "run", "swim", "ride", "gym", "exercise", "workout") -> HabitCategory.SPORT
             combined.containsAny("здоров", "питан", "сон", "вода", "витамин", "health", "nutrition", "sleep", "water", "vitamin", "diet") -> HabitCategory.HEALTH
-            combined.containsAny("учеб", "книг", "чтен", "курс", "язык", "study", "book", "read", "course", "learn", "language") -> HabitCategory.EDUCATION
-            combined.containsAny("работ", "продуктив", "планирова", "задач", "work", "productiv", "plan", "task", "focus") -> HabitCategory.PRODUCTIVITY
+            combined.containsAny("учеб", "книг", "чтен", "чит", "курс", "язык", "образование", "study", "book", "read", "course", "learn", "language") -> HabitCategory.EDUCATION
+            combined.containsAny("работ", "продуктив", "планирова", "составлять план", "задач", "work", "productiv", "plan", "task", "focus") -> HabitCategory.PRODUCTIVITY
             combined.containsAny("медитац", "йог", "дыхан", "осознан", "meditation", "yoga", "breath", "mindful") -> HabitCategory.MINDFULNESS
-            combined.containsAny("рисован", "музык", "творч", "искусств", "дизайн", "draw", "music", "creat", "art", "design", "paint") -> HabitCategory.CREATIVITY
+            combined.containsAny("рисова", "музык", "творч", "искусств", "дизайн", "draw", "music", "creat", "art", "design", "paint") -> HabitCategory.CREATIVITY
             combined.containsAny("друз", "семь", "общен", "встреч", "кореш", "свидан", "friend", "family", "social", "meet", "date", "call") -> HabitCategory.SOCIAL
             else -> HabitCategory.OTHER
         }

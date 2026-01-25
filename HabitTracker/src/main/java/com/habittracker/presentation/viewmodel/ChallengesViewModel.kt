@@ -1,6 +1,5 @@
 package com.habittracker.presentation.viewmodel
 
-import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.habittracker.domain.model.ChallengeStatus
@@ -28,6 +27,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 import javax.inject.Inject
+import timber.log.Timber
 
 private const val ENDING_SOON_DAYS = 3 // Челлендж считается "скоро заканчивающимся" если осталось <= 3 дней
 private const val TAG = "ChallengesViewModel"
@@ -84,9 +84,9 @@ class ChallengesViewModel @Inject constructor(
                         
                         // Используем realtime-наблюдение за челленджами
                         challengeRepository.observeChallengesForUser(currentUser.id).collectLatest { challenges ->
-                            Log.d(TAG, "Received ${challenges.size} challenges for user ${currentUser.id}")
+                            Timber.tag(TAG).d("Received ${challenges.size} challenges for user ${currentUser.id}")
                             challenges.forEach { c ->
-                                Log.d(TAG, "Challenge: ${c.title}, status=${c.status}, participants=${c.participants}, acceptedParticipants=${c.acceptedParticipants}, createdBy=${c.createdBy}")
+                                Timber.tag(TAG).d("Challenge: ${c.title}, status=${c.status}, participants=${c.participants}, acceptedParticipants=${c.acceptedParticipants}, createdBy=${c.createdBy}")
                             }
                             
                             // Приглашения - челленджи, где пользователь в participants, но не в acceptedParticipants
@@ -97,7 +97,7 @@ class ChallengesViewModel @Inject constructor(
                                 challenge.createdBy != currentUser.id && // Создатель автоматически принят
                                 (challenge.status == ChallengeStatus.ACTIVE || challenge.status == ChallengeStatus.PENDING)
                             }
-                            Log.d(TAG, "Pending invitations: ${pendingInvitations.size}")
+                            Timber.tag(TAG).d("Pending invitations: ${pendingInvitations.size}")
                             
                             // Активные - челленджи, где пользователь принял приглашение или является создателем
                             val acceptedChallenges = challenges.filter { challenge ->
@@ -269,7 +269,7 @@ class ChallengesViewModel @Inject constructor(
                         runCatching {
                             habitRepository.updateHabit(previousHabit)
                         }.onFailure { rollbackError ->
-                            Log.w(TAG, "Rollback failed for habitId=${previousHabit.id}", rollbackError)
+                            Timber.tag(TAG).w(rollbackError, "Rollback failed for habitId=${previousHabit.id}")
                         }
                     }
                     throw e

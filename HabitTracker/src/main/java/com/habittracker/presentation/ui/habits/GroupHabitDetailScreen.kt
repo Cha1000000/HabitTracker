@@ -63,7 +63,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.core.graphics.toColorInt
-import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
 import com.habittracker.R
@@ -149,6 +149,19 @@ fun GroupHabitDetailScreen(
                         }
                     },
                     actions = {
+                        // Кнопка статистики
+                        if (uiState.habit != null) {
+                            IconButton(
+                                onClick = {
+                                    navController.navigate("group_habit_stat_screen/$habitId?isGroup=true")
+                                }
+                            ) {
+                                Icon(
+                                    imageVector = TahoeIcons.ChartBar,
+                                    contentDescription = stringResource(R.string.cd_habit_statistics)
+                                )
+                            }
+                        }
                         // Меню действий
                         if (uiState.isOwner) {
                             IconButton(
@@ -739,6 +752,7 @@ private fun InviteManagementSection(
     onTogglePublic: (Boolean) -> Unit,
     modifier: Modifier = Modifier
 ) {
+    @Suppress("DEPRECATION")
     val clipboardManager = LocalClipboardManager.current
     
     SectionCard(

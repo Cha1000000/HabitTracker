@@ -1,7 +1,6 @@
 package com.habittracker
 
 import android.app.Application
-import android.util.Log
 import androidx.hilt.work.HiltWorkerFactory
 import androidx.work.Configuration
 import com.google.firebase.appcheck.FirebaseAppCheck
@@ -12,6 +11,8 @@ import com.habittracker.data.local.seed.AchievementSeeder
 import com.habittracker.domain.usecase.notification.ManageFCMTokenUseCase
 import com.habittracker.data.logging.ReleaseTree
 import com.habittracker.domain.util.ErrorLogger
+import io.appmetrica.analytics.AppMetrica
+import io.appmetrica.analytics.AppMetricaConfig
 import timber.log.Timber
 import dagger.hilt.android.HiltAndroidApp
 import kotlinx.coroutines.CoroutineScope
@@ -60,19 +61,22 @@ class HabitTrackerApplication : Application(), Configuration.Provider {
             Timber.plant(ReleaseTree(errorLogger))
         }
 
+        // Initialize AppMetrica SDK
+        initAppMetrica()
+
         if (BuildConfig.DEBUG) {
-            Log.d("HabitTrackerApp", "Application onCreate() called")
+            Timber.tag("HabitTrackerApp").d("Application onCreate() called")
         }
         
         // Touch AppCheck to ensure debug provider is installed (see FirebaseModule)
         if (BuildConfig.DEBUG) {
-            Log.d("HabitTrackerApp", "FirebaseAppCheck injected: ${::firebaseAppCheck.isInitialized}")
+            Timber.tag("HabitTrackerApp").d("FirebaseAppCheck injected: ${::firebaseAppCheck.isInitialized}")
         }
         // Initialize FCM token once on app start (safe: use case checks auth internally)
         applicationScope.launch {
             manageFCMTokenUseCase.initializeFCMToken().onFailure { e ->
                 if (BuildConfig.DEBUG) {
-                    Log.d("HabitTrackerApp", "FCM init skipped/failed: ${e.message}")
+                    Timber.tag("HabitTrackerApp").d("FCM init skipped/failed: ${e.message}")
                 }
             }
         }
@@ -83,7 +87,7 @@ class HabitTrackerApplication : Application(), Configuration.Provider {
                 achievementSeeder.seedIfNeeded()
             } catch (e: Exception) {
                 if (BuildConfig.DEBUG) {
-                    Log.d("HabitTrackerApp", "Achievement seeding failed: ${e.message}")
+                    Timber.tag("HabitTrackerApp").d("Achievement seeding failed: ${e.message}")
                 }
             }
         }
@@ -94,7 +98,7 @@ class HabitTrackerApplication : Application(), Configuration.Provider {
             syncWorkScheduler.scheduleOneTimeSync()
         } catch (e: Exception) {
             if (BuildConfig.DEBUG) {
-                Log.d("HabitTrackerApp", "Sync scheduling failed: ${e.message}")
+                Timber.tag("HabitTrackerApp").d("Sync scheduling failed: ${e.message}")
             }
         }
 
@@ -104,7 +108,7 @@ class HabitTrackerApplication : Application(), Configuration.Provider {
             challengeExpirationWorkScheduler.scheduleOneTimeNow()
         } catch (e: Exception) {
             if (BuildConfig.DEBUG) {
-                Log.d("HabitTrackerApp", "Challenge expiration scheduling failed: ${e.message}")
+                Timber.tag("HabitTrackerApp").d("Challenge expiration scheduling failed: ${e.message}")
             }
         }
     }
@@ -112,13 +116,38 @@ class HabitTrackerApplication : Application(), Configuration.Provider {
     override val workManagerConfiguration: Configuration
         get() {
             if (BuildConfig.DEBUG) {
-                Log.d("HabitTrackerApp", "workManagerConfiguration called")
-                Log.d("HabitTrackerApp", "HiltWorkerFactory initialized: ${::workerFactory.isInitialized}")
+                Timber.tag("HabitTrackerApp").d("workManagerConfiguration called")
+                Timber.tag("HabitTrackerApp").d("HiltWorkerFactory initialized: ${::workerFactory.isInitialized}")
             }
             
             return Configuration.Builder()
                 .setWorkerFactory(workerFactory)
-                .setMinimumLoggingLevel(if (BuildConfig.DEBUG) Log.DEBUG else Log.ERROR)
+                .setMinimumLoggingLevel(if (BuildConfig.DEBUG) 3 else 6)
                 .build()
         }
+    
+    private fun initAppMetrica() {
+        val apiKey = BuildConfig.APPMETRICA_API_KEY
+        if (apiKey.isBlank()) {
+            Timber.tag("HabitTrackerApp").w("AppMetrica API key is not configured. Analytics disabled.")
+            return
+        }
+        
+        try {
+            val config = AppMetricaConfig.newConfigBuilder(apiKey)
+                .withLogs()
+                .withSessionTimeout(300) // 5 minutes session timeout
+                .withCrashReporting(true)
+                .withAppVersion(BuildConfig.VERSION_NAME)
+                .build()
+            
+            AppMetrica.activate(this, config)
+            
+            if (BuildConfig.DEBUG) {
+                Timber.tag("HabitTrackerApp").d("AppMetrica SDK initialized successfully")
+            }
+        } catch (e: Exception) {
+            Timber.tag("HabitTrackerApp").e(e, "Failed to initialize AppMetrica SDK")
+        }
+    }
 }

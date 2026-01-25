@@ -1,6 +1,5 @@
 package com.habittracker.data.repository
 
-import android.util.Log
 import com.google.firebase.firestore.FirebaseFirestore
 import com.habittracker.data.local.dao.GroupHabitNotificationDao
 import com.habittracker.data.local.entity.GroupHabitNotificationEntity
@@ -14,6 +13,7 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 import javax.inject.Singleton
+import timber.log.Timber
 
 /**
  * Реализация repository для работы с уведомлениями групповых привычек
@@ -40,7 +40,7 @@ class GroupHabitNotificationRepositoryImpl @Inject constructor(
         try {
             // 1. Save locally first (Room-first)
             groupHabitNotificationDao.insertNotification(notification)
-            Log.d(TAG, "Notification saved locally: ${notification.id}")
+            Timber.tag(TAG).d("Notification saved locally: ${notification.id}")
 
             // 2. Enqueue Sync (Outbox)
             val domainModel = notification.toDomain()
@@ -52,10 +52,10 @@ class GroupHabitNotificationRepositoryImpl @Inject constructor(
                 payloadJson = payload,
                 updatedAt = notification.createdAt // or now
             )
-            Log.d(TAG, "Notification enqueued for sync: ${notification.id}")
+            Timber.tag(TAG).d("Notification enqueued for sync: ${notification.id}")
 
         } catch (e: Exception) {
-            Log.e(TAG, "Failed to save notification", e)
+            Timber.tag(TAG).e(e, "Failed to save notification")
         }
     }
     
@@ -78,7 +78,7 @@ class GroupHabitNotificationRepositoryImpl @Inject constructor(
             .whereEqualTo("userId", userId)
             .addSnapshotListener { snapshot, error ->
                 if (error != null) {
-                    Log.e(TAG, "Error listening to notifications", error)
+                    Timber.tag(TAG).e(error, "Error listening to notifications")
                     return@addSnapshotListener
                 }
                 
@@ -105,7 +105,7 @@ class GroupHabitNotificationRepositoryImpl @Inject constructor(
                             val hasPending = try {
                                 syncManager.hasPendingOperations("group_habit_notification", remote.id)
                             } catch (e: Exception) {
-                                Log.w(TAG, "hasPendingOperations failed for id=${remote.id}: ${e.message}")
+                                Timber.tag(TAG).w("hasPendingOperations failed for id=${remote.id}: ${e.message}")
                                 false
                             }
                             if (hasPending) return@forEach
@@ -113,7 +113,7 @@ class GroupHabitNotificationRepositoryImpl @Inject constructor(
                             val local = try {
                                 groupHabitNotificationDao.getNotificationById(remote.id)
                             } catch (e: Exception) {
-                                Log.w(TAG, "Local getNotificationById failed for id=${remote.id}: ${e.message}")
+                                Timber.tag(TAG).w("Local getNotificationById failed for id=${remote.id}: ${e.message}")
                                 null
                             }
 
@@ -127,9 +127,9 @@ class GroupHabitNotificationRepositoryImpl @Inject constructor(
                             } else remote
 
                             groupHabitNotificationDao.insertNotification(merged)
-                            Log.d(TAG, "Notification synced from Firestore: ${remote.id}")
+                            Timber.tag(TAG).d("Notification synced from Firestore: ${remote.id}")
                         } catch (e: Exception) {
-                            Log.e(TAG, "Error parsing notification from Firestore", e)
+                            Timber.tag(TAG).e(e, "Error parsing notification from Firestore")
                         }
                     }
                 }
@@ -137,7 +137,7 @@ class GroupHabitNotificationRepositoryImpl @Inject constructor(
         
         // Сохраняем listener для предотвращения дублирования
         activeListeners[userId] = listener
-        Log.d(TAG, "Firestore listener registered for user: $userId")
+        Timber.tag(TAG).d("Firestore listener registered for user: $userId")
     }
     
     override fun getUnreadCount(userId: String): Flow<Int> {
@@ -159,7 +159,7 @@ class GroupHabitNotificationRepositoryImpl @Inject constructor(
                 payloadJson = payload,
                 updatedAt = now
             )
-            Log.d(TAG, "Notification marked as read enqueued: $notificationId")
+            Timber.tag(TAG).d("Notification marked as read enqueued: $notificationId")
         }
     }
     
@@ -173,7 +173,7 @@ class GroupHabitNotificationRepositoryImpl @Inject constructor(
             entityId = notificationId,
             updatedAt = System.currentTimeMillis()
         )
-        Log.d(TAG, "Notification delete enqueued: $notificationId")
+        Timber.tag(TAG).d("Notification delete enqueued: $notificationId")
     }
     
     override suspend fun deleteReadNotificationsOlderThan(userId: String, olderThanMillis: Long) {
@@ -193,7 +193,7 @@ class GroupHabitNotificationRepositoryImpl @Inject constructor(
                     updatedAt = now
                 )
             }
-            Log.d(TAG, "Enqueued delete for ${notificationsToDelete.size} old notifications")
+            Timber.tag(TAG).d("Enqueued delete for ${notificationsToDelete.size} old notifications")
         }
     }
     
@@ -215,10 +215,10 @@ class GroupHabitNotificationRepositoryImpl @Inject constructor(
                         updatedAt = now
                     )
                 }
-                Log.d(TAG, "Enqueued delete all for user $userId (${list.size} items)")
+                Timber.tag(TAG).d("Enqueued delete all for user $userId (${list.size} items)")
             }
         } catch (e: Exception) {
-             Log.e(TAG, "Failed to deleteAllForUser", e)
+             Timber.tag(TAG).e(e, "Failed to deleteAllForUser")
              // Fallback local delete just in case fetch failed
              groupHabitNotificationDao.deleteAllForUser(userId)
         }

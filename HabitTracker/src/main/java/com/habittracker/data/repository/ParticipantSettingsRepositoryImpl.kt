@@ -1,6 +1,5 @@
 package com.habittracker.data.repository
 
-import android.util.Log
 import com.habittracker.data.local.dao.HabitParticipantSettingsDao
 import com.habittracker.data.local.mappers.toDomain
 import com.habittracker.data.local.mappers.toEntity
@@ -15,6 +14,7 @@ import kotlinx.coroutines.flow.map
 import kotlinx.datetime.Clock
 import javax.inject.Inject
 import javax.inject.Singleton
+import timber.log.Timber
 
 @Singleton
 class ParticipantSettingsRepositoryImpl @Inject constructor(
@@ -30,7 +30,7 @@ class ParticipantSettingsRepositoryImpl @Inject constructor(
         val hasPending = try {
             syncManager.hasPendingOperations("habit_participant_settings", entityId)
         } catch (e: Exception) {
-            Log.d("ParticipantSettingsRepo", "get() hasPendingOperations failed for $entityId: ${e.message}")
+            Timber.tag("ParticipantSettingsRepo").d("get() hasPendingOperations failed for $entityId: ${e.message}")
             false
         }
         if (hasPending) {
@@ -38,7 +38,7 @@ class ParticipantSettingsRepositoryImpl @Inject constructor(
         }
         // Всегда пытаемся получить удалённые настройки
         val remote = try { firestoreRepository.getParticipantSettings(habitId, userId) } catch (e: Exception) {
-            Log.d("ParticipantSettingsRepo", "get() remote fetch failed for habit=$habitId user=$userId: ${e.message}")
+            Timber.tag("ParticipantSettingsRepo").d("get() remote fetch failed for habit=$habitId user=$userId: ${e.message}")
             null
         }
         return when {

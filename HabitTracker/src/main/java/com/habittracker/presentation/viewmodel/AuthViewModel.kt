@@ -1,26 +1,25 @@
 package com.habittracker.presentation.viewmodel
 
-import android.util.Log
-import com.habittracker.BuildConfig
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.google.firebase.auth.FirebaseAuth
+import com.habittracker.BuildConfig
 import com.habittracker.domain.repository.AuthRepository
+import com.habittracker.domain.usecase.LoginUseCase
+import com.habittracker.domain.usecase.RegisterUseCase
+import com.habittracker.domain.usecase.SendPasswordResetEmailUseCase
+import com.habittracker.domain.usecase.SignInWithGoogleUseCase
+import com.habittracker.domain.usecase.SignOutUseCase
+import com.habittracker.domain.usecase.notification.ManageFCMTokenUseCase
 import com.habittracker.domain.util.AnalyticsEvents
 import com.habittracker.domain.util.AnalyticsManager
 import com.habittracker.domain.util.ErrorLogger
-import com.habittracker.domain.usecase.LoginUseCase
-import com.habittracker.domain.usecase.RegisterUseCase
-import com.habittracker.domain.usecase.SignInWithGoogleUseCase
-import com.habittracker.domain.usecase.SendPasswordResetEmailUseCase
-import com.habittracker.domain.usecase.SignOutUseCase
-import com.habittracker.domain.usecase.notification.ManageFCMTokenUseCase
 import com.habittracker.presentation.state.AuthUiState
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import timber.log.Timber
 import javax.inject.Inject
 
 sealed class AuthEvent {
@@ -284,7 +283,7 @@ class AuthViewModel @Inject constructor(
                 // Логируем ошибку, но не показываем пользователю
                 // FCM не критичен для основной функциональности
                 if (BuildConfig.DEBUG) {
-                    Log.i("AuthViewModel", "FCM init failed: ${error.message}")
+                    Timber.tag("AuthViewModel").i("FCM init failed: ${error.message}")
                 }
             }
         }
@@ -298,7 +297,7 @@ class AuthViewModel @Inject constructor(
             manageFCMTokenUseCase.clearFCMToken().onFailure { error ->
                 // Логируем ошибку, но не блокируем выход
                 if (BuildConfig.DEBUG) {
-                    Log.i("AuthViewModel", "FCM clear failed: ${error.message}")
+                    Timber.tag("AuthViewModel").i("FCM clear failed: ${error.message}")
                 }
             }
         }

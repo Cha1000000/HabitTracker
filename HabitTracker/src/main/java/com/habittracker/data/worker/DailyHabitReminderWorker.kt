@@ -1,11 +1,11 @@
 package com.habittracker.data.worker
 
 import android.content.Context
-import android.util.Log
 import androidx.work.CoroutineWorker
 import androidx.work.WorkerParameters
 import com.habittracker.R
 import com.habittracker.data.notification.NotificationHelper
+import timber.log.Timber
 
 class DailyHabitReminderWorker(
     context: Context,
@@ -14,12 +14,12 @@ class DailyHabitReminderWorker(
 
     override suspend fun doWork(): Result {
         return try {
-            Log.d(TAG, "Starting DailyHabitReminderWorker")
+            Timber.tag(TAG).d("Starting DailyHabitReminderWorker")
             
             val notificationHelper = NotificationHelper(applicationContext)
             
             if (!notificationHelper.areNotificationsEnabled()) {
-                Log.d(TAG, "Notifications disabled, skipping")
+                Timber.tag(TAG).d("Notifications disabled, skipping")
                 return Result.success()
             }
 
@@ -28,10 +28,10 @@ class DailyHabitReminderWorker(
                 message = applicationContext.getString(R.string.daily_reminder_message)
             )
 
-            Log.d(TAG, "Daily reminder sent")
+            Timber.tag(TAG).d("Daily reminder sent")
             Result.success()
         } catch (e: Exception) {
-            Log.e(TAG, "Error sending daily reminder", e)
+            Timber.tag(TAG).e(e, "Error sending daily reminder")
             Result.failure()
         }
     }

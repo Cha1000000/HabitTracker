@@ -1,7 +1,7 @@
 package com.habittracker.util
 
-import android.util.Log
 import com.habittracker.data.service.FCMApiClient
+import timber.log.Timber
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -26,7 +26,7 @@ class FCMTestingUtil @Inject constructor(
         testType: TestNotificationType = TestNotificationType.SIMPLE
     ): Result<Unit> {
         return try {
-            Log.d(TAG, "🧪 Отправка тестового FCM уведомления типа: $testType")
+            Timber.tag(TAG).d("🧪 Отправка тестового FCM уведомления типа: $testType")
             
             when (testType) {
                 TestNotificationType.SIMPLE -> sendSimpleTest(fcmToken)
@@ -35,7 +35,7 @@ class FCMTestingUtil @Inject constructor(
                 TestNotificationType.CHALLENGE -> sendChallengeTest(fcmToken)
             }
         } catch (e: Exception) {
-            Log.e(TAG, "❌ Ошибка отправки тестового уведомления", e)
+            Timber.tag(TAG).e(e, "❌ Ошибка отправки тестового уведомления")
             Result.failure(e)
         }
     }
@@ -47,28 +47,28 @@ class FCMTestingUtil @Inject constructor(
         fcmToken: String,
         delayBetweenMs: Long = 3000
     ) {
-        Log.d(TAG, "🚀 Начинаем отправку всех типов тестовых уведомлений...")
+        Timber.tag(TAG).d("🚀 Начинаем отправку всех типов тестовых уведомлений...")
         
         TestNotificationType.entries.forEach { type ->
             try {
-                Log.d(TAG, "📤 Отправка теста: $type")
+                Timber.tag(TAG).d("📤 Отправка теста: $type")
                 val result = sendTestNotification(fcmToken, type)
                 
                 if (result.isSuccess) {
-                    Log.d(TAG, "✅ Тест $type отправлен успешно")
+                    Timber.tag(TAG).d("✅ Тест $type отправлен успешно")
                 } else {
-                    Log.w(TAG, "⚠️ Тест $type завершился с ошибкой: ${result.exceptionOrNull()?.message}")
+                    Timber.tag(TAG).w("⚠️ Тест $type завершился с ошибкой: ${result.exceptionOrNull()?.message}")
                 }
                 
                 // Задержка между уведомлениями
                 kotlinx.coroutines.delay(delayBetweenMs)
                 
             } catch (e: Exception) {
-                Log.e(TAG, "❌ Критическая ошибка при отправке теста $type", e)
+                Timber.tag(TAG).e(e, "❌ Критическая ошибка при отправке теста $type")
             }
         }
         
-        Log.d(TAG, "🏁 Завершена отправка всех тестовых уведомлений")
+        Timber.tag(TAG).d("🏁 Завершена отправка всех тестовых уведомлений")
     }
 
     private suspend fun sendSimpleTest(fcmToken: String): Result<Unit> {
@@ -136,23 +136,23 @@ class FCMTestingUtil @Inject constructor(
     fun checkFCMConfiguration(): FCMConfigStatus {
         return try {
             // Здесь можно добавить проверки конфигурации
-            Log.d(TAG, "🔧 Проверка конфигурации FCM...")
+            Timber.tag(TAG).d("🔧 Проверка конфигурации FCM...")
             
             // Простая проверка что ключ настроен (без его отображения в логах)
             val hasValidKey = com.habittracker.BuildConfig.FCM_SERVER_KEY.let { key ->
-                !key.isBlank() && key != "YOUR_FCM_SERVER_KEY_HERE"
+                !key.isBlank()
             }
             
             if (hasValidKey) {
-                Log.d(TAG, "✅ FCM_SERVER_KEY настроен")
+                Timber.tag(TAG).d("✅ FCM_SERVER_KEY настроен")
                 FCMConfigStatus.CONFIGURED
             } else {
-                Log.w(TAG, "⚠️ FCM_SERVER_KEY не настроен")
+                Timber.tag(TAG).w("⚠️ FCM_SERVER_KEY не настроен")
                 FCMConfigStatus.KEY_NOT_CONFIGURED
             }
             
         } catch (e: Exception) {
-            Log.e(TAG, "❌ Ошибка проверки конфигурации FCM", e)
+            Timber.tag(TAG).e(e, "❌ Ошибка проверки конфигурации FCM")
             FCMConfigStatus.ERROR
         }
     }

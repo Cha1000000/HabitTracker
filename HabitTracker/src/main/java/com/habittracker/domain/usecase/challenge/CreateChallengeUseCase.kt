@@ -14,6 +14,7 @@ import kotlinx.datetime.TimeZone
 import kotlinx.datetime.todayIn
 import java.util.UUID
 import javax.inject.Inject
+import timber.log.Timber
 
 class CreateChallengeUseCase @Inject constructor(
     private val challengeRepository: ChallengeRepository,
@@ -119,7 +120,7 @@ class CreateChallengeUseCase @Inject constructor(
                 val creatorUser = socialRepository.getUserById(createdBy)
                 participantIds.forEach { participantId ->
                     if (participantId != createdBy) {
-                        android.util.Log.d("CreateChallengeUseCase", "Sending challenge invitation to $participantId")
+                        Timber.tag("CreateChallengeUseCase").d("Sending challenge invitation to $participantId")
                         socialRepository.sendChallengeInvitationNotification(
                             participantId,
                             creatorUser?.name ?: stringProvider.getString(R.string.default_user_name),
@@ -130,7 +131,7 @@ class CreateChallengeUseCase @Inject constructor(
                     }
                 }
             } catch (e: Exception) {
-                android.util.Log.e("CreateChallengeUseCase", "Error sending challenge notifications", e)
+                Timber.tag("CreateChallengeUseCase").e(e, "Error sending challenge notifications")
             }
             
             Result.success(challenge)

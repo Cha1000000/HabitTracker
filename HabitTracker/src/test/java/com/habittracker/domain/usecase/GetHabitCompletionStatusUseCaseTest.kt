@@ -172,6 +172,8 @@ class GetHabitCompletionStatusUseCaseTest {
         override fun getEntriesForHabit(habitId: String) = flowOf<List<HabitEntry>>(emptyList())
         override fun getEntriesForUser(userId: String) = flowOf<List<HabitEntry>>(emptyList())
         override fun getEntriesForUserAndHabit(userId: String, habitId: String) = flowOf<List<HabitEntry>>(emptyList())
+        override suspend fun getEntriesForUserAndHabitOnce(userId: String, habitId: String): List<HabitEntry> = emptyList()
+        override suspend fun deleteEntriesForUserAndHabit(userId: String, habitId: String) = Unit
         override suspend fun getEntriesForUserAndPeriod(habitId: String, userId: String, startDate: LocalDate, endDate: LocalDate) = throw NotImplementedError()
         override suspend fun getEntriesWithUsersForHabitAndDate(habitId: String, date: LocalDate) = throw NotImplementedError()
         override suspend fun getCompletionRateForHabit(habitId: String, userId: String, startDate: LocalDate, endDate: LocalDate) = throw NotImplementedError()

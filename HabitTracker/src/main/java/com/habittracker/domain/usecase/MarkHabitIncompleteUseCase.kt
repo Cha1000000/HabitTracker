@@ -1,21 +1,17 @@
 package com.habittracker.domain.usecase
 
-import android.util.Log
-import com.habittracker.domain.model.HabitEntry
+import com.habittracker.data.sync.SyncManager
+import com.habittracker.data.sync.SyncWorkScheduler
 import com.habittracker.domain.model.gamification.GamificationEvent
 import com.habittracker.domain.repository.HabitEntryRepository
 import com.habittracker.domain.usecase.gamification.UpdateUserPointsUseCase
-import com.habittracker.data.sync.SyncManager
-import com.habittracker.data.sync.SyncWorkScheduler
-import com.habittracker.domain.util.SyncPayloads
-import com.habittracker.domain.util.HabitEntryIds
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 import kotlinx.datetime.Clock
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.TimeZone
-import kotlinx.datetime.atStartOfDayIn
 import kotlinx.datetime.toLocalDateTime
+import timber.log.Timber
 import javax.inject.Inject
 
 /**
@@ -27,7 +23,7 @@ class MarkHabitIncompleteUseCase @Inject constructor(
     private val updateUserPointsUseCase: UpdateUserPointsUseCase,
     private val syncManager: SyncManager,
     private val syncWorkScheduler: SyncWorkScheduler,
-    private val coroutineScope: CoroutineScope
+    coroutineScope: CoroutineScope
 ) {
     private val backgroundTasksScope = coroutineScope
     /**
@@ -41,22 +37,9 @@ class MarkHabitIncompleteUseCase @Inject constructor(
         userId: String,
         date: LocalDate = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault()).date
     ) {
-        val today = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault()).date
-        
         // Проверяем, была ли привычка выполнена в этот день
         val existingEntry = habitEntryRepository.getEntry(habitId, userId, date)
         val wasCompleted = existingEntry?.completed == true
-        
-        val habitEntry = HabitEntry(
-            habitId = habitId,
-            userId = userId,
-            date = date,
-            completed = false,
-            completedAt = null,
-            note = null,
-            createdAt = today,
-            updatedAt = today
-        )
 
         // 1) Локально в Room — всегда сначала (Repository handles Outbox internally)
         habitEntryRepository.markHabitIncomplete(habitId, userId, date)
@@ -65,13 +48,13 @@ class MarkHabitIncompleteUseCase @Inject constructor(
         try {
             syncWorkScheduler.scheduleOneTimeSync()
         } catch (e: Exception) {
-            Log.w("MarkHabitIncomplete", "scheduleOneTimeSync failed: ${e.message}", e)
+            Timber.tag("MarkHabitIncomplete").w(e, "scheduleOneTimeSync failed: ${e.message}")
         }
         
         // Немедленный неблокирующий дренаж outbox для ускорения синка
         backgroundTasksScope.launch {
             try { syncManager.drainPending() } catch (e: Exception) {
-                Log.d("MarkHabitIncomplete", "drainPending failed (non-fatal): ${e.message}")
+                Timber.tag("MarkHabitIncomplete").d("drainPending failed (non-fatal): ${e.message}")
             }
         }
         

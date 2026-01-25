@@ -1,6 +1,5 @@
 package com.habittracker.domain.usecase.notification
 
-import android.util.Log
 import com.habittracker.domain.model.Habit
 import com.habittracker.domain.model.HabitEntry
 import com.habittracker.domain.model.User
@@ -22,6 +21,7 @@ import kotlinx.datetime.minus
 import kotlinx.datetime.toInstant
 import kotlinx.datetime.todayIn
 import javax.inject.Inject
+import timber.log.Timber
 
 /**
  * Use Case для управления уведомлениями групповых привычек
@@ -39,21 +39,21 @@ class GroupHabitNotificationUseCase @Inject constructor(
      */
     fun getGroupHabitNotifications(userId: String): Flow<List<GroupHabitNotification>> = flow {
         try {
-            Log.d(TAG, "getGroupHabitNotifications called for userId=$userId")
+            Timber.tag(TAG).d("getGroupHabitNotifications called for userId=$userId")
             val notifications = mutableListOf<GroupHabitNotification>()
             
             // Получаем сохраненные статусы прочтения
             val readStatuses = notificationRepository.getReadStatusesForUser(userId).first()
-            Log.d(TAG, "Loaded ${readStatuses.size} read statuses")
+            Timber.tag(TAG).d("Loaded ${readStatuses.size} read statuses")
             
             // Получаем групповые привычки пользователя
             habitRepository.getGroupHabits(userId).collect { groupHabits ->
-                Log.d(TAG, "Found ${groupHabits.size} group habits for user")
+                Timber.tag(TAG).d("Found ${groupHabits.size} group habits for user")
                 for (habit in groupHabits) {
-                    Log.d(TAG, "Processing habit: ${habit.title} (${habit.id})")
+                    Timber.tag(TAG).d("Processing habit: ${habit.title} (${habit.id})")
                     // Генерируем уведомления для каждой групповой привычки
                     val habitNotifications = generateNotificationsForHabit(habit, userId)
-                    Log.d(TAG, "Generated ${habitNotifications.size} notifications for habit ${habit.title}")
+                    Timber.tag(TAG).d("Generated ${habitNotifications.size} notifications for habit ${habit.title}")
                     
                     // Применяем сохраненные статусы прочтения
                     val notificationsWithStatus = habitNotifications.map { notification ->
@@ -64,11 +64,11 @@ class GroupHabitNotificationUseCase @Inject constructor(
                     notifications.addAll(notificationsWithStatus)
                 }
                 
-                Log.d(TAG, "Total notifications to emit: ${notifications.size}")
+                Timber.tag(TAG).d("Total notifications to emit: ${notifications.size}")
                 emit(notifications.sortedByDescending { it.timestamp })
             }
         } catch (e: Exception) {
-            Log.e(TAG, "Error loading notifications", e)
+            Timber.tag(TAG).e(e, "Error loading notifications")
             emit(emptyList())
         }
     }
@@ -90,7 +90,7 @@ class GroupHabitNotificationUseCase @Inject constructor(
         try {
             // Получаем полный список участников (создатель + participants)
             val allParticipantIds = (listOf(habit.createdBy) + habit.participants).distinct()
-            Log.d(TAG, "Habit ${habit.title}: ${allParticipantIds.size} participants (creator + ${habit.participants.size} others)")
+            Timber.tag(TAG).d("Habit ${habit.title}: ${allParticipantIds.size} participants (creator + ${habit.participants.size} others)")
             
             // Получаем ВСЕ записи выполнения для привычки (для всех участников)
             val startDate = today.minus(7, DateTimeUnit.DAY)
@@ -101,7 +101,7 @@ class GroupHabitNotificationUseCase @Inject constructor(
                 entry.date >= startDate && entry.date <= today
             }
             
-            Log.d(TAG, "Loaded ${allEntries.size} total entries for habit ${habit.title} (from ${allHabitEntries.size} total)")
+            Timber.tag(TAG).d("Loaded ${allEntries.size} total entries for habit ${habit.title} (from ${allHabitEntries.size} total)")
             
             // Группируем записи по участникам
             val entriesByUser = allEntries.groupBy { it.userId }
@@ -116,7 +116,7 @@ class GroupHabitNotificationUseCase @Inject constructor(
                 
                 // Уведомление о выполнении сегодня
                 val todayEntry = participantEntries.find { entry -> entry.date == today && entry.completed }
-                Log.d(TAG, "Participant $participantId: todayEntry=${todayEntry != null}")
+                Timber.tag(TAG).d("Participant $participantId: todayEntry=${todayEntry != null}")
                 if (todayEntry != null) {
                     // Генерируем стабильный ID на основе данных уведомления
                     val notificationId = generateNotificationId(
@@ -195,7 +195,7 @@ class GroupHabitNotificationUseCase @Inject constructor(
             }
             
         } catch (e: Exception) {
-            Log.e(TAG, "Error generating notifications for habit ${habit.title}", e)
+            Timber.tag(TAG).e(e, "Error generating notifications for habit ${habit.title}")
         }
         
         return notifications
@@ -290,7 +290,7 @@ class GroupHabitNotificationUseCase @Inject constructor(
             )
         } catch (e: Exception) {
             // Логируем ошибку, но не прерываем генерацию уведомлений
-            Log.e(TAG, "Error saving notification for user $userId", e)
+            Timber.tag(TAG).e(e, "Error saving notification for user $userId")
         }
     }
     

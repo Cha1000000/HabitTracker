@@ -9,8 +9,8 @@ import android.os.Build
 import android.os.VibrationEffect
 import android.os.Vibrator
 import android.os.VibratorManager
-import android.util.Log
 import androidx.core.content.getSystemService
+import timber.log.Timber
 
 /**
  * Менеджер для воспроизведения звуковых эффектов в приложении
@@ -43,7 +43,7 @@ object SoundManager {
 
             playSuccessVibration(context)
         } catch (e: Exception) {
-            Log.e(TAG, "playSuccessSound error", e)
+            Timber.tag(TAG).e(e, "playSuccessSound error")
         }
     }
 
@@ -52,12 +52,12 @@ object SoundManager {
         runCatching {
             val resId = context.resources.getIdentifier(APPLAUSE_RAW_NAME, "raw", context.packageName)
             if (resId == 0) {
-                Log.d(TAG, "[preload] raw/$APPLAUSE_RAW_NAME not found")
+                Timber.tag(TAG).d("[preload] raw/$APPLAUSE_RAW_NAME not found")
                 return
             }
 
             applauseResId = resId
-            Log.d(TAG, "[preload] raw/$APPLAUSE_RAW_NAME resId=$resId")
+            Timber.tag(TAG).d("[preload] raw/$APPLAUSE_RAW_NAME resId=$resId")
 
             // Создаём MediaPlayer заранее
             releaseMediaPlayer()
@@ -68,18 +68,18 @@ object SoundManager {
                     runCatching { seekTo(0) }
                 }
                 setOnErrorListener { _, what, extra ->
-                    Log.e(TAG, "[MediaPlayer] error what=$what extra=$extra")
+                    Timber.tag(TAG).e("[MediaPlayer] error what=$what extra=$extra")
                     false
                 }
             }
 
             if (mediaPlayer != null) {
-                Log.d(TAG, "[preload] MediaPlayer created successfully")
+                Timber.tag(TAG).d("[preload] MediaPlayer created successfully")
             } else {
-                Log.e(TAG, "[preload] MediaPlayer.create returned null")
+                Timber.tag(TAG).e("[preload] MediaPlayer.create returned null")
             }
         }.onFailure { e ->
-            Log.e(TAG, "[preload] error", e)
+            Timber.tag(TAG).e(e, "[preload] error")
         }
     }
 
@@ -93,38 +93,38 @@ object SoundManager {
             }
 
             if (resId == 0) {
-                Log.d(TAG, "[play] raw/$APPLAUSE_RAW_NAME not found")
+                Timber.tag(TAG).d("[play] raw/$APPLAUSE_RAW_NAME not found")
                 return false
             }
 
             val player = mediaPlayer
             if (player != null) {
-                Log.d(TAG, "[play] using existing MediaPlayer")
+                Timber.tag(TAG).d("[play] using existing MediaPlayer")
                 runCatching {
                     player.seekTo(0)
                     player.start()
-                    Log.d(TAG, "[play] MediaPlayer started")
+                    Timber.tag(TAG).d("[play] MediaPlayer started")
                     return true
                 }.onFailure { e ->
-                    Log.e(TAG, "[play] MediaPlayer.start error, recreating", e)
+                    Timber.tag(TAG).e(e, "[play] MediaPlayer.start error, recreating")
                     releaseMediaPlayer()
                 }
             }
 
             // Создаём новый MediaPlayer если нет или произошла ошибка
-            Log.d(TAG, "[play] creating new MediaPlayer")
+            Timber.tag(TAG).d("[play] creating new MediaPlayer")
             mediaPlayer = MediaPlayer.create(context, resId)?.apply {
                 setVolume(0.7f, 0.7f)
                 setOnCompletionListener {
                     runCatching { seekTo(0) }
                 }
                 start()
-                Log.d(TAG, "[play] new MediaPlayer started")
+                Timber.tag(TAG).d("[play] new MediaPlayer started")
             }
 
             mediaPlayer != null
         } catch (e: Exception) {
-            Log.e(TAG, "[play] error", e)
+            Timber.tag(TAG).e(e, "[play] error")
             false
         }
     }
@@ -157,16 +157,5 @@ object SoundManager {
             mediaPlayer?.release()
         }
         mediaPlayer = null
-    }
-
-    /**
-     * Освобождает ресурсы
-     */
-    fun release() {
-        toneGenerator?.release()
-        toneGenerator = null
-
-        releaseMediaPlayer()
-        applauseResId = 0
     }
 }

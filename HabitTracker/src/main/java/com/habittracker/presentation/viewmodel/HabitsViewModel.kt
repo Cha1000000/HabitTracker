@@ -1,7 +1,6 @@
 package com.habittracker.presentation.viewmodel
 
 import android.app.Application
-import android.util.Log
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.habittracker.R
@@ -55,6 +54,7 @@ import kotlinx.datetime.plus
 import kotlinx.datetime.toLocalDateTime
 import com.habittracker.domain.usecase.UpdateHabitEntryValueUseCase
 import javax.inject.Inject
+import timber.log.Timber
 
 /**
  * Данные о привычке с информацией о выполнении
@@ -139,7 +139,7 @@ class HabitsViewModel @Inject constructor(
 
     init {
         val userId = authRepository.getCurrentUserId()
-        Log.d(TAG, "🚀 [init] Initializing HabitsViewModel for user: $userId")
+        Timber.tag(TAG).d("🚀 [init] Initializing HabitsViewModel for user: $userId")
         if (userId != null) {
             // Инициализация с сегодняшней датой
             val weekStart = getStartOfWeek(today)
@@ -151,7 +151,7 @@ class HabitsViewModel @Inject constructor(
             loadWeekCompletionData(userId, weekStart)
             loadCurrentUserAvatar(userId)
         } else {
-            Log.w(TAG, "⚠️ [init] No user ID found, cannot load habits")
+            Timber.tag(TAG).w("⚠️ [init] No user ID found, cannot load habits")
         }
     }
     
@@ -163,7 +163,7 @@ class HabitsViewModel @Inject constructor(
                 )
             }
             .catch { e ->
-                Log.w(TAG, "Failed to load user avatar: ${e.message}")
+                Timber.tag(TAG).w("Failed to load user avatar: ${e.message}")
             }
             .launchIn(viewModelScope)
     }
@@ -175,12 +175,12 @@ class HabitsViewModel @Inject constructor(
     fun refresh() {
         val userId = authRepository.getCurrentUserId()
         if (userId == null) {
-            Log.w(TAG, "⚠️ [refresh] No user ID, ignoring refresh")
+            Timber.tag(TAG).w("⚠️ [refresh] No user ID, ignoring refresh")
             return
         }
         val selectedDate = _uiState.value.selectedDate ?: today
         val weekStart = _uiState.value.currentWeekStartDate ?: getStartOfWeek(today)
-        Log.d(TAG, "🔁 [refresh] Reloading habits for user=$userId, date=$selectedDate")
+        Timber.tag(TAG).d("🔁 [refresh] Reloading habits for user=$userId, date=$selectedDate")
         loadHabitsForDate(userId, selectedDate)
         loadWeekCompletionData(userId, weekStart, forceReload = true)
     }
@@ -189,10 +189,10 @@ class HabitsViewModel @Inject constructor(
      * Выбирает дату для просмотра
      */
     fun selectDate(date: LocalDate) {
-        Log.d(TAG, "📅 [selectDate] Selected date: $date")
+        Timber.tag(TAG).d("📅 [selectDate] Selected date: $date")
         val userId = authRepository.getCurrentUserId()
         if (userId == null) {
-            Log.w(TAG, "⚠️ [selectDate] No user ID")
+            Timber.tag(TAG).w("⚠️ [selectDate] No user ID")
             return
         }
         val weekStart = getStartOfWeek(date)
@@ -216,7 +216,7 @@ class HabitsViewModel @Inject constructor(
     fun goToPreviousWeek() {
         val userId = authRepository.getCurrentUserId()
         if (userId == null) {
-            Log.w(TAG, "⚠️ [goToPreviousWeek] No user ID")
+            Timber.tag(TAG).w("⚠️ [goToPreviousWeek] No user ID")
             return
         }
         
@@ -230,14 +230,14 @@ class HabitsViewModel @Inject constructor(
             
             // Не позволяем уйти раньше недели с самой старой привычкой
             if (previousWeekStart < startOfOldestWeek) {
-                Log.d(TAG, "⛔ [goToPreviousWeek] Reached minimum date boundary: $oldestDate")
+                Timber.tag(TAG).d("⛔ [goToPreviousWeek] Reached minimum date boundary: $oldestDate")
                 return
             }
         }
         
         // Обновляем только currentWeekStartDate без изменения selectedDate
         _uiState.value = _uiState.value.copy(currentWeekStartDate = previousWeekStart)
-        Log.d(TAG, "📅 [goToPreviousWeek] Week changed to: $previousWeekStart (selectedDate unchanged)")
+        Timber.tag(TAG).d("📅 [goToPreviousWeek] Week changed to: $previousWeekStart (selectedDate unchanged)")
         
         // Загружаем данные о прогрессе для новой недели
         loadWeekCompletionData(userId, previousWeekStart)
@@ -249,7 +249,7 @@ class HabitsViewModel @Inject constructor(
     fun goToNextWeek() {
         val userId = authRepository.getCurrentUserId()
         if (userId == null) {
-            Log.w(TAG, "⚠️ [goToNextWeek] No user ID")
+            Timber.tag(TAG).w("⚠️ [goToNextWeek] No user ID")
             return
         }
         
@@ -259,13 +259,13 @@ class HabitsViewModel @Inject constructor(
         // Проверяем максимальную границу (сегодня + 1 год)
         val maxDate = _uiState.value.maxFutureDate ?: today.plus(1, DateTimeUnit.YEAR)
         if (nextWeekStart > maxDate) {
-            Log.d(TAG, "⛔ [goToNextWeek] Reached maximum date boundary: $maxDate")
+            Timber.tag(TAG).d("⛔ [goToNextWeek] Reached maximum date boundary: $maxDate")
             return
         }
         
         // Обновляем только currentWeekStartDate без изменения selectedDate
         _uiState.value = _uiState.value.copy(currentWeekStartDate = nextWeekStart)
-        Log.d(TAG, "📅 [goToNextWeek] Week changed to: $nextWeekStart (selectedDate unchanged)")
+        Timber.tag(TAG).d("📅 [goToNextWeek] Week changed to: $nextWeekStart (selectedDate unchanged)")
         
         // Загружаем данные о прогрессе для новой недели
         loadWeekCompletionData(userId, nextWeekStart)
@@ -333,10 +333,10 @@ class HabitsViewModel @Inject constructor(
      */
     @OptIn(ExperimentalCoroutinesApi::class)
     fun loadHabitsForDate(userId: String, date: LocalDate) {
-        Log.d(TAG, "🔄 [loadHabitsForDate] Start for user=$userId, date=$date")
+        Timber.tag(TAG).d("🔄 [loadHabitsForDate] Start for user=$userId, date=$date")
         // Cancel previous collection if any
         if (habitsJob != null) {
-            Log.d(TAG, "⛔ [loadHabitsForDate] Cancelling previous habits subscription")
+            Timber.tag(TAG).d("⛔ [loadHabitsForDate] Cancelling previous habits subscription")
             habitsJob?.cancel()
         }
 
@@ -361,9 +361,9 @@ class HabitsViewModel @Inject constructor(
                 cachedUserPreferences = preferences
                 
                 emissionCount += 1
-                Log.d(TAG, "📊 [habits][flow] emission #$emissionCount, size=${habits.size} (user=$userId)")
+                Timber.tag(TAG).d("📊 [habits][flow] emission #$emissionCount, size=${habits.size} (user=$userId)")
                 habits.forEach { habit ->
-                    Log.d(TAG, "   📋 [habit] ${habit.title} (${habit.id}), participants=${habit.participants}")
+                    Timber.tag(TAG).d("   📋 [habit] ${habit.title} (${habit.id}), participants=${habit.participants}")
                 }
 
                 flow {
@@ -383,7 +383,7 @@ class HabitsViewModel @Inject constructor(
                                 } catch (e: CancellationException) {
                                     throw e
                                 } catch (e: Exception) {
-                                    Log.d(TAG, "ensureMySettingsForHabitUseCase failed (non-fatal) for habit=${habit.id}: ${e.message}")
+                                    Timber.tag(TAG).d("ensureMySettingsForHabitUseCase failed (non-fatal) for habit=${habit.id}: ${e.message}")
                                 }
 
                                 // Планируем уведомление только если есть изменения значимых полей
@@ -406,7 +406,7 @@ class HabitsViewModel @Inject constructor(
                                     } catch (e: CancellationException) {
                                         throw e
                                     } catch (e: Exception) {
-                                        Log.w(TAG, "scheduleHabitReminderUseCase failed for habit=${habit.id}: ${e.message}", e)
+                                        Timber.tag(TAG).w(e, "scheduleHabitReminderUseCase failed for habit=${habit.id}: ${e.message}")
                                     }
                                 }
 
@@ -436,7 +436,7 @@ class HabitsViewModel @Inject constructor(
                                     } catch (e: CancellationException) {
                                         throw e
                                     } catch (e: Exception) {
-                                        Log.d(TAG, "getGroupHabitProgressUseCase failed for habit=${habit.id}: ${e.message}")
+                                        Timber.tag(TAG).d("getGroupHabitProgressUseCase failed for habit=${habit.id}: ${e.message}")
                                         emptyList()
                                     }
                                 } else {
@@ -484,13 +484,13 @@ class HabitsViewModel @Inject constructor(
                     oldestHabitDate = state.oldestHabitDate,
                     maxFutureDate = state.maxFutureDate
                 )
-                Log.d(TAG, "✅ [habits][ui] list updated (${state.habitsWithCompletion.size})")
+                Timber.tag(TAG).d("✅ [habits][ui] list updated (${state.habitsWithCompletion.size})")
                 
                 // Подписываемся на реактивные обновления прогресса групповых привычек
                 subscribeToGroupHabitsProgress(state.habitsWithCompletion)
             }
             .catch { e ->
-                Log.e(TAG, "❌ [habits][error] ${e.message}", e)
+                Timber.tag(TAG).e(e, "❌ [habits][error] ${e.message}")
                 _uiState.value = _uiState.value.copy(
                     isLoading = false,
                     error = e.localizedMessage ?: "Unknown error"
@@ -500,9 +500,9 @@ class HabitsViewModel @Inject constructor(
 
         habitsJob?.invokeOnCompletion { cause ->
             if (cause == null) {
-                Log.d(TAG, "🛑 [loadHabitsForDate] Subscription completed normally")
+                Timber.tag(TAG).d("🛑 [loadHabitsForDate] Subscription completed normally")
             } else {
-                Log.d(TAG, "🛑 [loadHabitsForDate] Subscription cancelled/failed: ${cause.message}")
+                Timber.tag(TAG).d("🛑 [loadHabitsForDate] Subscription cancelled/failed: ${cause.message}")
             }
         }
     }
@@ -544,7 +544,7 @@ class HabitsViewModel @Inject constructor(
             groupProgressJobs[habitId] = viewModelScope.launch {
                 getGroupHabitProgressUseCase(habitId, selectedDate)
                     .catch { e ->
-                        Log.d(TAG, "Group progress subscription error for habit=$habitId: ${e.message}")
+                        Timber.tag(TAG).d("Group progress subscription error for habit=$habitId: ${e.message}")
                     }
                     .collect { groupProgress ->
                         if (groupProgress != null) {
@@ -583,12 +583,12 @@ class HabitsViewModel @Inject constructor(
             try {
                 // Проверяем кеш, если не требуется принудительная перезагрузка
                 if (!forceReload && weekCompletionCache.containsKey(weekStartDate)) {
-                    Log.d(TAG, "📦 [loadWeekCompletionData] Using cached data for week: $weekStartDate")
+                    Timber.tag(TAG).d("📦 [loadWeekCompletionData] Using cached data for week: $weekStartDate")
                     _uiState.value = _uiState.value.copy(weekCompletionData = weekCompletionCache[weekStartDate]!!)
                     return@launch
                 }
                 
-                Log.d(TAG, "🔄 [loadWeekCompletionData] Loading data for week: $weekStartDate")
+                Timber.tag(TAG).d("🔄 [loadWeekCompletionData] Loading data for week: $weekStartDate")
                 // Загружаем данные для любой даты из этой недели (используем начало недели)
                 val completionData = getWeekCompletionDataUseCase(userId, weekStartDate)
                 
@@ -601,7 +601,7 @@ class HabitsViewModel @Inject constructor(
                     _uiState.value = _uiState.value.copy(weekCompletionData = completionData)
                 }
             } catch (e: Exception) {
-                Log.e(TAG, "❌ [loadWeekCompletionData] Error loading week data: ${e.message}", e)
+                Timber.tag(TAG).e(e, "❌ [loadWeekCompletionData] Error loading week data: ${e.message}")
             }
         }
     }
@@ -740,7 +740,7 @@ class HabitsViewModel @Inject constructor(
         
         // Блокируем отметку привычек в будущем
         if (selectedDate > today) {
-            Log.d(TAG, "⛔ [toggleHabitCompletion] Cannot mark habits in future date: $selectedDate")
+            Timber.tag(TAG).d("⛔ [toggleHabitCompletion] Cannot mark habits in future date: $selectedDate")
             _uiState.value = _uiState.value.copy(
                 error = getApplication<Application>().getString(R.string.error_cannot_mark_future_habit)
             )
@@ -801,7 +801,7 @@ class HabitsViewModel @Inject constructor(
                     loadWeekCompletionData(currentUserId, weekStart, forceReload = true)
                 }
             } catch (e: Exception) {
-                Log.e(TAG, "Error toggling rest day", e)
+                Timber.tag(TAG).e(e, "Error toggling rest day")
                 // В идеале здесь нужен rollback UI, если запрос упал, но для простоты пока оставим лог
                 _uiState.value = _uiState.value.copy(error = getApplication<Application>().getString(R.string.error_generic))
             }
@@ -836,6 +836,15 @@ class HabitsViewModel @Inject constructor(
                 deleteHabitUseCase(
                     deletion.habitWithCompletion.habit.id,
                     currentUserId
+                )
+                
+                // Track deletion event
+                analyticsManager.logEvent(
+                    AnalyticsEvents.HABIT_DELETED,
+                    mapOf(
+                        AnalyticsEvents.Params.HABIT_ID to deletion.habitWithCompletion.habit.id,
+                        AnalyticsEvents.Params.HABIT_TYPE to deletion.habitWithCompletion.habit.type.name
+                    )
                 )
             } catch (e: Exception) {
                 _uiState.value = _uiState.value.copy(
@@ -882,6 +891,15 @@ class HabitsViewModel @Inject constructor(
         viewModelScope.launch {
             try {
                 deleteHabitUseCase(habitId, currentUserId)
+                
+                // Track deletion event
+                analyticsManager.logEvent(
+                    AnalyticsEvents.HABIT_DELETED,
+                    mapOf(
+                        AnalyticsEvents.Params.HABIT_ID to habitId,
+                        AnalyticsEvents.Params.HABIT_TYPE to removedItem.habit.type.name
+                    )
+                )
             } catch (e: Exception) {
                 // Откатываем
                 _uiState.value = _uiState.value.copy(
@@ -981,6 +999,12 @@ class HabitsViewModel @Inject constructor(
 
                 joinHabitByCodeUseCase(code, userId)
                     .onSuccess { habit ->
+                        // Track group habit joined event
+                        analyticsManager.logEvent(
+                            AnalyticsEvents.GROUP_HABIT_JOINED,
+                            mapOf(AnalyticsEvents.Params.HABIT_ID to habit.id)
+                        )
+                        
                         _uiState.value = _uiState.value.copy(
                             isLoading = false,
                             error = null,

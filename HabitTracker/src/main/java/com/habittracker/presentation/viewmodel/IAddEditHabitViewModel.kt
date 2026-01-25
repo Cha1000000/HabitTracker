@@ -42,6 +42,7 @@ interface IAddEditHabitViewModel {
     fun onMaxParticipantsInputChange(text: String)
     fun onMaxParticipantsChange(maxParticipants: Int)
     fun onIsPublicChange(isPublic: Boolean)
+    fun onRemoveFromPublicCatalogChange(remove: Boolean)
     fun onShowFriendSelector(show: Boolean)
     fun generateInviteCode()
     fun disableInviteCode()

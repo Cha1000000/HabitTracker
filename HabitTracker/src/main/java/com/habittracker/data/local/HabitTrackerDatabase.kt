@@ -200,6 +200,7 @@ abstract class HabitTrackerDatabase : RoomDatabase() {
 
                 if (BuildConfig.DEBUG) {
                     // В debug-сборках допускаем деструктивные миграции для ускорения разработки
+                    @Suppress("DEPRECATION")
                     builder.fallbackToDestructiveMigration()
                 }
 

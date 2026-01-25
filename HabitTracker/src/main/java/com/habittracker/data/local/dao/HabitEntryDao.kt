@@ -32,6 +32,9 @@ interface HabitEntryDao {
     
     @Query("SELECT * FROM habit_entries WHERE habitId = :habitId AND userId = :userId AND date = :date")
     suspend fun getEntry(habitId: String, userId: String, date: LocalDate): HabitEntryEntity?
+
+    @Query("SELECT * FROM habit_entries WHERE habitId = :habitId AND userId = :userId ORDER BY date DESC")
+    suspend fun getEntriesForUserAndHabitOnce(habitId: String, userId: String): List<HabitEntryEntity>
     
     @Query("SELECT * FROM habit_entries WHERE habitId = :habitId ORDER BY date DESC")
     fun getEntriesForHabit(habitId: String): Flow<List<HabitEntryEntity>>
@@ -67,6 +70,9 @@ interface HabitEntryDao {
     
     @Query("DELETE FROM habit_entries WHERE habitId = :habitId")
     suspend fun deleteAllEntriesForHabit(habitId: String)
+
+    @Query("DELETE FROM habit_entries WHERE habitId = :habitId AND userId = :userId")
+    suspend fun deleteEntriesForUserAndHabit(habitId: String, userId: String)
     
     @Query("DELETE FROM habit_entries WHERE userId = :userId")
     suspend fun deleteAllEntriesForUser(userId: String)

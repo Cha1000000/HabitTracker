@@ -30,6 +30,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.material3.rememberSwipeToDismissBoxState
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -501,7 +502,8 @@ fun StoredNotificationItem(
     onMarkAsRead: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val dismissState = androidx.compose.material3.rememberSwipeToDismissBoxState(
+    @Suppress("DEPRECATION")
+    val dismissState = rememberSwipeToDismissBoxState(
         confirmValueChange = { dismissValue ->
             if (dismissValue == androidx.compose.material3.SwipeToDismissBoxValue.EndToStart && notification.isRead) {
                 onDelete()

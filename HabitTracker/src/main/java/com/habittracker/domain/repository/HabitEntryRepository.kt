@@ -21,6 +21,10 @@ interface HabitEntryRepository {
 
     fun getEntriesForUserAndHabit(userId: String, habitId: String): Flow<List<HabitEntry>>
 
+    suspend fun getEntriesForUserAndHabitOnce(userId: String, habitId: String): List<HabitEntry>
+
+    suspend fun deleteEntriesForUserAndHabit(userId: String, habitId: String)
+
     suspend fun getEntriesForUserAndPeriod(
         habitId: String,
         userId: String,
