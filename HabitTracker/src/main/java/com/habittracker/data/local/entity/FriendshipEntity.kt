@@ -37,5 +37,7 @@ data class FriendshipEntity(
     val acceptedAt: LocalDateTime?,
     val blockedBy: String?,
     val blockedAt: LocalDateTime?,
-    val updatedAt: LocalDate
+    val updatedAt: LocalDate,
+    val updatedAtMillis: Long = System.currentTimeMillis(),
+    val deletedAtMillis: Long? = null
 )

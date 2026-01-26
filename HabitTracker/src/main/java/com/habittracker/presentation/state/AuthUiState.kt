@@ -1,8 +1,11 @@
 package com.habittracker.presentation.state
 
+import androidx.compose.runtime.Immutable
+
 /**
  * UI State для экранов аутентификации.
  */
+@Immutable
 data class AuthUiState(
     val email: String = "",
     val password: String = "",

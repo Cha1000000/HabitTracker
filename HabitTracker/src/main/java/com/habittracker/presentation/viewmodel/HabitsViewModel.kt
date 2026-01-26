@@ -4,6 +4,7 @@ import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.habittracker.R
+import androidx.compose.runtime.Immutable
 import com.habittracker.domain.model.Habit
 import com.habittracker.domain.model.isGroupHabit
 import com.habittracker.domain.repository.AuthRepository
@@ -59,6 +60,7 @@ import timber.log.Timber
 /**
  * Данные о привычке с информацией о выполнении
  */
+@Immutable
 data class HabitWithCompletion(
     val habit: Habit,
     val isCompletedToday: Boolean = false,

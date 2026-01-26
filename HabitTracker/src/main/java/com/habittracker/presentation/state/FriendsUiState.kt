@@ -1,11 +1,13 @@
 package com.habittracker.presentation.state
 
+import androidx.compose.runtime.Immutable
 import com.habittracker.domain.model.FriendRequestWithUsers
 import com.habittracker.domain.model.User
 
 /**
  * 📱 UI состояние экрана друзей
  */
+@Immutable
 data class FriendsUiState(
     val friends: List<User> = emptyList(),
     val incomingRequests: List<FriendRequestWithUsers> = emptyList(),

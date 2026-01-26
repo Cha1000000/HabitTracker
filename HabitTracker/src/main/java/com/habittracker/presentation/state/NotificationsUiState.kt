@@ -1,5 +1,6 @@
 package com.habittracker.presentation.state
 
+import androidx.compose.runtime.Immutable
 import com.habittracker.domain.model.GroupHabitNotificationModel
 import com.habittracker.domain.model.HabitInvitation
 import com.habittracker.domain.usecase.notification.GroupHabitNotification
@@ -7,6 +8,7 @@ import com.habittracker.domain.usecase.notification.GroupHabitNotification
 /**
  * UI состояние экрана уведомлений
  */
+@Immutable
 data class NotificationsUiState(
     val notifications: List<GroupHabitNotification> = emptyList(),
     val storedNotifications: List<GroupHabitNotificationModel> = emptyList(), // Уведомления из базы данных

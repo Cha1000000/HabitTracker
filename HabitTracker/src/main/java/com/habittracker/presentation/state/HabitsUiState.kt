@@ -1,11 +1,13 @@
 package com.habittracker.presentation.state
 
+import androidx.compose.runtime.Immutable
 import com.habittracker.presentation.viewmodel.HabitWithCompletion
 import kotlinx.datetime.LocalDate
 
 /**
  * UI State для экрана со списком привычек.
  */
+@Immutable
 data class HabitsUiState(
     val habitsWithCompletion: List<HabitWithCompletion> = emptyList(),
     val isLoading: Boolean = true,

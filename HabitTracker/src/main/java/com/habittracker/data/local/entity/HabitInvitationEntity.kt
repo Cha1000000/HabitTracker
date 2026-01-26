@@ -27,5 +27,7 @@ data class HabitInvitationEntity(
     val status: String, // HabitInvitationStatus as String
     val createdAt: LocalDateTime,
     val respondedAt: LocalDateTime?,
-    val expiresAt: LocalDateTime?
+    val expiresAt: LocalDateTime?,
+    val updatedAtMillis: Long = System.currentTimeMillis(),
+    val deletedAtMillis: Long? = null
 )

@@ -1,5 +1,6 @@
 package com.habittracker.presentation.state
 
+import androidx.compose.runtime.Immutable
 import com.habittracker.domain.model.Habit
 import com.habittracker.domain.model.HabitEntry
 import com.habittracker.domain.model.HabitInvitation
@@ -9,6 +10,7 @@ import com.habittracker.domain.usecase.gamification.LeaderboardEntry
 /**
  * UI состояние для экрана детальной информации о групповой привычке
  */
+@Immutable
 data class GroupHabitDetailUiState(
     val isLoading: Boolean = false,
     val habit: Habit? = null,
