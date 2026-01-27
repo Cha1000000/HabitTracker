@@ -5,8 +5,12 @@ import androidx.lifecycle.viewModelScope
 import com.habittracker.domain.repository.AuthRepository
 import com.habittracker.domain.usecase.gamification.GetUserStatsUseCase
 import com.habittracker.domain.usecase.gamification.GetLeaderboardUseCase
+import com.habittracker.domain.usecase.gamification.GetYearlyActivityUseCase
 import com.habittracker.domain.usecase.gamification.LeaderboardType
+import com.habittracker.domain.model.gamification.ActivityLevel
 import com.habittracker.presentation.state.StatsUiState
+import com.habittracker.presentation.ui.habits.components.HeatmapItem
+import com.habittracker.presentation.ui.habits.components.HeatmapLevel
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -20,6 +24,7 @@ import javax.inject.Inject
 class StatsViewModel @Inject constructor(
     private val getUserStatsUseCase: GetUserStatsUseCase,
     private val getLeaderboardUseCase: GetLeaderboardUseCase,
+    private val getYearlyActivityUseCase: GetYearlyActivityUseCase,
     private val authRepository: AuthRepository
 ) : ViewModel() {
 
@@ -27,6 +32,7 @@ class StatsViewModel @Inject constructor(
     val uiState: StateFlow<StatsUiState> = _uiState.asStateFlow()
     
     private var leaderboardJob: Job? = null
+    private var activityJob: Job? = null
     private var currentUserId: String? = null
 
     init {
@@ -48,6 +54,9 @@ class StatsViewModel @Inject constructor(
                         // Загружаем лидерборд с текущим типом
                         loadLeaderboard(currentUser.id, _uiState.value.leaderboardType)
 
+                        // Загружаем активность за год
+                        loadYearlyActivity(currentUser.id)
+
                         _uiState.value = _uiState.value.copy(
                             isLoading = false,
                             userStats = userStats,
@@ -65,6 +74,28 @@ class StatsViewModel @Inject constructor(
                     isLoading = false,
                     error = e.message ?: "Ошибка загрузки статистики"
                 )
+            }
+        }
+    }
+    
+    private fun loadYearlyActivity(userId: String) {
+        activityJob?.cancel()
+        activityJob = viewModelScope.launch {
+            getYearlyActivityUseCase(userId).collect { activityList ->
+                val heatmapItems = activityList.map { daily ->
+                    HeatmapItem(
+                        date = daily.date,
+                        count = daily.count,
+                        level = when (daily.level) {
+                            ActivityLevel.NONE -> HeatmapLevel.NONE
+                            ActivityLevel.LOW -> HeatmapLevel.LOW
+                            ActivityLevel.MEDIUM -> HeatmapLevel.MEDIUM
+                            ActivityLevel.HIGH -> HeatmapLevel.HIGH
+                            ActivityLevel.VERY_HIGH -> HeatmapLevel.VERY_HIGH
+                        }
+                    )
+                }
+                _uiState.value = _uiState.value.copy(yearlyActivity = heatmapItems)
             }
         }
     }

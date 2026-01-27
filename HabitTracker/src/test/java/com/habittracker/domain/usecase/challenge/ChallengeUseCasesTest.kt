@@ -187,6 +187,7 @@ class ChallengeUseCasesTest {
         override suspend fun markHabitCompleted(habitId: String, userId: String, date: LocalDate, note: String?) {}
         override suspend fun markHabitIncomplete(habitId: String, userId: String, date: LocalDate) {}
         override suspend fun setRestDay(habitId: String, userId: String, date: LocalDate, isRestDay: Boolean) {}
+        override fun getDailyCompletionCounts(userId: String): Flow<Map<LocalDate, Int>> = MutableStateFlow(emptyMap())
     }
 
     private class FakeSocialRepository : SocialRepository {

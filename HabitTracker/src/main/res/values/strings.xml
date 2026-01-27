@@ -437,6 +437,8 @@
     <string name="time_of_day_edit_mode_hint">Completion time cannot be changed when editing</string>
 
     <string name="stats_activity_title">Activity (7 days)</string>
+    <string name="stats_yearly_activity_title">Yearly Activity</string>
+    <string name="stats_yearly_activity_total_format">%1$d completions</string>
     <string name="stats_leaderboard_title">Friends Leaderboard</string>
     <string name="leaderboard_empty">No friends to compete with yet</string>
     <string name="leaderboard_weekly">Weekly</string>
@@ -957,6 +959,9 @@
     <string name="month_oct_short">Oct</string>
     <string name="month_nov_short">Nov</string>
     <string name="month_dec_short">Dec</string>
+
+    <string name="heatmap_less">Less</string>
+    <string name="heatmap_more">More</string>
 
     <!-- Week day abbreviations -->
     <string name="day_mon_short">MON</string>

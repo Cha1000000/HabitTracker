@@ -4,6 +4,7 @@ import androidx.compose.runtime.Immutable
 import com.habittracker.domain.model.gamification.UserStats
 import com.habittracker.domain.usecase.gamification.LeaderboardEntry
 import com.habittracker.domain.usecase.gamification.LeaderboardType
+import com.habittracker.presentation.ui.habits.components.HeatmapItem
 
 @Immutable
 data class StatsUiState(
@@ -12,5 +13,6 @@ data class StatsUiState(
     val leaderboard: List<com.habittracker.domain.model.User> = emptyList(),
     val leaderboardEntries: List<LeaderboardEntry> = emptyList(),
     val leaderboardType: LeaderboardType = LeaderboardType.ALL_TIME,
+    val yearlyActivity: List<HeatmapItem> = emptyList(),
     val error: String? = null
 )

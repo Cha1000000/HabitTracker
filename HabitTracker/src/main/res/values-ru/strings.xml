@@ -435,6 +435,8 @@
     <string name="time_of_day_edit_mode_hint">Время выполнения нельзя изменить при редактировании</string>
 
     <string name="stats_activity_title">Активность за 7 дней</string>
+    <string name="stats_yearly_activity_title">Активность за год</string>
+    <string name="stats_yearly_activity_total_format">%1$d выполнений</string>
     <string name="stats_leaderboard_title">Рейтинг друзей</string>
     <string name="leaderboard_empty">У вас пока нет друзей для соревнования</string>
     <string name="leaderboard_weekly">За неделю</string>
@@ -943,18 +945,21 @@
     <string name="label_completed_percentage">Завершено %1$d%%</string>
     
     <!-- Month abbreviations -->
-    <string name="month_jan_short">янв</string>
-    <string name="month_feb_short">фев</string>
-    <string name="month_mar_short">мар</string>
-    <string name="month_apr_short">апр</string>
-    <string name="month_may_short">мая</string>
-    <string name="month_jun_short">июня</string>
-    <string name="month_jul_short">июля</string>
-    <string name="month_aug_short">авг</string>
-    <string name="month_sep_short">сен</string>
-    <string name="month_oct_short">окт</string>
-    <string name="month_nov_short">нояб</string>
-    <string name="month_dec_short">дек</string>
+    <string name="month_jan_short">Янв</string>
+    <string name="month_feb_short">Фев</string>
+    <string name="month_mar_short">Мар</string>
+    <string name="month_apr_short">Апр</string>
+    <string name="month_may_short">Май</string>
+    <string name="month_jun_short">Июн</string>
+    <string name="month_jul_short">Июл</string>
+    <string name="month_aug_short">Авг</string>
+    <string name="month_sep_short">Сен</string>
+    <string name="month_oct_short">Окт</string>
+    <string name="month_nov_short">Ноя</string>
+    <string name="month_dec_short">Дек</string>
+
+    <string name="heatmap_less">Меньше</string>
+    <string name="heatmap_more">Больше</string>
     
     <!-- Week day abbreviations -->
     <string name="day_mon_short">ПН</string>

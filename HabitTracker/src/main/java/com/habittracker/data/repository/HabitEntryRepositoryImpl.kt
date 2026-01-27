@@ -351,6 +351,13 @@ class HabitEntryRepositoryImpl @Inject constructor(
             insertEntry(newEntry)
         }
     }
+
+    override fun getDailyCompletionCounts(userId: String): Flow<Map<LocalDate, Int>> {
+        return habitEntryDao.getDailyCompletionCounts(userId)
+            .map { list ->
+                list.associate { it.date to it.count }
+            }
+    }
     
     /**
      * Умное слияние данных из Firebase с локальными данными.

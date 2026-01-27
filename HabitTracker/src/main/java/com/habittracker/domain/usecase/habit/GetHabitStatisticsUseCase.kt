@@ -69,13 +69,12 @@ class GetHabitStatisticsUseCase @Inject constructor(
 
         // Получаем статистику текущего пользователя
         val currentUserStats = calculateStatistics(habit, currentUserId, startDate, endDate)
-            ?: return@coroutineScope null
 
         // Получаем список всех участников (включая создателя)
         val allParticipantIds = (habit.participants + habit.createdBy).distinct()
         
         // Получаем информацию о пользователях
-        val participantsInfo = allParticipantIds.mapNotNull { participantId ->
+        val participantsInfo = allParticipantIds.map { participantId ->
             async { userRepository.getUserById(participantId) }
         }.awaitAll().filterNotNull()
 
@@ -85,11 +84,10 @@ class GetHabitStatisticsUseCase @Inject constructor(
             .map { participantId ->
                 async {
                     val stats = calculateStatistics(habit, participantId, startDate, endDate)
-                    if (stats != null) participantId to stats else null
+                    participantId to stats
                 }
             }
             .awaitAll()
-            .filterNotNull()
             .toMap()
 
         GroupHabitStatisticsData(

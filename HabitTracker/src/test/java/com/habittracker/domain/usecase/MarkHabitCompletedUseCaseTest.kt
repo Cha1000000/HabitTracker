@@ -14,6 +14,7 @@ import com.habittracker.domain.model.HabitParticipantSettings
 import com.habittracker.domain.model.HabitType
 import com.habittracker.domain.model.User
 import com.habittracker.domain.model.gamification.GamificationEvent
+import com.habittracker.domain.provider.StringProvider
 import com.habittracker.domain.repository.FirestoreRepository
 import com.habittracker.domain.repository.GroupHabitNotificationRepository
 import com.habittracker.domain.repository.HabitEntryRepository
@@ -25,12 +26,9 @@ import com.habittracker.domain.usecase.gamification.CalculatePointsUseCase
 import com.habittracker.domain.usecase.gamification.CheckAchievementsUseCase
 import com.habittracker.domain.usecase.gamification.UpdateUserPointsUseCase
 import com.habittracker.domain.usecase.notification.SendGroupHabitPushNotificationUseCase
-import com.habittracker.domain.provider.StringProvider
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.test.advanceUntilIdle
@@ -39,12 +37,10 @@ import kotlinx.datetime.Clock
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toLocalDateTime
-import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
 import org.mockito.kotlin.any
-import org.mockito.kotlin.argumentCaptor
 import org.mockito.kotlin.mock
 import org.mockito.kotlin.verify
 
@@ -181,6 +177,7 @@ class FakeHabitEntryRepository : HabitEntryRepository {
     override suspend fun getCompletionRateForHabit(habitId: String, userId: String, startDate: LocalDate, endDate: LocalDate): Float = 0.0f
     override suspend fun markHabitIncomplete(habitId: String, userId: String, date: LocalDate) {}
     override suspend fun setRestDay(habitId: String, userId: String, date: LocalDate, isRestDay: Boolean) {}
+    override fun getDailyCompletionCounts(userId: String): Flow<Map<LocalDate, Int>> = flowOf(emptyMap())
 }
 
 class FakeUpdateUserPointsUseCase(
