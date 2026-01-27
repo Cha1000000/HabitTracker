@@ -82,4 +82,6 @@ class FakeHabitEntryRepositoryIncomplete : HabitEntryRepository {
     override suspend fun getCompletionRateForHabit(habitId: String, userId: String, startDate: LocalDate, endDate: LocalDate): Float = 0f
     override suspend fun setRestDay(habitId: String, userId: String, date: LocalDate, isRestDay: Boolean) {}
     override fun getDailyCompletionCounts(userId: String): Flow<Map<LocalDate, Int>> = flowOf(emptyMap())
+    override suspend fun updatePhotoUrl(habitId: String, userId: String, date: LocalDate, photoUrl: String?) {}
+    override suspend fun getEntryOnce(habitId: String, userId: String, date: LocalDate): HabitEntry? = null
 }

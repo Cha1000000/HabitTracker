@@ -86,6 +86,7 @@ object SyncPayloads {
             "note" to entry.note,
             "isRestDay" to entry.isRestDay,
             "streakBonusAwardedDays" to entry.streakBonusAwardedDays,
+            "photoUrl" to entry.photoUrl,
             "createdAt" to entry.createdAt.toString(),
             "updatedAt" to entry.updatedAt.toString()
         )
@@ -212,6 +213,15 @@ object SyncPayloads {
             "isRead" to notification.isRead,
             "readAt" to notification.readAt,
             "createdAt" to notification.createdAt,
+            "updatedAt" to System.currentTimeMillis()
+        )
+    )
+
+    fun updatePhotoUrl(habitId: String, dateString: String, photoUrl: String?): String = gson.toJson(
+        mapOf(
+            "habitId" to habitId,
+            "date" to dateString,
+            "photoUrl" to photoUrl,
             "updatedAt" to System.currentTimeMillis()
         )
     )

@@ -26,5 +26,9 @@ data class GroupHabitDetailUiState(
     val isMarkingCompletion: Boolean = false,
     val participantLeaderboard: List<LeaderboardEntry> = emptyList(),
     val error: String? = null,
-    val successMessage: String? = null
+    val successMessage: String? = null,
+    val showPhotoProofPrompt: Boolean = false, // Показать предложение добавить фото после выполнения
+    val currentUserPhotoUrl: String? = null, // URL фото текущего пользователя за сегодня
+    val isUploadingPhoto: Boolean = false, // Флаг загрузки фото
+    val showPhotoSheet: Boolean = false // Показать BottomSheet для добавления фото
 )

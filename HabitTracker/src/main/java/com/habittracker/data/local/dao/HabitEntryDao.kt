@@ -103,4 +103,10 @@ interface HabitEntryDao {
 
     @Query("SELECT date, COUNT(*) as count FROM habit_entries WHERE userId = :userId AND completed = 1 AND deletedAtMillis IS NULL GROUP BY date")
     fun getDailyCompletionCounts(userId: String): Flow<List<com.habittracker.data.local.entity.tuples.DailyCompletionCountTuple>>
+
+    @Query("UPDATE habit_entries SET photoUrl = :photoUrl, updatedAtMillis = :updatedAtMillis WHERE habitId = :habitId AND userId = :userId AND date = :date")
+    suspend fun updatePhotoUrl(habitId: String, userId: String, date: LocalDate, photoUrl: String?, updatedAtMillis: Long = System.currentTimeMillis())
+
+    @Query("SELECT * FROM habit_entries WHERE habitId = :habitId AND userId = :userId AND date = :date AND deletedAtMillis IS NULL")
+    fun getEntryFlow(habitId: String, userId: String, date: LocalDate): Flow<HabitEntryEntity?>
 }

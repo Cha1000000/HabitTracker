@@ -28,6 +28,7 @@ data class HabitEntryEntity(
     val note: String?,
     val isRestDay: Boolean,
     val streakBonusAwardedDays: Int?,
+    val photoUrl: String?, // URL фото-подтверждения
     val createdAt: LocalDate,
     val updatedAt: LocalDate,
     val updatedAtMillis: Long = System.currentTimeMillis(),

@@ -21,11 +21,12 @@ data class FirebaseHabitEntry(
     val note: String? = "",
     val isRestDay: Boolean = false,
     val streakBonusAwardedDays: Int? = null,
+    val photoUrl: String? = null, // URL фото-подтверждения
     val createdAt: String = "", // LocalDate в ISO формате
     val updatedAt: String = "" // LocalDate в ISO формате
 ) {
     // Конструктор без аргументов требуется для Firebase
-    constructor() : this("", "", "", false, null, 1, "", false, null, "", "")
+    constructor() : this("", "", "", false, null, 1, "", false, null, null, "", "")
     
     companion object {
         /**
@@ -42,6 +43,7 @@ data class FirebaseHabitEntry(
                 note = entry.note,
                 isRestDay = entry.isRestDay,
                 streakBonusAwardedDays = entry.streakBonusAwardedDays,
+                photoUrl = entry.photoUrl,
                 createdAt = entry.createdAt.toString(), // LocalDate -> String
                 updatedAt = entry.updatedAt.toString() // LocalDate -> String
             )
@@ -72,6 +74,7 @@ data class FirebaseHabitEntry(
                 note = note,
                 isRestDay = isRestDay,
                 streakBonusAwardedDays = streakBonusAwardedDays,
+                photoUrl = photoUrl,
                 createdAt = try { LocalDate.parse(createdAt) } catch (_: Exception) {
                     Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault()).date 
                 },

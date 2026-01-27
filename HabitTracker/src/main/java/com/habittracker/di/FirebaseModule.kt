@@ -64,8 +64,9 @@ object FirebaseModule {
             Timber.tag("FirebaseModule").w(e, "Failed to read storageBucket from FirebaseApp options")
             null
         }
+        Timber.tag("FirebaseModule").d("Firebase Storage bucket: $bucket")
         return if (!bucket.isNullOrBlank()) {
-            FirebaseStorage.getInstance("gs://${'$'}bucket")
+            FirebaseStorage.getInstance("gs://$bucket")
         } else {
             FirebaseStorage.getInstance()
         }

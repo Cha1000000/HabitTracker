@@ -14,6 +14,8 @@ import com.habittracker.domain.model.HabitType
 import com.habittracker.domain.model.StatisticsPeriod
 import com.habittracker.domain.model.User
 import com.habittracker.domain.repository.AuthRepository
+import com.habittracker.domain.repository.HabitEntryRepository
+import com.habittracker.domain.usecase.habit.AttachPhotoToEntryUseCase
 import com.habittracker.domain.usecase.habit.GetHabitStatisticsUseCase
 import com.habittracker.domain.util.AnalyticsManager
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -43,6 +45,8 @@ class HabitStatisticsViewModelTest {
     private lateinit var authRepository: AuthRepository
     private lateinit var savedStateHandle: SavedStateHandle
     private lateinit var analyticsManager: AnalyticsManager
+    private lateinit var habitEntryRepository: HabitEntryRepository
+    private lateinit var attachPhotoToEntryUseCase: AttachPhotoToEntryUseCase
 
     private val testUserId = "test-user-id"
     private val testHabitId = "test-habit-id"
@@ -105,6 +109,8 @@ class HabitStatisticsViewModelTest {
         getHabitStatisticsUseCase = mock()
         authRepository = mock()
         analyticsManager = mock()
+        habitEntryRepository = mock()
+        attachPhotoToEntryUseCase = mock()
     }
 
     private fun createViewModel(habitId: String = testHabitId, isGroup: Boolean = false): HabitStatisticsViewModel {
@@ -118,6 +124,8 @@ class HabitStatisticsViewModelTest {
             getHabitStatisticsUseCase,
             authRepository,
             analyticsManager,
+            habitEntryRepository,
+            attachPhotoToEntryUseCase,
             savedStateHandle
         )
     }
@@ -392,6 +400,8 @@ class HabitStatisticsViewModelTest {
             getHabitStatisticsUseCase,
             authRepository,
             analyticsManager,
+            habitEntryRepository,
+            attachPhotoToEntryUseCase,
             savedStateHandle
         )
         advanceUntilIdle()

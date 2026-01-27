@@ -150,6 +150,8 @@ class GetUserStatsUseCaseTest {
                 override suspend fun markHabitIncomplete(habitId: String, userId: String, date: LocalDate) {}
                 override suspend fun setRestDay(habitId: String, userId: String, date: LocalDate, isRestDay: Boolean) {}
                 override fun getDailyCompletionCounts(userId: String): Flow<Map<LocalDate, Int>> = flowOf(emptyMap())
+                override suspend fun updatePhotoUrl(habitId: String, userId: String, date: LocalDate, photoUrl: String?) {}
+                override suspend fun getEntryOnce(habitId: String, userId: String, date: LocalDate): HabitEntry? = null
             },
             challengeRepository = object : ChallengeRepository {
                 override suspend fun insertChallenge(challenge: com.habittracker.domain.model.Challenge) {}

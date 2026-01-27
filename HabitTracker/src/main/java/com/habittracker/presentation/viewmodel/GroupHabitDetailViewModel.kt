@@ -19,7 +19,9 @@ import com.habittracker.domain.usecase.MarkHabitIncompleteUseCase
 import com.habittracker.domain.usecase.UpdateHabitUseCase
 import com.habittracker.domain.usecase.habit.GenerateHabitInviteCodeUseCase
 import com.habittracker.domain.usecase.habit.GetHabitInvitationsUseCase
+import com.habittracker.domain.usecase.habit.AttachPhotoToEntryUseCase
 import com.habittracker.presentation.state.GroupHabitDetailUiState
+import android.net.Uri
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -52,7 +54,8 @@ class GroupHabitDetailViewModel @Inject constructor(
     private val generateHabitInviteCodeUseCase: GenerateHabitInviteCodeUseCase,
     private val updateHabitUseCase: UpdateHabitUseCase,
     private val deleteHabitUseCase: DeleteHabitUseCase,
-    private val getLeaderboardUseCase: com.habittracker.domain.usecase.gamification.GetLeaderboardUseCase
+    private val getLeaderboardUseCase: com.habittracker.domain.usecase.gamification.GetLeaderboardUseCase,
+    private val attachPhotoToEntryUseCase: AttachPhotoToEntryUseCase
 ) : AndroidViewModel(application) {
 
     private val _uiState = MutableStateFlow(GroupHabitDetailUiState())
@@ -474,6 +477,7 @@ class GroupHabitDetailViewModel @Inject constructor(
                     it.copy(
                         isMarkingCompletion = false,
                         isCompletedToday = !isCompleted,
+                        showPhotoProofPrompt = !isCompleted, // Показываем предложение добавить фото при выполнении
                         successMessage = if (!isCompleted) {
                             application.getString(R.string.habit_marked_complete)
                         } else {
@@ -541,5 +545,102 @@ class GroupHabitDetailViewModel @Inject constructor(
         }
         
         return streak
+    }
+    
+    /**
+     * Показывает BottomSheet для добавления фото
+     */
+    fun showPhotoSheet() {
+        _uiState.update { it.copy(showPhotoSheet = true) }
+    }
+    
+    /**
+     * Скрывает BottomSheet для добавления фото
+     */
+    fun hidePhotoSheet() {
+        _uiState.update { it.copy(showPhotoSheet = false) }
+    }
+    
+    /**
+     * Скрывает предложение добавить фото
+     */
+    fun dismissPhotoProofPrompt() {
+        _uiState.update { it.copy(showPhotoProofPrompt = false) }
+    }
+    
+    /**
+     * Прикрепляет фото к записи привычки
+     */
+    fun attachPhoto(uri: Uri) {
+        val habit = _uiState.value.habit ?: return
+        val today = Clock.System.todayIn(TimeZone.currentSystemDefault())
+        
+        viewModelScope.launch {
+            _uiState.update { it.copy(isUploadingPhoto = true) }
+            try {
+                val result = attachPhotoToEntryUseCase(
+                    sourceUri = uri,
+                    habitId = habit.id,
+                    userId = currentUserId,
+                    date = today
+                )
+                
+                if (result.isSuccess) {
+                    val cloudUrl = result.getOrNull()
+                    _uiState.update { 
+                        it.copy(
+                            isUploadingPhoto = false,
+                            currentUserPhotoUrl = cloudUrl,
+                            showPhotoSheet = false,
+                            successMessage = application.getString(R.string.photo_proof_upload_success)
+                        ) 
+                    }
+                } else {
+                    _uiState.update { 
+                        it.copy(
+                            isUploadingPhoto = false,
+                            error = application.getString(R.string.photo_proof_upload_error)
+                        ) 
+                    }
+                }
+            } catch (e: Exception) {
+                Timber.tag("GroupHabitDetailVM").e(e, "Failed to attach photo")
+                _uiState.update { 
+                    it.copy(
+                        isUploadingPhoto = false,
+                        error = application.getString(R.string.photo_proof_upload_error)
+                    ) 
+                }
+            }
+        }
+    }
+    
+    /**
+     * Удаляет фото из записи привычки
+     */
+    fun deletePhoto() {
+        val habit = _uiState.value.habit ?: return
+        val today = Clock.System.todayIn(TimeZone.currentSystemDefault())
+        
+        viewModelScope.launch {
+            _uiState.update { it.copy(isUploadingPhoto = true) }
+            try {
+                habitEntryRepository.updatePhotoUrl(habit.id, currentUserId, today, null)
+                _uiState.update { 
+                    it.copy(
+                        isUploadingPhoto = false,
+                        currentUserPhotoUrl = null
+                    ) 
+                }
+            } catch (e: Exception) {
+                Timber.tag("GroupHabitDetailVM").e(e, "Failed to delete photo")
+                _uiState.update { 
+                    it.copy(
+                        isUploadingPhoto = false,
+                        error = application.getString(R.string.photo_proof_delete_error)
+                    ) 
+                }
+            }
+        }
     }
 }

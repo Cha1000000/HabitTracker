@@ -180,5 +180,7 @@ class GetHabitCompletionStatusUseCaseTest {
         override suspend fun markHabitIncomplete(habitId: String, userId: String, date: LocalDate) = throw NotImplementedError()
         override suspend fun setRestDay(habitId: String, userId: String, date: LocalDate, isRestDay: Boolean) = throw NotImplementedError()
         override fun getDailyCompletionCounts(userId: String): kotlinx.coroutines.flow.Flow<Map<LocalDate, Int>> = flowOf(emptyMap())
+        override suspend fun updatePhotoUrl(habitId: String, userId: String, date: LocalDate, photoUrl: String?) = Unit
+        override suspend fun getEntryOnce(habitId: String, userId: String, date: LocalDate): HabitEntry? = entryToReturn
     }
 }

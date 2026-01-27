@@ -219,6 +219,28 @@ object TahoeIcons {
     val Camera: ImageVector
         @Composable get() = ImageVector.vectorResource(R.drawable.ic_tahoe_camera)
     
+    val CameraAdd: ImageVector
+        @Composable get() = ImageVector.vectorResource(R.drawable.ic_tahoe_camera_add)
+
+    val RestZz: ImageVector
+        @Composable get() = ImageVector.vectorResource(R.drawable.ic_tahoe_rest_zz)
+
+    val Play: ImageVector
+        @Composable get() = ImageVector.vectorResource(R.drawable.ic_tahoe_play)
+    
+    val Image: ImageVector
+        @Composable get() = ImageVector.vectorResource(R.drawable.ic_tahoe_image)
+    
+    // Actions
+    val Delete: ImageVector
+        @Composable get() = ImageVector.vectorResource(R.drawable.ic_tahoe_delete)
+    
+    val Edit: ImageVector
+        @Composable get() = ImageVector.vectorResource(R.drawable.ic_tahoe_edit)
+    
+    val Target: ImageVector
+        @Composable get() = ImageVector.vectorResource(R.drawable.ic_tahoe_target)
+    
     // Misc
     val Heart: ImageVector
         @Composable get() = ImageVector.vectorResource(R.drawable.ic_tahoe_heart)

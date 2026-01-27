@@ -245,6 +245,9 @@ dependencies {
     // Image loading
     implementation(libs.coil.compose)
     
+    // ExifInterface для корректной ориентации фото
+    implementation(libs.androidx.exifinterface)
+    
     // FlowLayout from Accompanist
     implementation(libs.accompanist.flowlayout)
     

@@ -159,7 +159,8 @@ class GetHabitStatisticsUseCase @Inject constructor(
                 status = status,
                 value = entry?.value ?: 0,
                 targetValue = habit.targetValue,
-                note = entry?.note
+                note = entry?.note,
+                entry = entry
             )
         }
         

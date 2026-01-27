@@ -16,6 +16,7 @@ data class HabitEntry(
     val note: String? = "",
     val isRestDay: Boolean = false,
     val streakBonusAwardedDays: Int? = null,
+    val photoUrl: String? = null, // URL фото-подтверждения (локальный file:// или удалённый https://)
     val createdAt: LocalDate = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault()).date,
     val updatedAt: LocalDate = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault()).date
 )

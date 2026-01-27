@@ -1115,4 +1115,28 @@
     <string name="habit_stat_completed_short">Done</string>
     <string name="habit_stat_missed_short">Missed</string>
     <string name="habit_stat_streak_short">Streak</string>
+
+    <!-- Photo Proof -->
+    <string name="photo_proof_title">Day Details</string>
+    <string name="photo_proof_add">Add Photo Proof</string>
+    <string name="photo_proof_change">Change Photo</string>
+    <string name="photo_proof_delete">Delete Photo</string>
+    <string name="photo_proof_placeholder">Tap to add photo proof</string>
+    <string name="photo_proof_completed_at">Completed at %1$s</string>
+    <string name="photo_proof_value">Value: %1$d %2$s</string>
+    <string name="photo_proof_note">Note: %1$s</string>
+    <string name="photo_proof_status_completed">Completed</string>
+    <string name="photo_proof_status_missed">Not completed</string>
+    <string name="photo_proof_status_rest">Rest day</string>
+    <string name="photo_proof_uploading">Uploading photo…</string>
+    <string name="photo_proof_upload_success">Photo uploaded successfully</string>
+    <string name="photo_proof_upload_error">Failed to upload photo</string>
+    <string name="photo_proof_delete_error">Failed to delete photo</string>
+    <string name="photo_proof_delete_confirm">Delete this photo?</string>
+    <string name="photo_proof_snackbar_action">Add photo</string>
+    <string name="photo_proof_add_photo">Add photo</string>
+    <string name="photo_proof_habit_completed">Habit completed!</string>
+    <string name="photo_proof_select_source">Select photo source</string>
+    <string name="photo_proof_camera">Camera</string>
+    <string name="photo_proof_gallery">Gallery</string>
 </resources>

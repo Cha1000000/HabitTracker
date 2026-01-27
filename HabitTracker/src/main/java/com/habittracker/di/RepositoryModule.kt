@@ -59,4 +59,10 @@ abstract class RepositoryModule {
     abstract fun bindGroupHabitNotificationRepository(
         groupHabitNotificationRepositoryImpl: GroupHabitNotificationRepositoryImpl
     ): GroupHabitNotificationRepository
+
+    @Binds
+    @Singleton
+    abstract fun bindImageRepository(
+        imageRepositoryImpl: ImageRepositoryImpl
+    ): ImageRepository
 }

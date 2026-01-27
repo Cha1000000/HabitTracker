@@ -1,13 +1,17 @@
 package com.habittracker.presentation.viewmodel
 
+import android.net.Uri
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.habittracker.domain.model.GroupHabitStatisticsData
+import com.habittracker.domain.model.HabitEntry
 import com.habittracker.domain.model.HabitStatisticsData
 import com.habittracker.domain.model.StatisticsPeriod
 import com.habittracker.domain.model.User
 import com.habittracker.domain.repository.AuthRepository
+import com.habittracker.domain.repository.HabitEntryRepository
+import com.habittracker.domain.usecase.habit.AttachPhotoToEntryUseCase
 import com.habittracker.domain.usecase.habit.GetHabitStatisticsUseCase
 import com.habittracker.domain.util.AnalyticsEvents
 import com.habittracker.domain.util.AnalyticsManager
@@ -34,7 +38,10 @@ data class SelfHabitStatUiState(
     val statistics: HabitStatisticsData? = null,
     val selectedPeriod: StatisticsPeriod = StatisticsPeriod.WEEK,
     val customStartDate: LocalDate? = null,
-    val customEndDate: LocalDate? = null
+    val customEndDate: LocalDate? = null,
+    val selectedDayForDetail: LocalDate? = null,
+    val isUploadingPhoto: Boolean = false,
+    val photoUploadMessage: String? = null
 )
 
 /**
@@ -49,7 +56,8 @@ data class GroupHabitStatUiState(
     val customEndDate: LocalDate? = null,
     val showParticipantsComparison: Boolean = false,
     val selectedParticipantIds: Set<String> = emptySet(), // Пустой = все участники
-    val participantsInfo: List<User> = emptyList()
+    val participantsInfo: List<User> = emptyList(),
+    val isUploadingPhoto: Boolean = false
 )
 
 /**
@@ -61,6 +69,8 @@ class HabitStatisticsViewModel @Inject constructor(
     private val getHabitStatisticsUseCase: GetHabitStatisticsUseCase,
     private val authRepository: AuthRepository,
     private val analyticsManager: AnalyticsManager,
+    private val habitEntryRepository: HabitEntryRepository,
+    private val attachPhotoToEntryUseCase: AttachPhotoToEntryUseCase,
     savedStateHandle: SavedStateHandle
 ) : ViewModel() {
 
@@ -304,6 +314,131 @@ class HabitStatisticsViewModel @Inject constructor(
                 val startDate = customStart ?: today.minus(6, DateTimeUnit.DAY)
                 val endDate = customEnd ?: today
                 startDate to endDate
+            }
+        }
+    }
+
+    // Photo Proof methods
+    
+    fun onDaySelected(date: LocalDate) {
+        _selfStatUiState.update { it.copy(selectedDayForDetail = date) }
+    }
+
+    fun onDismissDayDetail() {
+        _selfStatUiState.update { it.copy(selectedDayForDetail = null, photoUploadMessage = null) }
+    }
+
+    fun getEntryForDate(date: LocalDate): HabitEntry? {
+        val dailyStats = _selfStatUiState.value.statistics?.dailyStatistics ?: return null
+        val dayStat = dailyStats.find { it.date == date } ?: return null
+        return dayStat.entry
+    }
+
+    fun attachPhotoToEntry(uri: Uri, date: LocalDate) {
+        viewModelScope.launch {
+            val userId = authRepository.getCurrentUserId() ?: return@launch
+            
+            _selfStatUiState.update { it.copy(isUploadingPhoto = true) }
+            
+            val result = attachPhotoToEntryUseCase(
+                sourceUri = uri,
+                habitId = habitId,
+                userId = userId,
+                date = date
+            )
+            
+            result.fold(
+                onSuccess = {
+                    _selfStatUiState.update { 
+                        it.copy(
+                            isUploadingPhoto = false,
+                            photoUploadMessage = "success"
+                        ) 
+                    }
+                    // Перезагружаем статистику для обновления данных
+                    loadSelfStatistics()
+                },
+                onFailure = { error ->
+                    _selfStatUiState.update { 
+                        it.copy(
+                            isUploadingPhoto = false,
+                            photoUploadMessage = "error: ${error.message}"
+                        ) 
+                    }
+                }
+            )
+        }
+    }
+
+    fun deletePhotoFromEntry(date: LocalDate) {
+        viewModelScope.launch {
+            val userId = authRepository.getCurrentUserId() ?: return@launch
+            
+            _selfStatUiState.update { it.copy(isUploadingPhoto = true) }
+            
+            try {
+                habitEntryRepository.updatePhotoUrl(habitId, userId, date, null)
+                _selfStatUiState.update { 
+                    it.copy(
+                        isUploadingPhoto = false,
+                        photoUploadMessage = "deleted"
+                    ) 
+                }
+                loadSelfStatistics()
+            } catch (e: Exception) {
+                _selfStatUiState.update { 
+                    it.copy(
+                        isUploadingPhoto = false,
+                        photoUploadMessage = "error: ${e.message}"
+                    ) 
+                }
+            }
+        }
+    }
+    
+    /**
+     * Прикрепляет фото к записи групповой привычки
+     */
+    fun attachPhotoToGroupHabit(uri: Uri, date: LocalDate) {
+        viewModelScope.launch {
+            val userId = authRepository.getCurrentUserId() ?: return@launch
+            
+            _groupStatUiState.update { it.copy(isUploadingPhoto = true) }
+            
+            try {
+                val result = attachPhotoToEntryUseCase(
+                    sourceUri = uri,
+                    habitId = habitId,
+                    userId = userId,
+                    date = date
+                )
+                
+                _groupStatUiState.update { it.copy(isUploadingPhoto = false) }
+                
+                if (result.isSuccess) {
+                    loadGroupStatistics()
+                }
+            } catch (e: Exception) {
+                _groupStatUiState.update { it.copy(isUploadingPhoto = false) }
+            }
+        }
+    }
+    
+    /**
+     * Удаляет фото из записи групповой привычки
+     */
+    fun deletePhotoFromGroupHabit(date: LocalDate) {
+        viewModelScope.launch {
+            val userId = authRepository.getCurrentUserId() ?: return@launch
+            
+            _groupStatUiState.update { it.copy(isUploadingPhoto = true) }
+            
+            try {
+                habitEntryRepository.updatePhotoUrl(habitId, userId, date, null)
+                _groupStatUiState.update { it.copy(isUploadingPhoto = false) }
+                loadGroupStatistics()
+            } catch (e: Exception) {
+                _groupStatUiState.update { it.copy(isUploadingPhoto = false) }
             }
         }
     }

@@ -75,8 +75,11 @@ import com.habittracker.domain.model.User
 import com.habittracker.presentation.ui.components.SectionCard
 import com.habittracker.presentation.ui.components.UserAvatar
 import com.habittracker.presentation.ui.habits.components.GlassmorphicDialog
+import com.habittracker.presentation.ui.habits.components.GlassmorphicButton
 import com.habittracker.presentation.ui.habits.components.GradientProgressBar
 import com.habittracker.presentation.ui.habits.components.TahoeGradientBackground
+import com.habittracker.presentation.ui.habits.components.HabitEntryDetailSheet
+import androidx.compose.material3.SnackbarResult
 import com.habittracker.presentation.utils.DateTimeFormatter
 import com.habittracker.presentation.viewmodel.GroupHabitDetailViewModel
 import kotlinx.datetime.Clock
@@ -121,6 +124,23 @@ fun GroupHabitDetailScreen(
                 duration = SnackbarDuration.Short
             )
             viewModel.clearSuccessMessage()
+        }
+    }
+    
+    // SnackBar с предложением добавить фото после выполнения привычки
+    val addPhotoText = stringResource(R.string.photo_proof_habit_completed)
+    val addPhotoActionText = stringResource(R.string.photo_proof_snackbar_action)
+    LaunchedEffect(uiState.showPhotoProofPrompt) {
+        if (uiState.showPhotoProofPrompt) {
+            val result = snackbarHostState.showSnackbar(
+                message = addPhotoText,
+                actionLabel = addPhotoActionText,
+                duration = SnackbarDuration.Short
+            )
+            if (result == SnackbarResult.ActionPerformed) {
+                viewModel.showPhotoSheet()
+            }
+            viewModel.dismissPhotoProofPrompt()
         }
     }
 
@@ -207,6 +227,8 @@ fun GroupHabitDetailScreen(
                             habit = uiState.habit,
                             isCompletedToday = uiState.isCompletedToday,
                             isMarkingCompletion = uiState.isMarkingCompletion,
+                            hasPhotoProof = uiState.currentUserPhotoUrl != null,
+                            onAddPhotoClick = { viewModel.showPhotoSheet() },
                             onToggleCompletion = { viewModel.toggleHabitCompletion() },
                             modifier = Modifier.fillMaxWidth()
                         )
@@ -290,6 +312,31 @@ fun GroupHabitDetailScreen(
             }
         }
     }
+    
+    // BottomSheet для добавления фото-подтверждения
+    val today = Clock.System.todayIn(TimeZone.currentSystemDefault())
+    if (uiState.showPhotoSheet && uiState.habit != null) {
+        HabitEntryDetailSheet(
+            entry = HabitEntry(
+                habitId = uiState.habit!!.id,
+                date = today,
+                completed = uiState.isCompletedToday,
+                value = 0,
+                note = null,
+                isRestDay = false,
+                streakBonusAwardedDays = null,
+                completedAt = null,
+                photoUrl = uiState.currentUserPhotoUrl
+            ),
+            date = today,
+            habitTitle = uiState.habit!!.title,
+            habitUnit = uiState.habit!!.unit,
+            isUploading = uiState.isUploadingPhoto,
+            onDismiss = { viewModel.hidePhotoSheet() },
+            onAddPhoto = { uri -> viewModel.attachPhoto(uri) },
+            onDeletePhoto = { viewModel.deletePhoto() }
+        )
+    }
 }
 
 /**
@@ -302,6 +349,8 @@ private fun HabitInfoSection(
     isCompletedToday: Boolean = false,
     isMarkingCompletion: Boolean = false,
     onToggleCompletion: () -> Unit = {},
+    hasPhotoProof: Boolean = false,
+    onAddPhotoClick: () -> Unit = {},
 ) {
     habit?.let { h ->
         SectionCard(
@@ -441,6 +490,24 @@ private fun HabitInfoSection(
                             modifier = Modifier.size(24.dp)
                         )
                     }
+                }
+            }
+            
+            // Кнопка "Добавить фото" - показываем если выполнено и фото нет
+            if (isCompletedToday && !hasPhotoProof) {
+                Spacer(modifier = Modifier.height(12.dp))
+                GlassmorphicButton(
+                    onClick = onAddPhotoClick,
+                    modifier = Modifier.fillMaxWidth(),
+                    isDarkTheme = isSystemInDarkTheme()
+                ) {
+                    Icon(
+                        imageVector = TahoeIcons.CameraAdd,
+                        contentDescription = null,
+                        modifier = Modifier.size(18.dp)
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(stringResource(R.string.photo_proof_add_photo))
                 }
             }
         }

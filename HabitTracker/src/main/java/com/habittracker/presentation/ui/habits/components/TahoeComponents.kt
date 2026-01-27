@@ -110,6 +110,7 @@ import com.habittracker.presentation.ui.theme.GlassBlack50
 import com.habittracker.presentation.ui.theme.GlassWhite10
 import com.habittracker.presentation.ui.theme.GlassWhite30
 import com.habittracker.presentation.ui.theme.GlassWhite40
+import com.habittracker.presentation.ui.theme.GlassWhite50
 import com.habittracker.presentation.ui.theme.TahoeAqua
 import com.habittracker.presentation.ui.theme.TahoeDeepBlue
 import com.habittracker.presentation.ui.theme.TahoeElectricBlue
@@ -868,7 +869,7 @@ fun GlassmorphicDropdownMenuItem(
         enabled = enabled,
         colors = MenuDefaults.itemColors(
             textColor = if (isDarkTheme) Color.White else MaterialTheme.colorScheme.onSurface,
-            leadingIconColor = if (isDarkTheme) GlassWhite40 else MaterialTheme.colorScheme.onSurfaceVariant,
+            leadingIconColor = if (isDarkTheme) GlassWhite50 else MaterialTheme.colorScheme.onSurfaceVariant,
             trailingIconColor = if (isDarkTheme) GlassWhite40 else MaterialTheme.colorScheme.onSurfaceVariant,
             disabledTextColor = if (isDarkTheme) GlassWhite30 else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
         )

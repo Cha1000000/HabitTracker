@@ -54,6 +54,8 @@ import kotlinx.datetime.minus
 import kotlinx.datetime.plus
 import kotlinx.datetime.toLocalDateTime
 import com.habittracker.domain.usecase.UpdateHabitEntryValueUseCase
+import com.habittracker.domain.usecase.habit.AttachPhotoToEntryUseCase
+import android.net.Uri
 import javax.inject.Inject
 import timber.log.Timber
 
@@ -67,7 +69,8 @@ data class HabitWithCompletion(
     val isRestDayToday: Boolean = false,
     val isLoading: Boolean = false,
     val participantsProgress: List<ParticipantProgress> = emptyList(), // Прогресс участников для групповых привычек
-    val currentValue: Int = 0 // Текущее значение выполнения (для измеримых привычек)
+    val currentValue: Int = 0, // Текущее значение выполнения (для измеримых привычек)
+    val photoUrl: String? = null // URL фото-подтверждения для текущего дня
 )
 
 @HiltViewModel
@@ -89,6 +92,8 @@ class HabitsViewModel @Inject constructor(
     private val userPreferencesRepository: UserPreferencesRepository,
     private val analyticsManager: AnalyticsManager,
     private val errorLogger: ErrorLogger,
+    private val attachPhotoToEntryUseCase: AttachPhotoToEntryUseCase,
+    private val habitEntryRepository: com.habittracker.domain.repository.HabitEntryRepository,
     application: Application
 ) : AndroidViewModel(application) {
 
@@ -451,7 +456,8 @@ class HabitsViewModel @Inject constructor(
                                     isRestDayToday = isRestDay,
                                     isLoading = false,
                                     participantsProgress = participantsProgress,
-                                    currentValue = currentValue
+                                    currentValue = currentValue,
+                                    photoUrl = habitEntry?.photoUrl
                                 )
                             }
                         }.awaitAll()
@@ -683,8 +689,19 @@ class HabitsViewModel @Inject constructor(
                 // Обновляем финальное состояние
                 updateHabitCompletionStatus(habitId, true, isLoading = false)
                 
-                // Показываем конфетти при успешном выполнении
-                _uiState.value = _uiState.value.copy(showConfetti = true)
+                // Получаем название привычки для SnackBar
+                val habitTitle = _uiState.value.habitsWithCompletion
+                    .find { it.habit.id == habitId }?.habit?.title ?: ""
+                
+                // Показываем конфетти и предложение добавить фото
+                _uiState.value = _uiState.value.copy(
+                    showConfetti = true,
+                    completedHabitForPhotoProof = com.habittracker.presentation.state.CompletedHabitInfo(
+                        habitId = habitId,
+                        habitTitle = habitTitle,
+                        date = selectedDate
+                    )
+                )
                 
                 // Инвалидируем кеш для недели с изменённой датой и перезагружаем данные
                 val weekStart = getStartOfWeek(selectedDate)
@@ -705,6 +722,141 @@ class HabitsViewModel @Inject constructor(
      */
     fun hideConfetti() {
         _uiState.value = _uiState.value.copy(showConfetti = false)
+    }
+
+    /**
+     * Очищает информацию о выполненной привычке (после закрытия SnackBar)
+     */
+    fun clearCompletedHabitForPhotoProof() {
+        _uiState.value = _uiState.value.copy(completedHabitForPhotoProof = null)
+    }
+    
+    /**
+     * Показывает BottomSheet для добавления фото-подтверждения
+     */
+    fun showPhotoSheet(habitId: String) {
+        val habit = _uiState.value.habitsWithCompletion.find { it.habit.id == habitId } ?: return
+        val selectedDate = _uiState.value.selectedDate ?: today
+        
+        _uiState.value = _uiState.value.copy(
+            habitForPhotoSheet = com.habittracker.presentation.state.HabitPhotoSheetInfo(
+                habitId = habitId,
+                habitTitle = habit.habit.title,
+                habitUnit = habit.habit.unit,
+                date = selectedDate,
+                photoUrl = habit.photoUrl
+            )
+        )
+    }
+    
+    /**
+     * Скрывает BottomSheet для добавления фото-подтверждения
+     */
+    fun hidePhotoSheet() {
+        _uiState.value = _uiState.value.copy(habitForPhotoSheet = null)
+    }
+    
+    /**
+     * Прикрепляет фото к записи привычки
+     */
+    fun attachPhoto(uri: Uri) {
+        val photoSheetInfo = _uiState.value.habitForPhotoSheet ?: run {
+            Timber.tag(TAG).w("attachPhoto: photoSheetInfo is null")
+            return
+        }
+        
+        Timber.tag(TAG).d("attachPhoto: Starting upload for uri=$uri, habitId=${photoSheetInfo.habitId}")
+        
+        viewModelScope.launch {
+            _uiState.value = _uiState.value.copy(isUploadingPhoto = true)
+            try {
+                Timber.tag(TAG).d("attachPhoto: Calling attachPhotoToEntryUseCase")
+                val result = attachPhotoToEntryUseCase(
+                    sourceUri = uri,
+                    habitId = photoSheetInfo.habitId,
+                    userId = currentUserId,
+                    date = photoSheetInfo.date
+                )
+                
+                Timber.tag(TAG).d("attachPhoto: UseCase result isSuccess=${result.isSuccess}, value=${result.getOrNull()}")
+                
+                if (result.isSuccess) {
+                    val cloudUrl = result.getOrNull()
+                    // Обновляем photoUrl в списке привычек
+                    val updatedHabits = _uiState.value.habitsWithCompletion.map { hwc ->
+                        if (hwc.habit.id == photoSheetInfo.habitId) {
+                            hwc.copy(photoUrl = cloudUrl)
+                        } else {
+                            hwc
+                        }
+                    }
+                    _uiState.value = _uiState.value.copy(
+                        habitsWithCompletion = updatedHabits,
+                        isUploadingPhoto = false,
+                        habitForPhotoSheet = photoSheetInfo.copy(photoUrl = cloudUrl),
+                        message = getApplication<Application>().getString(R.string.photo_proof_upload_success)
+                    )
+                } else {
+                    _uiState.value = _uiState.value.copy(
+                        isUploadingPhoto = false,
+                        error = getApplication<Application>().getString(R.string.photo_proof_upload_error)
+                    )
+                }
+            } catch (e: Exception) {
+                Timber.tag(TAG).e(e, "Failed to attach photo")
+                _uiState.value = _uiState.value.copy(
+                    isUploadingPhoto = false,
+                    error = getApplication<Application>().getString(R.string.photo_proof_upload_error)
+                )
+            }
+        }
+    }
+    
+    /**
+     * Удаляет фото из записи привычки
+     */
+    fun deletePhoto() {
+        val photoSheetInfo = _uiState.value.habitForPhotoSheet ?: return
+        
+        viewModelScope.launch {
+            _uiState.value = _uiState.value.copy(isUploadingPhoto = true)
+            try {
+                // Обновляем запись в БД (удаляем URL фото)
+                habitEntryRepository.updatePhotoUrl(
+                    habitId = photoSheetInfo.habitId,
+                    userId = currentUserId,
+                    date = photoSheetInfo.date,
+                    photoUrl = null
+                )
+                
+                // Обновляем photoUrl в списке привычек
+                val updatedHabits = _uiState.value.habitsWithCompletion.map { hwc ->
+                    if (hwc.habit.id == photoSheetInfo.habitId) {
+                        hwc.copy(photoUrl = null)
+                    } else {
+                        hwc
+                    }
+                }
+                _uiState.value = _uiState.value.copy(
+                    habitsWithCompletion = updatedHabits,
+                    isUploadingPhoto = false,
+                    habitForPhotoSheet = photoSheetInfo.copy(photoUrl = null)
+                )
+            } catch (e: Exception) {
+                Timber.tag(TAG).e(e, "Failed to delete photo")
+                _uiState.value = _uiState.value.copy(
+                    isUploadingPhoto = false,
+                    error = getApplication<Application>().getString(R.string.photo_proof_delete_error)
+                )
+            }
+        }
+    }
+    
+    /**
+     * Очищает сообщение
+     */
+    fun clearMessage() {
+        _uiState.value = _uiState.value.copy(message = null)
     }
     
     /**

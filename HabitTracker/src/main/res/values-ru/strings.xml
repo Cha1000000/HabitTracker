@@ -1113,4 +1113,28 @@
     <string name="habit_stat_completed_short">Выполнено</string>
     <string name="habit_stat_missed_short">Пропущено</string>
     <string name="habit_stat_streak_short">Серия</string>
+
+    <!-- Photo Proof -->
+    <string name="photo_proof_title">Детали дня</string>
+    <string name="photo_proof_add">Добавить фото</string>
+    <string name="photo_proof_change">Изменить фото</string>
+    <string name="photo_proof_delete">Удалить фото</string>
+    <string name="photo_proof_placeholder">Нажмите, чтобы добавить фото</string>
+    <string name="photo_proof_completed_at">Выполнено в %1$s</string>
+    <string name="photo_proof_value">Значение: %1$d %2$s</string>
+    <string name="photo_proof_note">Заметка: %1$s</string>
+    <string name="photo_proof_status_completed">Выполнено</string>
+    <string name="photo_proof_status_missed">Не выполнено</string>
+    <string name="photo_proof_status_rest">Выходной</string>
+    <string name="photo_proof_uploading">Загрузка фото…</string>
+    <string name="photo_proof_upload_success">Фото успешно загружено</string>
+    <string name="photo_proof_upload_error">Не удалось загрузить фото</string>
+    <string name="photo_proof_delete_error">Не удалось удалить фото</string>
+    <string name="photo_proof_delete_confirm">Удалить это фото?</string>
+    <string name="photo_proof_snackbar_action">Добавить фото</string>
+    <string name="photo_proof_add_photo">Добавить фото</string>
+    <string name="photo_proof_habit_completed">Привычка выполнена!</string>
+    <string name="photo_proof_select_source">Выберите источник фото</string>
+    <string name="photo_proof_camera">Камера</string>
+    <string name="photo_proof_gallery">Галерея</string>
 </resources>
