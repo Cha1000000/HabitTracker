@@ -8,6 +8,9 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.gestures.rememberTransformableState
+import androidx.compose.foundation.gestures.transformable
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -15,6 +18,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -32,6 +36,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -40,12 +45,16 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
 import androidx.core.content.FileProvider
 import coil.compose.AsyncImage
 import com.habittracker.R
@@ -84,6 +93,7 @@ fun HabitEntryDetailSheet(
     var showPhotoSourceDialog by remember { mutableStateOf(false) }
     var showDeleteConfirmDialog by remember { mutableStateOf(false) }
     var tempCameraUri by remember { mutableStateOf<Uri?>(null) }
+    var fullScreenPhotoUrl by remember { mutableStateOf<String?>(null) }
     
     // Launcher для выбора фото из галереи
     val galleryLauncher = rememberLauncherForActivityResult(
@@ -99,7 +109,6 @@ fun HabitEntryDetailSheet(
         if (success) {
             tempCameraUri?.let { uri -> onAddPhoto(uri) }
         }
-        tempCameraUri = null
     }
     
     // Launcher для запроса разрешения камеры
@@ -175,9 +184,87 @@ fun HabitEntryDetailSheet(
                     photoUrl = entry.photoUrl,
                     isUploading = isUploading,
                     isDarkTheme = isDarkTheme,
+                    onPhotoClick = { fullScreenPhotoUrl = entry.photoUrl },
                     onAddClick = { showPhotoSourceDialog = true },
                     onDeleteClick = { showDeleteConfirmDialog = true }
                 )
+            }
+        }
+    }
+
+    fullScreenPhotoUrl?.let { url ->
+        var scale by remember(url) { mutableFloatStateOf(1f) }
+        var offsetX by remember(url) { mutableFloatStateOf(0f) }
+        var offsetY by remember(url) { mutableFloatStateOf(0f) }
+
+        val transformableState = rememberTransformableState { zoomChange, panChange, _ ->
+            val newScale = (scale * zoomChange).coerceIn(1f, 4f)
+            if (newScale != scale) {
+                val scaleRatio = newScale / scale
+                offsetX *= scaleRatio
+                offsetY *= scaleRatio
+            }
+            scale = newScale
+            if (scale > 1f) {
+                offsetX += panChange.x
+                offsetY += panChange.y
+            } else {
+                offsetX = 0f
+                offsetY = 0f
+            }
+        }
+
+        Dialog(
+            onDismissRequest = { fullScreenPhotoUrl = null },
+            properties = DialogProperties(usePlatformDefaultWidth = false)
+        ) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(Color.Black)
+            ) {
+                AsyncImage(
+                    model = url,
+                    contentDescription = null,
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .pointerInput(url) {
+                            detectTapGestures(
+                                onDoubleTap = {
+                                    if (scale > 1f) {
+                                        scale = 1f
+                                        offsetX = 0f
+                                        offsetY = 0f
+                                    } else {
+                                        scale = 2f
+                                    }
+                                }
+                            )
+                        }
+                        .graphicsLayer {
+                            scaleX = scale
+                            scaleY = scale
+                            translationX = offsetX
+                            translationY = offsetY
+                        }
+                        .transformable(state = transformableState),
+                    contentScale = ContentScale.Fit
+                )
+
+                IconButton(
+                    onClick = { fullScreenPhotoUrl = null },
+                    modifier = Modifier
+                        .align(Alignment.TopEnd)
+                        .padding(16.dp)
+                        .size(40.dp)
+                        .background(Color.Black.copy(alpha = 0.5f), CircleShape)
+                ) {
+                    Icon(
+                        TahoeIcons.XMark,
+                        contentDescription = stringResource(R.string.action_close),
+                        tint = Color.White
+                    )
+                }
             }
         }
     }
@@ -347,6 +434,7 @@ private fun PhotoProofSection(
     photoUrl: String?,
     isUploading: Boolean,
     isDarkTheme: Boolean,
+    onPhotoClick: () -> Unit,
     onAddClick: () -> Unit,
     onDeleteClick: () -> Unit
 ) {
@@ -373,7 +461,8 @@ private fun PhotoProofSection(
                     contentDescription = stringResource(R.string.photo_proof_add),
                     modifier = Modifier
                         .fillMaxWidth()
-                        .clip(RoundedCornerShape(12.dp)),
+                        .clip(RoundedCornerShape(12.dp))
+                        .clickable(enabled = !isUploading) { onPhotoClick() },
                     contentScale = ContentScale.Crop
                 )
                 

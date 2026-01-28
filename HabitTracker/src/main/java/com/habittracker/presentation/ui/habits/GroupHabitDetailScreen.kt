@@ -19,7 +19,6 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import com.habittracker.presentation.ui.theme.TahoeIcons
 import androidx.compose.material3.AssistChip
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
@@ -38,6 +37,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarDuration
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.SnackbarResult
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -74,12 +74,12 @@ import com.habittracker.domain.model.HabitInvitation
 import com.habittracker.domain.model.User
 import com.habittracker.presentation.ui.components.SectionCard
 import com.habittracker.presentation.ui.components.UserAvatar
-import com.habittracker.presentation.ui.habits.components.GlassmorphicDialog
 import com.habittracker.presentation.ui.habits.components.GlassmorphicButton
+import com.habittracker.presentation.ui.habits.components.GlassmorphicDialog
 import com.habittracker.presentation.ui.habits.components.GradientProgressBar
-import com.habittracker.presentation.ui.habits.components.TahoeGradientBackground
 import com.habittracker.presentation.ui.habits.components.HabitEntryDetailSheet
-import androidx.compose.material3.SnackbarResult
+import com.habittracker.presentation.ui.habits.components.TahoeGradientBackground
+import com.habittracker.presentation.ui.theme.TahoeIcons
 import com.habittracker.presentation.utils.DateTimeFormatter
 import com.habittracker.presentation.viewmodel.GroupHabitDetailViewModel
 import kotlinx.datetime.Clock
@@ -221,16 +221,18 @@ fun GroupHabitDetailScreen(
                     contentPadding = PaddingValues(16.dp),
                     verticalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
+                    val hasPhotoProofAlready = uiState.currentUserPhotoUrl != null &&
+                            uiState.currentUserPhotoUrl!!.isNotEmpty()
                     // Основная информация о привычке
                     item {
                         HabitInfoSection(
                             habit = uiState.habit,
+                            modifier = Modifier.fillMaxWidth(),
                             isCompletedToday = uiState.isCompletedToday,
                             isMarkingCompletion = uiState.isMarkingCompletion,
-                            hasPhotoProof = uiState.currentUserPhotoUrl != null,
+                            hasPhotoProof = hasPhotoProofAlready,
                             onAddPhotoClick = { viewModel.showPhotoSheet() },
                             onToggleCompletion = { viewModel.toggleHabitCompletion() },
-                            modifier = Modifier.fillMaxWidth()
                         )
                     }
 
@@ -493,8 +495,8 @@ private fun HabitInfoSection(
                 }
             }
             
-            // Кнопка "Добавить фото" - показываем если выполнено и фото нет
-            if (isCompletedToday && !hasPhotoProof) {
+            // Кнопка "Добавить/Заменить фото" - показываем если привычка выполнена
+            if (isCompletedToday) {
                 Spacer(modifier = Modifier.height(12.dp))
                 GlassmorphicButton(
                     onClick = onAddPhotoClick,
@@ -507,7 +509,11 @@ private fun HabitInfoSection(
                         modifier = Modifier.size(18.dp)
                     )
                     Spacer(modifier = Modifier.width(8.dp))
-                    Text(stringResource(R.string.photo_proof_add_photo))
+                    Text(
+                        stringResource(
+                            if (hasPhotoProof) R.string.photo_proof_replace_photo else R.string.photo_proof_add_photo
+                        )
+                    )
                 }
             }
         }

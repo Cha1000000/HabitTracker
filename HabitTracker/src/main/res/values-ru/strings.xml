@@ -1133,6 +1133,7 @@
     <string name="photo_proof_delete_confirm">Удалить это фото?</string>
     <string name="photo_proof_snackbar_action">Добавить фото</string>
     <string name="photo_proof_add_photo">Добавить фото</string>
+    <string name="photo_proof_replace_photo">Заменить фото</string>
     <string name="photo_proof_habit_completed">Привычка выполнена!</string>
     <string name="photo_proof_select_source">Выберите источник фото</string>
     <string name="photo_proof_camera">Камера</string>

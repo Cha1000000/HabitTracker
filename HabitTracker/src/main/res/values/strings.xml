@@ -1135,6 +1135,7 @@
     <string name="photo_proof_delete_confirm">Delete this photo?</string>
     <string name="photo_proof_snackbar_action">Add photo</string>
     <string name="photo_proof_add_photo">Add photo</string>
+    <string name="photo_proof_replace_photo">Replace photo</string>
     <string name="photo_proof_habit_completed">Habit completed!</string>
     <string name="photo_proof_select_source">Select photo source</string>
     <string name="photo_proof_camera">Camera</string>

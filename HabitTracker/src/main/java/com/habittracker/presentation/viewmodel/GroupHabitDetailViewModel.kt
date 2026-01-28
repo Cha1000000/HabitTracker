@@ -191,6 +191,10 @@ class GroupHabitDetailViewModel @Inject constructor(
                         entry.date == today && 
                         entry.completed
                     }
+
+                    val todayPhotoUrl = relevantEntries.firstOrNull { entry ->
+                        entry.userId == currentUserId && entry.date == today
+                    }?.photoUrl
                     
                     // Рассчитываем групповую серию
                     val groupStreak = calculateGroupStreak(relevantEntries, participantIds)
@@ -200,7 +204,8 @@ class GroupHabitDetailViewModel @Inject constructor(
                         state.copy(
                             habitEntries = relevantEntries,
                             groupStreak = groupStreak,
-                            isCompletedToday = isCompletedToday
+                            isCompletedToday = isCompletedToday,
+                            currentUserPhotoUrl = if (state.isUploadingPhoto) state.currentUserPhotoUrl else todayPhotoUrl
                         )
                     }
                 }

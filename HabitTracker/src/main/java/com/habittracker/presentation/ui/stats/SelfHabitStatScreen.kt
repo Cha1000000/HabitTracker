@@ -1,5 +1,6 @@
 package com.habittracker.presentation.ui.stats
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -75,6 +76,14 @@ fun SelfHabitStatScreen(
     val uiState by viewModel.selfStatUiState.collectAsStateWithLifecycle()
     val isDarkTheme = isSystemInDarkTheme()
 
+    BackHandler {
+        if (uiState.selectedDayForDetail != null) {
+            viewModel.onDismissDayDetail()
+        } else {
+            onNavigateBack()
+        }
+    }
+
     TahoeGradientBackground(
         modifier = Modifier.fillMaxSize(),
         isDarkTheme = isDarkTheme
@@ -92,7 +101,15 @@ fun SelfHabitStatScreen(
                         )
                     },
                     navigationIcon = {
-                        IconButton(onClick = onNavigateBack) {
+                        IconButton(
+                            onClick = {
+                                if (uiState.selectedDayForDetail != null) {
+                                    viewModel.onDismissDayDetail()
+                                } else {
+                                    onNavigateBack()
+                                }
+                            }
+                        ) {
                             Icon(
                                 TahoeIcons.ArrowBack,
                                 contentDescription = stringResource(R.string.cd_back)
