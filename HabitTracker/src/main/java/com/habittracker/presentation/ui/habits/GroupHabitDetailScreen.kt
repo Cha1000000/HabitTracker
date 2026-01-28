@@ -255,6 +255,10 @@ fun GroupHabitDetailScreen(
                             onRemoveParticipant = { userId ->
                                 viewModel.removeParticipant(userId)
                             },
+                            currentUserId = uiState.currentUserId,
+                            nudgedUserIds = uiState.nudgedUserIds,
+                            isSendingNudge = uiState.isSendingNudge,
+                            onNudge = { userId -> viewModel.sendNudge(userId) },
                             modifier = Modifier.fillMaxWidth()
                         )
                     }
@@ -668,6 +672,10 @@ private fun ParticipantsSection(
     habitEntries: List<HabitEntry>,
     isManageMode: Boolean,
     onRemoveParticipant: (String) -> Unit,
+    currentUserId: String,
+    nudgedUserIds: Set<String>,
+    isSendingNudge: Boolean,
+    onNudge: (String) -> Unit,
     modifier: Modifier = Modifier
 ) {
     val today = Clock.System.todayIn(TimeZone.currentSystemDefault())
@@ -696,12 +704,17 @@ private fun ParticipantsSection(
             ) {
                 participants.forEach { participant ->
                     val isCompleted = todayEntries.any { it.userId == participant.id && it.completed }
+                    val isNudged = nudgedUserIds.contains(participant.id)
+                    val isSelf = participant.id == currentUserId
                     ParticipantListItem(
                         participant = participant,
                         isCompleted = isCompleted,
                         isOwner = participant.id == participants.firstOrNull()?.id,
                         isManageMode = isManageMode,
-                        onRemove = { onRemoveParticipant(participant.id) }
+                        onRemove = { onRemoveParticipant(participant.id) },
+                        canNudge = !isCompleted && !isNudged && !isSelf,
+                        isNudgeDisabled = isNudged || isSendingNudge,
+                        onNudge = { onNudge(participant.id) }
                     )
                 }
             }
@@ -719,6 +732,9 @@ private fun ParticipantListItem(
     isOwner: Boolean,
     isManageMode: Boolean,
     onRemove: () -> Unit,
+    canNudge: Boolean,
+    isNudgeDisabled: Boolean,
+    onNudge: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     ListItem(
@@ -780,8 +796,28 @@ private fun ParticipantListItem(
         },
         trailingContent = {
             Row(
-                verticalAlignment = Alignment.CenterVertically
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
+                // Кнопка Nudge (только если не выполнено и не в режиме управления)
+                if (canNudge && !isManageMode) {
+                    IconButton(
+                        onClick = onNudge,
+                        enabled = !isNudgeDisabled,
+                        modifier = Modifier.size(32.dp)
+                    ) {
+                        Text(
+                            text = "🥾",
+                            style = MaterialTheme.typography.titleMedium,
+                            color = if (isNudgeDisabled) {
+                                MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f)
+                            } else {
+                                Color.Unspecified
+                            }
+                        )
+                    }
+                }
+                
                 Icon(
                     imageVector = if (isCompleted) {
                         TahoeIcons.CheckCircle
@@ -797,7 +833,6 @@ private fun ParticipantListItem(
                     modifier = Modifier.size(24.dp)
                 )
                 if (isManageMode && !isOwner) {
-                    Spacer(modifier = Modifier.width(12.dp))
                     Icon(
                         imageVector = TahoeIcons.UserMinus,
                         contentDescription = stringResource(R.string.remove_participant),
@@ -1123,7 +1158,7 @@ private fun LeaveGroupSection(
                     Text(text = stringResource(R.string.cancel))
                 }
                 Spacer(modifier = Modifier.width(8.dp))
-                com.habittracker.presentation.ui.habits.components.GlassmorphicButton(
+                GlassmorphicButton(
                     onClick = {
                         onLeaveGroup()
                         showConfirmDialog = false

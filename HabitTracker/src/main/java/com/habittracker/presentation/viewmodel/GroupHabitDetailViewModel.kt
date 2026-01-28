@@ -2,6 +2,7 @@ package com.habittracker.presentation.viewmodel
 
 import android.app.Application
 import android.content.Intent
+import android.net.Uri
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.habittracker.R
@@ -11,17 +12,18 @@ import com.habittracker.domain.model.User
 import com.habittracker.domain.model.isGroupHabit
 import com.habittracker.domain.repository.AuthRepository
 import com.habittracker.domain.repository.HabitEntryRepository
+import com.habittracker.domain.repository.NudgeRepository
 import com.habittracker.domain.repository.UserRepository
 import com.habittracker.domain.usecase.DeleteHabitUseCase
 import com.habittracker.domain.usecase.GetHabitByIdUseCase
 import com.habittracker.domain.usecase.MarkHabitCompletedUseCase
 import com.habittracker.domain.usecase.MarkHabitIncompleteUseCase
 import com.habittracker.domain.usecase.UpdateHabitUseCase
+import com.habittracker.domain.usecase.habit.AttachPhotoToEntryUseCase
 import com.habittracker.domain.usecase.habit.GenerateHabitInviteCodeUseCase
 import com.habittracker.domain.usecase.habit.GetHabitInvitationsUseCase
-import com.habittracker.domain.usecase.habit.AttachPhotoToEntryUseCase
+import com.habittracker.domain.usecase.social.SendNudgeUseCase
 import com.habittracker.presentation.state.GroupHabitDetailUiState
-import android.net.Uri
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -35,8 +37,8 @@ import kotlinx.datetime.DatePeriod
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.minus
 import kotlinx.datetime.todayIn
-import javax.inject.Inject
 import timber.log.Timber
+import javax.inject.Inject
 
 /**
  * ViewModel для экрана детальной информации о групповой привычке
@@ -55,7 +57,9 @@ class GroupHabitDetailViewModel @Inject constructor(
     private val updateHabitUseCase: UpdateHabitUseCase,
     private val deleteHabitUseCase: DeleteHabitUseCase,
     private val getLeaderboardUseCase: com.habittracker.domain.usecase.gamification.GetLeaderboardUseCase,
-    private val attachPhotoToEntryUseCase: AttachPhotoToEntryUseCase
+    private val attachPhotoToEntryUseCase: AttachPhotoToEntryUseCase,
+    private val sendNudgeUseCase: SendNudgeUseCase,
+    private val nudgeRepository: NudgeRepository
 ) : AndroidViewModel(application) {
 
     private val _uiState = MutableStateFlow(GroupHabitDetailUiState())
@@ -68,6 +72,7 @@ class GroupHabitDetailViewModel @Inject constructor(
     private var entriesCollectionJob: Job? = null
     private var invitationsCollectionJob: Job? = null
     private var leaderboardJob: Job? = null
+    private var nudgesCollectionJob: Job? = null
 
     /**
      * Загрузка детальной информации о привычке
@@ -77,10 +82,11 @@ class GroupHabitDetailViewModel @Inject constructor(
         entriesCollectionJob?.cancel()
         invitationsCollectionJob?.cancel()
         leaderboardJob?.cancel()
+        nudgesCollectionJob?.cancel()
         
         viewModelScope.launch {
             try {
-                _uiState.update { it.copy(isLoading = true, error = null) }
+                _uiState.update { it.copy(isLoading = true, error = null, currentUserId = currentUserId) }
 
                 // Загружаем привычку
                 val habit = getHabitByIdUseCase(habitId)
@@ -140,6 +146,8 @@ class GroupHabitDetailViewModel @Inject constructor(
                     collectHabitEntries(habitId, participants.map { it.id })
                     // Загружаем лидерборд участников
                     loadParticipantLeaderboard(habitId)
+                    // Подписываемся на nudges (кого уже "пнули")
+                    collectNudgedUserIds(habitId)
                 }
 
                 // Загружаем приглашения (только для владельца)
@@ -644,6 +652,61 @@ class GroupHabitDetailViewModel @Inject constructor(
                         isUploadingPhoto = false,
                         error = application.getString(R.string.photo_proof_delete_error)
                     ) 
+                }
+            }
+        }
+    }
+    
+    /**
+     * Подписка на изменения nudgedUserIds (кого уже "пнули" и cooldown не истёк)
+     */
+    private fun collectNudgedUserIds(habitId: String) {
+        nudgesCollectionJob?.cancel()
+        nudgesCollectionJob = viewModelScope.launch {
+            nudgeRepository.getNudgedUserIdsFlow(habitId, currentUserId)
+                .catch { e ->
+                    Timber.tag("GroupHabitDetailVM").e(e, "Failed to collect nudged user ids")
+                }
+                .collect { nudgedIds ->
+                    _uiState.update { it.copy(nudgedUserIds = nudgedIds) }
+                }
+        }
+    }
+    
+    /**
+     * Отправить nudge (пинг) участнику
+     */
+    fun sendNudge(receiverId: String) {
+        val habitId = _uiState.value.habit?.id ?: return
+        
+        viewModelScope.launch {
+            _uiState.update { it.copy(isSendingNudge = true) }
+            
+            when (sendNudgeUseCase(habitId, receiverId)) {
+                is SendNudgeUseCase.Result.Success -> {
+                    _uiState.update { state ->
+                        state.copy(
+                            isSendingNudge = false,
+                            nudgedUserIds = state.nudgedUserIds + receiverId,
+                            successMessage = application.getString(R.string.nudge_sent_success)
+                        )
+                    }
+                }
+                is SendNudgeUseCase.Result.OnCooldown -> {
+                    _uiState.update { 
+                        it.copy(
+                            isSendingNudge = false,
+                            error = application.getString(R.string.nudge_on_cooldown)
+                        ) 
+                    }
+                }
+                is SendNudgeUseCase.Result.Error -> {
+                    _uiState.update { 
+                        it.copy(
+                            isSendingNudge = false,
+                            error = application.getString(R.string.nudge_send_error)
+                        ) 
+                    }
                 }
             }
         }

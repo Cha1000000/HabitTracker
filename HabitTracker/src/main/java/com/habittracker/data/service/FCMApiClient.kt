@@ -59,17 +59,17 @@ class FCMApiClient @Inject constructor() {
     // Service Account JSON для OAuth 2.0
     private val serviceAccountJson = """
     {
-        "type": "service_account",
-        "project_id": "habitttracker-505b6",
-        "private_key_id": "83f370d2b0510474b8fd937b0e443c1367b12af1",
-        "private_key": "-----BEGIN PRIVATE KEY-----\nMIIEvQIBADANBgkqhkiG9w0BAQEFAASCBKcwggSjAgEAAoIBAQCN9R1NFKgnrQe5\nF5rRJu+NKTi18vIebQEHbQidwzEwhaIeu4rTFeoS5WQ3NkomyHAsYC/9mmn3s3SQ\nFTNE59eDMDjEFZ9dXKFuvOrPVFPom4A9DZAC2v4IK/AyWvJWHEM+gbLkfWkq1QD2\nOZIufwrTPZzqkw4vGXeSmbfu9lwFGb8t2X5Zy9bs5sxQfpRtnMFEvQozf5Ckq36R\nJZnsOy07Z/OETg5xbPXXPu4ZVXUjNLBMntiA2u6IaWR+EWisJ5eyVTDoF2v1zhK1\nKPB/kEzUrEdnsynn7ehj+k5bKDWdG/809HakRq1F0+CLwb6zY2JkSA8/l4MsvbVg\nFMufUr2JAgMBAAECggEAOUreAof9vdWVslwWfacrM1uZqcVddm4j5i1ZNuLabWzh\nm2mxg7PqfqnaInZkwvZOX3qKo924OuJQfv4vbPXtAuNpZaocYX/LH3hbhEXSf6SS\nwxFAOAbOU9n33TrbZ2mMsiOCYblDwqeo9bcSinV3lv3c4MdtCBFNMvubQnRnex7p\nHJzSuvLCX6TIlsIc0s+VR6Bp0/QQ6OCr4hJNj4Fiq7Y0LSS1wRkqPwwExdXAVk/O\ncUwDtjp+7JGr098QXHZg0VPEvQzeIM4/bllTc/j1rqY83clWh/R+Kl6r870ez/58\n0rlgW1HqGUDyMBVK+wBCTOdodxIE7Aw6OjP9P7TVaQKBgQDD4nn9ZXWcl8wqpoHh\nzPq4kyEiX3KnzECZK0+1I+DJI+Sj9ta095ph3ZbtLQesiSMgTe3baPR5Exu9qVSl\n2QD3i2oCWg7dd7VauxUp1fQYTorp5vBlHYfOzELDJ6zRZ7ufT52jIxg2h58rG2oe\nff7IaIMWowg30JXoLCAUHuwYLwKBgQC5heQHru0zq20hRYkPuh9fF8yOQja2geAO\n7msuOdriBQmhyeQb/78mUG6wPkvTrG/w9tPwKQx8FmOKeh4Hc3D73qIHsmPkZ0BX\nOTGqY2qsWWpxk4QbK21MuenF1JAZMDILcptNQVG4FPSBjSakQFtHLl9GK+pBGZgS\nNR2CBTXfxwKBgEfrWRq+K6Zo3V8zbzB2T/+AlYPHQ5N0HKugCU3adGelNAc3U7Fx\nz07rSsSd6dlhKHJt6kzKhigF6gOCrj+OIxrAJxXh9t89WmqLkcOgeFSMUdh7H/wg\nEYLN4B1C7eKckXh2hMwm0HcE6F2tXRMA85ClPqwLA7Nqc/+gY86/Y7OlAoGBAIrH\n1tHMkFKDnUozWxlxsMAQ7ItKiuUx+GsS/QiCbPOAszjc7w/m25YMuxCKOWzp5H9M\nFTTlcBpvIR1YxpfqSo2PeIPrdYBJoL7e4QFGB2lQJik6Iau1a7jmpjLAFN9Sx0z6\n+aPsBfZ/bnxvG4XpQp7X2JuEhGMYg0KzixRVU3zHAoGANVHZUyM0YSXjK0NMiTYv\nhKzHt9xN6JPkDvcpEoTB0rPJ14JuQ6S6gI6YhWfQK8zgZQNRGArqkiSliRhb0/1C\npVrRqNA9ZePwua4NA1UG5rO1K8HuP+8e/blqtvHlBOXldjxY7eh2g5tRjiVMw3I8\nbVrA/TmM+ktKkxuxhdqjSmU=\n-----END PRIVATE KEY-----\n",
-        "client_email": "firebase-adminsdk-fbsvc@habitttracker-505b6.iam.gserviceaccount.com",
-        "client_id": "112428448984284425837",
-        "auth_uri": "https://accounts.google.com/o/oauth2/auth",
-        "token_uri": "https://oauth2.googleapis.com/token",
-        "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
-        "client_x509_cert_url": "https://www.googleapis.com/robot/v1/metadata/x509/firebase-adminsdk-fbsvc%40habitttracker-505b6.iam.gserviceaccount.com",
-        "universe_domain": "googleapis.com"
+      "type": "service_account",
+      "project_id": "habitttracker-505b6",
+      "private_key_id": "dae2a47403cfafb9d555042c4cb8b59f026e9f1a",
+      "private_key": "-----BEGIN PRIVATE KEY-----\nMIIEvQIBADANBgkqhkiG9w0BAQEFAASCBKcwggSjAgEAAoIBAQDrAxaVMY6MpIa+\nG2x9smW/9q1q2nVcpcH+X2FQ/kEGO9wkofQYZ67QfGhqnYjJgQRSkQFBzVUwHXye\n8V3J2q7v0R7xkk+DE7xL2wE+LVZ/zRfdR36cY9XTBCYTylF1b2fsVUxO0SEuhUFb\n9DTn9t+UqCGGpUULDiRk7/kU6htTb+cnaMjihpUdzSNwwczR0bS3zmsmg9bPVNE3\nBhX+CVaZhVqoGLLTXMHfKkzjt3aH2vbtQTrfNyvScDyOiMlN2y8I9Jt/JiE4eulN\nnn9QNFZ/7bF/xh8BP8zA0zgoo0rhl73YQsDhp/k8qnQOg2Fsv9VcIZSTRxGIaS8a\nKunCFiItAgMBAAECggEALmzpQKbODL2RuqtrNrePvyjJYFLwnVFHbetEq73WdZdM\nqVXvBQUydRAmhm1BcOESTAdGMswP2JXyoOl4iCAxr8Fldf5bw76Z03hbmf9V16BZ\n5wYxHk7gljN7HCy7A9Jyuq6tCOLqRajgXPx0mSBdUZ4XJWSvq3vrN59qWrXWmRgg\nnNqSBKZlo5AOm5wr3CyqeOwSbEoW12k9mKqiFwqgFbe/WOh8ah1xausqM7ocPjHP\n1GBhVSYUX7qra84xsh480CuCpcGHs+lghPYQWsxf3x+lNq5R/N3hKz8rSX7I+NAo\n+okNBN5PTUJsfCsXTT7WH39vA48gWP0xcjlKi1B2pwKBgQD+skflh7v4hzQ2rwUz\nAcOvs59JdhlEbbQno8Nona+Zil0Nupx9V39PiDtLnLzamxOvNWY98TxhEu/Z1UXr\nxos+ZpZt1JmFWy3H//NHnXtxHqrSnTLoTTLpWB93q+LKrYtE1QF8IPIxHFOQRSpn\nMWMy+wC/5PtPbd2+ewx5JHzN0wKBgQDsNwQFZAR+UMhRqJlOLnGlemFjtNDRpbJm\nNUgPfWxpicwQmt/AzqZ+s2xjNWTaisny+W5CHf3s+F6onT/enq0a5HcEiqQSNgtD\n66EWUqg7u0zjpOFnxyT7WjicUWgX4qNKbAuFyj6QFhohXCVZVi6fn89IrGUXFC0/\nz9YpaxtP/wKBgQCNTE7CsejAWhHHfJV/1KzBXv8xfAlMgyf9Dccs1L5EihRRt4N1\nrgL9FnD+47eJ95qWCyPrnVeH6z+RM9aUlRNOzQ8LY3TAHPNrDz3iLyX6fa77JSbG\n5X0nIzJh68Pn+RtYVmt6d7SlNjfNw/FgSm/kKogh7WDWkfcA47bpxipO7QKBgHqV\n9o1BoZ9YFw1hvOW47pudDkurO6+BGTs3rYT0Zz3CGFgJt9Mcq4UXYkl+HS/ZVQK2\ndYT0gaHoJ1/D87B5koZhSG7f8FPPHjuKXhfyn4IYKsf8+klcLRIQeU6OZMH4iRuH\nRNeS5LLr9XWYl31sX1fRnMYvSWsXun/iQVdPUWZLAoGAUmcLXkVdQQmis0rHgpOm\nSJ+LZNUXrSEpOWVmF1vDCTVMtt2SxwBcGeZKnPtwNJtqvgDcn0A2E6c2sGjzFY5B\nRjEvwd0LLBD8IoH2RADYQVGxQQvv7/1v/9fZzkBKN6I2qOnbF5o0tjIL1ZovBekG\nKNB9/LQC9HUsgOYt0t/ZMcY=\n-----END PRIVATE KEY-----\n",
+      "client_email": "firebase-adminsdk-fbsvc@habitttracker-505b6.iam.gserviceaccount.com",
+      "client_id": "112428448984284425837",
+      "auth_uri": "https://accounts.google.com/o/oauth2/auth",
+      "token_uri": "https://oauth2.googleapis.com/token",
+      "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
+      "client_x509_cert_url": "https://www.googleapis.com/robot/v1/metadata/x509/firebase-adminsdk-fbsvc%40habitttracker-505b6.iam.gserviceaccount.com",
+      "universe_domain": "googleapis.com"
     }
     """.trimIndent()
 

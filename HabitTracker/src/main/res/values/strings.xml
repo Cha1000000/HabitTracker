@@ -1140,4 +1140,12 @@
     <string name="photo_proof_select_source">Select photo source</string>
     <string name="photo_proof_camera">Camera</string>
     <string name="photo_proof_gallery">Gallery</string>
+
+    <!-- Nudge (Social Interactions) -->
+    <string name="nudge_button">Nudge</string>
+    <string name="nudge_sent_success">Reminder sent!</string>
+    <string name="nudge_on_cooldown">You can nudge again in 1 hour</string>
+    <string name="nudge_send_error">Failed to send reminder</string>
+    <string name="nudge_notification_title">%1$s is waiting for you!</string>
+    <string name="nudge_notification_body">Don\'t forget about \"%1$s\" 👋</string>
 </resources>

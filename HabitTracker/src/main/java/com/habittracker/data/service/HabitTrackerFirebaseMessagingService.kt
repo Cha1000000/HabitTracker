@@ -386,6 +386,16 @@ class HabitTrackerFirebaseMessagingService : FirebaseMessagingService() {
                 // На всякий случай, если бэк начнет отправлять отдельный тип напоминаний
                 intent.putExtra("navigate_to", "habits")
             }
+            "nudge" -> {
+                // При нажатии на nudge открываем экран привычки или список привычек
+                val habitId = data["habit_id"]
+                if (habitId != null) {
+                    intent.putExtra("navigate_to", "group_habit_detail")
+                    intent.putExtra("habit_id", habitId)
+                } else {
+                    intent.putExtra("navigate_to", "habits")
+                }
+            }
             else -> {
                 intent.putExtra("navigate_to", "notifications")
             }

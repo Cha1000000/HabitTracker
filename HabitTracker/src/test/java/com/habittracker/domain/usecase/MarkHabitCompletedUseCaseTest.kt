@@ -183,8 +183,8 @@ class FakeHabitEntryRepository : HabitEntryRepository {
 }
 
 class FakeUpdateUserPointsUseCase(
-    private val userRepository: UserRepository,
-    private val socialRepository: com.habittracker.domain.repository.SocialRepository
+    userRepository: UserRepository,
+    socialRepository: SocialRepository
 ) : UpdateUserPointsUseCase(userRepository, socialRepository) {
     var invokeCalled = false
     override suspend fun invoke(userId: String, event: GamificationEvent): Result<Unit> {
@@ -195,7 +195,7 @@ class FakeUpdateUserPointsUseCase(
 
 class FakeHabitRepository : HabitRepository {
 
-    override suspend fun getHabitById(habitId: String): Habit? = Habit(
+    override suspend fun getHabitById(habitId: String): Habit = Habit(
         id = habitId,
         title = "Test Habit",
         createdBy = "testUserId",
@@ -225,7 +225,7 @@ class FakeHabitRepository : HabitRepository {
 }
 
 class FakeSocialRepository : SocialRepository {
-    override suspend fun getUserById(userId: String): User? = User(id = userId, name = "Test User", email = "test@test.com", createdAt = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault()).date, lastActiveAt = Clock.System.now().toEpochMilliseconds())
+    override suspend fun getUserById(userId: String): User = User(id = userId, name = "Test User", email = "test@test.com", createdAt = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault()).date, lastActiveAt = Clock.System.now().toEpochMilliseconds())
     override suspend fun getUserByIdFromFirestore(userId: String): User? = getUserById(userId)
     override suspend fun searchUsers(query: String, currentUserId: String): List<User> = emptyList()
     override suspend fun updateUserFcmToken(userId: String, token: String) {}
@@ -267,6 +267,7 @@ class FakeSocialRepository : SocialRepository {
     override suspend fun sendHabitInvitationNotification(toUserId: String, fromUserName: String, habitTitle: String) {}
     override suspend fun sendHabitInvitationAcceptedNotification(toUserId: String, acceptedByName: String, habitTitle: String, habitId: String) {}
     override suspend fun sendParticipantJoinedNotification(toUserId: String, joinedUserName: String, habitTitle: String, habitId: String) {}
+    override suspend fun sendNudgeNotification(toUserId: String, fromUserName: String, habitTitle: String, habitId: String) {}
     override suspend fun sendPushNotification(fcmToken: String, title: String, body: String, data: Map<String, String>) {}
     override suspend fun sendChallengeInvitationNotification(toUserId: String, fromUserName: String, challengeId: String, challengeTitle: String, habitTitle: String) {}
     override suspend fun sendChallengeJoinedNotification(toUserId: String, joinedUserName: String, challengeId: String, challengeTitle: String) {}

@@ -1138,4 +1138,12 @@
     <string name="photo_proof_select_source">Выберите источник фото</string>
     <string name="photo_proof_camera">Камера</string>
     <string name="photo_proof_gallery">Галерея</string>
+
+    <!-- Nudge (Social Interactions) -->
+    <string name="nudge_button">Пнуть</string>
+    <string name="nudge_sent_success">Напоминание отправлено!</string>
+    <string name="nudge_on_cooldown">Можно пнуть снова через 1 час</string>
+    <string name="nudge_send_error">Не удалось отправить напоминание</string>
+    <string name="nudge_notification_title">%1$s ждёт тебя!</string>
+    <string name="nudge_notification_body">Не забудь про «%1$s» 👋</string>
 </resources>

@@ -65,4 +65,10 @@ abstract class RepositoryModule {
     abstract fun bindImageRepository(
         imageRepositoryImpl: ImageRepositoryImpl
     ): ImageRepository
+
+    @Binds
+    @Singleton
+    abstract fun bindNudgeRepository(
+        nudgeRepositoryImpl: NudgeRepositoryImpl
+    ): NudgeRepository
 }
