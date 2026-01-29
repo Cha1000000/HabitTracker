@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -38,6 +39,7 @@ import androidx.compose.material3.SnackbarDuration
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.SnackbarResult
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -761,26 +763,28 @@ private fun ParticipantListItem(
             )
         },
         headlineContent = {
-            Row(
-                verticalAlignment = Alignment.CenterVertically
-            ) {
+            Column {
+                if (isOwner) {
+                    Surface(
+                        color = MaterialTheme.colorScheme.primaryContainer,
+                        shape = RoundedCornerShape(4.dp),
+                        modifier = Modifier.padding(bottom = 4.dp)
+                    ) {
+                        Text(
+                            text = stringResource(R.string.owner),
+                            style = MaterialTheme.typography.labelSmall,
+                            modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
+                            color = MaterialTheme.colorScheme.onPrimaryContainer
+                        )
+                    }
+                }
                 Text(
                     text = participant.name,
-                    style = MaterialTheme.typography.bodyLarge
+                    style = MaterialTheme.typography.bodyLarge,
+                    maxLines = 1,
+                    softWrap = false,
+                    overflow = TextOverflow.Ellipsis
                 )
-                if (isOwner) {
-                    Spacer(modifier = Modifier.width(8.dp))
-                    AssistChip(
-                        onClick = { },
-                        label = {
-                            Text(
-                                text = stringResource(R.string.owner),
-                                style = MaterialTheme.typography.labelSmall
-                            )
-                        },
-                        modifier = Modifier.height(24.dp)
-                    )
-                }
             }
         },
         supportingContent = {
@@ -795,50 +799,64 @@ private fun ParticipantListItem(
             )
         },
         trailingContent = {
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            Column(
+                horizontalAlignment = Alignment.End
             ) {
-                // Кнопка Nudge (только если не выполнено и не в режиме управления)
-                if (canNudge && !isManageMode) {
-                    IconButton(
-                        onClick = onNudge,
-                        enabled = !isNudgeDisabled,
-                        modifier = Modifier.size(32.dp)
-                    ) {
-                        Text(
-                            text = "🥾",
-                            style = MaterialTheme.typography.titleMedium,
-                            color = if (isNudgeDisabled) {
-                                MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f)
-                            } else {
-                                Color.Unspecified
-                            }
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Icon(
+                        imageVector = if (isCompleted) {
+                            TahoeIcons.CheckCircle
+                        } else {
+                            TahoeIcons.Circle
+                        },
+                        contentDescription = null,
+                        tint = if (isCompleted) {
+                            MaterialTheme.colorScheme.primary
+                        } else {
+                            MaterialTheme.colorScheme.onSurfaceVariant
+                        },
+                        modifier = Modifier.size(24.dp)
+                    )
+                    if (isManageMode && !isOwner) {
+                        Icon(
+                            imageVector = TahoeIcons.UserMinus,
+                            contentDescription = stringResource(R.string.remove_participant),
+                            tint = MaterialTheme.colorScheme.error,
+                            modifier = Modifier.size(20.dp)
                         )
                     }
                 }
-                
-                Icon(
-                    imageVector = if (isCompleted) {
-                        TahoeIcons.CheckCircle
-                    } else {
-                        TahoeIcons.Circle
-                    },
-                    contentDescription = null,
-                    tint = if (isCompleted) {
-                        MaterialTheme.colorScheme.primary
-                    } else {
-                        MaterialTheme.colorScheme.onSurfaceVariant
-                    },
-                    modifier = Modifier.size(24.dp)
-                )
-                if (isManageMode && !isOwner) {
-                    Icon(
-                        imageVector = TahoeIcons.UserMinus,
-                        contentDescription = stringResource(R.string.remove_participant),
-                        tint = MaterialTheme.colorScheme.error,
-                        modifier = Modifier.size(20.dp)
-                    )
+
+                // Кнопка "Пнуть!" (только если не выполнено и не в режиме управления)
+                if (canNudge && !isManageMode) {
+                    Spacer(modifier = Modifier.height(6.dp))
+                    Surface(
+                        onClick = onNudge,
+                        enabled = !isNudgeDisabled,
+                        shape = RoundedCornerShape(16.dp),
+                        color = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = if (isNudgeDisabled) 0.5f else 1f),
+                        modifier = Modifier.height(32.dp).offset(x = 16.dp)
+                    ) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier.padding(horizontal = 8.dp)
+                        ) {
+                            Text(
+                                text = "🥾",
+                                style = MaterialTheme.typography.bodyMedium
+                            )
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text(
+                                text = stringResource(R.string.nudge_button_text),
+                                style = MaterialTheme.typography.labelMedium,
+                                fontWeight = FontWeight.Medium,
+                                color = MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha = if (isNudgeDisabled) 0.5f else 1f)
+                            )
+                        }
+                    }
                 }
             }
         }

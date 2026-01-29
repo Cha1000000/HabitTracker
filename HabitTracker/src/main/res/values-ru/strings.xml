@@ -521,7 +521,7 @@
     <string name="completed">Выполнено</string>
     <string name="streak_days">дней подряд</string>
     <string name="no_participants">Пока нет участников</string>
-    <string name="owner">Владелец</string>
+    <string name="owner">Автор</string>
     <string name="public_access">Публичный доступ</string>
     <string name="public_access_description">Любой может присоединиться по коду</string>
     <string name="recent_activity_description">Последняя активность участников</string>
@@ -1146,4 +1146,5 @@
     <string name="nudge_send_error">Не удалось отправить напоминание</string>
     <string name="nudge_notification_title">%1$s ждёт тебя!</string>
     <string name="nudge_notification_body">Не забудь про «%1$s» 👋</string>
+    <string name="nudge_button_text">Пнуть</string>
 </resources>

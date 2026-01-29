@@ -1148,4 +1148,5 @@
     <string name="nudge_send_error">Failed to send reminder</string>
     <string name="nudge_notification_title">%1$s is waiting for you!</string>
     <string name="nudge_notification_body">Don\'t forget about \"%1$s\" 👋</string>
+    <string name="nudge_button_text">Nudge</string>
 </resources>
