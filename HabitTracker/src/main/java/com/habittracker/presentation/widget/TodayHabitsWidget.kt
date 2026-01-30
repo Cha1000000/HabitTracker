@@ -56,7 +56,6 @@ class TodayHabitsWidget : GlanceAppWidget() {
 
             // Colors for Tahoe Theme
             val textMain = ColorProvider(R.color.widget_text_main)
-            val textSecondary = ColorProvider(R.color.widget_text_secondary)
             val textTertiary = ColorProvider(R.color.widget_text_tertiary)
             val dividerColor = ColorProvider(R.color.widget_divider)
 
@@ -150,7 +149,6 @@ class TodayHabitsWidget : GlanceAppWidget() {
                                             item = item,
                                             textColor = textMain,
                                             secondaryColor = textTertiary,
-                                            accentColor = textSecondary
                                         )
                                         if (index != items.lastIndex) {
                                             Spacer(
@@ -176,7 +174,6 @@ class TodayHabitsWidget : GlanceAppWidget() {
         item: TodayHabitWidgetItem, 
         textColor: ColorProvider,
         secondaryColor: ColorProvider,
-        accentColor: ColorProvider
     ) {
         val openIntent = buildOpenHabitIntent(context, item)
         val isMeasurable = item.type == "MEASURABLE"
@@ -240,16 +237,16 @@ class TodayHabitsWidget : GlanceAppWidget() {
                     .clickable(checkboxAction),
                 contentAlignment = Alignment.Center
             ) {
-                val circle = if (item.isCompleted) "●" else "○"
-                val circleColor = if (item.isCompleted) accentColor else secondaryColor
-                
-                Text(
-                    text = circle,
-                    style = TextStyle(
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 34.sp, // Larger symbol
-                        color = circleColor
-                    )
+                val imageResId = if (item.isCompleted) {
+                    R.drawable.widget_checkbox_checked
+                } else {
+                    R.drawable.widget_checkbox_unchecked
+                }
+
+                Image(
+                    provider = ImageProvider(imageResId),
+                    contentDescription = if (item.isCompleted) "Completed" else "Not completed",
+                    modifier = GlanceModifier.size(32.dp)
                 )
             }
         }
