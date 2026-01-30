@@ -1149,4 +1149,11 @@
     <string name="nudge_notification_title">%1$s is waiting for you!</string>
     <string name="nudge_notification_body">Don\'t forget about \"%1$s\" 👋</string>
     <string name="nudge_button_text">Nudge</string>
+
+    <!-- Widgets -->
+    <string name="widget_today_title">Today</string>
+    <string name="widget_today_description">Shows your habits for today</string>
+    <string name="widget_no_habits">No habits for today</string>
+    <string name="widget_all_done">All done! 🎉</string>
+    <string name="widget_loading">Loading...</string>
 </resources>

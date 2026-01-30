@@ -1,10 +1,11 @@
 package com.habittracker.presentation.viewmodel
 
 import android.app.Application
+import android.net.Uri
+import androidx.compose.runtime.Immutable
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.habittracker.R
-import androidx.compose.runtime.Immutable
 import com.habittracker.domain.model.Habit
 import com.habittracker.domain.model.isGroupHabit
 import com.habittracker.domain.repository.AuthRepository
@@ -18,13 +19,16 @@ import com.habittracker.domain.usecase.GetWeekCompletionDataUseCase
 import com.habittracker.domain.usecase.MarkHabitCompletedUseCase
 import com.habittracker.domain.usecase.MarkHabitIncompleteUseCase
 import com.habittracker.domain.usecase.ScheduleHabitReminderUseCase
+import com.habittracker.domain.usecase.UpdateHabitEntryValueUseCase
+import com.habittracker.domain.usecase.habit.AttachPhotoToEntryUseCase
 import com.habittracker.domain.usecase.habit.GetGroupHabitProgressUseCase
 import com.habittracker.domain.usecase.habit.JoinHabitByCodeUseCase
-import com.habittracker.presentation.state.HabitsUiState
-import com.habittracker.presentation.ui.habits.components.ParticipantProgress
 import com.habittracker.domain.util.AnalyticsEvents
 import com.habittracker.domain.util.AnalyticsManager
 import com.habittracker.domain.util.ErrorLogger
+import com.habittracker.presentation.state.HabitsUiState
+import com.habittracker.presentation.ui.habits.components.ParticipantProgress
+import com.habittracker.presentation.widget.TodayHabitsWidgetScheduler
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -53,11 +57,8 @@ import kotlinx.datetime.TimeZone
 import kotlinx.datetime.minus
 import kotlinx.datetime.plus
 import kotlinx.datetime.toLocalDateTime
-import com.habittracker.domain.usecase.UpdateHabitEntryValueUseCase
-import com.habittracker.domain.usecase.habit.AttachPhotoToEntryUseCase
-import android.net.Uri
-import javax.inject.Inject
 import timber.log.Timber
+import javax.inject.Inject
 
 /**
  * Данные о привычке с информацией о выполнении
@@ -706,6 +707,7 @@ class HabitsViewModel @Inject constructor(
                 // Инвалидируем кеш для недели с изменённой датой и перезагружаем данные
                 val weekStart = getStartOfWeek(selectedDate)
                 loadWeekCompletionData(currentUserId, weekStart, forceReload = true)
+                TodayHabitsWidgetScheduler.enqueueRefresh(getApplication())
             } catch (e: Exception) {
                 errorLogger.logError(e, "Failed to mark habit $habitId completed")
                 // В случае ошибки возвращаем предыдущее состояние
@@ -878,6 +880,7 @@ class HabitsViewModel @Inject constructor(
                 // Инвалидируем кеш для недели с изменённой датой и перезагружаем данные
                 val weekStart = getStartOfWeek(selectedDate)
                 loadWeekCompletionData(currentUserId, weekStart, forceReload = true)
+                TodayHabitsWidgetScheduler.enqueueRefresh(getApplication())
             } catch (e: Exception) {
                 // В случае ошибки возвращаем предыдущее состояние
                 updateHabitCompletionStatus(habitId, true, isLoading = false)

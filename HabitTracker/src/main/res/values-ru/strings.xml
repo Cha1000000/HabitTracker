@@ -1147,4 +1147,11 @@
     <string name="nudge_notification_title">%1$s ждёт тебя!</string>
     <string name="nudge_notification_body">Не забудь про «%1$s» 👋</string>
     <string name="nudge_button_text">Пнуть</string>
+
+    <!-- Widgets -->
+    <string name="widget_today_title">Сегодня</string>
+    <string name="widget_today_description">Показывает ваши привычки на сегодня</string>
+    <string name="widget_no_habits">Нет привычек на сегодня</string>
+    <string name="widget_all_done">Всё выполнено! 🎉</string>
+    <string name="widget_loading">Загрузка...</string>
 </resources>

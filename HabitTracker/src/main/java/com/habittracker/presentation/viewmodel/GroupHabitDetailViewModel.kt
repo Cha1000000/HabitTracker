@@ -39,6 +39,7 @@ import kotlinx.datetime.minus
 import kotlinx.datetime.todayIn
 import timber.log.Timber
 import javax.inject.Inject
+import com.habittracker.presentation.widget.TodayHabitsWidgetScheduler
 
 /**
  * ViewModel для экрана детальной информации о групповой привычке
@@ -501,6 +502,8 @@ class GroupHabitDetailViewModel @Inject constructor(
                 
                 // Перезагружаем данные для обновления статистики
                 loadHabitDetails(habit.id)
+
+                TodayHabitsWidgetScheduler.enqueueRefresh(application)
                 
             } catch (_: Exception) {
                 _uiState.update { 
