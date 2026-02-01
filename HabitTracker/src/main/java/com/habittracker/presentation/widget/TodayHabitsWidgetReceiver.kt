@@ -12,6 +12,7 @@ class TodayHabitsWidgetReceiver : GlanceAppWidgetReceiver() {
         appWidgetIds: IntArray
     ) {
         super.onUpdate(context, appWidgetManager, appWidgetIds)
+        TodayHabitsWidgetAutoRefreshScheduler.scheduleAll(context)
         TodayHabitsWidgetScheduler.enqueueRefresh(context)
     }
 }

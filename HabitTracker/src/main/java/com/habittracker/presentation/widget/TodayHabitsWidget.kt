@@ -7,6 +7,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.datastore.preferences.core.Preferences
+import androidx.datastore.preferences.core.longPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.glance.GlanceId
 import androidx.glance.GlanceModifier
@@ -53,6 +54,9 @@ class TodayHabitsWidget : GlanceAppWidget() {
         provideContent {
             val prefs = currentState<Preferences>()
             val items = prefs.getSerializedHabits()
+            val nowMs = System.currentTimeMillis()
+            val refreshingUntilMs = prefs[PREF_KEY_REFRESH_UNTIL_MS] ?: 0L
+            val isRefreshing = nowMs < refreshingUntilMs
 
             // Colors for Tahoe Theme
             val textMain = ColorProvider(R.color.widget_text_main)
@@ -72,11 +76,13 @@ class TodayHabitsWidget : GlanceAppWidget() {
                 ) {
                     // Header
                     Row(
-                        modifier = GlanceModifier.fillMaxWidth(),
+                        modifier = GlanceModifier
+                            .fillMaxWidth(),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Text(
                             text = context.getString(R.string.widget_today_title),
+                            modifier = GlanceModifier.clickable(actionRunCallback<RefreshTodayHabitsWidgetAction>()),
                             style = TextStyle(
                                 fontWeight = FontWeight.Bold,
                                 fontSize = 18.sp,
@@ -93,12 +99,29 @@ class TodayHabitsWidget : GlanceAppWidget() {
                             Spacer(modifier = GlanceModifier.width(4.dp))
                             Text(
                                 text = context.getString(R.string.app_name),
+                                modifier = GlanceModifier.clickable(
+                                    actionStartActivity(
+                                        Intent(context, MainActivity::class.java).apply {
+                                            flags = Intent.FLAG_ACTIVITY_NEW_TASK or
+                                                Intent.FLAG_ACTIVITY_CLEAR_TOP or
+                                                Intent.FLAG_ACTIVITY_SINGLE_TOP
+                                        }
+                                    )
+                                ),
                                 style = TextStyle(
                                     fontSize = 14.sp,
                                     color = textTertiary
                                 )
                             )
                         }
+                    }
+
+                    if (isRefreshing) {
+                        Spacer(modifier = GlanceModifier.height(6.dp))
+                        Text(
+                            text = context.getString(R.string.widget_loading),
+                            style = TextStyle(color = textTertiary, fontSize = 13.sp)
+                        )
                     }
                     
                     Spacer(modifier = GlanceModifier.height(10.dp))
@@ -202,25 +225,29 @@ class TodayHabitsWidget : GlanceAppWidget() {
                 Text(
                     text = item.title,
                     style = TextStyle(
-                        fontWeight = if (item.isCompleted) FontWeight.Normal else FontWeight.Bold,
+                        fontWeight = if (item.isRestDay || item.isCompleted) FontWeight.Normal else FontWeight.Bold,
                         fontSize = 16.sp,
-                        color = textColor,
+                        color = if (item.isRestDay) secondaryColor else textColor,
                         textDecoration = if (item.isCompleted) TextDecoration.LineThrough else TextDecoration.None
                     ),
                     maxLines = 1
                 )
                 
                 // Subtitle info (Time + Progress)
-                val timeString = getTimeOfDayString(context, item.timeOfDay)
-                val progressString = if (isMeasurable) {
-                    "${item.currentValue}/${item.targetValue} ${item.unit}"
-                } else null
-                
-                val subtitleParts = listOfNotNull(timeString, progressString)
-                if (subtitleParts.isNotEmpty()) {
+                val subtitleText = if (item.isRestDay) {
+                    context.getString(R.string.widget_rest_day)
+                } else {
+                    val timeString = getTimeOfDayString(context, item.timeOfDay)
+                    val progressString = if (isMeasurable) {
+                        "${item.currentValue}/${item.targetValue} ${item.unit}"
+                    } else null
+                    listOfNotNull(timeString, progressString).joinToString(" • ")
+                }
+
+                if (subtitleText.isNotBlank()) {
                     Spacer(modifier = GlanceModifier.height(4.dp))
                     Text(
-                        text = subtitleParts.joinToString(" • "),
+                        text = subtitleText,
                         style = TextStyle(
                             fontSize = 13.sp,
                             color = secondaryColor
@@ -264,6 +291,7 @@ class TodayHabitsWidget : GlanceAppWidget() {
     companion object {
         internal const val PREF_KEY_TODAY_HABITS = "today_habits_json"
         private val PREF_KEY = stringPreferencesKey(PREF_KEY_TODAY_HABITS)
+        internal val PREF_KEY_REFRESH_UNTIL_MS = longPreferencesKey("today_habits_refresh_until_ms")
 
         suspend fun updateTodayHabits(context: Context, items: List<TodayHabitWidgetItem>) {
             val manager = GlanceAppWidgetManager(context)
@@ -274,6 +302,7 @@ class TodayHabitsWidget : GlanceAppWidget() {
             glanceIds.forEach { glanceId ->
                 updateAppWidgetState(context, glanceId) { mutablePrefs ->
                     mutablePrefs[PREF_KEY] = json
+                    mutablePrefs.remove(PREF_KEY_REFRESH_UNTIL_MS)
                 }
             }
             TodayHabitsWidget().updateAll(context)
@@ -299,7 +328,11 @@ class TodayHabitsWidget : GlanceAppWidget() {
                         val index = items.indexOfFirst { it.id == habitId }
                         if (index != -1) {
                             val item = items[index]
-                            val newItem = item.copy(isCompleted = !item.isCompleted)
+                            val newCompleted = !item.isCompleted
+                            val newItem = item.copy(
+                                isCompleted = newCompleted,
+                                isRestDay = if (newCompleted) false else item.isRestDay
+                            )
                             items[index] = newItem
                             
                             // Capture new status from the first occurrence found

@@ -9,6 +9,7 @@ data class TodayHabitWidgetItem(
     val id: String,
     val title: String,
     val isCompleted: Boolean,
+    val isRestDay: Boolean = false,
     val isGroup: Boolean,
     val currentValue: Int = 0,
     val targetValue: Int = 1,
@@ -18,6 +19,7 @@ data class TodayHabitWidgetItem(
 ) {
     companion object {
         val COMPARATOR = compareBy<TodayHabitWidgetItem> { it.isCompleted }
+            .thenBy { it.isRestDay }
             .thenBy {
                 when (it.timeOfDay) {
                     "MORNING" -> 0

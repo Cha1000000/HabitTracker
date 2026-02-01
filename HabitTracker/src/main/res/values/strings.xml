@@ -1156,4 +1156,5 @@
     <string name="widget_no_habits">No habits for today</string>
     <string name="widget_all_done">All done! 🎉</string>
     <string name="widget_loading">Loading...</string>
+    <string name="widget_rest_day">Rest day</string>
 </resources>

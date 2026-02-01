@@ -36,12 +36,14 @@ object TodayHabitsWidgetRefresh {
             }.getOrNull()
 
             val isCompleted = entry?.completed ?: false
+            val isRestDay = entry?.isRestDay ?: false
             val currentValue = entry?.value ?: 0
 
             TodayHabitWidgetItem(
                 id = habit.id,
                 title = habit.title,
                 isCompleted = isCompleted,
+                isRestDay = isRestDay,
                 isGroup = habit.isGroupHabit(),
                 currentValue = currentValue,
                 targetValue = habit.targetValue,

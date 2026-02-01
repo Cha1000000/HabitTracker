@@ -8,6 +8,7 @@ import com.habittracker.data.service.AppStateManager
 import com.habittracker.data.sync.ChallengeExpirationWorkScheduler
 import com.habittracker.data.sync.SyncWorkScheduler
 import com.habittracker.data.local.seed.AchievementSeeder
+import com.habittracker.presentation.widget.TodayHabitsWidgetAutoRefreshScheduler
 import com.habittracker.domain.usecase.notification.ManageFCMTokenUseCase
 import com.habittracker.data.logging.ReleaseTree
 import com.habittracker.domain.util.ErrorLogger
@@ -109,6 +110,15 @@ class HabitTrackerApplication : Application(), Configuration.Provider {
         } catch (e: Exception) {
             if (BuildConfig.DEBUG) {
                 Timber.tag("HabitTrackerApp").d("Challenge expiration scheduling failed: ${e.message}")
+            }
+        }
+
+        // Schedule widget auto-refresh alarms (00:00 and 14:00 daily)
+        try {
+            TodayHabitsWidgetAutoRefreshScheduler.scheduleAll(this)
+        } catch (e: Exception) {
+            if (BuildConfig.DEBUG) {
+                Timber.tag("HabitTrackerApp").d("Widget auto-refresh scheduling failed: ${e.message}")
             }
         }
     }

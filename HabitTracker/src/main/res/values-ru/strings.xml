@@ -1154,4 +1154,5 @@
     <string name="widget_no_habits">Нет привычек на сегодня</string>
     <string name="widget_all_done">Всё выполнено! 🎉</string>
     <string name="widget_loading">Загрузка...</string>
+    <string name="widget_rest_day">Выходной</string>
 </resources>
