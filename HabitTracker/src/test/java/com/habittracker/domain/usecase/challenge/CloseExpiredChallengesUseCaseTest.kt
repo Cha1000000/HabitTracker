@@ -4,18 +4,18 @@ import com.habittracker.domain.model.Challenge
 import com.habittracker.domain.model.ChallengeRules
 import com.habittracker.domain.model.ChallengeStatus
 import com.habittracker.domain.model.ChallengeType
-import com.habittracker.domain.model.User
 import com.habittracker.domain.model.FriendRequest
 import com.habittracker.domain.model.Friendship
 import com.habittracker.domain.model.HabitInvitation
+import com.habittracker.domain.model.User
 import com.habittracker.domain.model.gamification.GamificationEvent
+import com.habittracker.domain.provider.StringProvider
 import com.habittracker.domain.repository.AuthRepository
 import com.habittracker.domain.repository.ChallengeRepository
 import com.habittracker.domain.repository.SocialRepository
 import com.habittracker.domain.repository.UserRepository
 import com.habittracker.domain.usecase.gamification.CheckAchievementsUseCase
 import com.habittracker.domain.usecase.gamification.UpdateUserPointsUseCase
-import com.habittracker.domain.provider.StringProvider
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -40,7 +40,7 @@ class CloseExpiredChallengesUseCaseTest {
     // Mock StringProvider for tests
     private val fakeStringProvider = object : StringProvider {
         override fun getString(resId: Int): String = "test_string_$resId"
-        override fun getString(resId: Int, vararg formatArgs: Any): String = "test_string_$resId"
+        override fun getString(resId: Int, vararg args: Any): String = "test_string_$resId"
     }
 
     private class FakeAuthRepository(
@@ -206,8 +206,8 @@ class CloseExpiredChallengesUseCaseTest {
         val cancelled = mutableListOf<CancelledNotif>()
 
         override suspend fun searchUsers(query: String, currentUserId: String) = emptyList<User>()
-        override suspend fun getUserById(userId: String): User? = User(id = userId, name = "User$userId")
-        override suspend fun getUserByIdFromFirestore(userId: String): User? = getUserById(userId)
+        override suspend fun getUserById(userId: String): User = User(id = userId, name = "User$userId")
+        override suspend fun getUserByIdFromFirestore(userId: String): User = getUserById(userId)
         override suspend fun updateUserFcmToken(userId: String, token: String) = Unit
         override suspend fun updateFriendsCount(userId: String, count: Int) = Unit
         override suspend fun recalculateFriendsCount(userId: String) = Unit
@@ -248,9 +248,9 @@ class CloseExpiredChallengesUseCaseTest {
         override suspend fun cancelHabitInvitation(invitationId: String) = Result.success(Unit)
         override suspend fun getHabitInvitationById(invitationId: String) = null
         override suspend fun getPendingHabitInvitation(habitId: String, userId: String) = null
-        override fun getIncomingHabitInvitations(userId: String) = MutableStateFlow(emptyList<com.habittracker.domain.model.HabitInvitation>()).asStateFlow()
-        override fun getOutgoingHabitInvitations(userId: String) = MutableStateFlow(emptyList<com.habittracker.domain.model.HabitInvitation>()).asStateFlow()
-        override fun getHabitInvitations(habitId: String) = MutableStateFlow(emptyList<com.habittracker.domain.model.HabitInvitation>()).asStateFlow()
+        override fun getIncomingHabitInvitations(userId: String) = MutableStateFlow(emptyList<HabitInvitation>()).asStateFlow()
+        override fun getOutgoingHabitInvitations(userId: String) = MutableStateFlow(emptyList<HabitInvitation>()).asStateFlow()
+        override fun getHabitInvitations(habitId: String) = MutableStateFlow(emptyList<HabitInvitation>()).asStateFlow()
         override fun getPendingHabitInvitationsCount(userId: String) = MutableStateFlow(0).asStateFlow()
         override suspend fun getActiveOutgoingInvitationsCount(userId: String) = 0
         override suspend fun expireOldHabitInvitations() = Unit
@@ -265,6 +265,7 @@ class CloseExpiredChallengesUseCaseTest {
         override suspend fun sendHabitInvitationNotification(toUserId: String, fromUserName: String, habitTitle: String) = Unit
         override suspend fun sendHabitInvitationAcceptedNotification(toUserId: String, acceptedByName: String, habitTitle: String, habitId: String) = Unit
         override suspend fun sendParticipantJoinedNotification(toUserId: String, joinedUserName: String, habitTitle: String, habitId: String) = Unit
+        override suspend fun sendNudgeNotification(toUserId: String, fromUserName: String, habitTitle: String, habitId: String) = Unit
 
         override suspend fun sendChallengeInvitationNotification(
             toUserId: String,

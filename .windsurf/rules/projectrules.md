@@ -31,7 +31,7 @@ globs:
 - ViewBinding НЕ используем (только Compose)
 - Material 3 Design System
 - WorkManager для фоновых напоминаний
-- Не хардкодить текстовые компоненты UI - выносить тексты в strings.xml
+- Не хардкодить текстовые компоненты UI - выносить тексты в strings.xml (отдельно для каждой локализации)
 
 ## Структура пакетов
 ```
@@ -42,26 +42,33 @@ com.habittracker/
 │   │   ├── friends/
 │   │   ├── challenges/
 │   │   ├── profile/
-│   │   └── auth/
+│   │   ├── auth/
+│   │   └── theme/
 │   ├── viewmodel/
-│   └── navigation/
+│   ├── navigation/
+│   └── state/
 ├── domain/
 │   ├── model/
+│   │   └── gamification/
 │   ├── repository/
 │   └── usecase/
 ├── data/
-│   ├── local/ (Room)
-│   ├── remote/ (API)
-│   └── repository/
+│   ├── local/ (Room, DataStore)
+│   ├── remote/ (Firestore)
+│   ├── repository/ (Implementations)
+│   ├── worker/ (WorkManager)
+│   ├── analytics/
+│   └── sync/
 └── di/
 ```
 
 ## Модели данных
-- User: id, name, email, avatar, level, points, createdAt
-- Habit: id, title, description, icon, type(personal/group), frequency, reminderTime, participants
-- HabitEntry: habitId, userId, date, completed, completedAt, note
-- Challenge: id, habitId, participants, startDate, endDate, rules, reward, status
-- Friendship: userId1, userId2, status, since
+- User: id, name, email, avatarUrl, level, points, streak, longestStreak, friendsCount, fcmToken, lastActiveAt, timezone, createdAt
+- Habit: id, title, description, icon, color, type(personal/group), frequency, reminderTime, reminderEnabled, targetValue, unit, createdBy, participants, inviteCode, startDate, endDate, followUpReminderEnabled, goalType(simple/measurable)
+- HabitEntry: habitId, userId, date, completed, value, note, isRestDay, streakBonusAwardedDays, completedAt
+- Challenge: id, habitId, title, description, createdBy, participants, acceptedParticipants, startDate, endDate, rules, reward, status, winnerId
+- Friendship: userId1, userId2, status, requestedBy, requestedAt, acceptedAt, blockedBy
+
 
 ## Особенности UI для социального трекера
 - Показывай статус друзей в реальном времени
@@ -92,10 +99,24 @@ com.habittracker/
 - Тестируй edge cases: нет интернета, медленная сеть
 
 ## Геймификация
-- Система очков: +10 за выполнение, +50 за streak 7 дней
-- Уровни пользователей: начинающий, опытный, мастер, легенда
-- Достижения: "Неделя без пропусков", "Лучший друг" и т.д.
-- Рейтинги в группах с еженедельным обновлением
+- Система очков: 
+  - +10 за выполнение привычки
+  - +50 за выполнение всех привычек за день (Perfect Day)
+  - +25 за создание групповой привычки
+  - +50 за нового друга
+  - +100 за победу в челлендже
+- Бонусы за серии (Streak): 
+  - 3 дня: +20 очков
+  - 7 дней: +50 очков
+  - 30 дней: +200 очков
+- Уровни пользователей (1000 очков на уровень):
+  - 1-5 ур: Новичок
+  - 6-15 ур: Энтузиаст
+  - 16-30 ур: Эксперт
+  - 31-50 ур: Мастер
+  - 51+ ур: Легенда
+- Достижения и рейтинги с еженедельным обновлением
+
 
 ## Производительность
 - LazyColumn для списков привычек

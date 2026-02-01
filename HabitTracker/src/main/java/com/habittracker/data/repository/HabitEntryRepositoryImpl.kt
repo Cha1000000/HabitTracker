@@ -351,6 +351,44 @@ class HabitEntryRepositoryImpl @Inject constructor(
             insertEntry(newEntry)
         }
     }
+
+    override fun getDailyCompletionCounts(userId: String): Flow<Map<LocalDate, Int>> {
+        return habitEntryDao.getDailyCompletionCounts(userId)
+            .map { list ->
+                list.associate { it.date to it.count }
+            }
+    }
+
+    override suspend fun updatePhotoUrl(habitId: String, userId: String, date: LocalDate, photoUrl: String?) {
+        // Обновляем локальную БД
+        habitEntryDao.updatePhotoUrl(habitId, userId, date, photoUrl)
+        
+        // Напрямую обновляем в Firestore
+        try {
+            val docId = HabitEntryIds.make(habitId, userId, date)
+            val updates = mapOf(
+                "photoUrl" to photoUrl,
+                "updatedAt" to date.toString()
+            )
+            firestore.collection("habit_entries")
+                .document(docId)
+                .update(updates)
+                .addOnSuccessListener {
+                    Timber.tag("HabitEntryRepo").d("Photo URL synced to Firestore: habitId=$habitId, date=$date")
+                }
+                .addOnFailureListener { e ->
+                    Timber.tag("HabitEntryRepo").e(e, "Failed to sync photo URL to Firestore")
+                }
+        } catch (e: Exception) {
+            Timber.tag("HabitEntryRepo").e(e, "Error updating photo URL in Firestore")
+        }
+        
+        Timber.tag("HabitEntryRepo").d("Photo URL updated locally: habitId=$habitId, date=$date, photoUrl=$photoUrl")
+    }
+
+    override suspend fun getEntryOnce(habitId: String, userId: String, date: LocalDate): HabitEntry? {
+        return habitEntryDao.getEntry(habitId, userId, date)?.toDomain()
+    }
     
     /**
      * Умное слияние данных из Firebase с локальными данными.

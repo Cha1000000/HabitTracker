@@ -15,6 +15,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
@@ -31,6 +32,7 @@ import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -52,7 +54,10 @@ import com.habittracker.domain.model.gamification.TimeStats
 import com.habittracker.presentation.ui.components.UserAvatar
 import com.habittracker.presentation.ui.habits.components.GlassmorphicCard
 import com.habittracker.presentation.ui.habits.components.GradientProgressBar
+import com.habittracker.presentation.ui.habits.components.HeatmapItem
 import com.habittracker.presentation.ui.habits.components.TahoeGradientBackground
+import com.habittracker.presentation.ui.habits.components.TahoeHeatmap
+import com.habittracker.presentation.ui.habits.components.TahoeHeatmapLegend
 import com.habittracker.presentation.ui.theme.TahoeIcons
 import com.habittracker.presentation.viewmodel.StatsViewModel
 
@@ -134,6 +139,12 @@ fun StatsScreen(
                         ActivityChartCard(userStats.habitStats.last7DaysCompletions)
                     }
 
+                    if (uiState.yearlyActivity.isNotEmpty()) {
+                        item {
+                            YearlyActivityCard(uiState.yearlyActivity)
+                        }
+                    }
+
                     item {
                         LeaderboardSection(
                             leaderboardEntries = uiState.leaderboardEntries,
@@ -193,6 +204,70 @@ fun StatsScreen(
                 }
             }
         }
+        }
+    }
+}
+
+@Composable
+private fun YearlyActivityCard(heatmapItems: List<HeatmapItem>) {
+    val isDarkTheme = isSystemInDarkTheme()
+    val totalCompletions = remember(heatmapItems) { heatmapItems.sumOf { it.count } }
+
+    GlassmorphicCard(
+        modifier = Modifier.fillMaxWidth(),
+        isDarkTheme = isDarkTheme,
+        cornerRadius = 16.dp,
+        glassAlpha = if (isDarkTheme) 0.18f else 0.85f,
+        borderAlpha = if (isDarkTheme) 0.3f else 0.15f,
+        elevation = 2.dp
+    ) {
+        Column(
+            modifier = Modifier.padding(16.dp)
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Icon(
+                        TahoeIcons.CalendarDays,
+                        contentDescription = null,
+                        tint = if (isDarkTheme) Color(0xFF4DC273) else MaterialTheme.colorScheme.primary
+                    )
+                    Text(
+                        text = stringResource(R.string.stats_yearly_activity_title),
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+
+                Text(
+                    text = stringResource(R.string.stats_yearly_activity_total_format, totalCompletions),
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
+                )
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            TahoeHeatmap(
+                items = heatmapItems,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .wrapContentHeight(),
+                isDarkTheme = isDarkTheme
+            )
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            TahoeHeatmapLegend(
+                modifier = Modifier.align(Alignment.End),
+                isDarkTheme = isDarkTheme
+            )
         }
     }
 }
@@ -429,7 +504,7 @@ private fun ActivityChartCard(last7Days: List<Pair<kotlinx.datetime.LocalDate, I
                             style = MaterialTheme.typography.labelSmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                             modifier = Modifier.width(24.dp),
-                            textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                            textAlign = TextAlign.Center
                         )
                     }
                 }

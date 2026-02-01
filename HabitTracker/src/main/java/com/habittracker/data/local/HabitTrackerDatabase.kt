@@ -54,7 +54,7 @@ import com.habittracker.data.local.entity.UserEntity
         NotificationReadStatusEntity::class,
         GroupHabitNotificationEntity::class
     ],
-    version = 15,
+    version = 17,
     exportSchema = false
 )
 @TypeConverters(Converters::class)
@@ -187,6 +187,34 @@ abstract class HabitTrackerDatabase : RoomDatabase() {
             }
         }
 
+        private val MIGRATION_15_16 = object : Migration(15, 16) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                // Soft delete support for habit_entries
+                db.execSQL("ALTER TABLE habit_entries ADD COLUMN updatedAtMillis INTEGER NOT NULL DEFAULT 0")
+                db.execSQL("ALTER TABLE habit_entries ADD COLUMN deletedAtMillis INTEGER DEFAULT NULL")
+                // Backfill updatedAtMillis from updatedAt (LocalDate stored as TEXT YYYY-MM-DD)
+                db.execSQL("UPDATE habit_entries SET updatedAtMillis = (strftime('%s', updatedAt) * 1000) WHERE updatedAtMillis = 0 AND updatedAt IS NOT NULL")
+                
+                // Soft delete support for friendships
+                db.execSQL("ALTER TABLE friendships ADD COLUMN updatedAtMillis INTEGER NOT NULL DEFAULT 0")
+                db.execSQL("ALTER TABLE friendships ADD COLUMN deletedAtMillis INTEGER DEFAULT NULL")
+                db.execSQL("UPDATE friendships SET updatedAtMillis = (strftime('%s', updatedAt) * 1000) WHERE updatedAtMillis = 0 AND updatedAt IS NOT NULL")
+                
+                // Soft delete support for habit_invitations
+                db.execSQL("ALTER TABLE habit_invitations ADD COLUMN updatedAtMillis INTEGER NOT NULL DEFAULT 0")
+                db.execSQL("ALTER TABLE habit_invitations ADD COLUMN deletedAtMillis INTEGER DEFAULT NULL")
+                // Backfill from createdAt (LocalDateTime)
+                db.execSQL("UPDATE habit_invitations SET updatedAtMillis = (strftime('%s', createdAt) * 1000) WHERE updatedAtMillis = 0 AND createdAt IS NOT NULL")
+            }
+        }
+
+        private val MIGRATION_16_17 = object : Migration(16, 17) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                // Photo proof support for habit entries
+                db.execSQL("ALTER TABLE habit_entries ADD COLUMN photoUrl TEXT DEFAULT NULL")
+            }
+        }
+
         @Volatile
         private var INSTANCE: HabitTrackerDatabase? = null
 
@@ -215,7 +243,9 @@ abstract class HabitTrackerDatabase : RoomDatabase() {
                     MIGRATION_11_12,
                     MIGRATION_12_13,
                     MIGRATION_13_14,
-                    MIGRATION_14_15
+                    MIGRATION_14_15,
+                    MIGRATION_15_16,
+                    MIGRATION_16_17
                 )
 
                 val instance = builder.build()

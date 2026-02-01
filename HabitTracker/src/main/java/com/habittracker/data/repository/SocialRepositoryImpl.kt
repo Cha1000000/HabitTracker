@@ -259,17 +259,6 @@ class SocialRepositoryImpl @Inject constructor(
                         )
                     }
                 }
-
-                // Поиск в legacy поле fcmToken
-                val legacyQuery = firestore.collection("users")
-                    .whereEqualTo("fcmToken", token)
-                    .get().await()
-                legacyQuery.documents.forEach { doc ->
-                    if (doc.id != userId) {
-                        // Legacy cleanup intentionally omitted: field deletes require FieldValue.delete().
-                        // The app uses fcmTokens[] as source of truth for multi-device.
-                    }
-                }
             } catch (e: Exception) {
                 // Не критично: в худшем случае токен временно будет подвязан к двум аккаунтами
                 Timber.tag("SocialRepository").w(e, "updateUserFcmToken cleanup (remove token from other users) failed: ${e.message}")
@@ -570,7 +559,7 @@ class SocialRepositoryImpl @Inject constructor(
             val doc = firestore.collection("friend_requests").document(requestId).get().await()
             if (doc.exists()) {
                 try {
-                    val remote = doc.toObject(com.habittracker.data.remote.model.FriendRequestRemote::class.java)
+                    val remote = doc.toObject(FriendRequestRemote::class.java)
                     remote?.toDomain(doc.id)
                 } catch (e: Exception) {
                     Timber.tag("SocialRepository").d("getFriendRequestById: mapping failed for doc=${doc.id}: ${e.message}")
@@ -597,7 +586,7 @@ class SocialRepositoryImpl @Inject constructor(
 
             results.documents.firstOrNull()?.let { doc ->
                 try {
-                    val remote = doc.toObject(com.habittracker.data.remote.model.FriendRequestRemote::class.java)
+                    val remote = doc.toObject(FriendRequestRemote::class.java)
                     remote?.toDomain(doc.id)
                 } catch (e: Exception) {
                     Timber.tag("SocialRepository").d("getFriendRequestBetweenUsers: mapping failed for doc=${doc.id}: ${e.message}")
@@ -1848,7 +1837,7 @@ class SocialRepositoryImpl @Inject constructor(
             // Сохраняем уведомление в БД для отображения на NotificationsScreen
             val message = stringProvider.getString(R.string.notification_habit_invitation_accepted, acceptedByName, habitTitle)
             val notificationEntity = com.habittracker.data.local.entity.GroupHabitNotificationEntity(
-                id = java.util.UUID.randomUUID().toString(),
+                id = UUID.randomUUID().toString(),
                 userId = toUserId,
                 habitId = habitId,
                 type = "INVITATION_ACCEPTED",
@@ -1922,7 +1911,7 @@ class SocialRepositoryImpl @Inject constructor(
             // Сохраняем уведомление в БД для отображения на NotificationsScreen
             val message = stringProvider.getString(R.string.notification_participant_joined, joinedUserName, habitTitle)
             val notificationEntity = com.habittracker.data.local.entity.GroupHabitNotificationEntity(
-                id = java.util.UUID.randomUUID().toString(),
+                id = UUID.randomUUID().toString(),
                 userId = toUserId,
                 habitId = habitId,
                 type = "FRIEND_JOINED",
@@ -1983,6 +1972,69 @@ class SocialRepositoryImpl @Inject constructor(
             }
         } catch (e: Exception) {
             Timber.tag("SocialRepository").w(e, "Ошибка подготовки уведомления о присоединении участника (outer)")
+        }
+    }
+
+    override suspend fun sendNudgeNotification(
+        toUserId: String,
+        fromUserName: String,
+        habitTitle: String,
+        habitId: String
+    ) {
+        Timber.tag("SocialRepository").d("sendNudgeNotification called: toUserId=$toUserId, from=$fromUserName, habit=$habitTitle")
+        try {
+            // Отправляем FCM push
+            repoScope.launch {
+                withContext(NonCancellable + Dispatchers.IO) {
+                    val userDoc = firestore.collection("users").document(toUserId).get().await()
+                    val tokensFromArray = (userDoc.get("fcmTokens") as? List<*>)?.mapNotNull { it as? String } ?: emptyList()
+                    val legacyToken = userDoc.getString("fcmToken")
+                    val allTokens = (tokensFromArray + listOfNotNull(legacyToken)).toSet().toList()
+
+                    if (allTokens.isEmpty()) {
+                        Timber.tag("SocialRepository").w("FCM skip: nudge -> to=$toUserId, tokens_absent")
+                        return@withContext
+                    }
+
+                    Timber.tag("SocialRepository").d(
+                        "FCM send: nudge -> to=$toUserId, tokens_count=${allTokens.size}, from=$fromUserName, habit='$habitTitle'"
+                    )
+
+                    val title = stringProvider.getString(R.string.nudge_notification_title, fromUserName)
+                    val body = stringProvider.getString(R.string.nudge_notification_body, habitTitle)
+
+                    allTokens.forEach { token ->
+                        Timber.tag("SocialRepository").d("Sending nudge FCM to token: ${maskToken(token)}")
+                        val result = fcmApiClient.sendPushNotification(
+                            fcmToken = token,
+                            title = title,
+                            body = body,
+                            data = mapOf(
+                                "type" to "nudge",
+                                "habitTitle" to habitTitle,
+                                "habit_id" to habitId,
+                                "fromUserName" to fromUserName,
+                                "action" to "open_habit_details",
+                                "recipientUserId" to toUserId
+                            )
+                        )
+                        result.onSuccess {
+                            Timber.tag("SocialRepository").d("✅ Nudge FCM sent successfully to ${maskToken(token)}")
+                        }
+                        result.onFailure { e ->
+                            val msg = e.message ?: ""
+                            if (msg.contains("UNREGISTERED", ignoreCase = true)) {
+                                Timber.tag("SocialRepository").w("FCM UNREGISTERED -> remove token ${maskToken(token)} for user=$toUserId")
+                                safelyRemoveInvalidFcmToken(toUserId, token)
+                            } else {
+                                Timber.tag("SocialRepository").w("FCM send failed for token ${maskToken(token)}: ${e.message}")
+                            }
+                        }
+                    }
+                }
+            }
+        } catch (e: Exception) {
+            Timber.tag("SocialRepository").w(e, "Ошибка отправки nudge уведомления (outer)")
         }
     }
 

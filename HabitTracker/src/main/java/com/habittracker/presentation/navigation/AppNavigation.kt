@@ -38,6 +38,7 @@ import com.habittracker.presentation.ui.stats.GroupHabitStatScreen
 import com.habittracker.presentation.ui.stats.SelfHabitStatScreen
 import com.habittracker.presentation.ui.stats.StatsScreen
 import kotlinx.coroutines.flow.collectLatest
+import timber.log.Timber
 
 /**
  * Запечатанный класс для определения маршрутов навигации.
@@ -220,7 +221,7 @@ fun AppNavHost(
         composable(route = Screen.Stats.route) {
             StatsScreen(
                 onNavigateBack = {
-                    navController.popBackStack()
+                    safePopBackStack(navController)
                 }
             )
         }
@@ -228,7 +229,7 @@ fun AppNavHost(
         composable(route = Screen.Achievements.route) {
             AchievementsScreen(
                 onNavigateBack = {
-                    navController.popBackStack()
+                    safePopBackStack(navController)
                 }
             )
         }
@@ -322,7 +323,7 @@ fun AppNavHost(
             )
         ) {
             SelfHabitStatScreen(
-                onNavigateBack = { navController.popBackStack() }
+                onNavigateBack = { safePopBackStack(navController) }
             )
         }
 
@@ -340,7 +341,7 @@ fun AppNavHost(
             )
         ) {
             GroupHabitStatScreen(
-                onNavigateBack = { navController.popBackStack() }
+                onNavigateBack = { safePopBackStack(navController) }
             )
         }
     }
@@ -350,5 +351,14 @@ fun AppNavHost(
             achievement = achievementToast,
             onDismiss = { achievementToast = null }
         )
+    }
+}
+
+private fun safePopBackStack(navController: NavHostController) {
+    try {
+        navController.popBackStack()
+    } catch (e: IllegalStateException) {
+        Timber.tag("Navigation").w(e, "popBackStack failed")
+        runCatching { navController.navigateUp() }
     }
 }

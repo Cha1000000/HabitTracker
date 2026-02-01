@@ -2,7 +2,6 @@ package com.habittracker.domain.usecase
 
 import com.habittracker.domain.model.Habit
 import com.habittracker.domain.model.HabitEntry
-import com.habittracker.domain.model.HabitParticipantSettings
 import com.habittracker.domain.repository.FirestoreRepository
 import com.habittracker.domain.repository.HabitEntryRepository
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -180,5 +179,8 @@ class GetHabitCompletionStatusUseCaseTest {
         override suspend fun markHabitCompleted(habitId: String, userId: String, date: LocalDate, note: String?) = throw NotImplementedError()
         override suspend fun markHabitIncomplete(habitId: String, userId: String, date: LocalDate) = throw NotImplementedError()
         override suspend fun setRestDay(habitId: String, userId: String, date: LocalDate, isRestDay: Boolean) = throw NotImplementedError()
+        override fun getDailyCompletionCounts(userId: String): kotlinx.coroutines.flow.Flow<Map<LocalDate, Int>> = flowOf(emptyMap())
+        override suspend fun updatePhotoUrl(habitId: String, userId: String, date: LocalDate, photoUrl: String?) = Unit
+        override suspend fun getEntryOnce(habitId: String, userId: String, date: LocalDate): HabitEntry? = entryToReturn
     }
 }

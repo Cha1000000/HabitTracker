@@ -435,6 +435,8 @@
     <string name="time_of_day_edit_mode_hint">Время выполнения нельзя изменить при редактировании</string>
 
     <string name="stats_activity_title">Активность за 7 дней</string>
+    <string name="stats_yearly_activity_title">Активность за год</string>
+    <string name="stats_yearly_activity_total_format">%1$d выполнений</string>
     <string name="stats_leaderboard_title">Рейтинг друзей</string>
     <string name="leaderboard_empty">У вас пока нет друзей для соревнования</string>
     <string name="leaderboard_weekly">За неделю</string>
@@ -519,7 +521,7 @@
     <string name="completed">Выполнено</string>
     <string name="streak_days">дней подряд</string>
     <string name="no_participants">Пока нет участников</string>
-    <string name="owner">Владелец</string>
+    <string name="owner">Автор</string>
     <string name="public_access">Публичный доступ</string>
     <string name="public_access_description">Любой может присоединиться по коду</string>
     <string name="recent_activity_description">Последняя активность участников</string>
@@ -943,18 +945,21 @@
     <string name="label_completed_percentage">Завершено %1$d%%</string>
     
     <!-- Month abbreviations -->
-    <string name="month_jan_short">янв</string>
-    <string name="month_feb_short">фев</string>
-    <string name="month_mar_short">мар</string>
-    <string name="month_apr_short">апр</string>
-    <string name="month_may_short">мая</string>
-    <string name="month_jun_short">июня</string>
-    <string name="month_jul_short">июля</string>
-    <string name="month_aug_short">авг</string>
-    <string name="month_sep_short">сен</string>
-    <string name="month_oct_short">окт</string>
-    <string name="month_nov_short">нояб</string>
-    <string name="month_dec_short">дек</string>
+    <string name="month_jan_short">Янв</string>
+    <string name="month_feb_short">Фев</string>
+    <string name="month_mar_short">Мар</string>
+    <string name="month_apr_short">Апр</string>
+    <string name="month_may_short">Май</string>
+    <string name="month_jun_short">Июн</string>
+    <string name="month_jul_short">Июл</string>
+    <string name="month_aug_short">Авг</string>
+    <string name="month_sep_short">Сен</string>
+    <string name="month_oct_short">Окт</string>
+    <string name="month_nov_short">Ноя</string>
+    <string name="month_dec_short">Дек</string>
+
+    <string name="heatmap_less">Меньше</string>
+    <string name="heatmap_more">Больше</string>
     
     <!-- Week day abbreviations -->
     <string name="day_mon_short">ПН</string>
@@ -1108,4 +1113,46 @@
     <string name="habit_stat_completed_short">Выполнено</string>
     <string name="habit_stat_missed_short">Пропущено</string>
     <string name="habit_stat_streak_short">Серия</string>
+
+    <!-- Photo Proof -->
+    <string name="photo_proof_title">Детали дня</string>
+    <string name="photo_proof_add">Добавить фото</string>
+    <string name="photo_proof_change">Изменить фото</string>
+    <string name="photo_proof_delete">Удалить фото</string>
+    <string name="photo_proof_placeholder">Нажмите, чтобы добавить фото</string>
+    <string name="photo_proof_completed_at">Выполнено в %1$s</string>
+    <string name="photo_proof_value">Значение: %1$d %2$s</string>
+    <string name="photo_proof_note">Заметка: %1$s</string>
+    <string name="photo_proof_status_completed">Выполнено</string>
+    <string name="photo_proof_status_missed">Не выполнено</string>
+    <string name="photo_proof_status_rest">Выходной</string>
+    <string name="photo_proof_uploading">Загрузка фото…</string>
+    <string name="photo_proof_upload_success">Фото успешно загружено</string>
+    <string name="photo_proof_upload_error">Не удалось загрузить фото</string>
+    <string name="photo_proof_delete_error">Не удалось удалить фото</string>
+    <string name="photo_proof_delete_confirm">Удалить это фото?</string>
+    <string name="photo_proof_snackbar_action">Добавить фото</string>
+    <string name="photo_proof_add_photo">Добавить фото</string>
+    <string name="photo_proof_replace_photo">Заменить фото</string>
+    <string name="photo_proof_habit_completed">Привычка выполнена!</string>
+    <string name="photo_proof_select_source">Выберите источник фото</string>
+    <string name="photo_proof_camera">Камера</string>
+    <string name="photo_proof_gallery">Галерея</string>
+
+    <!-- Nudge (Social Interactions) -->
+    <string name="nudge_button">Пнуть</string>
+    <string name="nudge_sent_success">Напоминание отправлено!</string>
+    <string name="nudge_on_cooldown">Можно пнуть снова через 1 час</string>
+    <string name="nudge_send_error">Не удалось отправить напоминание</string>
+    <string name="nudge_notification_title">%1$s ждёт тебя!</string>
+    <string name="nudge_notification_body">Не забудь про «%1$s» 👋</string>
+    <string name="nudge_button_text">Пнуть</string>
+
+    <!-- Widgets -->
+    <string name="widget_today_title">Сегодня</string>
+    <string name="widget_today_description">Показывает ваши привычки на сегодня</string>
+    <string name="widget_no_habits">Нет привычек на сегодня</string>
+    <string name="widget_all_done">Всё выполнено! 🎉</string>
+    <string name="widget_loading">Загрузка...</string>
+    <string name="widget_rest_day">Выходной</string>
 </resources>

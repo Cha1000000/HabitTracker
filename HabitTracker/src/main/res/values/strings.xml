@@ -437,6 +437,8 @@
     <string name="time_of_day_edit_mode_hint">Completion time cannot be changed when editing</string>
 
     <string name="stats_activity_title">Activity (7 days)</string>
+    <string name="stats_yearly_activity_title">Yearly Activity</string>
+    <string name="stats_yearly_activity_total_format">%1$d completions</string>
     <string name="stats_leaderboard_title">Friends Leaderboard</string>
     <string name="leaderboard_empty">No friends to compete with yet</string>
     <string name="leaderboard_weekly">Weekly</string>
@@ -958,6 +960,9 @@
     <string name="month_nov_short">Nov</string>
     <string name="month_dec_short">Dec</string>
 
+    <string name="heatmap_less">Less</string>
+    <string name="heatmap_more">More</string>
+
     <!-- Week day abbreviations -->
     <string name="day_mon_short">MON</string>
     <string name="day_tue_short">TUE</string>
@@ -1110,4 +1115,46 @@
     <string name="habit_stat_completed_short">Done</string>
     <string name="habit_stat_missed_short">Missed</string>
     <string name="habit_stat_streak_short">Streak</string>
+
+    <!-- Photo Proof -->
+    <string name="photo_proof_title">Day Details</string>
+    <string name="photo_proof_add">Add Photo Proof</string>
+    <string name="photo_proof_change">Change Photo</string>
+    <string name="photo_proof_delete">Delete Photo</string>
+    <string name="photo_proof_placeholder">Tap to add photo proof</string>
+    <string name="photo_proof_completed_at">Completed at %1$s</string>
+    <string name="photo_proof_value">Value: %1$d %2$s</string>
+    <string name="photo_proof_note">Note: %1$s</string>
+    <string name="photo_proof_status_completed">Completed</string>
+    <string name="photo_proof_status_missed">Not completed</string>
+    <string name="photo_proof_status_rest">Rest day</string>
+    <string name="photo_proof_uploading">Uploading photo…</string>
+    <string name="photo_proof_upload_success">Photo uploaded successfully</string>
+    <string name="photo_proof_upload_error">Failed to upload photo</string>
+    <string name="photo_proof_delete_error">Failed to delete photo</string>
+    <string name="photo_proof_delete_confirm">Delete this photo?</string>
+    <string name="photo_proof_snackbar_action">Add photo</string>
+    <string name="photo_proof_add_photo">Add photo</string>
+    <string name="photo_proof_replace_photo">Replace photo</string>
+    <string name="photo_proof_habit_completed">Habit completed!</string>
+    <string name="photo_proof_select_source">Select photo source</string>
+    <string name="photo_proof_camera">Camera</string>
+    <string name="photo_proof_gallery">Gallery</string>
+
+    <!-- Nudge (Social Interactions) -->
+    <string name="nudge_button">Nudge</string>
+    <string name="nudge_sent_success">Reminder sent!</string>
+    <string name="nudge_on_cooldown">You can nudge again in 1 hour</string>
+    <string name="nudge_send_error">Failed to send reminder</string>
+    <string name="nudge_notification_title">%1$s is waiting for you!</string>
+    <string name="nudge_notification_body">Don\'t forget about \"%1$s\" 👋</string>
+    <string name="nudge_button_text">Nudge</string>
+
+    <!-- Widgets -->
+    <string name="widget_today_title">Today</string>
+    <string name="widget_today_description">Shows your habits for today</string>
+    <string name="widget_no_habits">No habits for today</string>
+    <string name="widget_all_done">All done! 🎉</string>
+    <string name="widget_loading">Loading...</string>
+    <string name="widget_rest_day">Rest day</string>
 </resources>

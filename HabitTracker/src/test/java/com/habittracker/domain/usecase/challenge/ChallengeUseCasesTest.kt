@@ -187,6 +187,9 @@ class ChallengeUseCasesTest {
         override suspend fun markHabitCompleted(habitId: String, userId: String, date: LocalDate, note: String?) {}
         override suspend fun markHabitIncomplete(habitId: String, userId: String, date: LocalDate) {}
         override suspend fun setRestDay(habitId: String, userId: String, date: LocalDate, isRestDay: Boolean) {}
+        override fun getDailyCompletionCounts(userId: String): Flow<Map<LocalDate, Int>> = MutableStateFlow(emptyMap())
+        override suspend fun updatePhotoUrl(habitId: String, userId: String, date: LocalDate, photoUrl: String?) {}
+        override suspend fun getEntryOnce(habitId: String, userId: String, date: LocalDate): HabitEntry? = null
     }
 
     private class FakeSocialRepository : SocialRepository {
@@ -250,6 +253,7 @@ class ChallengeUseCasesTest {
         override suspend fun sendChallengeLeftNotification(toUserId: String, leftUserName: String, challengeId: String, challengeTitle: String) {}
         override suspend fun sendChallengeCompletedNotification(toUserId: String, challengeId: String, challengeTitle: String, message: String, isWinner: Boolean) {}
         override suspend fun sendParticipantJoinedNotification(toUserId: String, joinedUserName: String, habitTitle: String, habitId: String) {}
+        override suspend fun sendNudgeNotification(toUserId: String, fromUserName: String, habitTitle: String, habitId: String) {}
         override suspend fun sendChallengeCancelledNotification(toUserId: String, challengeId: String, challengeTitle: String, reason: String) {}
         override suspend fun sendPushNotification(fcmToken: String, title: String, body: String, data: Map<String, String>) {}
 

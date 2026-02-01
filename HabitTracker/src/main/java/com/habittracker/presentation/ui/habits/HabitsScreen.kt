@@ -32,6 +32,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarDuration
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.SnackbarResult
 import androidx.compose.material3.SwipeToDismissBox
 import androidx.compose.material3.SwipeToDismissBoxValue
 import androidx.compose.material3.Text
@@ -69,6 +70,7 @@ import androidx.navigation.compose.rememberNavController
 import com.habittracker.HabitTrackerApplication
 import com.habittracker.R
 import com.habittracker.domain.model.Habit
+import com.habittracker.domain.model.HabitEntry
 import com.habittracker.domain.model.HabitFrequency
 import com.habittracker.domain.model.HabitTimeOfDay
 import com.habittracker.domain.model.HabitType
@@ -81,6 +83,7 @@ import com.habittracker.presentation.ui.habits.components.ConfirmDialog
 import com.habittracker.presentation.ui.habits.components.EnhancedHabitItem
 import com.habittracker.presentation.ui.habits.components.ExpandableFAB
 import com.habittracker.presentation.ui.habits.components.GlassmorphicSectionHeader
+import com.habittracker.presentation.ui.habits.components.HabitEntryDetailSheet
 import com.habittracker.presentation.ui.habits.components.HabitTypeSelectionDialog
 import com.habittracker.presentation.ui.habits.components.HabitValueInputDialog
 import com.habittracker.presentation.ui.habits.components.JoinByCodeDialog
@@ -206,6 +209,32 @@ fun HabitsScreen(
         uiState.error?.let { errorMessage ->
             snackbarHostState.showSnackbar(errorMessage)
             viewModel.clearError()
+        }
+    }
+    
+    // Показываем SnackBar с предложением добавить фото после выполнения привычки
+    val addPhotoText = stringResource(R.string.photo_proof_habit_completed)
+    val addPhotoActionText = stringResource(R.string.photo_proof_snackbar_action)
+    LaunchedEffect(uiState.completedHabitForPhotoProof) {
+        uiState.completedHabitForPhotoProof?.let { completedHabit ->
+            val result = snackbarHostState.showSnackbar(
+                message = addPhotoText,
+                actionLabel = addPhotoActionText,
+                duration = SnackbarDuration.Short
+            )
+            if (result == SnackbarResult.ActionPerformed) {
+                // Открываем BottomSheet для добавления фото
+                viewModel.showPhotoSheet(completedHabit.habitId)
+            }
+            viewModel.clearCompletedHabitForPhotoProof()
+        }
+    }
+    
+    // Показываем сообщения через Snackbar
+    LaunchedEffect(uiState.message) {
+        uiState.message?.let { message ->
+            snackbarHostState.showSnackbar(message)
+            viewModel.clearMessage()
         }
     }
     
@@ -542,6 +571,30 @@ fun HabitsScreen(
                 )
             }
         }
+        
+        // BottomSheet для добавления фото-подтверждения
+        uiState.habitForPhotoSheet?.let { photoSheetInfo ->
+            HabitEntryDetailSheet(
+                entry = HabitEntry(
+                    habitId = photoSheetInfo.habitId,
+                    date = photoSheetInfo.date,
+                    completed = true,
+                    value = 0,
+                    note = null,
+                    isRestDay = false,
+                    streakBonusAwardedDays = null,
+                    completedAt = null,
+                    photoUrl = photoSheetInfo.photoUrl
+                ),
+                date = photoSheetInfo.date,
+                habitTitle = photoSheetInfo.habitTitle,
+                habitUnit = photoSheetInfo.habitUnit,
+                isUploading = uiState.isUploadingPhoto,
+                onDismiss = { viewModel.hidePhotoSheet() },
+                onAddPhoto = { uri -> viewModel.attachPhoto(uri) },
+                onDeletePhoto = { viewModel.deletePhoto() }
+            )
+        }
     }
 }
 
@@ -642,6 +695,9 @@ private fun HabitItemRow(
                 onDelete = {
                     showDeleteDialog = true
                 },
+                onAddPhoto = { habit ->
+                    viewModel.showPhotoSheet(habit.habit.id)
+                },
                 isFutureDate = isFutureDate
             )
         }
@@ -662,7 +718,7 @@ private fun HabitItemRow(
                         actionLabel = undoText,
                         duration = SnackbarDuration.Short
                     )
-                    if (result == androidx.compose.material3.SnackbarResult.ActionPerformed) {
+                    if (result == SnackbarResult.ActionPerformed) {
                         viewModel.cancelPendingDeletion()
                     } else {
                         viewModel.confirmPendingDeletion()

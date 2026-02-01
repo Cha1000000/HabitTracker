@@ -22,7 +22,8 @@ data class DayStatistics(
     val status: DayCompletionStatus,
     val value: Int = 0,        // Текущее значение (для измеримых привычек)
     val targetValue: Int = 1,  // Целевое значение
-    val note: String? = null   // Заметка пользователя
+    val note: String? = null,  // Заметка пользователя
+    val entry: HabitEntry? = null // Полная запись для доступа к photoUrl и другим полям
 )
 
 /**

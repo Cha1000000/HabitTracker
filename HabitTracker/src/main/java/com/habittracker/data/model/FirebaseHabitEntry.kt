@@ -1,5 +1,6 @@
 package com.habittracker.data.model
 
+import com.google.firebase.firestore.PropertyName
 import com.habittracker.domain.model.HabitEntry
 import kotlinx.datetime.Clock
 import kotlinx.datetime.LocalDate
@@ -12,20 +13,22 @@ import kotlinx.datetime.toLocalDateTime
  * Firebase не поддерживает kotlinx.datetime.LocalDate, поэтому используем String
  */
 data class FirebaseHabitEntry(
-    val habitId: String = "",
-    val userId: String = "",
-    val date: String = "", // Дата в формате "yyyy-MM-dd"
-    val completed: Boolean = false,
-    val completedAt: String? = null, // LocalDateTime в ISO формате
-    val value: Int = 1,
-    val note: String? = "",
-    val isRestDay: Boolean = false,
-    val streakBonusAwardedDays: Int? = null,
-    val createdAt: String = "", // LocalDate в ISO формате
-    val updatedAt: String = "" // LocalDate в ISO формате
+    var habitId: String = "",
+    var userId: String = "",
+    var date: String = "", // Дата в формате "yyyy-MM-dd"
+    var completed: Boolean = false,
+    var completedAt: String? = null, // LocalDateTime в ISO формате
+    var value: Int = 1,
+    var note: String? = "",
+    @get:PropertyName("isRestDay") @set:PropertyName("isRestDay")
+    var restDay: Boolean = false,
+    var streakBonusAwardedDays: Int? = null,
+    var photoUrl: String? = null, // URL фото-подтверждения
+    var createdAt: String = "", // LocalDate в ISO формате
+    var updatedAt: String = "" // LocalDate в ISO формате
 ) {
     // Конструктор без аргументов требуется для Firebase
-    constructor() : this("", "", "", false, null, 1, "", false, null, "", "")
+    constructor() : this("", "", "", false, null, 1, "", false, null, null, "", "")
     
     companion object {
         /**
@@ -40,8 +43,9 @@ data class FirebaseHabitEntry(
                 completedAt = entry.completedAt?.toString(), // LocalDateTime -> String
                 value = entry.value,
                 note = entry.note,
-                isRestDay = entry.isRestDay,
+                restDay = entry.isRestDay,
                 streakBonusAwardedDays = entry.streakBonusAwardedDays,
+                photoUrl = entry.photoUrl,
                 createdAt = entry.createdAt.toString(), // LocalDate -> String
                 updatedAt = entry.updatedAt.toString() // LocalDate -> String
             )
@@ -70,8 +74,9 @@ data class FirebaseHabitEntry(
                 },
                 value = value,
                 note = note,
-                isRestDay = isRestDay,
+                isRestDay = restDay,
                 streakBonusAwardedDays = streakBonusAwardedDays,
+                photoUrl = photoUrl,
                 createdAt = try { LocalDate.parse(createdAt) } catch (_: Exception) {
                     Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault()).date 
                 },

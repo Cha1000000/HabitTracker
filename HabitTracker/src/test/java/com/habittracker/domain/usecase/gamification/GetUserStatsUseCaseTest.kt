@@ -149,6 +149,9 @@ class GetUserStatsUseCaseTest {
                 override suspend fun markHabitCompleted(habitId: String, userId: String, date: LocalDate, note: String?) {}
                 override suspend fun markHabitIncomplete(habitId: String, userId: String, date: LocalDate) {}
                 override suspend fun setRestDay(habitId: String, userId: String, date: LocalDate, isRestDay: Boolean) {}
+                override fun getDailyCompletionCounts(userId: String): Flow<Map<LocalDate, Int>> = flowOf(emptyMap())
+                override suspend fun updatePhotoUrl(habitId: String, userId: String, date: LocalDate, photoUrl: String?) {}
+                override suspend fun getEntryOnce(habitId: String, userId: String, date: LocalDate): HabitEntry? = null
             },
             challengeRepository = object : ChallengeRepository {
                 override suspend fun insertChallenge(challenge: com.habittracker.domain.model.Challenge) {}
@@ -311,6 +314,7 @@ class GetUserStatsUseCaseTest {
                 override suspend fun sendHabitInvitationNotification(toUserId: String, fromUserName: String, habitTitle: String) {}
                 override suspend fun sendHabitInvitationAcceptedNotification(toUserId: String, acceptedByName: String, habitTitle: String, habitId: String) {}
                 override suspend fun sendParticipantJoinedNotification(toUserId: String, joinedUserName: String, habitTitle: String, habitId: String) {}
+                override suspend fun sendNudgeNotification(toUserId: String, fromUserName: String, habitTitle: String, habitId: String) {}
                 override suspend fun sendChallengeInvitationNotification(toUserId: String, fromUserName: String, challengeId: String, challengeTitle: String, habitTitle: String) {}
                 override suspend fun sendChallengeJoinedNotification(toUserId: String, joinedUserName: String, challengeId: String, challengeTitle: String) {}
                 override suspend fun sendChallengeLeftNotification(toUserId: String, leftUserName: String, challengeId: String, challengeTitle: String) {}

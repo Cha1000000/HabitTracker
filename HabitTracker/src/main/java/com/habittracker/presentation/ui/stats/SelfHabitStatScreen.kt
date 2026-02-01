@@ -1,7 +1,9 @@
 package com.habittracker.presentation.ui.stats
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -57,6 +59,7 @@ import com.habittracker.domain.model.HabitStatisticsSummary
 import com.habittracker.domain.model.StatisticsPeriod
 import com.habittracker.presentation.ui.habits.components.GlassmorphicCard
 import com.habittracker.presentation.ui.habits.components.GradientProgressBar
+import com.habittracker.presentation.ui.habits.components.HabitEntryDetailSheet
 import com.habittracker.presentation.ui.habits.components.TahoeDatePicker
 import com.habittracker.presentation.ui.habits.components.TahoeGradientBackground
 import com.habittracker.presentation.ui.theme.TahoeIcons
@@ -72,6 +75,14 @@ fun SelfHabitStatScreen(
 ) {
     val uiState by viewModel.selfStatUiState.collectAsStateWithLifecycle()
     val isDarkTheme = isSystemInDarkTheme()
+
+    BackHandler {
+        if (uiState.selectedDayForDetail != null) {
+            viewModel.onDismissDayDetail()
+        } else {
+            onNavigateBack()
+        }
+    }
 
     TahoeGradientBackground(
         modifier = Modifier.fillMaxSize(),
@@ -90,7 +101,15 @@ fun SelfHabitStatScreen(
                         )
                     },
                     navigationIcon = {
-                        IconButton(onClick = onNavigateBack) {
+                        IconButton(
+                            onClick = {
+                                if (uiState.selectedDayForDetail != null) {
+                                    viewModel.onDismissDayDetail()
+                                } else {
+                                    onNavigateBack()
+                                }
+                            }
+                        ) {
                             Icon(
                                 TahoeIcons.ArrowBack,
                                 contentDescription = stringResource(R.string.cd_back)
@@ -154,11 +173,27 @@ fun SelfHabitStatScreen(
                         selectedPeriod = uiState.selectedPeriod,
                         onPeriodChanged = viewModel::onSelfPeriodChanged,
                         onCustomDateRangeChanged = viewModel::onSelfCustomDateRangeChanged,
+                        onDayClick = viewModel::onDaySelected,
                         isDarkTheme = isDarkTheme,
                         modifier = Modifier.padding(paddingValues)
                     )
                 }
             }
+        }
+        
+        // HabitEntryDetailSheet для просмотра деталей дня и добавления фото
+        uiState.selectedDayForDetail?.let { selectedDate ->
+            val entry = viewModel.getEntryForDate(selectedDate)
+            HabitEntryDetailSheet(
+                entry = entry,
+                date = selectedDate,
+                habitTitle = uiState.statistics?.habit?.title ?: "",
+                habitUnit = uiState.statistics?.habit?.unit,
+                isUploading = uiState.isUploadingPhoto,
+                onDismiss = viewModel::onDismissDayDetail,
+                onAddPhoto = { uri -> viewModel.attachPhotoToEntry(uri, selectedDate) },
+                onDeletePhoto = { viewModel.deletePhotoFromEntry(selectedDate) }
+            )
         }
     }
 }
@@ -169,6 +204,7 @@ private fun StatisticsContent(
     selectedPeriod: StatisticsPeriod,
     onPeriodChanged: (StatisticsPeriod) -> Unit,
     onCustomDateRangeChanged: (LocalDate, LocalDate) -> Unit,
+    onDayClick: (LocalDate) -> Unit,
     isDarkTheme: Boolean,
     modifier: Modifier = Modifier
 ) {
@@ -243,6 +279,7 @@ private fun StatisticsContent(
         item {
             CalendarGridCard(
                 dailyStatistics = statistics.dailyStatistics,
+                onDayClick = onDayClick,
                 isDarkTheme = isDarkTheme
             )
         }
@@ -537,6 +574,7 @@ private fun StatItem(
 @Composable
 private fun CalendarGridCard(
     dailyStatistics: List<DayStatistics>,
+    onDayClick: (LocalDate) -> Unit,
     isDarkTheme: Boolean
 ) {
     GlassmorphicCard(
@@ -622,6 +660,7 @@ private fun CalendarGridCard(
                     week.forEach { dayStat ->
                         DayCell(
                             dayStatistics = dayStat,
+                            onClick = { onDayClick(dayStat.date) },
                             isDarkTheme = isDarkTheme,
                             modifier = Modifier.weight(1f)
                         )
@@ -641,6 +680,7 @@ private fun CalendarGridCard(
 @Composable
 private fun DayCell(
     dayStatistics: DayStatistics,
+    onClick: () -> Unit,
     isDarkTheme: Boolean,
     modifier: Modifier = Modifier
 ) {
@@ -657,6 +697,12 @@ private fun DayCell(
         DayCompletionStatus.NOT_ACTIVE -> if (isDarkTheme) Color(0xFF3A3A3A) else Color(0xFFBDBDBD)
         else -> Color.Transparent
     }
+    
+    // Клик доступен только для прошедших дней (не FUTURE и не NOT_ACTIVE)
+    val isClickable = dayStatistics.status !in listOf(
+        DayCompletionStatus.FUTURE,
+        DayCompletionStatus.NOT_ACTIVE
+    )
 
     Box(
         modifier = modifier
@@ -667,6 +713,13 @@ private fun DayCell(
             .then(
                 if (borderColor != Color.Transparent) {
                     Modifier.border(1.dp, borderColor, RoundedCornerShape(6.dp))
+                } else {
+                    Modifier
+                }
+            )
+            .then(
+                if (isClickable) {
+                    Modifier.clickable(onClick = onClick)
                 } else {
                     Modifier
                 }

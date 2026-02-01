@@ -1,7 +1,9 @@
 package com.habittracker.presentation.state
 
+import androidx.compose.runtime.Immutable
 import com.habittracker.domain.model.Challenge
 
+@Immutable
 data class ChallengesUiState(
     val currentUserId: String? = null,
     val pendingInvitations: List<Challenge> = emptyList(),

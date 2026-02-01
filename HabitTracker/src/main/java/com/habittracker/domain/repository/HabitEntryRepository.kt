@@ -46,4 +46,10 @@ interface HabitEntryRepository {
     suspend fun markHabitIncomplete(habitId: String, userId: String, date: LocalDate)
 
     suspend fun setRestDay(habitId: String, userId: String, date: LocalDate, isRestDay: Boolean)
+
+    fun getDailyCompletionCounts(userId: String): Flow<Map<LocalDate, Int>>
+
+    suspend fun updatePhotoUrl(habitId: String, userId: String, date: LocalDate, photoUrl: String?)
+
+    suspend fun getEntryOnce(habitId: String, userId: String, date: LocalDate): HabitEntry?
 }

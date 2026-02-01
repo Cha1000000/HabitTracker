@@ -1,5 +1,6 @@
 package com.habittracker.presentation.state
 
+import androidx.compose.runtime.Immutable
 import com.habittracker.domain.model.HabitFrequency
 import com.habittracker.domain.model.HabitType
 import com.habittracker.domain.model.User
@@ -11,6 +12,7 @@ import kotlinx.datetime.LocalTime
 import com.habittracker.domain.model.HabitGoalType
 import com.habittracker.domain.model.HabitTimeOfDay
 
+@Immutable
 data class AddEditHabitUiState(
     // Основные поля
     val habitId: String? = null,

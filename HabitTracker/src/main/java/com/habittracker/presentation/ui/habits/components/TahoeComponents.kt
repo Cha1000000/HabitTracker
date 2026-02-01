@@ -37,6 +37,8 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.wrapContentHeight
+import androidx.compose.foundation.layout.wrapContentWidth
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
@@ -97,6 +99,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.Popup
 import com.habittracker.R
@@ -107,6 +110,7 @@ import com.habittracker.presentation.ui.theme.GlassBlack50
 import com.habittracker.presentation.ui.theme.GlassWhite10
 import com.habittracker.presentation.ui.theme.GlassWhite30
 import com.habittracker.presentation.ui.theme.GlassWhite40
+import com.habittracker.presentation.ui.theme.GlassWhite50
 import com.habittracker.presentation.ui.theme.TahoeAqua
 import com.habittracker.presentation.ui.theme.TahoeDeepBlue
 import com.habittracker.presentation.ui.theme.TahoeElectricBlue
@@ -119,9 +123,11 @@ import com.habittracker.presentation.ui.theme.TahoeLightPurpleAccent
 import com.habittracker.presentation.ui.theme.TahoeMidnightBlue
 import com.habittracker.presentation.ui.theme.TahoeRoyalBlue
 import com.habittracker.presentation.ui.theme.TahoeSkyBlue
-import kotlinx.datetime.Clock.System
+import kotlinx.datetime.Clock
+import kotlinx.datetime.DayOfWeek
 import kotlinx.datetime.LocalDate
-import kotlinx.datetime.TimeZone.Companion.currentSystemDefault
+import kotlinx.datetime.Month
+import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toLocalDateTime
 import java.time.LocalDate.of
 import java.time.format.DateTimeFormatter
@@ -863,7 +869,7 @@ fun GlassmorphicDropdownMenuItem(
         enabled = enabled,
         colors = MenuDefaults.itemColors(
             textColor = if (isDarkTheme) Color.White else MaterialTheme.colorScheme.onSurface,
-            leadingIconColor = if (isDarkTheme) GlassWhite40 else MaterialTheme.colorScheme.onSurfaceVariant,
+            leadingIconColor = if (isDarkTheme) GlassWhite50 else MaterialTheme.colorScheme.onSurfaceVariant,
             trailingIconColor = if (isDarkTheme) GlassWhite40 else MaterialTheme.colorScheme.onSurfaceVariant,
             disabledTextColor = if (isDarkTheme) GlassWhite30 else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
         )
@@ -1338,7 +1344,7 @@ fun TahoeDateSelector(
     canSwipeRight: Boolean = true,
     onBoundaryReached: ((String) -> Unit)? = null // Колбэк при достижении границы
 ) {
-    val today = System.now().toLocalDateTime(currentSystemDefault()).date
+    val today = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault()).date
     
     val weekDayNames = listOf(
         stringResource(R.string.day_mon_short),
@@ -1676,8 +1682,8 @@ private fun TahoeDatePickerDialog(
     onDismiss: () -> Unit
 ) {
     val today = remember {
-        System.now()
-            .toLocalDateTime(currentSystemDefault())
+        Clock.System.now()
+            .toLocalDateTime(TimeZone.currentSystemDefault())
             .date
     }
     
@@ -2035,4 +2041,246 @@ private fun TahoeDayCell(
             fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal
         )
     }
+}
+
+/**
+ * Уровень активности для Heatmap
+ */
+enum class HeatmapLevel {
+    NONE, LOW, MEDIUM, HIGH, VERY_HIGH
+}
+
+/**
+ * Элемент данных для Heatmap
+ */
+data class HeatmapItem(
+    val date: LocalDate,
+    val count: Int,
+    val level: HeatmapLevel
+)
+
+/**
+ * Компонент тепловой карты (Heatmap) в стиле GitHub / Tahoe.
+ * Отображает активность за год в виде сетки недель.
+ */
+@Composable
+fun TahoeHeatmap(
+    items: List<HeatmapItem>,
+    modifier: Modifier = Modifier,
+    onItemClick: (HeatmapItem) -> Unit = {},
+    isDarkTheme: Boolean = isSystemInDarkTheme()
+) {
+    val weeks: List<List<HeatmapItem?>> = remember(items) {
+        if (items.isEmpty()) return@remember emptyList()
+
+        // Items must be sorted by date
+        val sortedItems = items.sortedBy { it.date }
+        val firstDate = sortedItems.first().date
+
+        // Выравниваем так, чтобы недели начинались с Понедельника
+        val firstDayOfWeek = firstDate.dayOfWeek.ordinal // 0 = Monday, 6 = Sunday
+
+        // Паддинг в начале: null-элементы (важно для корректных подписей месяцев)
+        val paddingItems = List<HeatmapItem?>(firstDayOfWeek) { null }
+        val allItems: List<HeatmapItem?> = paddingItems + sortedItems
+
+        allItems.chunked(7)
+    }
+
+    val scrollState = androidx.compose.foundation.lazy.rememberLazyListState()
+    
+    // Авто-скролл к концу (сегодняшнему дню)
+    androidx.compose.runtime.LaunchedEffect(items.size) {
+        if (weeks.isNotEmpty()) {
+            scrollState.scrollToItem(weeks.lastIndex)
+        }
+    }
+
+    Column(modifier = modifier) {
+        // Месяцы сверху (скроллятся вместе с сеткой)
+        LazyRow(
+            modifier = Modifier.fillMaxWidth(),
+            state = scrollState,
+            horizontalArrangement = Arrangement.spacedBy(4.dp)
+        ) {
+            item {
+                Spacer(modifier = Modifier.width(24.dp))
+            }
+
+            items(weeks.size) { weekIndex ->
+                val labelRes = remember(weeks, weekIndex) {
+                    val week = weeks[weekIndex]
+                    val firstDayOfMonth = week
+                        .asSequence()
+                        .filterNotNull()
+                        .firstOrNull { it.date.dayOfMonth == 1 }
+                    firstDayOfMonth?.date?.month?.let { monthShortResId(it) }
+                }
+
+                Box(modifier = Modifier.width(12.dp)) {
+                    if (labelRes != null) {
+                        Text(
+                            text = stringResource(labelRes),
+                            modifier = Modifier.wrapContentWidth(unbounded = true),
+                            maxLines = 1,
+                            softWrap = false,
+                            style = MaterialTheme.typography.labelSmall.copy(fontSize = 10.sp),
+                            color = if (isDarkTheme) GlassWhite40 else GlassBlack50
+                        )
+                    }
+                }
+            }
+        }
+
+        Spacer(modifier = Modifier.height(8.dp))
+
+        Row(modifier = Modifier.fillMaxWidth()) {
+            // Дни недели слева (как в GitHub показываем Mon/Wed/Fri)
+            Column(
+                modifier = Modifier.width(24.dp),
+                verticalArrangement = Arrangement.spacedBy(4.dp)
+            ) {
+                for (dayIndex in 0 until 7) {
+                    val day = DayOfWeek.entries[dayIndex]
+                    val labelRes = when (day) {
+                        DayOfWeek.MONDAY -> R.string.weekday_mon
+                        DayOfWeek.WEDNESDAY -> R.string.weekday_wed
+                        DayOfWeek.FRIDAY -> R.string.weekday_fri
+                        else -> null
+                    }
+
+                    Box(
+                        modifier = Modifier.height(12.dp),
+                        contentAlignment = Alignment.CenterStart
+                    ) {
+                        if (labelRes != null) {
+                            Text(
+                                text = stringResource(labelRes),
+                                style = MaterialTheme.typography.labelSmall,
+                                color = if (isDarkTheme) GlassWhite40 else GlassBlack50
+                            )
+                        }
+                    }
+                }
+            }
+
+            LazyRow(
+                modifier = Modifier.weight(1f),
+                state = scrollState,
+                horizontalArrangement = Arrangement.spacedBy(4.dp)
+            ) {
+                items(weeks.size) { weekIndex ->
+                    Column(
+                        verticalArrangement = Arrangement.spacedBy(4.dp)
+                    ) {
+                        val week = weeks[weekIndex]
+
+                        for (dayIndex in 0 until 7) {
+                            val item = week.getOrNull(dayIndex)
+                            if (item != null) {
+                                HeatmapCell(
+                                    item = item,
+                                    onClick = { onItemClick(item) },
+                                    isDarkTheme = isDarkTheme
+                                )
+                            } else {
+                                Spacer(modifier = Modifier.size(12.dp))
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun TahoeHeatmapLegend(
+    modifier: Modifier = Modifier,
+    isDarkTheme: Boolean = isSystemInDarkTheme()
+) {
+    Row(
+        modifier = modifier,
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        Text(
+            text = stringResource(R.string.heatmap_less),
+            style = MaterialTheme.typography.labelSmall,
+            color = if (isDarkTheme) GlassWhite40 else GlassBlack50
+        )
+
+        Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+            HeatmapLegendCell(level = HeatmapLevel.NONE, isDarkTheme = isDarkTheme)
+            HeatmapLegendCell(level = HeatmapLevel.LOW, isDarkTheme = isDarkTheme)
+            HeatmapLegendCell(level = HeatmapLevel.MEDIUM, isDarkTheme = isDarkTheme)
+            HeatmapLegendCell(level = HeatmapLevel.HIGH, isDarkTheme = isDarkTheme)
+            HeatmapLegendCell(level = HeatmapLevel.VERY_HIGH, isDarkTheme = isDarkTheme)
+        }
+
+        Text(
+            text = stringResource(R.string.heatmap_more),
+            style = MaterialTheme.typography.labelSmall,
+            color = if (isDarkTheme) GlassWhite40 else GlassBlack50
+        )
+    }
+}
+
+@Composable
+private fun HeatmapLegendCell(
+    level: HeatmapLevel,
+    isDarkTheme: Boolean
+) {
+    val color = when (level) {
+        HeatmapLevel.NONE -> if (isDarkTheme) GlassWhite10.copy(alpha = 0.1f) else GlassBlack10.copy(alpha = 0.1f)
+        HeatmapLevel.LOW -> if (isDarkTheme) TahoeSkyBlue.copy(alpha = 0.3f) else TahoeLightAccent.copy(alpha = 0.3f)
+        HeatmapLevel.MEDIUM -> if (isDarkTheme) TahoeSkyBlue.copy(alpha = 0.5f) else TahoeLightAccent.copy(alpha = 0.5f)
+        HeatmapLevel.HIGH -> if (isDarkTheme) TahoeSkyBlue.copy(alpha = 0.7f) else TahoeLightAccent.copy(alpha = 0.7f)
+        HeatmapLevel.VERY_HIGH -> if (isDarkTheme) TahoeSkyBlue else TahoeLightAccent
+    }
+
+    Box(
+        modifier = Modifier
+            .size(12.dp)
+            .clip(RoundedCornerShape(2.dp))
+            .background(color)
+    )
+}
+
+private fun monthShortResId(month: Month): Int = when (month) {
+    Month.JANUARY -> R.string.month_jan_short
+    Month.FEBRUARY -> R.string.month_feb_short
+    Month.MARCH -> R.string.month_mar_short
+    Month.APRIL -> R.string.month_apr_short
+    Month.MAY -> R.string.month_may_short
+    Month.JUNE -> R.string.month_jun_short
+    Month.JULY -> R.string.month_jul_short
+    Month.AUGUST -> R.string.month_aug_short
+    Month.SEPTEMBER -> R.string.month_sep_short
+    Month.OCTOBER -> R.string.month_oct_short
+    Month.NOVEMBER -> R.string.month_nov_short
+    Month.DECEMBER -> R.string.month_dec_short
+}
+
+@Composable
+private fun HeatmapCell(
+    item: HeatmapItem,
+    onClick: () -> Unit,
+    isDarkTheme: Boolean
+) {
+    val color = when (item.level) {
+        HeatmapLevel.NONE -> if (isDarkTheme) GlassWhite10.copy(alpha = 0.1f) else GlassBlack10.copy(alpha = 0.1f)
+        HeatmapLevel.LOW -> if (isDarkTheme) TahoeSkyBlue.copy(alpha = 0.3f) else TahoeLightAccent.copy(alpha = 0.3f)
+        HeatmapLevel.MEDIUM -> if (isDarkTheme) TahoeSkyBlue.copy(alpha = 0.5f) else TahoeLightAccent.copy(alpha = 0.5f)
+        HeatmapLevel.HIGH -> if (isDarkTheme) TahoeSkyBlue.copy(alpha = 0.7f) else TahoeLightAccent.copy(alpha = 0.7f)
+        HeatmapLevel.VERY_HIGH -> if (isDarkTheme) TahoeSkyBlue else TahoeLightAccent
+    }
+
+    Box(
+        modifier = Modifier
+            .size(12.dp)
+            .clip(RoundedCornerShape(2.dp))
+            .background(color)
+            .clickable(onClick = onClick)
+    )
 }

@@ -70,7 +70,9 @@ import com.habittracker.presentation.ui.habits.components.GradientProgressBar
 import com.habittracker.presentation.ui.habits.components.TahoeDatePicker
 import com.habittracker.presentation.ui.habits.components.TahoeGradientBackground
 import com.habittracker.presentation.ui.theme.TahoeIcons
+import com.habittracker.presentation.ui.habits.components.HabitEntryDetailSheet
 import com.habittracker.presentation.viewmodel.HabitStatisticsViewModel
+import com.habittracker.domain.model.HabitEntry
 import kotlinx.datetime.DayOfWeek
 import kotlinx.datetime.LocalDate
 
@@ -82,6 +84,9 @@ fun GroupHabitStatScreen(
 ) {
     val uiState by viewModel.groupStatUiState.collectAsStateWithLifecycle()
     val isDarkTheme = isSystemInDarkTheme()
+    
+    // Состояние для показа HabitEntryDetailSheet
+    var selectedDayForPhoto by remember { mutableStateOf<DayStatistics?>(null) }
 
     TahoeGradientBackground(
         modifier = Modifier.fillMaxSize(),
@@ -171,11 +176,39 @@ fun GroupHabitStatScreen(
                         onToggleParticipantSelection = viewModel::onToggleParticipantSelection,
                         onClearParticipantFilter = viewModel::onClearParticipantFilter,
                         onParticipantCalendarExpanded = viewModel::onParticipantCalendarExpanded,
+                        onDayClick = { dayStat -> selectedDayForPhoto = dayStat },
                         isDarkTheme = isDarkTheme,
                         modifier = Modifier.padding(paddingValues)
                     )
                 }
             }
+        }
+    }
+    
+    // BottomSheet для добавления фото-подтверждения
+    selectedDayForPhoto?.let { dayStat ->
+        val statistics = uiState.statistics
+        if (statistics != null) {
+            HabitEntryDetailSheet(
+                entry = dayStat.entry ?: HabitEntry(
+                    habitId = statistics.habit.id,
+                    date = dayStat.date,
+                    completed = dayStat.status == DayCompletionStatus.COMPLETED,
+                    value = dayStat.value,
+                    note = dayStat.note,
+                    isRestDay = dayStat.status == DayCompletionStatus.REST_DAY,
+                    streakBonusAwardedDays = null,
+                    completedAt = null,
+                    photoUrl = null
+                ),
+                date = dayStat.date,
+                habitTitle = statistics.habit.title,
+                habitUnit = statistics.habit.unit,
+                isUploading = uiState.isUploadingPhoto,
+                onDismiss = { selectedDayForPhoto = null },
+                onAddPhoto = { uri -> viewModel.attachPhotoToGroupHabit(uri, dayStat.date) },
+                onDeletePhoto = { viewModel.deletePhotoFromGroupHabit(dayStat.date) }
+            )
         }
     }
 }
@@ -193,6 +226,7 @@ private fun GroupStatisticsContent(
     onToggleParticipantSelection: (String) -> Unit,
     onClearParticipantFilter: () -> Unit,
     onParticipantCalendarExpanded: (String) -> Unit,
+    onDayClick: (DayStatistics) -> Unit,
     isDarkTheme: Boolean,
     modifier: Modifier = Modifier
 ) {
@@ -267,6 +301,7 @@ private fun GroupStatisticsContent(
             MyCalendarGridCard(
                 dailyStatistics = statistics.currentUserStatistics.dailyStatistics,
                 habitColor = statistics.habit.color,
+                onDayClick = onDayClick,
                 isDarkTheme = isDarkTheme
             )
         }
@@ -627,6 +662,7 @@ private fun GroupStatItem(
 private fun MyCalendarGridCard(
     dailyStatistics: List<DayStatistics>,
     habitColor: String,
+    onDayClick: (DayStatistics) -> Unit,
     isDarkTheme: Boolean
 ) {
     val habitColorParsed = try {
@@ -664,6 +700,7 @@ private fun MyCalendarGridCard(
 
             CalendarGridStatistics(
                 dailyStatistics = dailyStatistics,
+                onDayClick = onDayClick,
                 isDarkTheme = isDarkTheme
             )
         }
@@ -673,6 +710,7 @@ private fun MyCalendarGridCard(
 @Composable
 private fun CalendarGridStatistics(
     dailyStatistics: List<DayStatistics>,
+    onDayClick: (DayStatistics) -> Unit,
     isDarkTheme: Boolean,
     modifier: Modifier = Modifier
 ) {
@@ -731,6 +769,7 @@ private fun CalendarGridStatistics(
                 week.forEach { dayStat ->
                     GroupDayCell(
                         dayStatistics = dayStat,
+                        onClick = { onDayClick(dayStat) },
                         isDarkTheme = isDarkTheme,
                         modifier = Modifier.weight(1f)
                     )
@@ -748,9 +787,13 @@ private fun CalendarGridStatistics(
 @Composable
 private fun GroupDayCell(
     dayStatistics: DayStatistics,
+    onClick: () -> Unit,
     isDarkTheme: Boolean,
     modifier: Modifier = Modifier
 ) {
+    val isClickable = dayStatistics.status != DayCompletionStatus.FUTURE && 
+                      dayStatistics.status != DayCompletionStatus.NOT_ACTIVE
+    
     val backgroundColor = when (dayStatistics.status) {
         DayCompletionStatus.COMPLETED -> Color(0xFF4CAF50)
         DayCompletionStatus.MISSED -> Color(0xFFF44336)
@@ -768,6 +811,7 @@ private fun GroupDayCell(
     Box(
         modifier = modifier
             .aspectRatio(1f)
+            .then(if (isClickable) Modifier.clickable { onClick() } else Modifier)
             .padding(2.dp)
             .clip(RoundedCornerShape(6.dp))
             .background(backgroundColor)
@@ -1004,6 +1048,7 @@ private fun ParticipantStatisticsCard(
 
                 CalendarGridStatistics(
                     dailyStatistics = statistics.dailyStatistics,
+                    onDayClick = { }, // Календарь участников не кликабелен
                     isDarkTheme = isDarkTheme
                 )
             }

@@ -243,6 +243,7 @@ class SyncManager @Inject constructor(
         val (collection, docId) = route(item.entityType, item.entityId)
         Timber.tag("SyncManager").d("[pushDelete] ${item.entityType} -> $collection/$docId")
         when (item.entityType) {
+            // Soft delete для сущностей с поддержкой tombstones
             "habit", "challenge" -> {
                 val updates = mapOf(
                     "isActive" to false,
@@ -254,7 +255,19 @@ class SyncManager @Inject constructor(
                     .set(updates, com.google.firebase.firestore.SetOptions.merge())
                     .awaitUnit()
             }
+            "habit_entry", "friendship", "habit_invitation" -> {
+                // Soft delete: устанавливаем deletedAtMillis вместо физического удаления
+                val updates = mapOf(
+                    "deletedAtMillis" to item.updatedAt,
+                    "updatedAtMillis" to item.updatedAt
+                )
+                firestore.collection(collection)
+                    .document(docId)
+                    .set(updates, com.google.firebase.firestore.SetOptions.merge())
+                    .awaitUnit()
+            }
             else -> {
+                // Hard delete для остальных сущностей (friend_request, user_achievement и т.д.)
                 firestore.collection(collection)
                     .document(docId)
                     .delete()

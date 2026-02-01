@@ -76,6 +76,7 @@ fun EnhancedHabitItem(
     onToggleRestDay: () -> Unit = {},
     onEdit: (HabitWithCompletion) -> Unit = {},
     onDelete: (HabitWithCompletion) -> Unit = {},
+    onAddPhoto: (HabitWithCompletion) -> Unit = {},
     showGroupProgress: Boolean = true,
     isFutureDate: Boolean = false
 ) {
@@ -355,6 +356,18 @@ fun EnhancedHabitItem(
                                 },
                                 label = "menuDoneTint"
                             )
+                            // Пункт "Добавить фото" - показываем только если привычка выполнена и фото ещё не добавлено
+                            if (isDone && habitWithCompletion.photoUrl == null) {
+                                GlassmorphicDropdownMenuItem(
+                                    text = { Text(text = stringResource(id = R.string.photo_proof_add_photo)) },
+                                    leadingIcon = { Icon(imageVector = TahoeIcons.CameraAdd, contentDescription = null) },
+                                    onClick = {
+                                        showMenu = false
+                                        onAddPhoto(habitWithCompletion)
+                                    }
+                                )
+                            }
+                            
                             GlassmorphicDropdownMenuItem(
                                 text = {
                                     Crossfade(targetState = doneLabel, label = "menuDoneText") { labelText ->
@@ -384,11 +397,17 @@ fun EnhancedHabitItem(
                             } else {
                                 stringResource(id = R.string.menu_rest_day)
                             }
+
+                            val restDayIcon = if (isRestDay) {
+                                TahoeIcons.Play
+                            } else {
+                                TahoeIcons.RestZz
+                            }
                             
                             GlassmorphicDropdownMenuItem(
                                 text = { Text(text = restDayLabel) },
                                 leadingIcon = { 
-                                    Icon(imageVector = TahoeIcons.Pencil, contentDescription = null, tint = Color.Transparent)
+                                    Icon(imageVector = restDayIcon, contentDescription = null)
                                 },
                                 onClick = {
                                     showMenu = false

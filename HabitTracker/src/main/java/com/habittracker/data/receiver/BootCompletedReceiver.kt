@@ -5,6 +5,7 @@ import android.content.Context
 import android.content.Intent
 import com.habittracker.domain.repository.UserPreferencesRepository
 import com.habittracker.domain.scheduler.DailyReminderScheduler
+import com.habittracker.presentation.widget.TodayHabitsWidgetAutoRefreshScheduler
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -36,6 +37,8 @@ class BootCompletedReceiver : BroadcastReceiver() {
         
         CoroutineScope(Dispatchers.IO).launch {
             try {
+                TodayHabitsWidgetAutoRefreshScheduler.scheduleAll(context)
+
                 val prefs = userPreferencesRepository.userPreferences.firstOrNull()
                 if (prefs?.dailyReminderEnabled == true) {
                     dailyReminderScheduler.schedule(prefs.dailyReminderTime)

@@ -10,8 +10,6 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flowOf
-import kotlinx.coroutines.runBlocking
-import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
 import kotlinx.datetime.Clock
 import kotlinx.datetime.LocalDate
@@ -20,8 +18,6 @@ import kotlinx.datetime.toLocalDateTime
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
-import org.mockito.kotlin.any
-import org.mockito.kotlin.argumentCaptor
 import org.mockito.kotlin.mock
 import org.mockito.kotlin.verify
 
@@ -85,4 +81,7 @@ class FakeHabitEntryRepositoryIncomplete : HabitEntryRepository {
     override suspend fun getEntriesWithUsersForHabitAndDate(habitId: String, date: LocalDate): List<HabitEntryWithUser> = emptyList()
     override suspend fun getCompletionRateForHabit(habitId: String, userId: String, startDate: LocalDate, endDate: LocalDate): Float = 0f
     override suspend fun setRestDay(habitId: String, userId: String, date: LocalDate, isRestDay: Boolean) {}
+    override fun getDailyCompletionCounts(userId: String): Flow<Map<LocalDate, Int>> = flowOf(emptyMap())
+    override suspend fun updatePhotoUrl(habitId: String, userId: String, date: LocalDate, photoUrl: String?) {}
+    override suspend fun getEntryOnce(habitId: String, userId: String, date: LocalDate): HabitEntry? = null
 }

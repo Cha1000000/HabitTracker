@@ -226,6 +226,7 @@ class MainActivity : ComponentActivity() {
             "challenge_invitations" -> Screen.Challenges.createRoute("invitations")
             "notifications" -> Screen.Notifications.route
             "group_habit_detail" -> habitId?.let { Screen.GroupHabitDetail.createRoute(it) } ?: Screen.Habits.route
+            "edit_habit" -> habitId?.let { Screen.AddEditHabit.route + "?habitId=$it" } ?: Screen.Habits.route
             "challenge_detail" -> challengeId?.let { Screen.ChallengeDetail.createRoute(it) } ?: Screen.Challenges.route
             "habits" -> Screen.Habits.route
             "join_by_code" -> inviteCode?.let { Screen.Habits.route + "?inviteCode=$it" } ?: Screen.Habits.route

@@ -1,11 +1,13 @@
 package com.habittracker.presentation.state
 
+import androidx.compose.runtime.Immutable
 import com.habittracker.domain.model.Habit
 import com.habittracker.presentation.ui.discover.HabitCategory
 
 /**
  * UI состояние экрана публичных привычек
  */
+@Immutable
 data class PublicHabitsUiState(
     val isLoading: Boolean = false,
     val publicHabits: List<Habit> = emptyList(),

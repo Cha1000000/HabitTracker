@@ -75,6 +75,8 @@ class HabitsViewModelTest {
     private val application: Application = mock()
     private val analyticsManager: AnalyticsManager = mock()
     private val errorLogger: ErrorLogger = mock()
+    private val attachPhotoToEntryUseCase: com.habittracker.domain.usecase.habit.AttachPhotoToEntryUseCase = mock()
+    private val habitEntryRepository: com.habittracker.domain.repository.HabitEntryRepository = mock()
     private lateinit var logMock: MockedStatic<Log>
 
     @Before
@@ -145,6 +147,8 @@ class HabitsViewModelTest {
             userPreferencesRepository,
             analyticsManager,
             errorLogger,
+            attachPhotoToEntryUseCase,
+            habitEntryRepository,
             application
         )
     }

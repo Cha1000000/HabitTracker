@@ -1,5 +1,6 @@
 package com.habittracker.presentation.state
 
+import androidx.compose.runtime.Immutable
 import com.habittracker.domain.model.ChallengeType
 import com.habittracker.domain.model.Habit
 import com.habittracker.domain.model.User
@@ -10,6 +11,7 @@ import kotlinx.datetime.TimeZone
 import kotlinx.datetime.plus
 import kotlinx.datetime.todayIn
 
+@Immutable
 data class CreateChallengeUiState(
     val editingChallengeId: String? = null,
     val title: String = "",

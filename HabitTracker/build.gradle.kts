@@ -29,7 +29,7 @@ ksp {
 }
 
 // Единый источник versionName для использования и в defaultConfig, и в имени APK
-val appVersionName = "1.4.1"
+val appVersionName = "1.5.2"
 
 android {
     namespace = "com.habittracker"
@@ -39,7 +39,7 @@ android {
         applicationId = "com.habittracker"
         minSdk = 26
         targetSdk = 36
-        versionCode = 8
+        versionCode = 11
         versionName = appVersionName
 
         testInstrumentationRunner = "com.habittracker.HiltTestRunner"
@@ -245,6 +245,9 @@ dependencies {
     // Image loading
     implementation(libs.coil.compose)
     
+    // ExifInterface для корректной ориентации фото
+    implementation(libs.androidx.exifinterface)
+    
     // FlowLayout from Accompanist
     implementation(libs.accompanist.flowlayout)
     
@@ -300,6 +303,11 @@ dependencies {
     implementation(libs.androidx.credentials)
     implementation(libs.androidx.credentials.play.services.auth)
     implementation(libs.googleid)
+
+    // Glance (Widgets)
+    implementation(libs.androidx.glance)
+    implementation(libs.androidx.glance.appwidget)
+    implementation(libs.androidx.glance.material)
 
     // Testing
     testImplementation(libs.junit)

@@ -18,6 +18,10 @@
     <uses-permission android:name="com.google.android.c2dm.permission.RECEIVE" />
     <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" android:maxSdkVersion="32" />
     
+    <!-- Разрешения для камеры (фото-подтверждение привычек) -->
+    <uses-permission android:name="android.permission.CAMERA" />
+    <uses-feature android:name="android.hardware.camera" android:required="false" />
+    
     <application
         android:name=".HabitTrackerApplication"
         android:allowBackup="true"
@@ -120,6 +124,37 @@
                 <action android:name="android.intent.action.BOOT_COMPLETED" />
             </intent-filter>
         </receiver>
+
+        <receiver
+            android:name=".presentation.widget.TodayHabitsWidgetReceiver"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/today_habits_widget_info" />
+        </receiver>
+
+        <receiver
+            android:name=".presentation.widget.TodayHabitsWidgetAutoRefreshReceiver"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="com.habittracker.ACTION_WIDGET_REFRESH_MIDNIGHT" />
+                <action android:name="com.habittracker.ACTION_WIDGET_REFRESH_AFTERNOON" />
+            </intent-filter>
+        </receiver>
+        
+        <!-- FileProvider для съёмки фото камерой -->
+        <provider
+            android:name="androidx.core.content.FileProvider"
+            android:authorities="${applicationId}.fileprovider"
+            android:exported="false"
+            android:grantUriPermissions="true">
+            <meta-data
+                android:name="android.support.FILE_PROVIDER_PATHS"
+                android:resource="@xml/file_paths" />
+        </provider>
     </application>
 
 </manifest>
