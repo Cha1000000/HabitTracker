@@ -48,7 +48,8 @@ class GetHabitStatisticsUseCase @Inject constructor(
         endDate: LocalDate
     ): HabitStatisticsData? = coroutineScope {
         val habit = getHabit(habitId) ?: return@coroutineScope null
-        calculateStatistics(habit, userId, startDate, endDate)
+        val settings = habitRepository.getHabitParticipantSettings(habitId, userId)
+        calculateStatistics(habit, userId, startDate, endDate, settings?.seasonStartDate)
     }
 
     /**
@@ -68,7 +69,14 @@ class GetHabitStatisticsUseCase @Inject constructor(
         }
 
         // Получаем статистику текущего пользователя
-        val currentUserStats = calculateStatistics(habit, currentUserId, startDate, endDate)
+        val currentUserSettings = habitRepository.getHabitParticipantSettings(habitId, currentUserId)
+        val currentUserStats = calculateStatistics(
+            habit,
+            currentUserId,
+            startDate,
+            endDate,
+            currentUserSettings?.seasonStartDate
+        )
 
         // Получаем список всех участников (включая создателя)
         val allParticipantIds = (habit.participants + habit.createdBy).distinct()
@@ -83,7 +91,14 @@ class GetHabitStatisticsUseCase @Inject constructor(
             .filter { it != currentUserId }
             .map { participantId ->
                 async {
-                    val stats = calculateStatistics(habit, participantId, startDate, endDate)
+                    val participantSettings = habitRepository.getHabitParticipantSettings(habitId, participantId)
+                    val stats = calculateStatistics(
+                        habit,
+                        participantId,
+                        startDate,
+                        endDate,
+                        participantSettings?.seasonStartDate
+                    )
                     participantId to stats
                 }
             }
@@ -117,17 +132,22 @@ class GetHabitStatisticsUseCase @Inject constructor(
         habit: Habit,
         userId: String,
         startDate: LocalDate,
-        endDate: LocalDate
+        endDate: LocalDate,
+        seasonStartDate: LocalDate?
     ): HabitStatisticsData {
         // Генерируем список всех дат в периоде
         val dates = generateDateRange(startDate, endDate)
         
+        val effectiveStart = if (seasonStartDate != null && seasonStartDate > startDate) {
+            seasonStartDate
+        } else startDate
+
         // Получаем все записи за период
         val entries = try {
             habitEntryRepository.getEntriesForUserAndPeriod(
                 habitId = habit.id,
                 userId = userId,
-                startDate = startDate,
+                startDate = effectiveStart,
                 endDate = endDate
             )
         } catch (_: Exception) {
@@ -141,7 +161,8 @@ class GetHabitStatisticsUseCase @Inject constructor(
             val entry = entriesMap[date]
             val isActiveByDate = habit.isActiveOnDate(date, habit.createdAt)
             val isActiveByDayOfWeek = habit.isActiveOnDayOfWeek(date.dayOfWeek)
-            val isActive = isActiveByDate && isActiveByDayOfWeek
+            val isSeasonActive = seasonStartDate == null || date >= seasonStartDate
+            val isActive = isSeasonActive && isActiveByDate && isActiveByDayOfWeek
             
             val status = when {
                 date > today -> DayCompletionStatus.FUTURE

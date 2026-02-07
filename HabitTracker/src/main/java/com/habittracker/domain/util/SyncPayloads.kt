@@ -29,6 +29,7 @@ object SyncPayloads {
                 put("reminderDays", settings.reminderDays.map { it.value })
             }
             put("notificationsMuted", settings.notificationsMuted)
+            settings.seasonStartDate?.let { put("seasonStartDate", it.toString()) }
             settings.timeZone?.let { put("timeZone", it) }
             put("updatedAt", settings.updatedAt)
         }

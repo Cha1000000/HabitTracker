@@ -1,7 +1,11 @@
 package com.habittracker.domain.usecase.gamification
 
+import com.habittracker.domain.model.HabitEntry
+import com.habittracker.domain.model.Habit
+import com.habittracker.domain.model.HabitType
 import com.habittracker.domain.model.gamification.ActivityLevel
 import com.habittracker.domain.repository.HabitEntryRepository
+import com.habittracker.domain.repository.HabitRepository
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.test.runTest
@@ -22,13 +26,15 @@ class GetYearlyActivityUseCaseTest {
 
     @Mock
     private lateinit var habitEntryRepository: HabitEntryRepository
+    @Mock
+    private lateinit var habitRepository: HabitRepository
 
     private lateinit var getYearlyActivityUseCase: GetYearlyActivityUseCase
 
     @Before
     fun setUp() {
         MockitoAnnotations.openMocks(this)
-        getYearlyActivityUseCase = GetYearlyActivityUseCase(habitEntryRepository)
+        getYearlyActivityUseCase = GetYearlyActivityUseCase(habitEntryRepository, habitRepository)
     }
 
     @Test
@@ -51,15 +57,20 @@ class GetYearlyActivityUseCaseTest {
         val date4 = oneYearAgo.plus(4, DateTimeUnit.DAY)
         val date5 = oneYearAgo.plus(5, DateTimeUnit.DAY)
         
-        val mockCounts = mapOf(
-            date1 to 0,
-            date2 to 2,
-            date3 to 4,
-            date4 to 7,
-            date5 to 12
-        )
-        
-        `when`(habitEntryRepository.getDailyCompletionCounts(userId)).thenReturn(flowOf(mockCounts))
+        val habits = (1..12).map { idx ->
+            Habit(id = "h$idx", title = "H$idx", type = HabitType.PERSONAL)
+        }
+
+        val entries = buildList {
+            repeat(2) { add(entry(userId, "h${it + 1}", date2)) }
+            repeat(4) { add(entry(userId, "h${it + 3}", date3)) }
+            repeat(7) { add(entry(userId, "h${it + 7}", date4)) }
+            repeat(12) { add(entry(userId, "h${it + 1}", date5)) }
+        }
+
+        `when`(habitEntryRepository.getEntriesForUser(userId)).thenReturn(flowOf(entries))
+        `when`(habitRepository.getHabitsByUserId(userId)).thenReturn(flowOf(habits))
+        `when`(habitRepository.getHabitParticipantSettings(org.mockito.kotlin.any(), org.mockito.kotlin.any())).thenReturn(null)
 
         // When
         val result = getYearlyActivityUseCase(userId).first()
@@ -93,5 +104,16 @@ class GetYearlyActivityUseCaseTest {
         val entryEmpty = result.find { it.date == dateEmpty }
         assertEquals(ActivityLevel.NONE, entryEmpty?.level)
         assertEquals(0, entryEmpty?.count)
+    }
+
+    private fun entry(userId: String, habitId: String, date: kotlinx.datetime.LocalDate): HabitEntry {
+        return HabitEntry(
+            habitId = habitId,
+            userId = userId,
+            date = date,
+            completed = true,
+            createdAt = date,
+            updatedAt = date
+        )
     }
 }

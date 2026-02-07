@@ -63,6 +63,11 @@ interface AchievementRepository {
      * Получает статистику достижений пользователя
      */
     suspend fun getUserAchievementStats(userId: String): AchievementStats
+
+    /**
+     * Сбрасывает прогресс достижений пользователя (reset to locked)
+     */
+    suspend fun resetUserAchievements(userId: String)
 }
 
 /**

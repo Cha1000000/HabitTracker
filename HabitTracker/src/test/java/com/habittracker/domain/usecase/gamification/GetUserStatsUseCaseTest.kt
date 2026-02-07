@@ -143,6 +143,7 @@ class GetUserStatsUseCaseTest {
                     entries.filter { it.userId == userId && it.habitId == habitId }
 
                 override suspend fun deleteEntriesForUserAndHabit(userId: String, habitId: String) {}
+                override suspend fun deleteEntriesForHabit(habitId: String) {}
                 override suspend fun getEntriesForUserAndPeriod(habitId: String, userId: String, startDate: LocalDate, endDate: LocalDate): List<HabitEntry> = entries
                 override suspend fun getEntriesWithUsersForHabitAndDate(habitId: String, date: LocalDate) = emptyList<com.habittracker.domain.model.HabitEntryWithUser>()
                 override suspend fun getCompletionRateForHabit(habitId: String, userId: String, startDate: LocalDate, endDate: LocalDate): Float = 0f

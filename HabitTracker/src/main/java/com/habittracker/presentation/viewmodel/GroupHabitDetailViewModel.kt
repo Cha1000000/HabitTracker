@@ -22,6 +22,7 @@ import com.habittracker.domain.usecase.UpdateHabitUseCase
 import com.habittracker.domain.usecase.habit.AttachPhotoToEntryUseCase
 import com.habittracker.domain.usecase.habit.GenerateHabitInviteCodeUseCase
 import com.habittracker.domain.usecase.habit.GetHabitInvitationsUseCase
+import com.habittracker.domain.usecase.reset.ResetProgressUseCase
 import com.habittracker.domain.usecase.social.SendNudgeUseCase
 import com.habittracker.presentation.state.GroupHabitDetailUiState
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -60,7 +61,8 @@ class GroupHabitDetailViewModel @Inject constructor(
     private val getLeaderboardUseCase: com.habittracker.domain.usecase.gamification.GetLeaderboardUseCase,
     private val attachPhotoToEntryUseCase: AttachPhotoToEntryUseCase,
     private val sendNudgeUseCase: SendNudgeUseCase,
-    private val nudgeRepository: NudgeRepository
+    private val nudgeRepository: NudgeRepository,
+    private val resetProgressUseCase: ResetProgressUseCase
 ) : AndroidViewModel(application) {
 
     private val _uiState = MutableStateFlow(GroupHabitDetailUiState())
@@ -710,6 +712,64 @@ class GroupHabitDetailViewModel @Inject constructor(
                             error = application.getString(R.string.nudge_send_error)
                         ) 
                     }
+                }
+            }
+        }
+    }
+
+    /**
+     * Сбросить мою статистику по привычке (сезон + удаление записей)
+     */
+    fun resetMyStats() {
+        val habitId = _uiState.value.habit?.id ?: return
+        viewModelScope.launch {
+            try {
+                _uiState.update { it.copy(isLoading = true) }
+                resetProgressUseCase.resetGroupHabitFullForUser(habitId, currentUserId)
+                _uiState.update {
+                    it.copy(
+                        isLoading = false,
+                        successMessage = application.getString(R.string.reset_group_mine_success)
+                    )
+                }
+                loadHabitDetails(habitId)
+            } catch (_: Exception) {
+                _uiState.update {
+                    it.copy(
+                        isLoading = false,
+                        error = application.getString(R.string.reset_group_mine_error)
+                    )
+                }
+            }
+        }
+    }
+
+    /**
+     * Сбросить статистику для всех участников (только автор)
+     */
+    fun resetForAll() {
+        val habit = _uiState.value.habit ?: return
+        if (habit.createdBy != currentUserId) {
+            _uiState.update { it.copy(error = application.getString(R.string.reset_group_all_forbidden)) }
+            return
+        }
+        viewModelScope.launch {
+            try {
+                _uiState.update { it.copy(isLoading = true) }
+                resetProgressUseCase.resetGroupHabitFullForAll(habit.id, currentUserId)
+                _uiState.update {
+                    it.copy(
+                        isLoading = false,
+                        successMessage = application.getString(R.string.reset_group_all_success)
+                    )
+                }
+                loadHabitDetails(habit.id)
+            } catch (_: Exception) {
+                _uiState.update {
+                    it.copy(
+                        isLoading = false,
+                        error = application.getString(R.string.reset_group_all_error)
+                    )
                 }
             }
         }

@@ -3,8 +3,10 @@ package com.habittracker.domain.usecase.gamification
 import com.habittracker.domain.model.gamification.ActivityLevel
 import com.habittracker.domain.model.gamification.DailyActivityLevel
 import com.habittracker.domain.repository.HabitEntryRepository
+import com.habittracker.domain.repository.HabitRepository
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.datetime.Clock
 import kotlinx.datetime.DateTimeUnit
 import kotlinx.datetime.TimeZone
@@ -14,15 +16,32 @@ import kotlinx.datetime.todayIn
 import javax.inject.Inject
 
 class GetYearlyActivityUseCase @Inject constructor(
-    private val habitEntryRepository: HabitEntryRepository
+    private val habitEntryRepository: HabitEntryRepository,
+    private val habitRepository: HabitRepository
 ) {
     operator fun invoke(userId: String): Flow<List<DailyActivityLevel>> {
         val today = Clock.System.todayIn(TimeZone.currentSystemDefault())
         // Берем данные за последний год (365 дней)
         val oneYearAgo = today.minus(365, DateTimeUnit.DAY)
 
-        return habitEntryRepository.getDailyCompletionCounts(userId)
-            .map { countsMap ->
+        return habitEntryRepository.getEntriesForUser(userId)
+            .map { entries ->
+                val habits = habitRepository.getHabitsByUserId(userId).firstOrNull() ?: emptyList()
+                val seasonStartMap = habits.associate { habit ->
+                    val settings = habitRepository.getHabitParticipantSettings(habit.id, userId)
+                    habit.id to settings?.seasonStartDate
+                }
+
+                val filteredEntries = entries.filter { entry ->
+                    val seasonStart = seasonStartMap[entry.habitId]
+                    seasonStart == null || entry.date >= seasonStart
+                }
+
+                val countsMap = filteredEntries
+                    .filter { it.completed }
+                    .groupingBy { it.date }
+                    .eachCount()
+
                 val activityList = mutableListOf<DailyActivityLevel>()
                 
                 // Генерируем список дней за последний год

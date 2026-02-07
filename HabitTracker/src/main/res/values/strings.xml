@@ -1051,6 +1051,12 @@
     <string name="reset_confirm_personal_season_message">Your personal habit progress will restart from today. History will remain.</string>
     <string name="reset_confirm_personal_full_title">Reset personal habits?</string>
     <string name="reset_confirm_personal_full_message">All personal habit entries will be deleted. This action cannot be undone.</string>
+    <string name="reset_personal_habit_season_title">Start a new season for “%1$s”?</string>
+    <string name="reset_personal_habit_season_message">Your progress in this habit will restart from today.</string>
+    <string name="reset_personal_habit_full_title">Reset “%1$s”?</string>
+    <string name="reset_personal_habit_full_message">All entries for this habit will be deleted. This action cannot be undone.</string>
+    <string name="reset_personal_habit_season_success">Season reset for habit</string>
+    <string name="reset_personal_habit_full_success">Habit reset</string>
     <string name="reset_confirm_group_season_title">Start a new season?</string>
     <string name="reset_confirm_group_season_message">Your progress in “%1$s” will restart from today.</string>
     <string name="reset_confirm_group_full_title">Reset your statistics?</string>
@@ -1065,6 +1071,25 @@
     <string name="reset_success_group_season">Season reset</string>
     <string name="reset_success_group_full">Group habit reset</string>
     <string name="reset_success_group_full_all">Group habit reset for all</string>
+
+    <!-- Group Habit Reset (Overflow) -->
+    <string name="reset_menu_title">Reset</string>
+    <string name="reset_menu_mine">Reset my statistics</string>
+    <string name="reset_menu_all">Reset for everyone</string>
+    <string name="reset_group_mine_title">Reset my statistics?</string>
+    <string name="reset_group_mine_message">Your entries in this habit will be deleted. Other participants are not affected.</string>
+    <string name="reset_group_mine_action">Reset</string>
+    <string name="reset_group_all_title">Reset for everyone?</string>
+    <string name="reset_group_all_message">All participants’ entries in this habit will be deleted. This action cannot be undone.</string>
+    <string name="reset_group_all_action">Reset for everyone</string>
+    <string name="reset_group_mine_success">Your statistics have been reset</string>
+    <string name="reset_group_all_success">Statistics reset for everyone</string>
+    <string name="reset_group_mine_error">Failed to reset your statistics</string>
+    <string name="reset_group_all_error">Failed to reset for everyone</string>
+    <string name="reset_group_all_forbidden">Only the habit author can reset for everyone</string>
+    <string name="reset_personal_habit_season_error">Failed to reset season</string>
+    <string name="reset_personal_habit_full_error">Failed to reset habit</string>
+    <string name="error_not_authenticated">You need to sign in</string>
     <string name="error_end_date_past">End date must be in the future</string>
     <string name="error_habit_not_found_domain">Habit not found</string>
     <string name="error_no_habit_access">No access to this habit</string>

@@ -266,6 +266,14 @@ class PreviewAddEditHabitViewModel @Inject constructor(
         _uiState.update { it.copy(successMessage = null) }
     }
 
+    override fun resetPersonalHabitSeason() {
+        // no-op in preview
+    }
+
+    override fun resetPersonalHabitFull() {
+        // no-op in preview
+    }
+
     override fun saveHabit() {
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true) }

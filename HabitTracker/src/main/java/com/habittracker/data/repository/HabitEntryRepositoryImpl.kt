@@ -77,6 +77,28 @@ class HabitEntryRepositoryImpl @Inject constructor(
         kickSync()
     }
 
+    override suspend fun deleteEntriesForHabit(habitId: String) {
+        val entries = habitEntryDao.getEntriesForHabitOnce(habitId)
+        if (entries.isEmpty()) return
+
+        habitEntryDao.deleteAllEntriesForHabit(habitId)
+
+        val updatedAt = Clock.System.now().toEpochMilliseconds()
+        for (e in entries) {
+            try {
+                val entityId = HabitEntryIds.make(e.habitId, e.userId, e.date)
+                syncManager.enqueueDelete(
+                    entityType = "habit_entry",
+                    entityId = entityId,
+                    updatedAt = updatedAt
+                )
+            } catch (ex: Exception) {
+                Timber.tag("HabitEntryRepo").w(ex, "Failed to enqueue delete for habit_entry")
+            }
+        }
+        kickSync()
+    }
+
     override suspend fun insertEntry(entry: HabitEntry) {
         habitEntryDao.insertEntry(entry.habitEntryToEntity())
         enqueueSync(entry)

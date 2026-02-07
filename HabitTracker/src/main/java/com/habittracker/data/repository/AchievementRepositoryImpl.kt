@@ -255,4 +255,26 @@ class AchievementRepositoryImpl @Inject constructor(
             completionPercentage = completionPercentage
         )
     }
+
+    override suspend fun resetUserAchievements(userId: String) {
+        val nowMillis = Clock.System.now().toEpochMilliseconds()
+        val existing = userAchievementDao.getUserAchievementsSync(userId)
+        if (existing.isEmpty()) return
+
+        val resetEntities = existing.map { entity ->
+            entity.copy(
+                progress = 0,
+                isUnlocked = false,
+                unlockedAt = null,
+                updatedAtMillis = nowMillis,
+                isNotified = false
+            )
+        }
+
+        userAchievementDao.insertUserAchievements(resetEntities)
+
+        resetEntities.forEach { entity ->
+            enqueueSync(entity.toDomain())
+        }
+    }
 }

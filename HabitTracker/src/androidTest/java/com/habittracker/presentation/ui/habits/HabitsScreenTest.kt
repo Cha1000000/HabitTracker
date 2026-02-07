@@ -40,6 +40,8 @@ import com.habittracker.domain.usecase.UpdateHabitEntryValueUseCase
 import com.habittracker.domain.usecase.habit.GetGroupHabitProgressUseCase
 import com.habittracker.domain.usecase.habit.JoinHabitByCodeUseCase
 import com.habittracker.domain.usecase.habit.LeaveSharedHabitsWithFriendUseCase
+import com.habittracker.domain.usecase.habit.AttachPhotoToEntryUseCase
+import com.habittracker.domain.repository.HabitEntryRepository
 import com.habittracker.presentation.viewmodel.FriendsViewModel
 import com.habittracker.presentation.viewmodel.HabitsViewModel
 import com.habittracker.presentation.viewmodel.NotificationsViewModel
@@ -84,6 +86,8 @@ class HabitsScreenTest {
     private lateinit var userPreferencesRepository: UserPreferencesRepository
     private lateinit var updateHabitEntryValueUseCase: UpdateHabitEntryValueUseCase
     private lateinit var setHabitRestDayUseCase: SetHabitRestDayUseCase
+    private lateinit var attachPhotoToEntryUseCase: AttachPhotoToEntryUseCase
+    private lateinit var habitEntryRepository: HabitEntryRepository
 
     private lateinit var notificationsViewModel: NotificationsViewModel
     private lateinit var friendsViewModel: FriendsViewModel
@@ -151,6 +155,8 @@ class HabitsScreenTest {
         leaveSharedHabitsWithFriendUseCase = mockk(relaxed = true)
         updateHabitEntryValueUseCase = mockk(relaxed = true)
         setHabitRestDayUseCase = mockk(relaxed = true)
+        attachPhotoToEntryUseCase = mockk(relaxed = true)
+        habitEntryRepository = mockk(relaxed = true)
         val joinHabitByCodeUseCase = mockk<JoinHabitByCodeUseCase>(relaxed = true)
         userPreferencesRepository = mockk {
             every { userPreferences } returns MutableStateFlow(UserPreferences(sortCompletedHabitsToBottom = false))
@@ -175,6 +181,8 @@ class HabitsScreenTest {
             userPreferencesRepository = userPreferencesRepository,
             analyticsManager = mockk(relaxed = true),
             errorLogger = mockk(relaxed = true),
+            attachPhotoToEntryUseCase = attachPhotoToEntryUseCase,
+            habitEntryRepository = habitEntryRepository,
             application = composeRule.activity.application
         )
 
