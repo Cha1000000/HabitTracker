@@ -58,11 +58,20 @@ class GetUserStatsUseCase @Inject constructor(
         }
         val friendsCount = socialRepository.getFriendsCount(userId).firstOrNull() ?: 0
 
+        val seasonStartMap = habits.associate { habit ->
+            val settings = habitRepository.getHabitParticipantSettings(habit.id, userId)
+            habit.id to settings?.seasonStartDate
+        }
+        val filteredEntries = allEntries.filter { entry ->
+            val seasonStart = seasonStartMap[entry.habitId]
+            seasonStart == null || entry.date >= seasonStart
+        }
+
         // Рассчитываем статистику
-        val habitStats = calculateHabitStats(habits, allEntries, today)
+        val habitStats = calculateHabitStats(habits, filteredEntries, today, seasonStartMap)
         val challengeStats = calculateChallengeStats(challenges, userId)
-        val streakStats = calculateStreakStats(allEntries, habits, today)
-        val timeStats = calculateTimeStats(allEntries, today)
+        val streakStats = calculateStreakStats(filteredEntries, habits, today)
+        val timeStats = calculateTimeStats(filteredEntries, today)
         val socialStats = SocialStats(
             friendsCount = friendsCount,
             groupHabitsCount = habits.count { it.participants.isNotEmpty() },
@@ -100,7 +109,8 @@ class GetUserStatsUseCase @Inject constructor(
     private fun calculateHabitStats(
         habits: List<Habit>,
         entries: List<HabitEntry>,
-        today: LocalDate
+        today: LocalDate,
+        seasonStartMap: Map<String, LocalDate?>
     ): HabitStats {
         val activeHabits = habits.filter { it.isActive }
         val completedEntries = entries.filter { it.completed }
@@ -122,9 +132,9 @@ class GetUserStatsUseCase @Inject constructor(
             completionsThisWeek = thisWeekEntries.size,
             completionsThisMonth = thisMonthEntries.size,
             completionsThisYear = thisYearEntries.size,
-            averageCompletionRate = calculateAverageCompletionRate(activeHabits, entries, today),
+            averageCompletionRate = calculateAverageCompletionRate(activeHabits, entries, today, seasonStartMap),
             mostCompletedHabit = findMostCompletedHabit(habits, completedEntries),
-            perfectDays = calculatePerfectDays(activeHabits, entries, today),
+            perfectDays = calculatePerfectDays(activeHabits, entries, today, seasonStartMap),
             last7DaysCompletions = calculateLast7DaysCompletions(completedEntries, today)
         )
     }
@@ -239,7 +249,8 @@ class GetUserStatsUseCase @Inject constructor(
     private fun calculateAverageCompletionRate(
         habits: List<Habit>,
         entries: List<HabitEntry>,
-        today: LocalDate
+        today: LocalDate,
+        seasonStartMap: Map<String, LocalDate?>
     ): Float {
         if (habits.isEmpty()) return 0f
 
@@ -247,7 +258,10 @@ class GetUserStatsUseCase @Inject constructor(
         val recentEntries = entries.filter { it.date >= last30Days }
 
         val completionRates = habits.map { habit ->
-            val habitEntries = recentEntries.filter { it.habitId == habit.id }
+            val seasonStart = seasonStartMap[habit.id]
+            val habitEntries = recentEntries.filter { entry ->
+                entry.habitId == habit.id && (seasonStart == null || entry.date >= seasonStart)
+            }
             val totalDays = 30
             val completedDays = habitEntries.count { it.completed }
             (completedDays.toFloat() / totalDays * 100)
@@ -278,7 +292,8 @@ class GetUserStatsUseCase @Inject constructor(
     private fun calculatePerfectDays(
         habits: List<Habit>,
         entries: List<HabitEntry>,
-        today: LocalDate
+        today: LocalDate,
+        seasonStartMap: Map<String, LocalDate?>
     ): Int {
         if (habits.isEmpty()) return 0
 
@@ -290,7 +305,10 @@ class GetUserStatsUseCase @Inject constructor(
             
             // Находим привычки, которые были активны в этот день с учётом дня недели
             val activeHabitsForDay = habits.filter { habit ->
-                habit.isActive && 
+                val seasonStart = seasonStartMap[habit.id]
+                val isSeasonActive = seasonStart == null || date >= seasonStart
+                habit.isActive &&
+                isSeasonActive &&
                 (habit.startDate == null || habit.startDate <= date) &&
                 (habit.endDate == null || habit.endDate >= date) &&
                 habit.isActiveOnDayOfWeek(date.dayOfWeek)

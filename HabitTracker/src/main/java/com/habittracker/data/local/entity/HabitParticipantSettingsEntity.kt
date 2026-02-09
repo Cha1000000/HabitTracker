@@ -23,6 +23,7 @@ data class HabitParticipantSettingsEntity(
     @ColumnInfo(defaultValue = "0")
     val notificationsMuted: Boolean = false,
     val personalEndDate: LocalDate? = null,
+    val seasonStartDate: LocalDate? = null,
     val timeZone: String? = null,
     val updatedAt: Long
 )

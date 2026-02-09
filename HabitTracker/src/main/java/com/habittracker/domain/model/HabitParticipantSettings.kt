@@ -15,6 +15,7 @@ data class HabitParticipantSettings(
     val reminderDays: Set<DayOfWeek> = emptySet(),
     val notificationsMuted: Boolean = false,
     val personalEndDate: LocalDate? = null, // Персональная дата окончания участника
+    val seasonStartDate: LocalDate? = null, // Персональный старт сезона для статистики
     val timeZone: String? = null,
     val updatedAt: Long = System.currentTimeMillis()
 )

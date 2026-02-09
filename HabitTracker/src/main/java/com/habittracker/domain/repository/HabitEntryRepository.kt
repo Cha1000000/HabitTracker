@@ -25,6 +25,8 @@ interface HabitEntryRepository {
 
     suspend fun deleteEntriesForUserAndHabit(userId: String, habitId: String)
 
+    suspend fun deleteEntriesForHabit(habitId: String)
+
     suspend fun getEntriesForUserAndPeriod(
         habitId: String,
         userId: String,

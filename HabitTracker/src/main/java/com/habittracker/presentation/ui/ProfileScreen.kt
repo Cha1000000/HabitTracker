@@ -559,6 +559,34 @@ fun ProfileScreen(
                     }
                 }
 
+                Spacer(modifier = Modifier.height(16.dp))
+
+                GlassmorphicCard(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable { navController.navigate(Screen.ResetProgress.route) },
+                    isDarkTheme = isDarkTheme
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(16.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        Icon(
+                            imageVector = TahoeIcons.Broom,
+                            contentDescription = stringResource(R.string.reset_progress_title),
+                            tint = MaterialTheme.colorScheme.error
+                        )
+                        Text(
+                            text = stringResource(R.string.profile_reset_progress_button),
+                            style = MaterialTheme.typography.labelLarge,
+                            color = MaterialTheme.colorScheme.onBackground
+                        )
+                    }
+                }
+
                 // Display error if any
                 if (authState is AuthState.Error) {
                     Spacer(modifier = Modifier.height(16.dp))

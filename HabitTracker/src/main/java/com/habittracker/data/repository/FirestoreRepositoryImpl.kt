@@ -340,6 +340,7 @@ class FirestoreRepositoryImpl @Inject constructor(
             @Suppress("UNCHECKED_CAST")
             val reminderDaysRaw: List<Int> = (data["reminderDays"] as? List<*>)?.filterIsInstance<Number>()?.map { it.toInt() } ?: emptyList()
             val notificationsMuted = data["notificationsMuted"] as? Boolean ?: false
+            val seasonStartDate = (data["seasonStartDate"] as? String)?.let { kotlinx.datetime.LocalDate.parse(it) }
             val timeZone = data["timeZone"] as? String
             val updatedAt = (data["updatedAt"] as? Number)?.toLong() ?: System.currentTimeMillis()
             HabitParticipantSettings(
@@ -351,6 +352,7 @@ class FirestoreRepositoryImpl @Inject constructor(
                     kotlinx.datetime.DayOfWeek.entries.firstOrNull { it.value == d }
                 }.toSet(),
                 notificationsMuted = notificationsMuted,
+                seasonStartDate = seasonStartDate,
                 timeZone = timeZone,
                 updatedAt = updatedAt
             )

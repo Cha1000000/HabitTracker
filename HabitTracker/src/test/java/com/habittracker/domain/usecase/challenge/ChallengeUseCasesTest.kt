@@ -181,6 +181,7 @@ class ChallengeUseCasesTest {
         override fun getEntriesForUserAndHabit(userId: String, habitId: String) = MutableStateFlow<List<HabitEntry>>(emptyList())
         override suspend fun getEntriesForUserAndHabitOnce(userId: String, habitId: String): List<HabitEntry> = emptyList()
         override suspend fun deleteEntriesForUserAndHabit(userId: String, habitId: String) = Unit
+        override suspend fun deleteEntriesForHabit(habitId: String) = Unit
         override suspend fun getEntriesForUserAndPeriod(habitId: String, userId: String, startDate: LocalDate, endDate: LocalDate): List<HabitEntry> = emptyList()
         override suspend fun getEntriesWithUsersForHabitAndDate(habitId: String, date: LocalDate) = emptyList<HabitEntryWithUser>()
         override suspend fun getCompletionRateForHabit(habitId: String, userId: String, startDate: LocalDate, endDate: LocalDate): Float = 0f

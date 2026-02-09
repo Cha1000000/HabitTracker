@@ -65,4 +65,8 @@ interface IAddEditHabitViewModel {
     
     fun onErrorShown()
     fun onSuccessMessageShown()
+
+    // Сброс прогресса для личной привычки
+    fun resetPersonalHabitSeason()
+    fun resetPersonalHabitFull()
 }

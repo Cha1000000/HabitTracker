@@ -35,6 +35,9 @@ interface HabitEntryDao {
 
     @Query("SELECT * FROM habit_entries WHERE habitId = :habitId AND userId = :userId AND deletedAtMillis IS NULL ORDER BY date DESC")
     suspend fun getEntriesForUserAndHabitOnce(habitId: String, userId: String): List<HabitEntryEntity>
+
+    @Query("SELECT * FROM habit_entries WHERE habitId = :habitId AND deletedAtMillis IS NULL ORDER BY date DESC")
+    suspend fun getEntriesForHabitOnce(habitId: String): List<HabitEntryEntity>
     
     @Query("SELECT * FROM habit_entries WHERE habitId = :habitId AND deletedAtMillis IS NULL ORDER BY date DESC")
     fun getEntriesForHabit(habitId: String): Flow<List<HabitEntryEntity>>

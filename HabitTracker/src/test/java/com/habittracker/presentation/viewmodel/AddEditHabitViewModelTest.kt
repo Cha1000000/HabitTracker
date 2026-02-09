@@ -19,6 +19,7 @@ import com.habittracker.domain.usecase.UpdateHabitUseCase
 import com.habittracker.domain.usecase.UpdateMyHabitReminderSettingsUseCase
 import com.habittracker.domain.usecase.habit.GenerateHabitInviteCodeUseCase
 import com.habittracker.domain.usecase.habit.SendHabitInvitationUseCase
+import com.habittracker.domain.usecase.reset.ResetProgressUseCase
 import com.habittracker.domain.usecase.social.GetFriendsUseCase
 import com.habittracker.domain.repository.AuthRepository
 import com.habittracker.domain.repository.HabitEntryRepository
@@ -65,6 +66,7 @@ class AddEditHabitViewModelTest {
     private val ensureMySettingsForHabitUseCase: EnsureMySettingsForHabitUseCase = mock()
     private val authRepository: AuthRepository = mock()
     private val getHabitCompletionStatusUseCase: GetHabitCompletionStatusUseCase = mock()
+    private val resetProgressUseCase: ResetProgressUseCase = mock()
     private val analyticsManager: AnalyticsManager = mock()
     private val errorLogger: ErrorLogger = mock()
     
@@ -135,6 +137,7 @@ class AddEditHabitViewModelTest {
             ensureMySettingsForHabitUseCase = ensureMySettingsForHabitUseCase,
             authRepository = authRepository,
             getHabitCompletionStatusUseCase = getHabitCompletionStatusUseCase,
+            resetProgressUseCase = resetProgressUseCase,
             analyticsManager = analyticsManager,
             errorLogger = errorLogger,
             habitValidation = habitValidation,

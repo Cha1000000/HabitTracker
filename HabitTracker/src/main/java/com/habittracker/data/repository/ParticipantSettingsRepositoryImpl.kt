@@ -55,6 +55,7 @@ class ParticipantSettingsRepositoryImpl @Inject constructor(
                         (l.reminderTime != r.reminderTime) ||
                         (l.reminderDays != r.reminderDays) ||
                         (l.notificationsMuted != r.notificationsMuted) ||
+                        (l.seasonStartDate != r.seasonStartDate) ||
                         (l.timeZone != r.timeZone)
                 val chooseRemote = contentDiffers || (r.updatedAt > l.updatedAt)
                 val chosen = if (chooseRemote) r else l

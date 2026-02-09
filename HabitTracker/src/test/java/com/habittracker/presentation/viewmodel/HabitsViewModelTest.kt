@@ -198,6 +198,7 @@ class HabitsViewModelTest {
         assertNull(vm.uiState.value.error)
     }
 
+
     @Test
     fun requestDelete_and_confirm_failure_restores_and_sets_error() = runTest {
         val h1 = habit("h1")

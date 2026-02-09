@@ -682,6 +682,9 @@ fun AddEditHabitScreen(
     var timeSelectedDuringDialog by remember { mutableStateOf(false) }
     var pendingEnableFromSwitch by remember { mutableStateOf(false) }
     var shouldRequestNotificationPermission by remember { mutableStateOf(false) }
+    var showResetMenu by remember { mutableStateOf(false) }
+    var showResetSeasonDialog by remember { mutableStateOf(false) }
+    var showResetFullDialog by remember { mutableStateOf(false) }
     val hasPermission = hasNotificationPermission()
     val snackbarHostState = remember { SnackbarHostState() }
 
@@ -795,6 +798,41 @@ fun AddEditHabitScreen(
         )
     }
 
+    if (showResetSeasonDialog) {
+        ConfirmDialog(
+            title = stringResource(
+                id = R.string.reset_personal_habit_season_title,
+                uiState.title
+            ),
+            message = stringResource(id = R.string.reset_personal_habit_season_message),
+            confirmLabel = stringResource(id = R.string.action_reset),
+            cancelLabel = stringResource(id = R.string.cancel),
+            onConfirm = {
+                showResetSeasonDialog = false
+                viewModel.resetPersonalHabitSeason()
+            },
+            onDismiss = { showResetSeasonDialog = false }
+        )
+    }
+
+    if (showResetFullDialog) {
+        ConfirmDialog(
+            title = stringResource(
+                id = R.string.reset_personal_habit_full_title,
+                uiState.title
+            ),
+            message = stringResource(id = R.string.reset_personal_habit_full_message),
+            confirmLabel = stringResource(id = R.string.action_full_reset),
+            cancelLabel = stringResource(id = R.string.cancel),
+            isDestructive = true,
+            onConfirm = {
+                showResetFullDialog = false
+                viewModel.resetPersonalHabitFull()
+            },
+            onDismiss = { showResetFullDialog = false }
+        )
+    }
+
     // Показываем ошибку через Snackbar
     LaunchedEffect(uiState.error) {
         uiState.error?.let { errorMessage ->
@@ -868,6 +906,39 @@ fun AddEditHabitScreen(
                                     imageVector = TahoeIcons.ChartBar,
                                     contentDescription = stringResource(R.string.cd_habit_statistics)
                                 )
+                            }
+                        }
+                        if (uiState.habitId != null && !uiState.isLoading && uiState.type == HabitType.PERSONAL) {
+                            Box {
+                                IconButton(onClick = { showResetMenu = true }) {
+                                    Icon(
+                                        imageVector = TahoeIcons.EllipsisVertical,
+                                        contentDescription = stringResource(id = R.string.cd_more)
+                                    )
+                                }
+                                GlassmorphicDropdownMenu(
+                                    expanded = showResetMenu,
+                                    onDismissRequest = { showResetMenu = false },
+                                    alignment = Alignment.TopEnd,
+                                    isDarkTheme = isSystemInDarkTheme()
+                                ) {
+                                    GlassmorphicDropdownMenuItem(
+                                        text = { Text(text = stringResource(id = R.string.action_season_reset_short)) },
+                                        leadingIcon = { Icon(imageVector = TahoeIcons.ArrowPath, contentDescription = null) },
+                                        onClick = {
+                                            showResetMenu = false
+                                            showResetSeasonDialog = true
+                                        }
+                                    )
+                                    GlassmorphicDropdownMenuItem(
+                                        text = { Text(text = stringResource(id = R.string.action_full_reset), color = MaterialTheme.colorScheme.error) },
+                                        leadingIcon = { Icon(imageVector = TahoeIcons.XCircle, contentDescription = null, tint = MaterialTheme.colorScheme.error) },
+                                        onClick = {
+                                            showResetMenu = false
+                                            showResetFullDialog = true
+                                        }
+                                    )
+                                }
                             }
                         }
                         if (uiState.isLoading) {

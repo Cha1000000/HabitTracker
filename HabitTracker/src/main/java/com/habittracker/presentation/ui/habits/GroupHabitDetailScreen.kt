@@ -78,6 +78,8 @@ import com.habittracker.presentation.ui.components.SectionCard
 import com.habittracker.presentation.ui.components.UserAvatar
 import com.habittracker.presentation.ui.habits.components.GlassmorphicButton
 import com.habittracker.presentation.ui.habits.components.GlassmorphicDialog
+import com.habittracker.presentation.ui.habits.components.GlassmorphicDropdownMenu
+import com.habittracker.presentation.ui.habits.components.GlassmorphicDropdownMenuItem
 import com.habittracker.presentation.ui.habits.components.GradientProgressBar
 import com.habittracker.presentation.ui.habits.components.HabitEntryDetailSheet
 import com.habittracker.presentation.ui.habits.components.TahoeGradientBackground
@@ -102,6 +104,9 @@ fun GroupHabitDetailScreen(
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }
+    var showMenu by remember { mutableStateOf(false) }
+    var showResetMineDialog by remember { mutableStateOf(false) }
+    var showResetAllDialog by remember { mutableStateOf(false) }
     
     // Загрузка данных привычки
     LaunchedEffect(habitId) {
@@ -193,6 +198,52 @@ fun GroupHabitDetailScreen(
                                     imageVector = if (uiState.isManageMode) TahoeIcons.Check else TahoeIcons.Cog,
                                     contentDescription = stringResource(R.string.manage_group)
                                 )
+                            }
+                        }
+                        // Overflow menu
+                        if (uiState.habit != null) {
+                            Box {
+                                IconButton(onClick = { showMenu = true }) {
+                                    Icon(
+                                        imageVector = TahoeIcons.EllipsisVertical,
+                                        contentDescription = stringResource(R.string.reset_menu_title)
+                                    )
+                                }
+                                GlassmorphicDropdownMenu(
+                                    expanded = showMenu,
+                                    onDismissRequest = { showMenu = false }
+                                ) {
+                                    GlassmorphicDropdownMenuItem(
+                                        text = { Text(stringResource(R.string.reset_menu_mine)) },
+                                        onClick = {
+                                            showMenu = false
+                                            showResetMineDialog = true
+                                        },
+                                        leadingIcon = {
+                                            Icon(
+                                                imageVector = TahoeIcons.Broom,
+                                                contentDescription = null,
+                                                tint = MaterialTheme.colorScheme.primary
+                                            )
+                                        }
+                                    )
+                                    if (uiState.isOwner) {
+                                        GlassmorphicDropdownMenuItem(
+                                            text = { Text(stringResource(R.string.reset_menu_all)) },
+                                            onClick = {
+                                                showMenu = false
+                                                showResetAllDialog = true
+                                            },
+                                            leadingIcon = {
+                                                Icon(
+                                                    imageVector = TahoeIcons.Warning,
+                                                    contentDescription = null,
+                                                    tint = MaterialTheme.colorScheme.error
+                                                )
+                                            }
+                                        )
+                                    }
+                                }
                             }
                         }
                     },
@@ -319,6 +370,50 @@ fun GroupHabitDetailScreen(
                 }
             }
         }
+    }
+
+    if (showResetMineDialog) {
+        GlassmorphicDialog(
+            onDismissRequest = { showResetMineDialog = false },
+            title = { Text(text = stringResource(R.string.reset_group_mine_title)) },
+            content = { Text(text = stringResource(R.string.reset_group_mine_message)) },
+            actions = {
+                TextButton(onClick = { showResetMineDialog = false }) {
+                    Text(text = stringResource(R.string.cancel))
+                }
+                Spacer(modifier = Modifier.width(8.dp))
+                GlassmorphicButton(
+                    onClick = {
+                        showResetMineDialog = false
+                        viewModel.resetMyStats()
+                    }
+                ) {
+                    Text(text = stringResource(R.string.reset_group_mine_action))
+                }
+            }
+        )
+    }
+
+    if (showResetAllDialog) {
+        GlassmorphicDialog(
+            onDismissRequest = { showResetAllDialog = false },
+            title = { Text(text = stringResource(R.string.reset_group_all_title)) },
+            content = { Text(text = stringResource(R.string.reset_group_all_message)) },
+            actions = {
+                TextButton(onClick = { showResetAllDialog = false }) {
+                    Text(text = stringResource(R.string.cancel))
+                }
+                Spacer(modifier = Modifier.width(8.dp))
+                GlassmorphicButton(
+                    onClick = {
+                        showResetAllDialog = false
+                        viewModel.resetForAll()
+                    }
+                ) {
+                    Text(text = stringResource(R.string.reset_group_all_action))
+                }
+            }
+        )
     }
     
     // BottomSheet для добавления фото-подтверждения

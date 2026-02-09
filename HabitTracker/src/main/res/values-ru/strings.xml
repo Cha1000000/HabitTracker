@@ -200,6 +200,7 @@
     <string name="profile_stats_button">Моя статистика</string>
     <string name="profile_achievements_button">Мои достижения</string>
     <string name="profile_notifications_button">Настройки уведомлений</string>
+    <string name="profile_reset_progress_button">Сброс прогресса</string>
     <string name="profile_sign_out_button">Выйти из аккаунта</string>
     <string name="profile_username_label">Имя пользователя</string>
     <string name="profile_level_label">Уровень</string>
@@ -1015,6 +1016,78 @@
     <string name="notification_section_quiet_hours">Режим \"Не беспокоить\"</string>
     <string name="notification_quiet_hours">Тихие часы</string>
     <string name="notification_quiet_hours_desc">Не беспокоить с %1$d:00 до %2$d:00</string>
+
+    <!-- Reset Progress Screen -->
+    <string name="reset_progress_title">Сброс прогресса</string>
+    <string name="reset_progress_section_points">Очки и достижения</string>
+    <string name="reset_progress_points_season_title">Новый сезон</string>
+    <string name="reset_progress_points_season_desc">Начать с нуля, сохранив историю</string>
+    <string name="reset_progress_points_full_title">Полный сброс</string>
+    <string name="reset_progress_points_full_desc">Удалить очки и достижения навсегда</string>
+    <string name="reset_progress_section_habits">Статистика привычек</string>
+    <string name="reset_progress_personal_title">Личные привычки</string>
+    <string name="reset_progress_personal_desc">Будут затронуты личные привычки: %1$d</string>
+    <string name="reset_progress_group_title">Групповые привычки</string>
+    <string name="reset_progress_group_desc">Сбросить статистику конкретной групповой привычки</string>
+    <string name="reset_progress_group_empty">Групповых привычек пока нет</string>
+    <string name="reset_progress_role_owner">Автор</string>
+    <string name="reset_progress_role_participant">Участник</string>
+    <string name="reset_progress_group_participants">Участников: %1$d</string>
+
+    <string name="action_season_reset">Сезонный сброс</string>
+    <string name="action_season_reset_short">Сброс сезона</string>
+    <string name="action_full_reset">Полный сброс</string>
+    <string name="action_full_reset_all">Полный сброс для всех</string>
+    <string name="action_start_season">Начать сезон</string>
+    <string name="action_reset">Сбросить</string>
+
+    <string name="reset_confirm_points_season_title">Начать новый сезон?</string>
+    <string name="reset_confirm_points_season_message">Очки и уровень начнутся с нуля. История останется.</string>
+    <string name="reset_confirm_points_full_title">Полный сброс?</string>
+    <string name="reset_confirm_points_full_message">Очки и достижения будут удалены. Действие необратимо.</string>
+    <string name="reset_confirm_personal_season_title">Новый сезон для личных привычек?</string>
+    <string name="reset_confirm_personal_season_message">Прогресс личных привычек начнётся с сегодняшнего дня. История сохранится.</string>
+    <string name="reset_confirm_personal_full_title">Сбросить личные привычки?</string>
+    <string name="reset_confirm_personal_full_message">Все отметки личных привычек будут удалены. Действие необратимо.</string>
+    <string name="reset_personal_habit_season_title">Начать новый сезон для «%1$s»?</string>
+    <string name="reset_personal_habit_season_message">Ваш прогресс в этой привычке начнётся с сегодняшнего дня.</string>
+    <string name="reset_personal_habit_full_title">Сбросить «%1$s»?</string>
+    <string name="reset_personal_habit_full_message">Все отметки по этой привычке будут удалены. Действие необратимо.</string>
+    <string name="reset_personal_habit_season_success">Сезон для привычки начат</string>
+    <string name="reset_personal_habit_full_success">Привычка сброшена</string>
+    <string name="reset_confirm_group_season_title">Начать новый сезон?</string>
+    <string name="reset_confirm_group_season_message">Ваш прогресс в «%1$s» начнётся с сегодняшнего дня.</string>
+    <string name="reset_confirm_group_full_title">Сбросить вашу статистику?</string>
+    <string name="reset_confirm_group_full_message">Ваши отметки в «%1$s» будут удалены. У других участников всё останется.</string>
+    <string name="reset_confirm_group_full_all_title">Сбросить для всех?</string>
+    <string name="reset_confirm_group_full_all_message">Отметки всех участников в «%1$s» будут удалены. Действие необратимо.</string>
+
+    <string name="reset_success_points_season">Новый сезон начат</string>
+    <string name="reset_success_points_full">Очки и достижения сброшены</string>
+    <string name="reset_success_personal_season">Сезон для личных привычек начат</string>
+    <string name="reset_success_personal_full">Личные привычки сброшены</string>
+    <string name="reset_success_group_season">Сезон для привычки начат</string>
+    <string name="reset_success_group_full">Статистика по привычке сброшена</string>
+    <string name="reset_success_group_full_all">Статистика сброшена для всех</string>
+
+    <!-- Group Habit Reset (Overflow) -->
+    <string name="reset_menu_title">Сброс</string>
+    <string name="reset_menu_mine">Сбросить мою статистику</string>
+    <string name="reset_menu_all">Сбросить для всех</string>
+    <string name="reset_group_mine_title">Сбросить мою статистику?</string>
+    <string name="reset_group_mine_message">Ваши отметки по этой привычке будут удалены. Другие участники не затронуты.</string>
+    <string name="reset_group_mine_action">Сбросить</string>
+    <string name="reset_group_all_title">Сбросить для всех?</string>
+    <string name="reset_group_all_message">Все отметки участников по этой привычке будут удалены. Действие необратимо.</string>
+    <string name="reset_group_all_action">Сбросить для всех</string>
+    <string name="reset_group_mine_success">Ваша статистика сброшена</string>
+    <string name="reset_group_all_success">Статистика сброшена для всех</string>
+    <string name="reset_group_mine_error">Не удалось сбросить вашу статистику</string>
+    <string name="reset_group_all_error">Не удалось сбросить для всех</string>
+    <string name="reset_group_all_forbidden">Только автор привычки может сбросить для всех</string>
+    <string name="reset_personal_habit_season_error">Не удалось сбросить сезон</string>
+    <string name="reset_personal_habit_full_error">Не удалось сбросить привычку</string>
+    <string name="error_not_authenticated">Нужно войти в аккаунт</string>
     <string name="error_habit_not_found_domain">Привычка не найдена</string>
     <string name="error_no_habit_access">Нет доступа к этой привычке</string>
     <string name="error_not_habit_participant">Вы не являетесь участником этой привычки</string>

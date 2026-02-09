@@ -30,6 +30,7 @@ import com.habittracker.domain.usecase.UpdateHabitUseCase
 import com.habittracker.domain.usecase.UpdateMyHabitReminderSettingsUseCase
 import com.habittracker.domain.usecase.habit.GenerateHabitInviteCodeUseCase
 import com.habittracker.domain.usecase.habit.SendHabitInvitationUseCase
+import com.habittracker.domain.usecase.reset.ResetProgressUseCase
 import com.habittracker.domain.usecase.social.GetFriendsUseCase
 import com.habittracker.presentation.state.AddEditHabitUiState
 import com.habittracker.presentation.utils.GroupHabitConstants
@@ -76,6 +77,7 @@ class AddEditHabitViewModel @Inject constructor(
     private val ensureMySettingsForHabitUseCase: EnsureMySettingsForHabitUseCase,
     private val authRepository: AuthRepository,
     private val getHabitCompletionStatusUseCase: GetHabitCompletionStatusUseCase,
+    private val resetProgressUseCase: ResetProgressUseCase,
     private val analyticsManager: AnalyticsManager,
     private val errorLogger: ErrorLogger,
     private val habitValidation: HabitValidation,
@@ -209,6 +211,56 @@ class AddEditHabitViewModel @Inject constructor(
             )
         }
         updateValidationState()
+    }
+
+    override fun resetPersonalHabitSeason() {
+        val habit = currentHabit ?: return
+        if (habit.type != HabitType.PERSONAL) return
+        val userId = authRepository.getCurrentUserId() ?: run {
+            _uiState.update {
+                it.copy(error = getApplication<Application>().getString(R.string.error_not_authenticated))
+            }
+            return
+        }
+
+        viewModelScope.launch {
+            try {
+                resetProgressUseCase.resetPersonalHabitSeason(habit.id, userId)
+                _uiState.update {
+                    it.copy(successMessage = getApplication<Application>().getString(R.string.reset_personal_habit_season_success))
+                }
+            } catch (e: Exception) {
+                Timber.tag("AddEditHabitViewModel").e(e, "Failed to reset personal habit season")
+                _uiState.update {
+                    it.copy(error = getApplication<Application>().getString(R.string.reset_personal_habit_season_error))
+                }
+            }
+        }
+    }
+
+    override fun resetPersonalHabitFull() {
+        val habit = currentHabit ?: return
+        if (habit.type != HabitType.PERSONAL) return
+        val userId = authRepository.getCurrentUserId() ?: run {
+            _uiState.update {
+                it.copy(error = getApplication<Application>().getString(R.string.error_not_authenticated))
+            }
+            return
+        }
+
+        viewModelScope.launch {
+            try {
+                resetProgressUseCase.resetPersonalHabitFull(habit.id, userId)
+                _uiState.update {
+                    it.copy(successMessage = getApplication<Application>().getString(R.string.reset_personal_habit_full_success))
+                }
+            } catch (e: Exception) {
+                Timber.tag("AddEditHabitViewModel").e(e, "Failed to reset personal habit full")
+                _uiState.update {
+                    it.copy(error = getApplication<Application>().getString(R.string.reset_personal_habit_full_error))
+                }
+            }
+        }
     }
 
     override fun onDescriptionChange(description: String) {

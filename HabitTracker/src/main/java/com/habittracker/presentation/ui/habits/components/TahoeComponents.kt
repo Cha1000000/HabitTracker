@@ -776,17 +776,6 @@ fun GlassmorphicDropdownMenu(
     content: @Composable () -> Unit
 ) {
     if (expanded) {
-        // Создаем полупрозрачный фон для закрытия меню при клике вне его
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .clickable(
-                    interactionSource = remember { MutableInteractionSource() },
-                    indication = null,
-                    onClick = onDismissRequest
-                )
-        )
-        
         // Кастомный popup с glassmorphic эффектом
         Popup(
             alignment = alignment,
