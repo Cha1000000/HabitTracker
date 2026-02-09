@@ -796,15 +796,16 @@ class HabitsViewModel @Inject constructor(
                         habitsWithCompletion = updatedHabits,
                         isUploadingPhoto = false,
                         habitForPhotoSheet = photoSheetInfo.copy(photoUrl = cloudUrl),
-                        message = getApplication<Application>().getString(R.string.photo_proof_upload_success)
+                        message = getApplication<Application>().getString(R.string.photo_proof_upload_success),
+                        photoUploadSuccessMessage = getApplication<Application>().getString(R.string.photo_proof_upload_success)
                     )
                 } else {
                     _uiState.value = _uiState.value.copy(
                         isUploadingPhoto = false,
-                        error = getApplication<Application>().getString(R.string.photo_proof_upload_error)
-                    )
-                }
-            } catch (e: Exception) {
+                    error = getApplication<Application>().getString(R.string.photo_proof_upload_error)
+                )
+            }
+        } catch (e: Exception) {
                 Timber.tag(TAG).e(e, "Failed to attach photo")
                 _uiState.value = _uiState.value.copy(
                     isUploadingPhoto = false,
@@ -812,6 +813,10 @@ class HabitsViewModel @Inject constructor(
                 )
             }
         }
+    }
+
+    fun clearPhotoUploadSuccessMessage() {
+        _uiState.value = _uiState.value.copy(photoUploadSuccessMessage = null)
     }
     
     /**

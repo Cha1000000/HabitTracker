@@ -609,7 +609,7 @@ class GroupHabitDetailViewModel @Inject constructor(
                         it.copy(
                             isUploadingPhoto = false,
                             currentUserPhotoUrl = cloudUrl,
-                            showPhotoSheet = false,
+                            photoUploadSuccessMessage = application.getString(R.string.photo_proof_upload_success),
                             successMessage = application.getString(R.string.photo_proof_upload_success)
                         ) 
                     }
@@ -631,6 +631,10 @@ class GroupHabitDetailViewModel @Inject constructor(
                 }
             }
         }
+    }
+
+    fun clearPhotoUploadSuccessMessage() {
+        _uiState.update { it.copy(photoUploadSuccessMessage = null) }
     }
     
     /**

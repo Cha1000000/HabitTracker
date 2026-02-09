@@ -205,9 +205,15 @@ fun GroupHabitStatScreen(
                 habitTitle = statistics.habit.title,
                 habitUnit = statistics.habit.unit,
                 isUploading = uiState.isUploadingPhoto,
+                successMessage = if (uiState.photoUploadSuccess) {
+                    stringResource(R.string.photo_proof_upload_success)
+                } else {
+                    null
+                },
                 onDismiss = { selectedDayForPhoto = null },
                 onAddPhoto = { uri -> viewModel.attachPhotoToGroupHabit(uri, dayStat.date) },
-                onDeletePhoto = { viewModel.deletePhotoFromGroupHabit(dayStat.date) }
+                onDeletePhoto = { viewModel.deletePhotoFromGroupHabit(dayStat.date) },
+                onSuccessMessageShown = viewModel::clearGroupPhotoUploadSuccess
             )
         }
     }

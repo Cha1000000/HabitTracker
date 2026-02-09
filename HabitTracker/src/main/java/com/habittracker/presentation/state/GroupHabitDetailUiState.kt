@@ -32,6 +32,7 @@ data class GroupHabitDetailUiState(
     val currentUserPhotoUrl: String? = null, // URL фото текущего пользователя за сегодня
     val isUploadingPhoto: Boolean = false, // Флаг загрузки фото
     val showPhotoSheet: Boolean = false, // Показать BottomSheet для добавления фото
+    val photoUploadSuccessMessage: String? = null, // Сообщение об успешной загрузке фото (для показа в BottomSheet)
     val nudgedUserIds: Set<String> = emptySet(), // ID пользователей, которым уже отправлен nudge (на cooldown)
     val isSendingNudge: Boolean = false // Флаг отправки nudge
 )

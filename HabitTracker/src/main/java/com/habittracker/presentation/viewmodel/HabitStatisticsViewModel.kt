@@ -41,7 +41,8 @@ data class SelfHabitStatUiState(
     val customEndDate: LocalDate? = null,
     val selectedDayForDetail: LocalDate? = null,
     val isUploadingPhoto: Boolean = false,
-    val photoUploadMessage: String? = null
+    val photoUploadMessage: String? = null,
+    val photoUploadSuccess: Boolean = false
 )
 
 /**
@@ -57,7 +58,8 @@ data class GroupHabitStatUiState(
     val showParticipantsComparison: Boolean = false,
     val selectedParticipantIds: Set<String> = emptySet(), // Пустой = все участники
     val participantsInfo: List<User> = emptyList(),
-    val isUploadingPhoto: Boolean = false
+    val isUploadingPhoto: Boolean = false,
+    val photoUploadSuccess: Boolean = false
 )
 
 /**
@@ -325,7 +327,7 @@ class HabitStatisticsViewModel @Inject constructor(
     }
 
     fun onDismissDayDetail() {
-        _selfStatUiState.update { it.copy(selectedDayForDetail = null, photoUploadMessage = null) }
+        _selfStatUiState.update { it.copy(selectedDayForDetail = null, photoUploadMessage = null, photoUploadSuccess = false) }
     }
 
     fun getEntryForDate(date: LocalDate): HabitEntry? {
@@ -352,7 +354,8 @@ class HabitStatisticsViewModel @Inject constructor(
                     _selfStatUiState.update { 
                         it.copy(
                             isUploadingPhoto = false,
-                            photoUploadMessage = "success"
+                            photoUploadMessage = "success",
+                            photoUploadSuccess = true
                         ) 
                     }
                     // Перезагружаем статистику для обновления данных
@@ -362,7 +365,8 @@ class HabitStatisticsViewModel @Inject constructor(
                     _selfStatUiState.update { 
                         it.copy(
                             isUploadingPhoto = false,
-                            photoUploadMessage = "error: ${error.message}"
+                            photoUploadMessage = "error: ${error.message}",
+                            photoUploadSuccess = false
                         ) 
                     }
                 }
@@ -381,7 +385,8 @@ class HabitStatisticsViewModel @Inject constructor(
                 _selfStatUiState.update { 
                     it.copy(
                         isUploadingPhoto = false,
-                        photoUploadMessage = "deleted"
+                        photoUploadMessage = "deleted",
+                        photoUploadSuccess = false
                     ) 
                 }
                 loadSelfStatistics()
@@ -389,11 +394,16 @@ class HabitStatisticsViewModel @Inject constructor(
                 _selfStatUiState.update { 
                     it.copy(
                         isUploadingPhoto = false,
-                        photoUploadMessage = "error: ${e.message}"
+                        photoUploadMessage = "error: ${e.message}",
+                        photoUploadSuccess = false
                     ) 
                 }
             }
         }
+    }
+
+    fun clearSelfPhotoUploadSuccess() {
+        _selfStatUiState.update { it.copy(photoUploadSuccess = false) }
     }
     
     /**
@@ -416,9 +426,10 @@ class HabitStatisticsViewModel @Inject constructor(
                 _groupStatUiState.update { it.copy(isUploadingPhoto = false) }
                 
                 if (result.isSuccess) {
+                    _groupStatUiState.update { it.copy(photoUploadSuccess = true) }
                     loadGroupStatistics()
                 }
-            } catch (e: Exception) {
+            } catch (_: Exception) {
                 _groupStatUiState.update { it.copy(isUploadingPhoto = false) }
             }
         }
@@ -435,11 +446,15 @@ class HabitStatisticsViewModel @Inject constructor(
             
             try {
                 habitEntryRepository.updatePhotoUrl(habitId, userId, date, null)
-                _groupStatUiState.update { it.copy(isUploadingPhoto = false) }
+                _groupStatUiState.update { it.copy(isUploadingPhoto = false, photoUploadSuccess = false) }
                 loadGroupStatistics()
-            } catch (e: Exception) {
+            } catch (_: Exception) {
                 _groupStatUiState.update { it.copy(isUploadingPhoto = false) }
             }
         }
+    }
+
+    fun clearGroupPhotoUploadSuccess() {
+        _groupStatUiState.update { it.copy(photoUploadSuccess = false) }
     }
 }

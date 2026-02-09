@@ -190,9 +190,15 @@ fun SelfHabitStatScreen(
                 habitTitle = uiState.statistics?.habit?.title ?: "",
                 habitUnit = uiState.statistics?.habit?.unit,
                 isUploading = uiState.isUploadingPhoto,
+                successMessage = if (uiState.photoUploadSuccess) {
+                    stringResource(R.string.photo_proof_upload_success)
+                } else {
+                    null
+                },
                 onDismiss = viewModel::onDismissDayDetail,
                 onAddPhoto = { uri -> viewModel.attachPhotoToEntry(uri, selectedDate) },
-                onDeletePhoto = { viewModel.deletePhotoFromEntry(selectedDate) }
+                onDeletePhoto = { viewModel.deletePhotoFromEntry(selectedDate) },
+                onSuccessMessageShown = viewModel::clearSelfPhotoUploadSuccess
             )
         }
     }

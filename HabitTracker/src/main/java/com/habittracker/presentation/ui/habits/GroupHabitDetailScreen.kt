@@ -435,9 +435,11 @@ fun GroupHabitDetailScreen(
             habitTitle = uiState.habit!!.title,
             habitUnit = uiState.habit!!.unit,
             isUploading = uiState.isUploadingPhoto,
+            successMessage = uiState.photoUploadSuccessMessage,
             onDismiss = { viewModel.hidePhotoSheet() },
             onAddPhoto = { uri -> viewModel.attachPhoto(uri) },
-            onDeletePhoto = { viewModel.deletePhoto() }
+            onDeletePhoto = { viewModel.deletePhoto() },
+            onSuccessMessageShown = { viewModel.clearPhotoUploadSuccessMessage() }
         )
     }
 }

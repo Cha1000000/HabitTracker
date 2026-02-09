@@ -91,6 +91,14 @@ class MainActivity : ComponentActivity() {
                                 screenClass = destination.label?.toString()
                             )
                         }
+                        
+                        // Если есть отложенная навигация (например, auth случился раньше чем UI готов)
+                        pendingNavigation?.let { nav ->
+                            Timber.tag("MainActivity").d("[bootstrap] executing pendingNavigation after navController ready")
+                            nav()
+                            pendingNavigation = null
+                        }
+
                         // Обработка стартового интента из уведомления
                         handleIntentForNavigation(intent)
                     },
@@ -146,12 +154,22 @@ class MainActivity : ComponentActivity() {
                                         // Если push/deeplink не ставил отложенную навигацию, идём на Habits
                                         val action: () -> Unit = {
                                             navController?.let { controller ->
-                                                Timber.tag("MainActivity").d("[bootstrap] default navigate to Habits")
-                                                runCatching {
-                                                    controller.navigate(Screen.Habits.route) {
-                                                        popUpTo(controller.graph.startDestinationId) { inclusive = true }
-                                                        launchSingleTop = true
+                                                val currentRoute = controller.currentBackStackEntry?.destination?.route
+                                                val isAtRoot = currentRoute == null ||
+                                                        currentRoute == Screen.Splash.route ||
+                                                        currentRoute == Screen.Login.route ||
+                                                        currentRoute == Screen.Register.route
+
+                                                if (isAtRoot) {
+                                                    Timber.tag("MainActivity").d("[bootstrap] default navigate to Habits (currentRoute=$currentRoute)")
+                                                    runCatching {
+                                                        controller.navigate(Screen.Habits.route) {
+                                                            popUpTo(controller.graph.startDestinationId) { inclusive = true }
+                                                            launchSingleTop = true
+                                                        }
                                                     }
+                                                } else {
+                                                    Timber.tag("MainActivity").d("[bootstrap] already at $currentRoute, skipping default Habits nav")
                                                 }
                                             }
                                         }

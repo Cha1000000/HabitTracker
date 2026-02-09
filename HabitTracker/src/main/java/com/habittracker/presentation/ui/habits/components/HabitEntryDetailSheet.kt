@@ -3,6 +3,7 @@ package com.habittracker.presentation.ui.habits.components
 import android.Manifest
 import android.content.Context
 import android.net.Uri
+import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
@@ -35,10 +36,12 @@ import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -65,6 +68,7 @@ import com.habittracker.presentation.ui.theme.TahoeDeepBlue
 import com.habittracker.presentation.ui.theme.TahoeIcons
 import com.habittracker.presentation.ui.theme.TahoeLightBackground
 import com.habittracker.presentation.ui.theme.TahoeSkyBlue
+import kotlinx.coroutines.delay
 import kotlinx.datetime.LocalDate
 import java.io.File
 import java.time.format.DateTimeFormatter
@@ -81,25 +85,46 @@ fun HabitEntryDetailSheet(
     habitTitle: String,
     habitUnit: String?,
     isUploading: Boolean,
+    successMessage: String?,
     onDismiss: () -> Unit,
     onAddPhoto: (Uri) -> Unit,
     onDeletePhoto: () -> Unit,
+    onSuccessMessageShown: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     val isDarkTheme = isSystemInDarkTheme()
     val context = LocalContext.current
-    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+    var isPickingPhoto by rememberSaveable { mutableStateOf(false) }
+    val sheetState = rememberModalBottomSheetState(
+        skipPartiallyExpanded = true,
+        confirmValueChange = { newValue ->
+            if (newValue == androidx.compose.material3.SheetValue.Hidden) {
+                !isUploading && !isPickingPhoto
+            } else {
+                true
+            }
+        }
+    )
     
     var showPhotoSourceDialog by remember { mutableStateOf(false) }
     var showDeleteConfirmDialog by remember { mutableStateOf(false) }
-    var tempCameraUri by remember { mutableStateOf<Uri?>(null) }
+    var tempCameraUriString by rememberSaveable { mutableStateOf<String?>(null) }
+    val tempCameraUri = remember(tempCameraUriString) { tempCameraUriString?.let { Uri.parse(it) } }
     var fullScreenPhotoUrl by remember { mutableStateOf<String?>(null) }
-    
+
+    BackHandler(enabled = isUploading || isPickingPhoto || successMessage != null) {
+        // Block back while picking/uploading or while showing success
+    }
+
     // Launcher для выбора фото из галереи
     val galleryLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.GetContent()
     ) { uri: Uri? ->
-        uri?.let { onAddPhoto(it) }
+        if (uri == null) {
+            isPickingPhoto = false
+        } else {
+            onAddPhoto(uri)
+        }
     }
     
     // Launcher для съёмки фото камерой (TakePicture с Uri)
@@ -108,6 +133,8 @@ fun HabitEntryDetailSheet(
     ) { success ->
         if (success) {
             tempCameraUri?.let { uri -> onAddPhoto(uri) }
+        } else {
+            isPickingPhoto = false
         }
     }
     
@@ -118,13 +145,25 @@ fun HabitEntryDetailSheet(
         if (isGranted) {
             // Разрешение получено, запускаем камеру
             val uri = createTempImageUri(context)
-            tempCameraUri = uri
+            tempCameraUriString = uri.toString()
             cameraLauncher.launch(uri)
+        } else {
+            isPickingPhoto = false
+        }
+    }
+
+    LaunchedEffect(isUploading, successMessage) {
+        if (isUploading || successMessage != null) {
+            isPickingPhoto = false
         }
     }
 
     ModalBottomSheet(
-        onDismissRequest = onDismiss,
+        onDismissRequest = {
+            if (!isUploading && !isPickingPhoto) {
+                onDismiss()
+            }
+        },
         sheetState = sheetState,
         containerColor = if (isDarkTheme) TahoeDeepBlue else TahoeLightBackground,
         dragHandle = {
@@ -145,6 +184,40 @@ fun HabitEntryDetailSheet(
                 .padding(horizontal = 20.dp)
                 .padding(bottom = 32.dp)
         ) {
+            if (successMessage != null) {
+                LaunchedEffect(successMessage) {
+                    delay(1500)
+                    onSuccessMessageShown()
+                }
+                GlassmorphicCard(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(bottom = 12.dp),
+                    isDarkTheme = isDarkTheme,
+                    cornerRadius = 10.dp,
+                    glassAlpha = if (isDarkTheme) 0.2f else 0.85f
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 12.dp, vertical = 10.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(
+                            imageVector = TahoeIcons.CheckCircle,
+                            contentDescription = null,
+                            tint = Color(0xFF4CAF50),
+                            modifier = Modifier.size(18.dp)
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            text = successMessage,
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
+                    }
+                }
+            }
             // Заголовок с датой
             Text(
                 text = formatDate(date),
@@ -274,11 +347,13 @@ fun HabitEntryDetailSheet(
         PhotoSourceDialog(
             onDismiss = { showPhotoSourceDialog = false },
             onCameraClick = {
+                isPickingPhoto = true
                 showPhotoSourceDialog = false
                 // Запрашиваем разрешение на камеру
                 cameraPermissionLauncher.launch(Manifest.permission.CAMERA)
             },
             onGalleryClick = {
+                isPickingPhoto = true
                 showPhotoSourceDialog = false
                 galleryLauncher.launch("image/*")
             },
