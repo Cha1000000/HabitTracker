@@ -106,7 +106,9 @@ fun GroupHabitStatScreen(
         ) { paddingValues ->
             if (uiState.isLoading) {
                 Box(
-                    modifier = Modifier.fillMaxSize().padding(paddingValues),
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(paddingValues),
                     contentAlignment = Alignment.Center
                 ) {
                     CircularProgressIndicator()
@@ -123,7 +125,9 @@ fun GroupHabitStatScreen(
                     onParticipantCalendarExpanded = { userId -> viewModel.onParticipantCalendarExpanded(userId) },
                     onDayClick = { dayStat, isReadOnly -> selectedDayDetail = dayStat to isReadOnly },
                     isDarkTheme = isDarkTheme,
-                    modifier = Modifier.fillMaxSize().padding(paddingValues)
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(paddingValues)
                 )
             }
         }
@@ -215,14 +219,16 @@ private fun GroupHabitStatisticsContent(
         }
 
         if (showParticipantsComparison && statistics.participantsStatistics.isNotEmpty()) {
-            item {
-                ParticipantsFilterCard(
-                    participants = participants,
-                    selectedIds = selectedParticipantIds,
-                    onToggleSelection = onToggleParticipantSelection,
-                    onClearFilter = onClearParticipantFilter,
-                    isDarkTheme = isDarkTheme
-                )
+            if (participants.size > 2) {
+                item {
+                    ParticipantsFilterCard(
+                        participants = participants,
+                        selectedIds = selectedParticipantIds,
+                        onToggleSelection = onToggleParticipantSelection,
+                        onClearFilter = onClearParticipantFilter,
+                        isDarkTheme = isDarkTheme
+                    )
+                }
             }
 
             val filteredParticipants = if (selectedParticipantIds.isEmpty()) {
@@ -265,7 +271,9 @@ private fun GroupHabitHeaderCard(
         cornerRadius = 16.dp
     ) {
         Row(
-            modifier = Modifier.fillMaxWidth().padding(16.dp),
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             Box(
@@ -273,8 +281,11 @@ private fun GroupHabitHeaderCard(
                     .size(56.dp)
                     .clip(CircleShape)
                     .background(
-                        try { Color(habit.color.toColorInt()).copy(alpha = 0.1f) }
-                        catch (_: Exception) { MaterialTheme.colorScheme.primaryContainer }
+                        try {
+                            Color(habit.color.toColorInt()).copy(alpha = 0.1f)
+                        } catch (_: Exception) {
+                            MaterialTheme.colorScheme.primaryContainer
+                        }
                     ),
                 contentAlignment = Alignment.Center
             ) {
@@ -309,7 +320,9 @@ private fun MySummaryCard(
         cornerRadius = 16.dp
     ) {
         Row(
-            modifier = Modifier.fillMaxWidth().padding(16.dp),
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
             horizontalArrangement = Arrangement.SpaceAround
         ) {
             SummaryItem(
@@ -385,7 +398,9 @@ private fun CalendarGrid(
         Spacer(modifier = Modifier.height(8.dp))
         val weeks = groupByWeeks(dailyStatistics)
         weeks.forEach { week ->
-            Row(modifier = Modifier.fillMaxWidth().padding(vertical = 2.dp), horizontalArrangement = Arrangement.SpaceEvenly) {
+            Row(modifier = Modifier
+                .fillMaxWidth()
+                .padding(vertical = 2.dp), horizontalArrangement = Arrangement.SpaceEvenly) {
                 val firstDayOfWeek = week.firstOrNull()?.date?.dayOfWeek
                 val emptyDaysBefore = when (firstDayOfWeek) {
                     DayOfWeek.MONDAY -> 0
@@ -527,10 +542,13 @@ private fun ParticipantsFilterCard(participants: List<User>, selectedIds: Set<St
 private fun ParticipantStatisticsCard(user: User, statistics: HabitStatisticsData, isDarkTheme: Boolean, onCalendarExpanded: () -> Unit = {}, onDayClick: (DayStatistics) -> Unit) {
     var isExpanded by remember { mutableStateOf(false) }
     GlassmorphicCard(
-        modifier = Modifier.fillMaxWidth().animateContentSize().clickable { 
-            isExpanded = !isExpanded
-            if (isExpanded) onCalendarExpanded()
-        },
+        modifier = Modifier
+            .fillMaxWidth()
+            .animateContentSize()
+            .clickable {
+                isExpanded = !isExpanded
+                if (isExpanded) onCalendarExpanded()
+            },
         isDarkTheme = isDarkTheme,
         cornerRadius = 16.dp
     ) {
@@ -589,7 +607,10 @@ private fun LegendCard(isDarkTheme: Boolean) {
 @Composable
 private fun LegendItem(color: Color, label: String) {
     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-        Box(modifier = Modifier.size(12.dp).clip(RoundedCornerShape(3.dp)).background(color))
+        Box(modifier = Modifier
+            .size(12.dp)
+            .clip(RoundedCornerShape(3.dp))
+            .background(color))
         Text(text = label, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
     }
 }
