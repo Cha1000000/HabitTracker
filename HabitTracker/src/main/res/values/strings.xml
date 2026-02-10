@@ -1203,6 +1203,7 @@
     <string name="photo_proof_status_rest">Rest day</string>
     <string name="photo_proof_uploading">Uploading photo…</string>
     <string name="photo_proof_upload_success">Photo uploaded successfully</string>
+    <string name="photo_proof_note_success">Comment saved successfully</string>
     <string name="photo_proof_upload_error">Failed to upload photo</string>
     <string name="photo_proof_delete_error">Failed to delete photo</string>
     <string name="photo_proof_delete_confirm">Delete this photo?</string>
@@ -1213,6 +1214,8 @@
     <string name="photo_proof_select_source">Select photo source</string>
     <string name="photo_proof_camera">Camera</string>
     <string name="photo_proof_gallery">Gallery</string>
+    <string name="photo_proof_note_placeholder">Add a comment...</string>
+    <string name="photo_proof_no_photo">No photo proof attached</string>
 
     <!-- Nudge (Social Interactions) -->
     <string name="nudge_button">Nudge</string>

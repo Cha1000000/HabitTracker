@@ -59,6 +59,7 @@ data class GroupHabitStatUiState(
     val selectedParticipantIds: Set<String> = emptySet(), // Пустой = все участники
     val participantsInfo: List<User> = emptyList(),
     val isUploadingPhoto: Boolean = false,
+    val photoUploadMessage: String? = null,
     val photoUploadSuccess: Boolean = false
 )
 
@@ -403,7 +404,7 @@ class HabitStatisticsViewModel @Inject constructor(
     }
 
     fun clearSelfPhotoUploadSuccess() {
-        _selfStatUiState.update { it.copy(photoUploadSuccess = false) }
+        _selfStatUiState.update { it.copy(photoUploadSuccess = false, photoUploadMessage = null) }
     }
     
     /**
@@ -423,11 +424,17 @@ class HabitStatisticsViewModel @Inject constructor(
                     date = date
                 )
                 
-                _groupStatUiState.update { it.copy(isUploadingPhoto = false) }
-                
                 if (result.isSuccess) {
-                    _groupStatUiState.update { it.copy(photoUploadSuccess = true) }
+                    _groupStatUiState.update { 
+                        it.copy(
+                            isUploadingPhoto = false,
+                            photoUploadSuccess = true,
+                            photoUploadMessage = "photo_success"
+                        ) 
+                    }
                     loadGroupStatistics()
+                } else {
+                    _groupStatUiState.update { it.copy(isUploadingPhoto = false) }
                 }
             } catch (_: Exception) {
                 _groupStatUiState.update { it.copy(isUploadingPhoto = false) }
@@ -446,7 +453,7 @@ class HabitStatisticsViewModel @Inject constructor(
             
             try {
                 habitEntryRepository.updatePhotoUrl(habitId, userId, date, null)
-                _groupStatUiState.update { it.copy(isUploadingPhoto = false, photoUploadSuccess = false) }
+                _groupStatUiState.update { it.copy(isUploadingPhoto = false, photoUploadSuccess = false, photoUploadMessage = null) }
                 loadGroupStatistics()
             } catch (_: Exception) {
                 _groupStatUiState.update { it.copy(isUploadingPhoto = false) }
@@ -455,6 +462,54 @@ class HabitStatisticsViewModel @Inject constructor(
     }
 
     fun clearGroupPhotoUploadSuccess() {
-        _groupStatUiState.update { it.copy(photoUploadSuccess = false) }
+        _groupStatUiState.update { it.copy(photoUploadSuccess = false, photoUploadMessage = null) }
+    }
+
+    /**
+     * Обновляет заметку к записи привычки
+     */
+    fun updateEntryNote(date: LocalDate, note: String) {
+        val userId = authRepository.getCurrentUserId() ?: return
+        
+        viewModelScope.launch {
+            try {
+                // Пытаемся найти запись
+                val entry = habitEntryRepository.getEntry(habitId, userId, date)
+                
+                if (entry != null) {
+                    habitEntryRepository.updateEntry(entry.copy(note = note))
+                } else {
+                    habitEntryRepository.insertEntry(
+                        HabitEntry(
+                            habitId = habitId,
+                            userId = userId,
+                            date = date,
+                            completed = false,
+                            note = note
+                        )
+                    )
+                }
+                
+                if (isGroupHabit) {
+                    _groupStatUiState.update { 
+                        it.copy(
+                            photoUploadSuccess = true,
+                            photoUploadMessage = "note_success"
+                        )
+                    }
+                    loadGroupStatistics()
+                } else {
+                    _selfStatUiState.update { 
+                        it.copy(
+                            photoUploadSuccess = true,
+                            photoUploadMessage = "note_success"
+                        )
+                    }
+                    loadSelfStatistics()
+                }
+            } catch (_: Exception) {
+                // Log error
+            }
+        }
     }
 }

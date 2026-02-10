@@ -19,7 +19,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -46,8 +45,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
-import androidx.core.graphics.toColorInt
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.habittracker.R
@@ -184,20 +181,23 @@ fun SelfHabitStatScreen(
         // HabitEntryDetailSheet для просмотра деталей дня и добавления фото
         uiState.selectedDayForDetail?.let { selectedDate ->
             val entry = viewModel.getEntryForDate(selectedDate)
+            val successMsg = when (uiState.photoUploadMessage) {
+                "success" -> stringResource(R.string.photo_proof_upload_success)
+                "note_success" -> stringResource(R.string.photo_proof_note_success)
+                else -> null
+            }
+
             HabitEntryDetailSheet(
                 entry = entry,
                 date = selectedDate,
                 habitTitle = uiState.statistics?.habit?.title ?: "",
                 habitUnit = uiState.statistics?.habit?.unit,
                 isUploading = uiState.isUploadingPhoto,
-                successMessage = if (uiState.photoUploadSuccess) {
-                    stringResource(R.string.photo_proof_upload_success)
-                } else {
-                    null
-                },
+                successMessage = successMsg,
                 onDismiss = viewModel::onDismissDayDetail,
                 onAddPhoto = { uri -> viewModel.attachPhotoToEntry(uri, selectedDate) },
                 onDeletePhoto = { viewModel.deletePhotoFromEntry(selectedDate) },
+                onSaveComment = { note -> viewModel.updateEntryNote(selectedDate, note) },
                 onSuccessMessageShown = viewModel::clearSelfPhotoUploadSuccess
             )
         }
@@ -214,8 +214,7 @@ private fun StatisticsContent(
     isDarkTheme: Boolean,
     modifier: Modifier = Modifier
 ) {
-    var showStartDatePicker by remember { mutableStateOf(false) }
-    var showEndDatePicker by remember { mutableStateOf(false) }
+    var showCustomRangePicker by remember { mutableStateOf(false) }
     var customStartDate by remember { mutableStateOf(statistics.startDate) }
     var customEndDate by remember { mutableStateOf(statistics.endDate) }
 
@@ -224,54 +223,44 @@ private fun StatisticsContent(
         contentPadding = PaddingValues(16.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
-        // Заголовок с иконкой привычки
-        item {
-            HabitHeaderCard(
-                habit = statistics.habit,
-                isDarkTheme = isDarkTheme
-            )
-        }
-
-        // Переключатель периода
+        // Выбор периода
         item {
             PeriodSelector(
                 selectedPeriod = selectedPeriod,
-                onPeriodChanged = onPeriodChanged,
-                onCustomClick = { showStartDatePicker = true },
                 startDate = statistics.startDate,
                 endDate = statistics.endDate,
+                onPeriodChanged = onPeriodChanged,
+                onCustomClick = { showCustomRangePicker = !showCustomRangePicker },
                 isDarkTheme = isDarkTheme
             )
         }
 
-        // Блок выбора произвольных дат (показывается только когда выбран CUSTOM период)
-        if (showStartDatePicker || showEndDatePicker) {
+        if (showCustomRangePicker) {
             item {
                 CustomDateRangeSelector(
-                    showStartPicker = showStartDatePicker,
-                    showEndPicker = showEndDatePicker,
+                    showStartPicker = true,
+                    showEndPicker = true,
                     customStartDate = customStartDate,
                     customEndDate = customEndDate,
-                    onStartDateSelected = { date ->
-                        customStartDate = date
-                        showStartDatePicker = false
-                        showEndDatePicker = true
+                    onStartDateSelected = { 
+                        customStartDate = it
+                        if (customStartDate <= customEndDate) {
+                            onCustomDateRangeChanged(customStartDate, customEndDate)
+                        }
                     },
-                    onEndDateSelected = { date ->
-                        customEndDate = date
-                        showEndDatePicker = false
-                        onCustomDateRangeChanged(customStartDate, customEndDate)
+                    onEndDateSelected = { 
+                        customEndDate = it
+                        if (customStartDate <= customEndDate) {
+                            onCustomDateRangeChanged(customStartDate, customEndDate)
+                        }
                     },
-                    onDismiss = {
-                        showStartDatePicker = false
-                        showEndDatePicker = false
-                    },
+                    onDismiss = { showCustomRangePicker = false },
                     isDarkTheme = isDarkTheme
                 )
             }
         }
 
-        // Сводная статистика
+        // Карточка сводки
         item {
             SummaryCard(
                 summary = statistics.summary,
@@ -281,7 +270,7 @@ private fun StatisticsContent(
             )
         }
 
-        // Календарная сетка
+        // Карточка календаря
         item {
             CalendarGridCard(
                 dailyStatistics = statistics.dailyStatistics,
@@ -298,94 +287,23 @@ private fun StatisticsContent(
 }
 
 @Composable
-private fun HabitHeaderCard(
-    habit: com.habittracker.domain.model.Habit,
-    isDarkTheme: Boolean
-) {
-    GlassmorphicCard(
-        modifier = Modifier.fillMaxWidth(),
-        isDarkTheme = isDarkTheme,
-        cornerRadius = 16.dp,
-        glassAlpha = if (isDarkTheme) 0.18f else 0.85f,
-        borderAlpha = if (isDarkTheme) 0.3f else 0.15f,
-        elevation = 2.dp
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            // Иконка привычки
-            Box(
-                modifier = Modifier
-                    .size(56.dp)
-                    .clip(CircleShape)
-                    .background(
-                        try {
-                            Color(habit.color.toColorInt())
-                        } catch (_: Exception) {
-                            MaterialTheme.colorScheme.primary
-                        }
-                    ),
-                contentAlignment = Alignment.Center
-            ) {
-                Text(
-                    text = habit.icon,
-                    fontSize = 28.sp
-                )
-            }
-
-            Spacer(modifier = Modifier.width(16.dp))
-
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = habit.title,
-                    style = MaterialTheme.typography.titleLarge,
-                    fontWeight = FontWeight.Bold,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
-                if (habit.description.isNotBlank()) {
-                    Text(
-                        text = habit.description,
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        maxLines = 2,
-                        overflow = TextOverflow.Ellipsis
-                    )
-                }
-            }
-        }
-    }
-}
-
-@Composable
 private fun PeriodSelector(
     selectedPeriod: StatisticsPeriod,
-    onPeriodChanged: (StatisticsPeriod) -> Unit,
-    onCustomClick: () -> Unit,
     startDate: LocalDate,
     endDate: LocalDate,
+    onPeriodChanged: (StatisticsPeriod) -> Unit,
+    onCustomClick: () -> Unit,
     isDarkTheme: Boolean
 ) {
-    GlassmorphicCard(
-        modifier = Modifier.fillMaxWidth(),
-        isDarkTheme = isDarkTheme,
-        cornerRadius = 16.dp,
-        glassAlpha = if (isDarkTheme) 0.18f else 0.85f,
-        borderAlpha = if (isDarkTheme) 0.3f else 0.15f,
-        elevation = 2.dp
-    ) {
-        Column(modifier = Modifier.padding(16.dp)) {
-            Text(
-                text = stringResource(R.string.habit_stat_period),
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Bold
-            )
-
-            Spacer(modifier = Modifier.height(12.dp))
-
+    Column {
+        Text(
+            text = stringResource(R.string.habit_stat_period),
+            style = MaterialTheme.typography.titleMedium,
+            fontWeight = FontWeight.Bold
+        )
+        Spacer(modifier = Modifier.height(12.dp))
+        
+        Column {
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
@@ -610,7 +528,7 @@ private fun CalendarGridCard(
 
             Spacer(modifier = Modifier.height(12.dp))
 
-            // Заголовки дней недели
+            // Заголовок дней недели
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceEvenly

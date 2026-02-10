@@ -44,5 +44,6 @@ data class HabitPhotoSheetInfo(
     val habitTitle: String,
     val habitUnit: String?,
     val date: LocalDate,
-    val photoUrl: String? = null
+    val photoUrl: String? = null,
+    val note: String? = null
 )

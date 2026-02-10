@@ -2,8 +2,11 @@ package com.habittracker.presentation.ui.habits.components
 
 import androidx.compose.animation.Crossfade
 import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.animateContentSize
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.LocalIndication
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.isSystemInDarkTheme
@@ -18,6 +21,7 @@ import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -44,6 +48,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
@@ -266,6 +271,48 @@ fun EnhancedHabitItem(
                                         style = MaterialTheme.typography.bodySmall,
                                         color = infoColor
                                     )
+                                }
+                            }
+
+                            // Отображение комментария (заметки)
+                            if (habitWithCompletion.note != null && habitWithCompletion.note.isNotBlank()) {
+                                var isExpanded by remember { mutableStateOf(false) }
+                                
+                                Spacer(modifier = Modifier.height(8.dp))
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .clip(RoundedCornerShape(8.dp))
+                                        .background(if (isDarkTheme) Color.Black.copy(alpha = 0.2f) else Color.Black.copy(alpha = 0.05f))
+                                        .clickable { isExpanded = !isExpanded }
+                                        .padding(8.dp)
+                                        .animateContentSize(),
+                                    verticalAlignment = Alignment.Top
+                                ) {
+                                    Icon(
+                                        imageVector = TahoeIcons.DocumentText,
+                                        contentDescription = null,
+                                        tint = infoColor.copy(alpha = 0.7f),
+                                        modifier = Modifier.size(14.dp).offset(y = 2.dp)
+                                    )
+                                    Spacer(modifier = Modifier.width(8.dp))
+                                    Text(
+                                        text = habitWithCompletion.note,
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = infoColor,
+                                        fontStyle = androidx.compose.ui.text.font.FontStyle.Italic,
+                                        maxLines = if (isExpanded) Int.MAX_VALUE else 1,
+                                        overflow = TextOverflow.Ellipsis,
+                                        modifier = Modifier.weight(1f)
+                                    )
+                                    if (habitWithCompletion.note.length > 40 || habitWithCompletion.note.contains("\n")) {
+                                        Icon(
+                                            imageVector = if (isExpanded) TahoeIcons.ChevronDown else TahoeIcons.ChevronRight,
+                                            contentDescription = null,
+                                            tint = infoColor.copy(alpha = 0.5f),
+                                            modifier = Modifier.size(14.dp).offset(y = 2.dp)
+                                        )
+                                    }
                                 }
                             }
                         }

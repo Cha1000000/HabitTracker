@@ -580,11 +580,11 @@ fun HabitsScreen(
                     date = photoSheetInfo.date,
                     completed = true,
                     value = 0,
-                    note = null,
                     isRestDay = false,
                     streakBonusAwardedDays = null,
                     completedAt = null,
-                    photoUrl = photoSheetInfo.photoUrl
+                    photoUrl = photoSheetInfo.photoUrl,
+                    note = photoSheetInfo.note
                 ),
                 date = photoSheetInfo.date,
                 habitTitle = photoSheetInfo.habitTitle,
@@ -594,6 +594,7 @@ fun HabitsScreen(
                 onDismiss = { viewModel.hidePhotoSheet() },
                 onAddPhoto = { uri -> viewModel.attachPhoto(uri) },
                 onDeletePhoto = { viewModel.deletePhoto() },
+                onSaveComment = { note -> viewModel.updateHabitEntryNote(note) },
                 onSuccessMessageShown = { viewModel.clearPhotoUploadSuccessMessage() }
             )
         }

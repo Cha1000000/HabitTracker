@@ -203,9 +203,11 @@ class GroupHabitDetailViewModel @Inject constructor(
                         entry.completed
                     }
 
-                    val todayPhotoUrl = relevantEntries.firstOrNull { entry ->
+                    val todayEntry = relevantEntries.firstOrNull { entry ->
                         entry.userId == currentUserId && entry.date == today
-                    }?.photoUrl
+                    }
+                    val todayPhotoUrl = todayEntry?.photoUrl
+                    val todayNote = todayEntry?.note
                     
                     // Рассчитываем групповую серию
                     val groupStreak = calculateGroupStreak(relevantEntries, participantIds)
@@ -216,7 +218,8 @@ class GroupHabitDetailViewModel @Inject constructor(
                             habitEntries = relevantEntries,
                             groupStreak = groupStreak,
                             isCompletedToday = isCompletedToday,
-                            currentUserPhotoUrl = if (state.isUploadingPhoto) state.currentUserPhotoUrl else todayPhotoUrl
+                            currentUserPhotoUrl = if (state.isUploadingPhoto) state.currentUserPhotoUrl else todayPhotoUrl,
+                            currentUserNote = todayNote
                         )
                     }
                 }
@@ -635,6 +638,41 @@ class GroupHabitDetailViewModel @Inject constructor(
 
     fun clearPhotoUploadSuccessMessage() {
         _uiState.update { it.copy(photoUploadSuccessMessage = null) }
+    }
+
+    /**
+     * Обновляет заметку к записи привычки за сегодня
+     */
+    fun updateHabitEntryNote(note: String) {
+        val habitId = _uiState.value.habit?.id ?: return
+        val today = Clock.System.todayIn(TimeZone.currentSystemDefault())
+
+        viewModelScope.launch {
+            try {
+                val entry = habitEntryRepository.getEntry(habitId, currentUserId, today)
+                if (entry != null) {
+                    habitEntryRepository.updateEntry(entry.copy(note = note))
+                } else {
+                    // Если записи нет, создаем новую
+                    habitEntryRepository.insertEntry(
+                        HabitEntry(
+                            habitId = habitId,
+                            userId = currentUserId,
+                            date = today,
+                            completed = false,
+                            note = note
+                        )
+                    )
+                }
+                _uiState.update { 
+                    it.copy(
+                        photoUploadSuccessMessage = application.getString(R.string.photo_proof_note_success)
+                    )
+                }
+            } catch (e: Exception) {
+                Timber.tag("GroupHabitDetailVM").e(e, "Failed to update note")
+            }
+        }
     }
     
     /**

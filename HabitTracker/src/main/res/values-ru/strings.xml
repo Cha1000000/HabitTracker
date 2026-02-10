@@ -1201,6 +1201,7 @@
     <string name="photo_proof_status_rest">Выходной</string>
     <string name="photo_proof_uploading">Загрузка фото…</string>
     <string name="photo_proof_upload_success">Фото успешно загружено</string>
+    <string name="photo_proof_note_success">Комментарий успешно сохранен</string>
     <string name="photo_proof_upload_error">Не удалось загрузить фото</string>
     <string name="photo_proof_delete_error">Не удалось удалить фото</string>
     <string name="photo_proof_delete_confirm">Удалить это фото?</string>
@@ -1211,6 +1212,8 @@
     <string name="photo_proof_select_source">Выберите источник фото</string>
     <string name="photo_proof_camera">Камера</string>
     <string name="photo_proof_gallery">Галерея</string>
+    <string name="photo_proof_note_placeholder">Добавить комментарий…</string>
+    <string name="photo_proof_no_photo">Фото-подтверждение не прикреплено</string>
 
     <!-- Nudge (Social Interactions) -->
     <string name="nudge_button">Пнуть</string>
