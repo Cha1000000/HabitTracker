@@ -9,12 +9,16 @@ class TodayHabitsWidgetAutoRefreshReceiver : BroadcastReceiver() {
 
     override fun onReceive(context: Context, intent: Intent) {
         val action = intent.action
-        if (action != ACTION_REFRESH_MIDNIGHT && action != ACTION_REFRESH_AFTERNOON) return
+        if (action != ACTION_REFRESH_MIDNIGHT &&
+            action != ACTION_REFRESH_AFTERNOON &&
+            action != ACTION_FORCE_REFRESH_MORNING
+        ) return
 
         Timber.tag(TAG).d("Auto refresh alarm received: $action")
 
         runCatching {
-            TodayHabitsWidgetScheduler.enqueueRefresh(context)
+            val force = action == ACTION_FORCE_REFRESH_MORNING
+            TodayHabitsWidgetScheduler.enqueueRefresh(context, force = force)
         }.onFailure { e ->
             Timber.tag(TAG).w(e, "Failed to enqueue widget refresh: ${e.message}")
         }
@@ -29,6 +33,7 @@ class TodayHabitsWidgetAutoRefreshReceiver : BroadcastReceiver() {
     companion object {
         const val ACTION_REFRESH_MIDNIGHT = "com.habittracker.ACTION_WIDGET_REFRESH_MIDNIGHT"
         const val ACTION_REFRESH_AFTERNOON = "com.habittracker.ACTION_WIDGET_REFRESH_AFTERNOON"
+        const val ACTION_FORCE_REFRESH_MORNING = "com.habittracker.ACTION_WIDGET_FORCE_REFRESH_MORNING"
 
         private const val TAG = "WidgetAutoRefreshRcvr"
     }

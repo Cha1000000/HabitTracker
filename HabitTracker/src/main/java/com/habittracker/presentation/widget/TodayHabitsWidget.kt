@@ -82,12 +82,19 @@ class TodayHabitsWidget : GlanceAppWidget() {
                     ) {
                         Text(
                             text = context.getString(R.string.widget_today_title),
-                            modifier = GlanceModifier.clickable(actionRunCallback<RefreshTodayHabitsWidgetAction>()),
                             style = TextStyle(
                                 fontWeight = FontWeight.Bold,
                                 fontSize = 18.sp,
                                 color = textMain
                             )
+                        )
+                        Spacer(modifier = GlanceModifier.width(8.dp))
+                        Image(
+                            provider = ImageProvider(R.drawable.ic_tahoe_arrow_path),
+                            contentDescription = context.getString(R.string.cd_refresh),
+                            modifier = GlanceModifier
+                                .size(18.dp)
+                                .clickable(actionRunCallback<RefreshTodayHabitsWidgetAction>())
                         )
                         Spacer(modifier = GlanceModifier.defaultWeight())
                         Row(verticalAlignment = Alignment.CenterVertically) {
@@ -302,6 +309,20 @@ class TodayHabitsWidget : GlanceAppWidget() {
             glanceIds.forEach { glanceId ->
                 updateAppWidgetState(context, glanceId) { mutablePrefs ->
                     mutablePrefs[PREF_KEY] = json
+                    mutablePrefs.remove(PREF_KEY_REFRESH_UNTIL_MS)
+                }
+            }
+            TodayHabitsWidget().updateAll(context)
+        }
+
+        suspend fun clearTodayHabits(context: Context) {
+            val manager = GlanceAppWidgetManager(context)
+            val glanceIds = manager.getGlanceIds(TodayHabitsWidget::class.java)
+            if (glanceIds.isEmpty()) return
+
+            glanceIds.forEach { glanceId ->
+                updateAppWidgetState(context, glanceId) { mutablePrefs ->
+                    mutablePrefs.remove(PREF_KEY)
                     mutablePrefs.remove(PREF_KEY_REFRESH_UNTIL_MS)
                 }
             }
