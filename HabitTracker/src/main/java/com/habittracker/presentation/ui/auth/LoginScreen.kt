@@ -243,7 +243,7 @@ fun LoginScreen(
 
                     // Кнопка Google Sign-In
                     GlassmorphicOutlinedButton(
-                        onClick = { viewModel.onEvent(AuthEvent.SignInWithGoogle) },
+                        onClick = { viewModel.onEvent(AuthEvent.SignInWithGoogle(context)) },
                         modifier = Modifier.fillMaxWidth(),
                         enabled = !uiState.isLoading,
                         isDarkTheme = isDarkTheme

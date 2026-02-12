@@ -1,5 +1,6 @@
 package com.habittracker.presentation.viewmodel
 
+import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.habittracker.BuildConfig
@@ -27,7 +28,7 @@ sealed class AuthEvent {
     data class PasswordChanged(val password: String) : AuthEvent()
     object Login : AuthEvent()
     object Register : AuthEvent()
-    object SignInWithGoogle : AuthEvent()
+    data class SignInWithGoogle(val activityContext: Context) : AuthEvent()
     object SignOut : AuthEvent()
     object ShowForgotPasswordDialog : AuthEvent()
     object HideForgotPasswordDialog : AuthEvent()
@@ -99,8 +100,8 @@ class AuthViewModel @Inject constructor(
                 signUp()
             }
 
-            AuthEvent.SignInWithGoogle -> {
-                signInWithGoogle()
+            is AuthEvent.SignInWithGoogle -> {
+                signInWithGoogle(event.activityContext)
             }
             
             AuthEvent.SignOut -> {
@@ -188,11 +189,11 @@ class AuthViewModel @Inject constructor(
         }
     }
 
-    private fun signInWithGoogle() {
+    private fun signInWithGoogle(activityContext: Context) {
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true) }
             _authState.value = AuthState.Loading
-            signInWithGoogleUseCase().collect { result ->
+            signInWithGoogleUseCase(activityContext).collect { result ->
                 result.onSuccess {
                     val userId = authRepository.getCurrentUserId()
                     analyticsManager.setUserId(userId)
