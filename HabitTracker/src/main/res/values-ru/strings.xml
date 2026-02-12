@@ -475,7 +475,11 @@
     <string name="request_sent_at">Запрос отправлен %1$s</string>
     
     <!-- Групповые привычки - дополнительные строки -->
-    <string name="share_invite_code_text">Присоединяйтесь к групповой привычке "%1$s"!\n\nКод приглашения: %2$s\n\nВведите этот код в приложении HabitTracker, чтобы присоединиться к нашей группе.</string>
+    <string name="share_invite_code_text">Присоединяйтесь к групповой привычке "%1$s"!
+
+Код приглашения: %2$s
+
+Введите этот код в приложении HabitTracker, чтобы присоединиться к нашей группе.</string>
     <string name="share_invite_code_subject">Приглашение в групповую привычку</string>
     <string name="share_invite_code_title">Поделиться кодом приглашения</string>
     <string name="invite_code_shared">Код приглашения отправлен</string>
@@ -971,6 +975,23 @@
     <string name="day_sat_short">СБ</string>
     <string name="day_sun_short">ВС</string>
     <string name="button_today">Сегодня</string>
+
+    <!-- About Screen -->
+    <string name="about_title">О приложении</string>
+    <string name="about_app_name">Habit Tracker</string>
+    <string name="about_subtitle">Создавайте привычки вместе</string>
+    <string name="about_version_format">Версия %1$s</string>
+    <string name="about_privacy_policy">Политика конфиденциальности</string>
+    <string name="about_rate_app">Оценить приложение</string>
+    <string name="about_share_app">Поделиться с друзьями</string>
+    <string name="about_feedback">Обратная связь</string>
+    <string name="about_donate">На кофе разработчику</string>
+    <string name="about_share_subject">Попробуй Habit Tracker!</string>
+    <string name="about_share_text">Присоединяйся ко мне в создании привычек вместе! Скачай Habit Tracker из RuStore: https://www.rustore.ru/catalog/app/com.habittracker</string>
+    <string name="about_feedback_subject">HabitTracker - Обратная связь</string>
+    <string name="about_feedback_email">racerkafa@yandex.ru</string>
+    <string name="about_coming_soon">Скоро будет доступно</string>
+    <string name="about_button">О приложении</string>
 
     <!-- Achievements Screen -->
     <string name="achievements_unknown_error">Неизвестная ошибка</string>

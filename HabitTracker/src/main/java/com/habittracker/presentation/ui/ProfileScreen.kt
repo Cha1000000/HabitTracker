@@ -596,6 +596,35 @@ fun ProfileScreen(
                     )
                 }
 
+                Spacer(modifier = Modifier.height(16.dp))
+
+                // About button
+                GlassmorphicCard(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable { navController.navigate(Screen.About.route) },
+                    isDarkTheme = isDarkTheme
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(16.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        Icon(
+                            imageVector = TahoeIcons.Info,
+                            contentDescription = stringResource(R.string.about_button),
+                            tint = MaterialTheme.colorScheme.primary
+                        )
+                        Text(
+                            text = stringResource(R.string.about_button),
+                            style = MaterialTheme.typography.labelLarge,
+                            color = MaterialTheme.colorScheme.onBackground
+                        )
+                    }
+                }
+
                 // Debug button for FCM testing
                 if (BuildConfig.DEBUG) {
                     Spacer(modifier = Modifier.height(16.dp))

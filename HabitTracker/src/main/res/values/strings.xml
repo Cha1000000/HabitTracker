@@ -477,7 +477,11 @@
     <string name="request_sent_at">Request sent %1$s</string>
 
     <!-- Group Habits - additional strings -->
-    <string name="share_invite_code_text">Join group habit \"%1$s\"!\n\nInvite code: %2$s\n\nEnter this code in HabitTracker app to join our group.</string>
+    <string name="share_invite_code_text">Join group habit \"%1$s\"!
+
+Invite code: %2$s
+
+Enter this code in HabitTracker app to join our group.</string>
     <string name="share_invite_code_subject">Group Habit Invitation</string>
     <string name="share_invite_code_title">Share Invite Code</string>
     <string name="invite_code_shared">Invite code shared</string>
@@ -973,6 +977,23 @@
     <string name="day_sat_short">SAT</string>
     <string name="day_sun_short">SUN</string>
     <string name="button_today">Today</string>
+
+    <!-- About Screen -->
+    <string name="about_title">About</string>
+    <string name="about_app_name">Habit Tracker</string>
+    <string name="about_subtitle">Build habits together</string>
+    <string name="about_version_format">Version %1$s</string>
+    <string name="about_privacy_policy">Privacy Policy</string>
+    <string name="about_rate_app">Rate App</string>
+    <string name="about_share_app">Share with Friends</string>
+    <string name="about_feedback">Feedback</string>
+    <string name="about_donate">Buy Developer a Coffee</string>
+    <string name="about_share_subject">Check out Habit Tracker!</string>
+    <string name="about_share_text">Join me in building habits together! Download Habit Tracker from RuStore: https://www.rustore.ru/catalog/app/com.habittracker</string>
+    <string name="about_feedback_subject">HabitTracker User Feedback</string>
+    <string name="about_feedback_email">racerkafa@yandex.ru</string>
+    <string name="about_coming_soon">Coming soon</string>
+    <string name="about_button">About</string>
 
     <!-- Achievements Screen -->
     <string name="achievements_unknown_error">Unknown error</string>
