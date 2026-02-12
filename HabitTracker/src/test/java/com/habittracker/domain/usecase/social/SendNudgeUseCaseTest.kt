@@ -167,7 +167,7 @@ class FakeAuthRepository(private var currentUserId: String?) : AuthRepository {
     })
     override suspend fun login(email: String, password: String): Flow<Result<Unit>> = flowOf(Result.failure(NotImplementedError()))
     override suspend fun register(email: String, password: String): Flow<Result<Unit>> = flowOf(Result.failure(NotImplementedError()))
-    override suspend fun signInWithGoogle(): Flow<Result<android.content.Intent?>> = flowOf(Result.failure(NotImplementedError()))
+    override suspend fun signInWithGoogle(activityContext: android.content.Context): Flow<Result<android.content.Intent?>> = flowOf(Result.failure(NotImplementedError()))
     override suspend fun signOut(): Flow<Result<Unit>> = flowOf(Result.success(Unit))
     override suspend fun sendPasswordResetEmail(email: String): Flow<Result<Unit>> = flowOf(Result.success(Unit))
 }
