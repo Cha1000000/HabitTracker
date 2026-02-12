@@ -1,5 +1,6 @@
 package com.habittracker.domain.usecase
 
+import android.content.Context
 import android.content.Intent
 import com.habittracker.domain.model.User
 import com.habittracker.domain.repository.AuthRepository
@@ -24,6 +25,9 @@ class SignInWithGoogleUseCaseTest {
     @Mock
     private lateinit var authRepository: AuthRepository
 
+    @Mock
+    private lateinit var mockContext: Context
+
     private lateinit var signInWithGoogleUseCase: SignInWithGoogleUseCase
 
     private val testUser = User(
@@ -47,10 +51,10 @@ class SignInWithGoogleUseCaseTest {
     fun `invoke should return success when Google sign-in is successful`() = runTest {
         // Arrange
         val successFlow = flow { emit(Result.success<Intent?>(null)) }
-        Mockito.`when`(authRepository.signInWithGoogle()).thenReturn(successFlow)
+        Mockito.`when`(authRepository.signInWithGoogle(mockContext)).thenReturn(successFlow)
 
         // Act
-        val result = signInWithGoogleUseCase()
+        val result = signInWithGoogleUseCase(mockContext)
 
         // Collect the flow and get the first result
         val flowResult = result.first()
@@ -58,7 +62,7 @@ class SignInWithGoogleUseCaseTest {
         // Assert
         assertTrue(flowResult.isSuccess)
         assertNull(flowResult.getOrNull())
-        Mockito.verify(authRepository).signInWithGoogle()
+        Mockito.verify(authRepository).signInWithGoogle(mockContext)
     }
 
     @Test
@@ -66,10 +70,10 @@ class SignInWithGoogleUseCaseTest {
         // Arrange
         val expectedException = IOException("Authentication failed")
         val errorFlow = flow { emit(Result.failure<Intent?>(expectedException)) }
-        Mockito.`when`(authRepository.signInWithGoogle()).thenReturn(errorFlow)
+        Mockito.`when`(authRepository.signInWithGoogle(mockContext)).thenReturn(errorFlow)
 
         // Act
-        val result = signInWithGoogleUseCase()
+        val result = signInWithGoogleUseCase(mockContext)
 
         // Collect the flow and get the first result
         val flowResult = result.first()
@@ -77,7 +81,7 @@ class SignInWithGoogleUseCaseTest {
         // Assert
         assertTrue(flowResult.isFailure)
         assertEquals(expectedException, flowResult.exceptionOrNull())
-        Mockito.verify(authRepository).signInWithGoogle()
+        Mockito.verify(authRepository).signInWithGoogle(mockContext)
     }
 
     @Test
@@ -85,10 +89,10 @@ class SignInWithGoogleUseCaseTest {
         // Arrange
         val cancelledException = Exception("User cancelled authentication")
         val errorFlow = flow { emit(Result.failure<Intent?>(cancelledException)) }
-        Mockito.`when`(authRepository.signInWithGoogle()).thenReturn(errorFlow)
+        Mockito.`when`(authRepository.signInWithGoogle(mockContext)).thenReturn(errorFlow)
 
         // Act
-        val result = signInWithGoogleUseCase()
+        val result = signInWithGoogleUseCase(mockContext)
 
         // Collect the flow and get the first result
         val flowResult = result.first()
@@ -96,6 +100,6 @@ class SignInWithGoogleUseCaseTest {
         // Assert
         assertTrue(flowResult.isFailure)
         assertEquals(cancelledException, flowResult.exceptionOrNull())
-        Mockito.verify(authRepository).signInWithGoogle()
+        Mockito.verify(authRepository).signInWithGoogle(mockContext)
     }
 }
