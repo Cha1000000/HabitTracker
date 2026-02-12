@@ -33,6 +33,7 @@ import com.habittracker.presentation.ui.habits.HabitsScreen
 import com.habittracker.presentation.ui.notifications.NotificationsScreen
 import com.habittracker.presentation.ui.settings.AboutScreen
 import com.habittracker.presentation.ui.settings.NotificationSettingsScreen
+import com.habittracker.presentation.ui.settings.PrivacyPolicyScreen
 import com.habittracker.presentation.ui.social.FriendsScreen
 import com.habittracker.presentation.ui.splash.SplashScreen
 import com.habittracker.presentation.ui.stats.GroupHabitStatScreen
@@ -82,6 +83,7 @@ sealed class Screen(val route: String) {
     object HabitSettings : Screen("habit_settings_screen")
     object ResetProgress : Screen("reset_progress_screen")
     object About : Screen("about_screen")
+    object PrivacyPolicy : Screen("privacy_policy_screen")
     // Debug screens (только для debug сборки)
     object FCMTest : Screen("fcm_test_screen")
     // Habit Statistics
@@ -317,6 +319,10 @@ fun AppNavHost(
 
         composable(route = Screen.About.route) {
             AboutScreen(navController = navController)
+        }
+
+        composable(route = Screen.PrivacyPolicy.route) {
+            PrivacyPolicyScreen(navController = navController)
         }
 
         // Habit Statistics Screens

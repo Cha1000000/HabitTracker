@@ -47,6 +47,7 @@ import androidx.core.net.toUri
 import androidx.navigation.NavController
 import com.habittracker.BuildConfig
 import com.habittracker.R
+import com.habittracker.presentation.navigation.Screen
 import com.habittracker.presentation.ui.habits.components.GlassmorphicCard
 import com.habittracker.presentation.ui.habits.components.TahoeGradientBackground
 import com.habittracker.presentation.ui.theme.TahoeIcons
@@ -201,8 +202,7 @@ fun AboutScreen(
                     text = stringResource(R.string.about_privacy_policy),
                     isDarkTheme = isDarkTheme,
                     onClick = {
-                        // Placeholder for privacy policy
-                        Timber.d("Privacy Policy clicked")
+                        navController.navigate(Screen.PrivacyPolicy.route)
                     }
                 )
 
