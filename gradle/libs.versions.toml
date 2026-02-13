@@ -47,6 +47,7 @@ profileinstaller = "1.4.1"
 appmetrica = "8.0.0"
 exifinterface = "1.3.7"
 glance = "1.1.1"
+zxing = "3.5.3"
 
 [libraries]
 # Core
@@ -165,6 +166,9 @@ googleid = { group = "com.google.android.libraries.identity.googleid", name = "g
 
 # AppMetrica Analytics
 appmetrica-analytics = { group = "io.appmetrica.analytics", name = "analytics", version.ref = "appmetrica" }
+
+# ZXing for QR Code generation
+zxing-core = { group = "com.google.zxing", name = "core", version.ref = "zxing" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }

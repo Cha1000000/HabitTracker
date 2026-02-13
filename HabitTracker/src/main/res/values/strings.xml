@@ -995,6 +995,23 @@ Enter this code in HabitTracker app to join our group.</string>
     <string name="about_coming_soon">Coming soon</string>
     <string name="about_button">About</string>
 
+    <!-- Donate Screen -->
+    <string name="donate_title">Support Developer</string>
+    <string name="donate_subtitle">Your support helps improve the app</string>
+    <string name="donate_description">If you enjoy using Habit Tracker, consider buying me a coffee. Your donation helps keep the app free and supports future development.</string>
+    <string name="donate_select_amount">Select amount:</string>
+    <string name="donate_amount_small">100 ₽</string>
+    <string name="donate_amount_medium">300 ₽</string>
+    <string name="donate_amount_large">500 ₽</string>
+    <string name="donate_custom_amount">Custom amount</string>
+    <string name="donate_qr_title">Scan QR code with your bank app</string>
+    <string name="donate_qr_description">Open your banking app and scan the QR code to make a payment via SBP (Fast Payment System)</string>
+    <string name="donate_share_qr">Share QR code</string>
+    <string name="donate_copy_link">Copy payment link</string>
+    <string name="donate_link_copied">Payment link copied to clipboard</string>
+    <string name="donate_thanks">Thank you for your support! ☕</string>
+    <string name="donate_sbp_label">SBP (Fast Payment System)</string>
+
     <!-- Privacy Policy Screen -->
     <string name="privacy_policy_title">Privacy Policy</string>
     <string name="privacy_policy_last_updated">Last updated: February 11, 2026</string>

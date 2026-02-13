@@ -273,8 +273,7 @@ fun AboutScreen(
                     text = stringResource(R.string.about_donate),
                     isDarkTheme = isDarkTheme,
                     onClick = {
-                        // Placeholder for donate functionality
-                        Timber.d("Donate clicked - coming soon")
+                        navController.navigate(Screen.Donate.route)
                     }
                 )
 

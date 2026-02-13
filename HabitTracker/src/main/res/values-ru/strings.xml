@@ -201,7 +201,7 @@
     <string name="profile_achievements_button">Мои достижения</string>
     <string name="profile_notifications_button">Настройки уведомлений</string>
     <string name="profile_reset_progress_button">Сброс прогресса</string>
-    <string name="profile_sign_out_button">Выйти из аккаунта</string>
+    <string name="profile_sign_out_button">Выйти \nиз аккаунта</string>
     <string name="profile_username_label">Имя пользователя</string>
     <string name="profile_level_label">Уровень</string>
     <string name="friends_title">Мои друзья</string>
@@ -992,6 +992,23 @@
     <string name="about_feedback_email">racerkafa@yandex.ru</string>
     <string name="about_coming_soon">Скоро будет доступно</string>
     <string name="about_button">О приложении</string>
+
+    <!-- Donate Screen -->
+    <string name="donate_title">Поддержать разработчика</string>
+    <string name="donate_subtitle">Ваша поддержка помогает улучшать приложение</string>
+    <string name="donate_description">Если вам нравится использовать Habit Tracker, рассмотрите возможность угостить меня кофе. Ваш донат помогает поддерживать приложение бесплатным и способствует дальнейшему развитию.</string>
+    <string name="donate_select_amount">Выберите сумму:</string>
+    <string name="donate_amount_small">100 ₽</string>
+    <string name="donate_amount_medium">300 ₽</string>
+    <string name="donate_amount_large">500 ₽</string>
+    <string name="donate_custom_amount">Другая сумма</string>
+    <string name="donate_qr_title">Отсканируйте QR-код в приложении банка</string>
+    <string name="donate_qr_description">Откройте приложение вашего банка и отсканируйте QR-код для оплаты через СБП (Систему быстрых платежей)</string>
+    <string name="donate_share_qr">Поделиться QR-кодом</string>
+    <string name="donate_copy_link">Копировать ссылку</string>
+    <string name="donate_link_copied">Ссылка скопирована в буфер обмена</string>
+    <string name="donate_thanks">Спасибо за вашу поддержку! ☕</string>
+    <string name="donate_sbp_label">СБП (Система быстрых платежей)</string>
 
     <!-- Privacy Policy Screen -->
     <string name="privacy_policy_title">Политика конфиденциальности</string>
