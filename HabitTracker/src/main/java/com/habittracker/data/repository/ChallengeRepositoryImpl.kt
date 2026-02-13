@@ -1,6 +1,7 @@
 package com.habittracker.data.repository
 
 import com.google.firebase.firestore.FirebaseFirestore
+import com.google.firebase.firestore.FirebaseFirestoreException
 import com.habittracker.data.local.dao.ChallengeDao
 import com.habittracker.data.local.dao.HabitEntryDao
 import com.habittracker.data.local.entity.ChallengeEntity
@@ -438,6 +439,14 @@ class ChallengeRepositoryImpl @Inject constructor(
                 .await()
             
             snapshot.documents.size
+        } catch (e: FirebaseFirestoreException) {
+            // Не логгируем offline-ошибки - это ожидаемое поведение для offline-first приложения
+            if (e.code == FirebaseFirestoreException.Code.UNAVAILABLE) {
+                Timber.tag(TAG).d("getCompletedDaysFromFirestore: device is offline")
+            } else {
+                Timber.tag(TAG).e(e, "Error getting completed days from Firestore: ${e.code}")
+            }
+            0
         } catch (e: Exception) {
             Timber.tag(TAG).e(e, "Error getting completed days from Firestore: ${e.message}")
             0
@@ -475,6 +484,14 @@ class ChallengeRepositoryImpl @Inject constructor(
                 }
             }
             streak
+        } catch (e: FirebaseFirestoreException) {
+            // Не логгируем offline-ошибки - это ожидаемое поведение для offline-first приложения
+            if (e.code == FirebaseFirestoreException.Code.UNAVAILABLE) {
+                Timber.tag(TAG).d("getCurrentStreakFromFirestore: device is offline")
+            } else {
+                Timber.tag(TAG).e(e, "Error getting current streak from Firestore: ${e.code}")
+            }
+            0
         } catch (e: Exception) {
             Timber.tag(TAG).e(e, "Error getting current streak from Firestore: ${e.message}")
             0
@@ -560,6 +577,14 @@ class ChallengeRepositoryImpl @Inject constructor(
             snapshot.documents.sumOf { doc ->
                 (doc.getLong("value") ?: 0L).toInt()
             }
+        } catch (e: FirebaseFirestoreException) {
+            // Не логгируем offline-ошибки - это ожидаемое поведение для offline-first приложения
+            if (e.code == FirebaseFirestoreException.Code.UNAVAILABLE) {
+                Timber.tag(TAG).d("getTotalValueFromFirestore: device is offline")
+            } else {
+                Timber.tag(TAG).e(e, "Error getting total value from Firestore: ${e.code}")
+            }
+            0
         } catch (e: Exception) {
             Timber.tag(TAG).e(e, "Error getting total value from Firestore: ${e.message}")
             0

@@ -15,6 +15,7 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
 import androidx.navigation.NavHostController
+import com.habittracker.data.service.FCMTokenManager
 import com.habittracker.data.service.PendingNotificationManager
 import com.habittracker.domain.repository.AuthRepository
 import com.habittracker.domain.repository.SocialRepository
@@ -58,6 +59,8 @@ class MainActivity : ComponentActivity() {
     lateinit var analyticsManager: AnalyticsManager
     @Inject
     lateinit var errorLogger: ErrorLogger
+    @Inject
+    lateinit var fcmTokenManager: FCMTokenManager
 
     private val authViewModel: AuthViewModel by viewModels()
     private var socialSyncJob: Job? = null
@@ -141,6 +144,8 @@ class MainActivity : ComponentActivity() {
                             launch(Dispatchers.IO) {
                                 runCatching { PendingNotificationManager.deliverForCurrentUser(applicationContext, authRepository) }
                             }
+                            // Проверяем, нужно ли показать сообщение о недоступности FCM
+                            checkAndShowFcmUnavailableDialog()
                             if (userId != null) {
                                 startSocialRealtimeSync(userId)
                                 // Если есть отложенная навигация — выполним её
@@ -408,6 +413,26 @@ class MainActivity : ComponentActivity() {
             route.startsWith("notification_settings_screen") -> AnalyticsEvents.Screens.SETTINGS
             route.startsWith("habit_settings_screen") -> AnalyticsEvents.Screens.SETTINGS
             else -> route
+        }
+    }
+
+    /**
+     * Проверяет, нужно ли показать диалог о недоступности FCM,
+     * и показывает его если необходимо
+     */
+    private fun checkAndShowFcmUnavailableDialog() {
+        if (fcmTokenManager.shouldShowFcmUnavailableMessage()) {
+            // Показываем диалог только один раз
+            fcmTokenManager.markFcmUnavailableMessageShown()
+            
+            android.app.AlertDialog.Builder(this)
+                .setTitle(getString(R.string.fcm_unavailable_title))
+                .setMessage(getString(R.string.fcm_unavailable_message))
+                .setPositiveButton(getString(R.string.fcm_unavailable_ok)) { dialog, _ ->
+                    dialog.dismiss()
+                }
+                .setCancelable(false)
+                .show()
         }
     }
 }

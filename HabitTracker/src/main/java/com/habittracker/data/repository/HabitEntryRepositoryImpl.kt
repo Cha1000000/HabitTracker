@@ -12,6 +12,7 @@ import com.habittracker.domain.model.HabitEntryWithUser
 import com.habittracker.domain.repository.HabitEntryRepository
 import com.habittracker.domain.util.HabitEntryIds
 import com.habittracker.domain.util.SyncPayloads
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -162,6 +163,8 @@ class HabitEntryRepositoryImpl @Inject constructor(
                     scope.launch {
                         try {
                             mergeFirebaseEntries(list)
+                        } catch (_: CancellationException) {
+                            // Scope was cancelled - this is expected when Flow is closed
                         } catch (e: Exception) {
                             Timber.tag("HabitEntryRepo").w(e, "Merge entries failed: ${e.message}")
                         }
@@ -202,6 +205,8 @@ class HabitEntryRepositoryImpl @Inject constructor(
                     scope.launch {
                         try {
                             mergeFirebaseEntries(list)
+                        } catch (_: CancellationException) {
+                            // Scope was cancelled - this is expected when Flow is closed
                         } catch (e: Exception) {
                             Timber.tag("HabitEntryRepo").w(e, "Merge entries failed: ${e.message}")
                         }
@@ -243,6 +248,8 @@ class HabitEntryRepositoryImpl @Inject constructor(
                     scope.launch {
                         try {
                             mergeFirebaseEntries(list)
+                        } catch (_: CancellationException) {
+                            // Scope was cancelled - this is expected when Flow is closed
                         } catch (e: Exception) {
                             Timber.tag("HabitEntryRepo").w(e, "Merge entries failed: ${e.message}")
                         }

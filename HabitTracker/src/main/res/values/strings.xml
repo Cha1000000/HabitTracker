@@ -1012,6 +1012,17 @@ Enter this code in HabitTracker app to join our group.</string>
     <string name="donate_thanks">Thank you for your support! ☕</string>
     <string name="donate_sbp_label">SBP (Fast Payment System)</string>
 
+    <!-- FCM Error Messages -->
+    <string name="fcm_unavailable_title">Notifications Unavailable</string>
+    <string name="fcm_unavailable_message">Push notifications are not available on this device. This may be due to:\n
+
+• Device without Google Play Services\n
+• Modified or rooted device\n
+• Corporate restrictions\n\n
+
+The app will work normally, but you won\'t receive push notifications about friend requests and habit invitations.</string>
+    <string name="fcm_unavailable_ok">Got it</string>
+
     <!-- Privacy Policy Screen -->
     <string name="privacy_policy_title">Privacy Policy</string>
     <string name="privacy_policy_last_updated">Last updated: February 11, 2026</string>

@@ -1010,6 +1010,17 @@
     <string name="donate_thanks">Спасибо за вашу поддержку! ☕</string>
     <string name="donate_sbp_label">СБП (Система быстрых платежей)</string>
 
+    <!-- FCM Error Messages -->
+    <string name="fcm_unavailable_title">Уведомления недоступны</string>
+    <string name="fcm_unavailable_message">Push-уведомления недоступны на этом устройстве. Это может быть связано с:\n
+
+• Отсутствием Google Play Services\n
+• Модифицированной или root прошивкой\n
+• Корпоративными ограничениями\n\n
+
+Приложение будет работать нормально, но вы не будете получать push-уведомления о запросах дружбы и приглашениях в привычки.</string>
+    <string name="fcm_unavailable_ok">Понятно</string>
+
     <!-- Privacy Policy Screen -->
     <string name="privacy_policy_title">Политика конфиденциальности</string>
     <string name="privacy_policy_last_updated">Последнее обновление: 11 февраля 2026 г.</string>
