@@ -1,5 +1,13 @@
 # HabitTracker - Project Context for Gemini
 
+## Role Routing Rules
+
+When handling tasks, apply role routing and skill mapping from:
+`/Users/racerkafa/Documents/MyProjects/Android/Compose/HabitTracker/.agents/roles/Roles.md`
+
+If the user explicitly asks for a role or names specific skills, that explicit instruction overrides automatic routing.
+
+
 ## 1. Project Overview
 **HabitTracker** is a native Android application aimed at building habits through social interaction and gamification.
 *   **Type:** Native Android App.
