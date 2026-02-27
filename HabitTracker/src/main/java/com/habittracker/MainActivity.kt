@@ -165,7 +165,9 @@ class MainActivity : ComponentActivity() {
                                                         currentRoute == Screen.Login.route ||
                                                         currentRoute == Screen.Register.route
 
-                                                if (isAtRoot) {
+                                                // Don't navigate to Habits if we're still on the splash screen
+                                                // The splash screen will handle the navigation after animation completes
+                                                if (isAtRoot && currentRoute != Screen.Splash.route) {
                                                     Timber.tag("MainActivity").d("[bootstrap] default navigate to Habits (currentRoute=$currentRoute)")
                                                     runCatching {
                                                         controller.navigate(Screen.Habits.route) {
