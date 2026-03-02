@@ -65,3 +65,4 @@ HabitTracker/*firebase-adminsdk*.json
 **/*adminsdk*.json
 /scripts/firestore-seed/node_modules/
 /.codex/environments/environment.toml
+/art/habr/
