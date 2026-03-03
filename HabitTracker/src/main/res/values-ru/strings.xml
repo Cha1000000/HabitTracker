@@ -775,6 +775,8 @@
 
     <!-- Group Habit Detail Screen -->
     <string name="group_habit_details">Детали групповой привычки</string>
+    <string name="self_habit_details">Детали привычки</string>
+    <string name="self_habit_recent_empty">Пока нет активности</string>
     <string name="manage_group">Управление группой</string>
     <string name="group_progress">Прогресс группы</string>
     <string name="not_completed_today">Не выполнено сегодня</string>

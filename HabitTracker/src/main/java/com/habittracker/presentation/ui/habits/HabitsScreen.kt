@@ -521,6 +521,7 @@ fun HabitsScreen(
                                             HabitItemRow(
                                                 habitWithCompletion = habitWithCompletion,
                                                 isFutureDate = isFutureDate,
+                                                selectedDate = selectedDate,
                                                 navController = navController,
                                                 viewModel = viewModel,
                                                 scope = scope,
@@ -624,6 +625,7 @@ private fun HabitSectionHeader(
 private fun HabitItemRow(
     habitWithCompletion: HabitWithCompletion,
     isFutureDate: Boolean,
+    selectedDate: kotlinx.datetime.LocalDate,
     navController: NavController,
     viewModel: HabitsViewModel,
     scope: kotlinx.coroutines.CoroutineScope,
@@ -680,10 +682,24 @@ private fun HabitItemRow(
             EnhancedHabitItem(
                 habitWithCompletion = habitWithCompletion,
                 onHabitClick = { habit ->
-                    if (habit.habit.isGroupHabit()) {
-                        navController.navigate(Screen.GroupHabitDetail.createRoute(habit.habit.id))
-                    } else {
+                    if (isFutureDate) {
                         navController.navigate(Screen.AddEditHabit.route + "?habitId=${habit.habit.id}")
+                        return@EnhancedHabitItem
+                    }
+                    if (habit.habit.isGroupHabit()) {
+                        navController.navigate(
+                            Screen.GroupHabitDetail.createRoute(
+                                habitId = habit.habit.id,
+                                selectedDate = selectedDate
+                            )
+                        )
+                    } else {
+                        navController.navigate(
+                            Screen.SelfHabitDetail.createRoute(
+                                habitId = habit.habit.id,
+                                selectedDate = selectedDate
+                            )
+                        )
                     }
                 },
                 onToggleCompletion = {

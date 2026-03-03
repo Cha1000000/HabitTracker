@@ -251,6 +251,7 @@ class MainActivity : ComponentActivity() {
             "challenge_invitations" -> Screen.Challenges.createRoute("invitations")
             "notifications" -> Screen.Notifications.route
             "group_habit_detail" -> habitId?.let { Screen.GroupHabitDetail.createRoute(it) } ?: Screen.Habits.route
+            "self_habit_detail" -> habitId?.let { Screen.SelfHabitDetail.createRoute(it) } ?: Screen.Habits.route
             "edit_habit" -> habitId?.let { Screen.AddEditHabit.route + "?habitId=$it" } ?: Screen.Habits.route
             "challenge_detail" -> challengeId?.let { Screen.ChallengeDetail.createRoute(it) } ?: Screen.Challenges.route
             "habits" -> Screen.Habits.route
@@ -406,6 +407,7 @@ class MainActivity : ComponentActivity() {
             route.startsWith("stats_screen") -> AnalyticsEvents.Screens.HABIT_STATISTICS
             route.startsWith("achievements_screen") -> AnalyticsEvents.Screens.ACHIEVEMENTS
             route.startsWith("group_habit_detail_screen") -> AnalyticsEvents.Screens.GROUP_HABIT_DETAIL
+            route.startsWith("self_habit_detail_screen") -> AnalyticsEvents.Screens.SELF_HABIT_DETAIL
             route.startsWith("group_habit_stat_screen") -> AnalyticsEvents.Screens.GROUP_HABIT_STATISTICS
             route.startsWith("self_habit_stat_screen") -> AnalyticsEvents.Screens.HABIT_STATISTICS
             route.startsWith("public_habits_screen") -> AnalyticsEvents.Screens.PUBLIC_HABITS

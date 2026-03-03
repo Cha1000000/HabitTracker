@@ -380,7 +380,7 @@ class TodayHabitsWidget : GlanceAppWidget() {
 }
 
 private fun buildOpenHabitIntent(context: Context, item: TodayHabitWidgetItem): Intent {
-    val navigateTo = if (item.isGroup) "group_habit_detail" else "edit_habit"
+    val navigateTo = if (item.isGroup) "group_habit_detail" else "self_habit_detail"
     return Intent(context, MainActivity::class.java).apply {
         flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP
         putExtra("navigate_to", navigateTo)

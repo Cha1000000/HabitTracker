@@ -30,6 +30,7 @@ import com.habittracker.presentation.ui.discover.PublicHabitsScreen
 import com.habittracker.presentation.ui.habits.AddEditHabitScreen
 import com.habittracker.presentation.ui.habits.GroupHabitDetailScreen
 import com.habittracker.presentation.ui.habits.HabitsScreen
+import com.habittracker.presentation.ui.habits.SelfHabitDetailScreen
 import com.habittracker.presentation.ui.notifications.NotificationsScreen
 import com.habittracker.presentation.ui.settings.AboutScreen
 import com.habittracker.presentation.ui.settings.DonateScreen
@@ -41,6 +42,7 @@ import com.habittracker.presentation.ui.stats.GroupHabitStatScreen
 import com.habittracker.presentation.ui.stats.SelfHabitStatScreen
 import com.habittracker.presentation.ui.stats.StatsScreen
 import kotlinx.coroutines.flow.collectLatest
+import kotlinx.datetime.LocalDate
 import timber.log.Timber
 
 /**
@@ -64,8 +66,23 @@ sealed class Screen(val route: String) {
     object Notifications : Screen("notifications_screen")
     object Stats : Screen("stats_screen")
     object Achievements : Screen("achievements_screen")
-    object GroupHabitDetail : Screen("group_habit_detail_screen/{habitId}") {
-        fun createRoute(habitId: String) = "group_habit_detail_screen/$habitId"
+    object GroupHabitDetail : Screen("group_habit_detail_screen/{habitId}?selectedDate={selectedDate}") {
+        fun createRoute(habitId: String, selectedDate: LocalDate? = null): String {
+            return if (selectedDate != null) {
+                "group_habit_detail_screen/$habitId?selectedDate=$selectedDate"
+            } else {
+                "group_habit_detail_screen/$habitId"
+            }
+        }
+    }
+    object SelfHabitDetail : Screen("self_habit_detail_screen/{habitId}?selectedDate={selectedDate}") {
+        fun createRoute(habitId: String, selectedDate: LocalDate? = null): String {
+            return if (selectedDate != null) {
+                "self_habit_detail_screen/$habitId?selectedDate=$selectedDate"
+            } else {
+                "self_habit_detail_screen/$habitId"
+            }
+        }
     }
     object PublicHabits : Screen("public_habits_screen")
     // Challenges
@@ -213,14 +230,62 @@ fun AppNavHost(
         
         composable(
             route = Screen.GroupHabitDetail.route,
-            arguments = listOf(navArgument("habitId") {
-                type = NavType.StringType
-                nullable = false
-            })
+            arguments = listOf(
+                navArgument("habitId") {
+                    type = NavType.StringType
+                    nullable = false
+                },
+                navArgument("selectedDate") {
+                    type = NavType.StringType
+                    nullable = true
+                    defaultValue = null
+                }
+            )
         ) { backStackEntry ->
             val habitId = backStackEntry.arguments?.getString("habitId") ?: ""
+            val selectedDate = backStackEntry.arguments
+                ?.getString("selectedDate")
+                ?.let {
+                    try {
+                        LocalDate.parse(it)
+                    } catch (_: IllegalArgumentException) {
+                        null
+                    }
+                }
             GroupHabitDetailScreen(
                 habitId = habitId,
+                selectedDate = selectedDate,
+                navController = navController
+            )
+        }
+
+        composable(
+            route = Screen.SelfHabitDetail.route,
+            arguments = listOf(
+                navArgument("habitId") {
+                    type = NavType.StringType
+                    nullable = false
+                },
+                navArgument("selectedDate") {
+                    type = NavType.StringType
+                    nullable = true
+                    defaultValue = null
+                }
+            )
+        ) { backStackEntry ->
+            val habitId = backStackEntry.arguments?.getString("habitId") ?: ""
+            val selectedDate = backStackEntry.arguments
+                ?.getString("selectedDate")
+                ?.let {
+                    try {
+                        LocalDate.parse(it)
+                    } catch (_: IllegalArgumentException) {
+                        null
+                    }
+                }
+            SelfHabitDetailScreen(
+                habitId = habitId,
+                selectedDate = selectedDate,
                 navController = navController
             )
         }

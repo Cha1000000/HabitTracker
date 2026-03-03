@@ -776,6 +776,8 @@ Enter this code in HabitTracker app to join our group.</string>
 
     <!-- Group Habit Detail Screen -->
     <string name="group_habit_details">Group Habit Details</string>
+    <string name="self_habit_details">Habit Details</string>
+    <string name="self_habit_recent_empty">No activity yet</string>
     <string name="manage_group">Manage Group</string>
     <string name="group_progress">Group Progress</string>
     <string name="not_completed_today">Not completed today</string>

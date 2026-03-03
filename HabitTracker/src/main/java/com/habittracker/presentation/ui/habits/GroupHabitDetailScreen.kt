@@ -102,6 +102,7 @@ import com.habittracker.presentation.utils.DateTimeFormatter
 import com.habittracker.presentation.viewmodel.GroupHabitDetailViewModel
 import kotlinx.coroutines.launch
 import kotlinx.datetime.Clock
+import kotlinx.datetime.LocalDate
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toInstant
 import kotlinx.datetime.todayIn
@@ -113,6 +114,7 @@ import kotlinx.datetime.todayIn
 @Composable
 fun GroupHabitDetailScreen(
     habitId: String,
+    selectedDate: LocalDate? = null,
     navController: NavController,
     viewModel: GroupHabitDetailViewModel = hiltViewModel(),
     onBackClick: () -> Unit = { navController.popBackStack() }
@@ -122,14 +124,14 @@ fun GroupHabitDetailScreen(
     var showMenu by remember { mutableStateOf(false) }
     var showResetMineDialog by remember { mutableStateOf(false) }
     var showResetAllDialog by remember { mutableStateOf(false) }
-    val today = remember { Clock.System.todayIn(TimeZone.currentSystemDefault()) }
+    val effectiveDate = selectedDate ?: remember { Clock.System.todayIn(TimeZone.currentSystemDefault()) }
     
     // State for full screen photo viewer
     var fullScreenPhotoUrl by remember { mutableStateOf<String?>(null) }
     
     // Загрузка данных привычки
-    LaunchedEffect(habitId) {
-        viewModel.loadHabitDetails(habitId)
+    LaunchedEffect(habitId, effectiveDate) {
+        viewModel.loadHabitDetails(habitId, effectiveDate)
     }
     
     // Обработка сообщений
@@ -313,7 +315,7 @@ fun GroupHabitDetailScreen(
 
                     item {
                         GroupProgressSection(
-                            today = today,
+                            today = effectiveDate,
                             participants = uiState.participants,
                             habitEntries = uiState.habitEntries,
                             currentStreak = uiState.groupStreak,
@@ -323,7 +325,7 @@ fun GroupHabitDetailScreen(
 
                     item {
                         ParticipantsSection(
-                            today = today,
+                            today = effectiveDate,
                             participants = uiState.participants,
                             habitEntries = uiState.habitEntries,
                             isManageMode = uiState.isManageMode,
@@ -440,13 +442,13 @@ fun GroupHabitDetailScreen(
             entry = HabitEntry(
                 habitId = uiState.habit?.id ?: "",
                 userId = uiState.currentUserId,
-                date = today,
+                date = effectiveDate,
                 completed = uiState.isCompletedToday,
                 value = 0,
                 note = uiState.currentUserNote,
                 photoUrl = uiState.currentUserPhotoUrl,
             ),
-            date = today,
+            date = effectiveDate,
             habitTitle = uiState.habit?.title ?: "",
             habitUnit = uiState.habit?.unit,
             isUploading = uiState.isUploadingPhoto,
@@ -465,7 +467,7 @@ fun GroupHabitDetailScreen(
 }
 
 @Composable
-private fun FullScreenPhotoDialog(url: String, onDismiss: () -> Unit) {
+internal fun FullScreenPhotoDialog(url: String, onDismiss: () -> Unit) {
     var scale by remember(url) { mutableStateOf(1f) }
     var offsetX by remember(url) { mutableStateOf(0f) }
     var offsetY by remember(url) { mutableStateOf(0f) }
@@ -546,7 +548,7 @@ private fun FullScreenPhotoDialog(url: String, onDismiss: () -> Unit) {
  * Секция с основной информацией о привычке
  */
 @Composable
-private fun HabitInfoSection(
+internal fun HabitInfoSection(
     habit: Habit?,
     modifier: Modifier = Modifier,
     isCompletedToday: Boolean = false,

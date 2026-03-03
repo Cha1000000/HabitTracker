@@ -35,6 +35,7 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.datetime.Clock
 import kotlinx.datetime.DatePeriod
+import kotlinx.datetime.LocalDate
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.minus
 import kotlinx.datetime.todayIn
@@ -76,11 +77,13 @@ class GroupHabitDetailViewModel @Inject constructor(
     private var invitationsCollectionJob: Job? = null
     private var leaderboardJob: Job? = null
     private var nudgesCollectionJob: Job? = null
+    private var currentSelectedDate: LocalDate = Clock.System.todayIn(TimeZone.currentSystemDefault())
 
     /**
      * Загрузка детальной информации о привычке
      */
-    fun loadHabitDetails(habitId: String) {
+    fun loadHabitDetails(habitId: String, selectedDate: LocalDate) {
+        currentSelectedDate = selectedDate
         // Отменяем предыдущие подписки
         entriesCollectionJob?.cancel()
         invitationsCollectionJob?.cancel()
@@ -146,7 +149,7 @@ class GroupHabitDetailViewModel @Inject constructor(
 
                 // Подписываемся на изменения записей о выполнении привычки
                 if (habit.isGroupHabit()) {
-                    collectHabitEntries(habitId, participants.map { it.id })
+                    collectHabitEntries(habitId, participants.map { it.id }, selectedDate)
                     // Загружаем лидерборд участников
                     loadParticipantLeaderboard(habitId)
                     // Подписываемся на nudges (кого уже "пнули")
@@ -180,7 +183,11 @@ class GroupHabitDetailViewModel @Inject constructor(
     /**
      * Подписка на изменения записей о выполнении привычки для всех участников
      */
-    private fun collectHabitEntries(habitId: String, participantIds: List<String>) {
+    private fun collectHabitEntries(
+        habitId: String,
+        participantIds: List<String>,
+        selectedDate: LocalDate
+    ) {
         entriesCollectionJob?.cancel()
         entriesCollectionJob = viewModelScope.launch {
             habitEntryRepository.getEntriesForHabit(habitId)
@@ -189,37 +196,35 @@ class GroupHabitDetailViewModel @Inject constructor(
                     Timber.tag("GroupHabitDetailVM").e(e, "Error collecting entries")
                 }
                 .collect { allEntries ->
-                    val today = Clock.System.todayIn(TimeZone.currentSystemDefault())
-                    
                     // Фильтруем записи только для участников группы
                     val relevantEntries = allEntries.filter { entry ->
                         entry.userId in participantIds
                     }
                     
                     // Проверяем статус выполнения для текущего пользователя
-                    val isCompletedToday = relevantEntries.any { entry ->
+                    val isCompletedOnSelectedDate = relevantEntries.any { entry ->
                         entry.userId == currentUserId && 
-                        entry.date == today && 
+                        entry.date == selectedDate &&
                         entry.completed
                     }
 
-                    val todayEntry = relevantEntries.firstOrNull { entry ->
-                        entry.userId == currentUserId && entry.date == today
+                    val selectedDateEntry = relevantEntries.firstOrNull { entry ->
+                        entry.userId == currentUserId && entry.date == selectedDate
                     }
-                    val todayPhotoUrl = todayEntry?.photoUrl
-                    val todayNote = todayEntry?.note
+                    val selectedDatePhotoUrl = selectedDateEntry?.photoUrl
+                    val selectedDateNote = selectedDateEntry?.note
                     
                     // Рассчитываем групповую серию
-                    val groupStreak = calculateGroupStreak(relevantEntries, participantIds)
+                    val groupStreak = calculateGroupStreak(relevantEntries, participantIds, selectedDate)
                     
                     // Обновляем UI состояние
                     _uiState.update { state ->
                         state.copy(
                             habitEntries = relevantEntries,
                             groupStreak = groupStreak,
-                            isCompletedToday = isCompletedToday,
-                            currentUserPhotoUrl = if (state.isUploadingPhoto) state.currentUserPhotoUrl else todayPhotoUrl,
-                            currentUserNote = todayNote
+                            isCompletedToday = isCompletedOnSelectedDate,
+                            currentUserPhotoUrl = if (state.isUploadingPhoto) state.currentUserPhotoUrl else selectedDatePhotoUrl,
+                            currentUserNote = selectedDateNote
                         )
                     }
                 }
@@ -409,7 +414,7 @@ class GroupHabitDetailViewModel @Inject constructor(
                 updateHabitUseCase(updatedHabit)
                 
                 // Перезагружаем данные
-                loadHabitDetails(habit.id)
+                loadHabitDetails(habit.id, currentSelectedDate)
                 _uiState.update { 
                     it.copy(
                         successMessage = application.getString(R.string.participant_removed)
@@ -480,16 +485,21 @@ class GroupHabitDetailViewModel @Inject constructor(
         
         viewModelScope.launch {
             try {
-                _uiState.update { it.copy(isMarkingCompletion = true) }
-                
                 val today = Clock.System.todayIn(TimeZone.currentSystemDefault())
+                if (currentSelectedDate > today) {
+                    _uiState.update {
+                        it.copy(error = application.getString(R.string.error_cannot_mark_future_habit))
+                    }
+                    return@launch
+                }
+                _uiState.update { it.copy(isMarkingCompletion = true) }
                 
                 if (isCompleted) {
                     // Снимаем отметку о выполнении
-                    markHabitIncompleteUseCase(habit.id, currentUserId, today)
+                    markHabitIncompleteUseCase(habit.id, currentUserId, currentSelectedDate)
                 } else {
                     // Отмечаем как выполненное
-                    markHabitCompletedUseCase(habit.id, currentUserId, today)
+                    markHabitCompletedUseCase(habit.id, currentUserId, currentSelectedDate)
                 }
                 
                 _uiState.update { 
@@ -506,7 +516,7 @@ class GroupHabitDetailViewModel @Inject constructor(
                 }
                 
                 // Перезагружаем данные для обновления статистики
-                loadHabitDetails(habit.id)
+                loadHabitDetails(habit.id, currentSelectedDate)
 
                 TodayHabitsWidgetScheduler.enqueueRefresh(application)
                 
@@ -534,12 +544,12 @@ class GroupHabitDetailViewModel @Inject constructor(
      */
     private fun calculateGroupStreak(
         entries: List<HabitEntry>,
-        participantIds: List<String>
+        participantIds: List<String>,
+        selectedDate: LocalDate
     ): Int {
         if (entries.isEmpty() || participantIds.isEmpty()) return 0
         
-        val today = Clock.System.todayIn(TimeZone.currentSystemDefault())
-        var currentDate = today
+        var currentDate = selectedDate
         var streak = 0
         
         // Идем назад от сегодняшнего дня
@@ -551,7 +561,7 @@ class GroupHabitDetailViewModel @Inject constructor(
             // Если не все участники выполнили привычку, прерываем серию
             if (!participantIds.all { it in completedUserIds }) {
                 // Если это сегодня и никто не выполнил, серия может продолжаться со вчерашнего дня
-                if (currentDate == today && completedUserIds.isEmpty()) {
+                if (currentDate == selectedDate && completedUserIds.isEmpty()) {
                     currentDate = currentDate.minus(DatePeriod(days = 1))
                     continue
                 }
@@ -594,7 +604,6 @@ class GroupHabitDetailViewModel @Inject constructor(
      */
     fun attachPhoto(uri: Uri) {
         val habit = _uiState.value.habit ?: return
-        val today = Clock.System.todayIn(TimeZone.currentSystemDefault())
         
         viewModelScope.launch {
             _uiState.update { it.copy(isUploadingPhoto = true) }
@@ -603,7 +612,7 @@ class GroupHabitDetailViewModel @Inject constructor(
                     sourceUri = uri,
                     habitId = habit.id,
                     userId = currentUserId,
-                    date = today
+                    date = currentSelectedDate
                 )
                 
                 if (result.isSuccess) {
@@ -645,11 +654,10 @@ class GroupHabitDetailViewModel @Inject constructor(
      */
     fun updateHabitEntryNote(note: String) {
         val habitId = _uiState.value.habit?.id ?: return
-        val today = Clock.System.todayIn(TimeZone.currentSystemDefault())
 
         viewModelScope.launch {
             try {
-                val entry = habitEntryRepository.getEntry(habitId, currentUserId, today)
+                val entry = habitEntryRepository.getEntry(habitId, currentUserId, currentSelectedDate)
                 if (entry != null) {
                     habitEntryRepository.updateEntry(entry.copy(note = note))
                 } else {
@@ -658,7 +666,7 @@ class GroupHabitDetailViewModel @Inject constructor(
                         HabitEntry(
                             habitId = habitId,
                             userId = currentUserId,
-                            date = today,
+                            date = currentSelectedDate,
                             completed = false,
                             note = note
                         )
@@ -680,12 +688,11 @@ class GroupHabitDetailViewModel @Inject constructor(
      */
     fun deletePhoto() {
         val habit = _uiState.value.habit ?: return
-        val today = Clock.System.todayIn(TimeZone.currentSystemDefault())
         
         viewModelScope.launch {
             _uiState.update { it.copy(isUploadingPhoto = true) }
             try {
-                habitEntryRepository.updatePhotoUrl(habit.id, currentUserId, today, null)
+                habitEntryRepository.updatePhotoUrl(habit.id, currentUserId, currentSelectedDate, null)
                 _uiState.update { 
                     it.copy(
                         isUploadingPhoto = false,
@@ -774,7 +781,7 @@ class GroupHabitDetailViewModel @Inject constructor(
                         successMessage = application.getString(R.string.reset_group_mine_success)
                     )
                 }
-                loadHabitDetails(habitId)
+                loadHabitDetails(habitId, currentSelectedDate)
             } catch (_: Exception) {
                 _uiState.update {
                     it.copy(
@@ -805,7 +812,7 @@ class GroupHabitDetailViewModel @Inject constructor(
                         successMessage = application.getString(R.string.reset_group_all_success)
                     )
                 }
-                loadHabitDetails(habit.id)
+                loadHabitDetails(habit.id, currentSelectedDate)
             } catch (_: Exception) {
                 _uiState.update {
                     it.copy(

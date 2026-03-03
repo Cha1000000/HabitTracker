@@ -56,6 +56,7 @@ object AnalyticsEvents {
         const val HABITS = "habits"
         const val ADD_HABIT = "add_habit"
         const val EDIT_HABIT = "edit_habit"
+        const val SELF_HABIT_DETAIL = "self_habit_detail"
         const val HABIT_STATISTICS = "habit_statistics"
         const val GROUP_HABIT_STATISTICS = "group_habit_statistics"
         const val GROUP_HABIT_DETAIL = "group_habit_detail"
