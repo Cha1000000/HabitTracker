@@ -38,6 +38,8 @@ import androidx.compose.material3.ListItem
 import androidx.compose.material3.ListItemDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarDuration
 import androidx.compose.material3.SnackbarHost
@@ -66,6 +68,7 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.ClipEntry
 import androidx.compose.ui.platform.LocalClipboard
+import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
@@ -298,7 +301,12 @@ fun GroupHabitDetailScreen(
                             isCompletedToday = uiState.isCompletedToday,
                             isMarkingCompletion = uiState.isMarkingCompletion,
                             hasPhotoProof = hasPhotoProofAlready,
+                            currentUserPhotoUrl = uiState.currentUserPhotoUrl,
+                            currentUserNote = uiState.currentUserNote,
+                            isSavingNote = uiState.isUploadingPhoto,
                             onAddPhotoClick = { viewModel.showPhotoSheet() },
+                            onPhotoClick = { url -> fullScreenPhotoUrl = url },
+                            onSaveNote = { note -> viewModel.updateHabitEntryNote(note) },
                             onToggleCompletion = { viewModel.toggleHabitCompletion() },
                         )
                     }
@@ -545,9 +553,25 @@ private fun HabitInfoSection(
     isMarkingCompletion: Boolean = false,
     onToggleCompletion: () -> Unit = {},
     hasPhotoProof: Boolean = false,
+    currentUserPhotoUrl: String? = null,
+    currentUserNote: String? = null,
+    isSavingNote: Boolean = false,
     onAddPhotoClick: () -> Unit = {},
+    onPhotoClick: (String) -> Unit = {},
+    onSaveNote: (String) -> Unit = {},
 ) {
     habit?.let { h ->
+        val focusManager = LocalFocusManager.current
+        var noteText by remember(h.id) { mutableStateOf(currentUserNote.orEmpty()) }
+        var isNoteDirty by remember(h.id) { mutableStateOf(false) }
+        val initialNote = currentUserNote.orEmpty()
+
+        LaunchedEffect(h.id, currentUserNote) {
+            if (!isNoteDirty) {
+                noteText = currentUserNote.orEmpty()
+            }
+        }
+
         SectionCard(
             modifier = modifier,
             outlined = false
@@ -601,7 +625,7 @@ private fun HabitInfoSection(
                         )
                     }
                     
-                    Spacer(modifier = Modifier.height(8.dp))
+                    Spacer(modifier = Modifier.height(4.dp))
                     
                     Row(
                         horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -685,7 +709,80 @@ private fun HabitInfoSection(
             }
             
             if (isCompletedToday) {
-                Spacer(modifier = Modifier.height(12.dp))
+                if (hasPhotoProof && !currentUserPhotoUrl.isNullOrBlank()) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(180.dp)
+                            .clip(RoundedCornerShape(16.dp))
+                            .clickable { onPhotoClick(currentUserPhotoUrl) }
+                    ) {
+                        AsyncImage(
+                            model = currentUserPhotoUrl,
+                            contentDescription = null,
+                            contentScale = ContentScale.Crop,
+                            modifier = Modifier.fillMaxSize()
+                        )
+
+                        Box(
+                            modifier = Modifier
+                                .align(Alignment.TopEnd)
+                                .padding(8.dp)
+                                .size(28.dp)
+                                .clip(CircleShape)
+                                .background(Color.Black.copy(alpha = 0.4f)),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(
+                                imageVector = TahoeIcons.MagnifyingGlass,
+                                contentDescription = stringResource(R.string.photo_proof_title),
+                                tint = Color.White,
+                                modifier = Modifier.size(16.dp)
+                            )
+                        }
+                    }
+                }
+
+                OutlinedTextField(
+                    value = noteText,
+                    onValueChange = { value ->
+                        noteText = value
+                        isNoteDirty = value != initialNote
+                    },
+                    modifier = Modifier.fillMaxWidth(),
+                    placeholder = {
+                        Text(text = stringResource(R.string.photo_proof_note_placeholder))
+                    },
+                    textStyle = MaterialTheme.typography.bodyMedium,
+                    shape = RoundedCornerShape(8.dp),
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedBorderColor = MaterialTheme.colorScheme.primary,
+                        unfocusedBorderColor = MaterialTheme.colorScheme.outlineVariant,
+                        focusedContainerColor = Color.Transparent,
+                        unfocusedContainerColor = Color.Transparent
+                    ),
+                    maxLines = 4,
+                    singleLine = false,
+                    trailingIcon = {
+                        if (isNoteDirty) {
+                            IconButton(
+                                onClick = {
+                                    onSaveNote(noteText.trim())
+                                    isNoteDirty = false
+                                    focusManager.clearFocus(force = true)
+                                },
+                                enabled = !isSavingNote
+                            ) {
+                                Icon(
+                                    imageVector = TahoeIcons.Check,
+                                    contentDescription = stringResource(R.string.save),
+                                    tint = MaterialTheme.colorScheme.primary
+                                )
+                            }
+                        }
+                    },
+                )
+
                 GlassmorphicButton(
                     onClick = onAddPhotoClick,
                     modifier = Modifier.fillMaxWidth(),

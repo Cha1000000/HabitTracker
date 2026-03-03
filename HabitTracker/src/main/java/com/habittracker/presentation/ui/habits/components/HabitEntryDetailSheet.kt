@@ -55,6 +55,8 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -97,6 +99,7 @@ fun HabitEntryDetailSheet(
 ) {
     val isDarkTheme = isSystemInDarkTheme()
     val context = LocalContext.current
+    val focusManager = LocalFocusManager.current
     var isPickingPhoto by rememberSaveable { mutableStateOf(false) }
     val sheetState = rememberModalBottomSheetState(
         skipPartiallyExpanded = true,
@@ -249,7 +252,10 @@ fun HabitEntryDetailSheet(
                     onCommentChange = { commentText = it },
                     isReadOnly = isReadOnly,
                     isModified = isCommentModified,
-                    onSave = { onSaveComment?.invoke(commentText) },
+                    onSave = {
+                        onSaveComment?.invoke(commentText)
+                        focusManager.clearFocus(force = true)
+                    },
                     isDarkTheme = isDarkTheme
                 )
                 
@@ -341,6 +347,9 @@ private fun EntryDetails(
     onSave: () -> Unit,
     isDarkTheme: Boolean
 ) {
+    val focusManager = LocalFocusManager.current
+    val keyboardController = LocalSoftwareKeyboardController.current
+
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
         entry.completedAt?.let { completedAt ->
             val timeStr = String.format(
@@ -426,7 +435,13 @@ private fun EntryDetails(
                 ),
                 trailingIcon = {
                     if (isModified) {
-                        IconButton(onClick = onSave) {
+                        IconButton(
+                            onClick = {
+                                onSave()
+                                focusManager.clearFocus(force = true)
+                                keyboardController?.hide()
+                            }
+                        ) {
                             Icon(
                                 imageVector = TahoeIcons.Check,
                                 contentDescription = stringResource(R.string.save),
