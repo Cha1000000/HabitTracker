@@ -82,6 +82,7 @@ fun EnhancedHabitItem(
     onEdit: (HabitWithCompletion) -> Unit = {},
     onDelete: (HabitWithCompletion) -> Unit = {},
     onAddPhoto: (HabitWithCompletion) -> Unit = {},
+    onNoteClick: (HabitWithCompletion) -> Unit = {},
     showGroupProgress: Boolean = true,
     isFutureDate: Boolean = false
 ) {
@@ -276,15 +277,13 @@ fun EnhancedHabitItem(
 
                             // Отображение комментария (заметки)
                             if (habitWithCompletion.note != null && habitWithCompletion.note.isNotBlank()) {
-                                var isExpanded by remember { mutableStateOf(false) }
-                                
                                 Spacer(modifier = Modifier.height(8.dp))
                                 Row(
                                     modifier = Modifier
                                         .fillMaxWidth()
                                         .clip(RoundedCornerShape(8.dp))
                                         .background(if (isDarkTheme) Color.Black.copy(alpha = 0.2f) else Color.Black.copy(alpha = 0.05f))
-                                        .clickable { isExpanded = !isExpanded }
+                                        .clickable { onNoteClick(habitWithCompletion) }
                                         .padding(8.dp)
                                         .animateContentSize(),
                                     verticalAlignment = Alignment.Top
@@ -301,18 +300,16 @@ fun EnhancedHabitItem(
                                         style = MaterialTheme.typography.bodySmall,
                                         color = infoColor,
                                         fontStyle = androidx.compose.ui.text.font.FontStyle.Italic,
-                                        maxLines = if (isExpanded) Int.MAX_VALUE else 1,
+                                        maxLines = 1,
                                         overflow = TextOverflow.Ellipsis,
                                         modifier = Modifier.weight(1f)
                                     )
-                                    if (habitWithCompletion.note.length > 40 || habitWithCompletion.note.contains("\n")) {
-                                        Icon(
-                                            imageVector = if (isExpanded) TahoeIcons.ChevronDown else TahoeIcons.ChevronRight,
-                                            contentDescription = null,
-                                            tint = infoColor.copy(alpha = 0.5f),
-                                            modifier = Modifier.size(14.dp).offset(y = 2.dp)
-                                        )
-                                    }
+                                    Icon(
+                                        imageVector = TahoeIcons.Pencil,
+                                        contentDescription = stringResource(id = R.string.edit),
+                                        tint = infoColor.copy(alpha = 0.6f),
+                                        modifier = Modifier.size(14.dp).offset(y = 2.dp)
+                                    )
                                 }
                             }
                         }

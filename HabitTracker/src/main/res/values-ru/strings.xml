@@ -1330,6 +1330,7 @@ Email: racerkafa@yandex.ru
     <string name="photo_proof_camera">Камера</string>
     <string name="photo_proof_gallery">Галерея</string>
     <string name="photo_proof_note_placeholder">Добавить комментарий…</string>
+    <string name="habit_note_edit_title">Редактировать комментарий</string>
     <string name="photo_proof_no_photo">Фото-подтверждение не прикреплено</string>
 
     <!-- Nudge (Social Interactions) -->

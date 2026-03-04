@@ -1332,6 +1332,7 @@ We will respond to your inquiry within 30 days.</string>
     <string name="photo_proof_camera">Camera</string>
     <string name="photo_proof_gallery">Gallery</string>
     <string name="photo_proof_note_placeholder">Add a comment...</string>
+    <string name="habit_note_edit_title">Edit Comment</string>
     <string name="photo_proof_no_photo">No photo proof attached</string>
 
     <!-- Nudge (Social Interactions) -->

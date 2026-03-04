@@ -827,28 +827,56 @@ class HabitsViewModel @Inject constructor(
      */
     fun updateHabitEntryNote(note: String) {
         val photoSheetInfo = _uiState.value.habitForPhotoSheet ?: return
+        updateHabitEntryNoteForDate(
+            habitId = photoSheetInfo.habitId,
+            date = photoSheetInfo.date,
+            note = note
+        )
+    }
+
+    /**
+     * Обновляет заметку к записи выбранной привычки на текущей выбранной дате (для карточек списка).
+     */
+    fun updateHabitEntryNoteForSelectedDate(habitId: String, note: String) {
+        val selectedDate = _uiState.value.selectedDate ?: today
+        updateHabitEntryNoteForDate(habitId = habitId, date = selectedDate, note = note)
+    }
+
+    private fun updateHabitEntryNoteForDate(habitId: String, date: LocalDate, note: String) {
+        val normalizedNote = note.trim().ifBlank { null }
+        val habitState = _uiState.value.habitsWithCompletion.find { it.habit.id == habitId }
         
         viewModelScope.launch {
             try {
-                val entry = habitEntryRepository.getEntry(photoSheetInfo.habitId, currentUserId, photoSheetInfo.date)
+                val entry = habitEntryRepository.getEntry(habitId, currentUserId, date)
                 if (entry != null) {
-                    habitEntryRepository.updateEntry(entry.copy(note = note))
+                    habitEntryRepository.updateEntry(entry.copy(note = normalizedNote))
                 } else {
                     habitEntryRepository.insertEntry(
                         com.habittracker.domain.model.HabitEntry(
-                            habitId = photoSheetInfo.habitId,
+                            habitId = habitId,
                             userId = currentUserId,
-                            date = photoSheetInfo.date,
-                            completed = false,
-                            note = note
+                            date = date,
+                            completed = habitState?.isCompletedToday == true,
+                            value = habitState?.currentValue ?: 0,
+                            note = normalizedNote,
+                            photoUrl = habitState?.photoUrl
                         )
                     )
                 }
+                val updatedHabits = _uiState.value.habitsWithCompletion.map { hwc ->
+                    if (hwc.habit.id == habitId) hwc.copy(note = normalizedNote) else hwc
+                }
+                val photoSheetInfo = _uiState.value.habitForPhotoSheet
                 _uiState.value = _uiState.value.copy(
+                    habitsWithCompletion = updatedHabits,
+                    habitForPhotoSheet = if (photoSheetInfo?.habitId == habitId && photoSheetInfo.date == date) {
+                        photoSheetInfo.copy(note = normalizedNote)
+                    } else {
+                        photoSheetInfo
+                    },
                     photoUploadSuccessMessage = getApplication<Application>().getString(R.string.photo_proof_note_success)
                 )
-                // Refresh data to update the card in the list
-                refresh()
             } catch (e: Exception) {
                 Timber.tag(TAG).e(e, "Failed to update note")
             }
