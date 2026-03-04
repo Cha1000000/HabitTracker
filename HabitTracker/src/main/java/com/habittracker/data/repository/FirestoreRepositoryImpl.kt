@@ -257,8 +257,14 @@ class FirestoreRepositoryImpl @Inject constructor(
             }
         } catch (e: FirebaseFirestoreException) {
             // Не логгируем offline-ошибки - это ожидаемое поведение для offline-first приложения
-            if (e.code == FirebaseFirestoreException.Code.UNAVAILABLE) {
-                Timber.tag(TAG).d("getHabitById: device is offline, habit=$habitId")
+            if (
+                e.code == FirebaseFirestoreException.Code.UNAVAILABLE ||
+                e.code == FirebaseFirestoreException.Code.PERMISSION_DENIED ||
+                e.code == FirebaseFirestoreException.Code.UNAUTHENTICATED ||
+                e.code == FirebaseFirestoreException.Code.CANCELLED
+            ) {
+                Timber.tag(TAG).d("getHabitById: transient/unauthorized state for habit=$habitId, code=${e.code}")
+                return null
             } else {
                 Timber.tag(TAG).e(e, "Error getting habit: $habitId, code=${e.code}")
             }
@@ -325,8 +331,16 @@ class FirestoreRepositoryImpl @Inject constructor(
             throw e
         } catch (e: FirebaseFirestoreException) {
             // Не логгируем offline-ошибки - это ожидаемое поведение для offline-first приложения
-            if (e.code == FirebaseFirestoreException.Code.UNAVAILABLE) {
-                Timber.tag(TAG).d("getHabitEntry: device is offline, skipping Firestore request")
+            if (
+                e.code == FirebaseFirestoreException.Code.UNAVAILABLE ||
+                e.code == FirebaseFirestoreException.Code.PERMISSION_DENIED ||
+                e.code == FirebaseFirestoreException.Code.UNAUTHENTICATED ||
+                e.code == FirebaseFirestoreException.Code.CANCELLED
+            ) {
+                Timber.tag(TAG).d(
+                    "getHabitEntry: transient/unauthorized state habit=$habitId user=$userId date=$date code=${e.code}"
+                )
+                return null
             } else {
                 Timber.tag(TAG).e(e, "Error getting habit entry: ${e.code}")
             }
