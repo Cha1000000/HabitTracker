@@ -11,6 +11,7 @@ import com.habittracker.domain.usecase.gamification.GetLeaderboardUseCase
 import com.habittracker.domain.usecase.gamification.GetUserStatsUseCase
 import com.habittracker.domain.usecase.gamification.GetYearlyActivityUseCase
 import com.habittracker.domain.usecase.gamification.LeaderboardType
+import androidx.lifecycle.SavedStateHandle
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.test.runTest
@@ -75,7 +76,8 @@ class StatsViewModelTest {
             getUserStatsUseCase,
             getLeaderboardUseCase,
             getYearlyActivityUseCase,
-            authRepository
+            authRepository,
+            SavedStateHandle()
         )
 
         // Then
@@ -128,7 +130,8 @@ class StatsViewModelTest {
             getUserStatsUseCase,
             getLeaderboardUseCase,
             getYearlyActivityUseCase,
-            authRepository
+            authRepository,
+            SavedStateHandle()
         )
         
         // Force execution of pending coroutines if needed

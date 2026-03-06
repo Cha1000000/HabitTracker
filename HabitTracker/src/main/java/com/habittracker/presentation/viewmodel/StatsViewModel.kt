@@ -1,5 +1,6 @@
 package com.habittracker.presentation.viewmodel
 
+import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.habittracker.domain.repository.AuthRepository
@@ -25,8 +26,11 @@ class StatsViewModel @Inject constructor(
     private val getUserStatsUseCase: GetUserStatsUseCase,
     private val getLeaderboardUseCase: GetLeaderboardUseCase,
     private val getYearlyActivityUseCase: GetYearlyActivityUseCase,
-    private val authRepository: AuthRepository
+    private val authRepository: AuthRepository,
+    savedStateHandle: SavedStateHandle
 ) : ViewModel() {
+
+    private val userIdArg: String? = savedStateHandle.get<String>("userId")
 
     private val _uiState = MutableStateFlow(StatsUiState())
     val uiState: StateFlow<StatsUiState> = _uiState.asStateFlow()
@@ -44,29 +48,48 @@ class StatsViewModel @Inject constructor(
             _uiState.value = _uiState.value.copy(isLoading = true)
             
             try {
-                authRepository.getCurrentUser().collectLatest { currentUser ->
-                    if (currentUser != null) {
-                        currentUserId = currentUser.id
-                        
-                        // Загружаем статистику пользователя
-                        val userStats = getUserStatsUseCase.getUserStats(currentUser.id)
-                        
-                        // Загружаем лидерборд с текущим типом
-                        loadLeaderboard(currentUser.id, _uiState.value.leaderboardType)
+                if (userIdArg != null) {
+                    currentUserId = userIdArg
+                    
+                    // Загружаем статистику пользователя
+                    val userStats = getUserStatsUseCase.getUserStats(userIdArg)
+                    
+                    // Загружаем лидерборд с текущим типом
+                    loadLeaderboard(userIdArg, _uiState.value.leaderboardType)
 
-                        // Загружаем активность за год
-                        loadYearlyActivity(currentUser.id)
+                    // Загружаем активность за год
+                    loadYearlyActivity(userIdArg)
 
-                        _uiState.value = _uiState.value.copy(
-                            isLoading = false,
-                            userStats = userStats,
-                            error = null
-                        )
-                    } else {
-                        _uiState.value = _uiState.value.copy(
-                            isLoading = false,
-                            error = "Пользователь не авторизован"
-                        )
+                    _uiState.value = _uiState.value.copy(
+                        isLoading = false,
+                        userStats = userStats,
+                        error = null
+                    )
+                } else {
+                    authRepository.getCurrentUser().collectLatest { currentUser ->
+                        if (currentUser != null) {
+                            currentUserId = currentUser.id
+                            
+                            // Загружаем статистику пользователя
+                            val userStats = getUserStatsUseCase.getUserStats(currentUser.id)
+                            
+                            // Загружаем лидерборд с текущим типом
+                            loadLeaderboard(currentUser.id, _uiState.value.leaderboardType)
+    
+                            // Загружаем активность за год
+                            loadYearlyActivity(currentUser.id)
+    
+                            _uiState.value = _uiState.value.copy(
+                                isLoading = false,
+                                userStats = userStats,
+                                error = null
+                            )
+                        } else {
+                            _uiState.value = _uiState.value.copy(
+                                isLoading = false,
+                                error = "Пользователь не авторизован"
+                            )
+                        }
                     }
                 }
             } catch (e: Exception) {

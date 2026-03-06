@@ -64,8 +64,14 @@ sealed class Screen(val route: String) {
     }
     object Friends : Screen("friends_screen")
     object Notifications : Screen("notifications_screen")
-    object Stats : Screen("stats_screen")
-    object Achievements : Screen("achievements_screen")
+    object Stats : Screen("stats_screen?userId={userId}") {
+        fun createRoute(userId: String? = null) = 
+            if (userId != null) "stats_screen?userId=$userId" else "stats_screen"
+    }
+    object Achievements : Screen("achievements_screen?userId={userId}") {
+        fun createRoute(userId: String? = null) = 
+            if (userId != null) "achievements_screen?userId=$userId" else "achievements_screen"
+    }
     object GroupHabitDetail : Screen("group_habit_detail_screen/{habitId}?selectedDate={selectedDate}") {
         fun createRoute(habitId: String, selectedDate: LocalDate? = null): String {
             return if (selectedDate != null) {
@@ -290,16 +296,34 @@ fun AppNavHost(
             )
         }
         
-        composable(route = Screen.Stats.route) {
+        composable(
+            route = Screen.Stats.route,
+            arguments = listOf(navArgument("userId") {
+                type = NavType.StringType
+                nullable = true
+                defaultValue = null
+            })
+        ) { backStackEntry ->
+            val userId = backStackEntry.arguments?.getString("userId")
             StatsScreen(
+                userId = userId,
                 onNavigateBack = {
                     safePopBackStack(navController)
                 }
             )
         }
         
-        composable(route = Screen.Achievements.route) {
+        composable(
+            route = Screen.Achievements.route,
+            arguments = listOf(navArgument("userId") {
+                type = NavType.StringType
+                nullable = true
+                defaultValue = null
+            })
+        ) { backStackEntry ->
+            val userId = backStackEntry.arguments?.getString("userId")
             AchievementsScreen(
+                userId = userId,
                 onNavigateBack = {
                     safePopBackStack(navController)
                 }

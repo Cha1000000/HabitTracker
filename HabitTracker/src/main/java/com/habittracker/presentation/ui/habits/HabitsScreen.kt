@@ -358,7 +358,7 @@ fun HabitsScreen(
                 TahoeDockItem(
                     icon = TahoeIcons.ChartBar,
                     label = stringResource(R.string.cd_stats),
-                    onClick = { navController.navigate(Screen.Stats.route) },
+                    onClick = { navController.navigate(Screen.Stats.createRoute()) },
                     selected = false
                 )
 
@@ -368,7 +368,7 @@ fun HabitsScreen(
                 TahoeDockItem(
                     icon = TahoeIcons.Trophy,
                     label = stringResource(R.string.cd_achievements),
-                    onClick = { navController.navigate(Screen.Achievements.route) },
+                    onClick = { navController.navigate(Screen.Achievements.createRoute()) },
                     selected = false
                 )
 

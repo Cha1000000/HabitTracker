@@ -200,7 +200,9 @@
     <string name="profile_title">Profile</string>
     <string name="profile_welcome">Welcome to profile</string>
     <string name="profile_stats_button">My Statistics</string>
+    <string name="profile_stats_button_other">Statistics</string>
     <string name="profile_achievements_button">My Achievements</string>
+    <string name="profile_achievements_button_other">Achievements</string>
     <string name="profile_notifications_button">Notification settings</string>
     <string name="profile_sign_out_button">Sign Out</string>
     <string name="profile_reset_progress_button">Reset Progress</string>
@@ -264,7 +266,7 @@
     <string name="accept_request">Accept</string>
     <string name="decline_request">Decline</string>
     <string name="cancel_request">Cancel Request</string>
-    <string name="send_request">Send Request</string>
+    <string name="send_request">Let\'s be friends!</string>
     <string name="incoming_requests">Incoming Requests</string>
     <string name="outgoing_requests">Outgoing Requests</string>
     <string name="incoming_requests_count">📥 Incoming Requests (%1$d)</string>

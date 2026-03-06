@@ -241,7 +241,7 @@ fun NotificationsScreen(
                                                 }
                                             }
                                             "ACHIEVEMENT_UNLOCKED" -> {
-                                                navController.navigate(Screen.Achievements.route)
+                                                navController.navigate(Screen.Achievements.createRoute())
                                             }
                                             else -> {
                                                 // Навигация к деталям групповой привычки

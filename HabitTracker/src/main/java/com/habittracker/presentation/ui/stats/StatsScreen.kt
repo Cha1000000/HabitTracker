@@ -64,6 +64,7 @@ import com.habittracker.presentation.viewmodel.StatsViewModel
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun StatsScreen(
+    userId: String? = null,
     onNavigateBack: () -> Unit,
     viewModel: StatsViewModel = hiltViewModel()
 ) {

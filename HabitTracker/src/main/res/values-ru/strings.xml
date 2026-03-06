@@ -198,7 +198,9 @@
     <string name="profile_title">Профиль</string>
     <string name="profile_welcome">Добро пожаловать в профиль</string>
     <string name="profile_stats_button">Моя статистика</string>
+    <string name="profile_stats_button_other">Статистика</string>
     <string name="profile_achievements_button">Мои достижения</string>
+    <string name="profile_achievements_button_other">Достижения</string>
     <string name="profile_notifications_button">Настройки уведомлений</string>
     <string name="profile_reset_progress_button">Сброс прогресса</string>
     <string name="profile_sign_out_button">Выйти \nиз аккаунта</string>
@@ -262,7 +264,7 @@
     <string name="accept_request">Принять</string>
     <string name="decline_request">Отклонить</string>
     <string name="cancel_request">Отменить запрос</string>
-    <string name="send_request">Отправить запрос</string>
+    <string name="send_request">Давай дружить!</string>
     <string name="incoming_requests">Входящие запросы</string>
     <string name="outgoing_requests">Исходящие запросы</string>
     <string name="incoming_requests_count">📥 Входящие запросы (%1$d)</string>
