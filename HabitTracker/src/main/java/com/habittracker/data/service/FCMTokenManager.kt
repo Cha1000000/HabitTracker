@@ -2,6 +2,8 @@ package com.habittracker.data.service
 
 import android.content.Context
 import android.content.SharedPreferences
+import android.content.pm.PackageManager
+import androidx.core.content.edit
 import com.google.firebase.messaging.FirebaseMessaging
 import com.habittracker.BuildConfig
 import com.habittracker.domain.repository.AuthRepository
@@ -12,11 +14,11 @@ import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.tasks.await
 import kotlinx.coroutines.withContext
+import timber.log.Timber
 import java.io.IOException
 import java.util.concurrent.atomic.AtomicBoolean
 import javax.inject.Inject
 import javax.inject.Singleton
-import timber.log.Timber
 
 /**
  * Менеджер для управления FCM токенами
@@ -31,7 +33,8 @@ class FCMTokenManager @Inject constructor(
     companion object {
         private const val TAG = "FCMTokenManager"
         private const val PREFS_NAME = "fcm_manager_prefs"
-        private const val KEY_FCM_UNAVAILABLE = "fcm_unavailable_shown"
+        private const val KEY_FCM_UNAVAILABLE_DETECTED = "fcm_unavailable_detected"
+        private const val KEY_FCM_UNAVAILABLE_DIALOG_SHOWN = "fcm_unavailable_dialog_shown"
     }
 
     private val prefs: SharedPreferences by lazy {
@@ -42,24 +45,42 @@ class FCMTokenManager @Inject constructor(
     private val isRefreshing = AtomicBoolean(false)
 
     /**
-     * Проверяет, было ли показано сообщение о недоступности FCM
+     * Нужно ли показать сообщение о недоступности FCM.
+     * Важно: показываем только 1 раз и только если недоступность была именно обнаружена,
+     * а не из-за транзиентных сетевых ошибок.
      */
     fun shouldShowFcmUnavailableMessage(): Boolean {
-        return prefs.getBoolean(KEY_FCM_UNAVAILABLE, false)
+        val unavailableDetected = prefs.getBoolean(KEY_FCM_UNAVAILABLE_DETECTED, false)
+        val dialogShown = prefs.getBoolean(KEY_FCM_UNAVAILABLE_DIALOG_SHOWN, false)
+        return unavailableDetected && !dialogShown
     }
 
     /**
      * Отмечает, что сообщение о недоступности FCM было показано
      */
     fun markFcmUnavailableMessageShown() {
-        prefs.edit().putBoolean(KEY_FCM_UNAVAILABLE, true).apply()
+        prefs.edit { putBoolean(KEY_FCM_UNAVAILABLE_DIALOG_SHOWN, true) }
     }
 
     /**
      * Сбрасывает флаг показа сообщения (например, при выходе из аккаунта)
      */
     fun resetFcmUnavailableMessage() {
-        prefs.edit().remove(KEY_FCM_UNAVAILABLE).apply()
+        prefs.edit {
+            remove(KEY_FCM_UNAVAILABLE_DETECTED)
+                .remove(KEY_FCM_UNAVAILABLE_DIALOG_SHOWN)
+        }
+    }
+
+    private fun hasGooglePlayServices(): Boolean {
+        return try {
+            context.packageManager.getPackageInfo("com.google.android.gms", 0)
+            true
+        } catch (_: PackageManager.NameNotFoundException) {
+            false
+        } catch (_: Exception) {
+            false
+        }
     }
 
     /**
@@ -68,10 +89,10 @@ class FCMTokenManager @Inject constructor(
     fun isFcmServiceUnavailableError(error: Throwable?): Boolean {
         if (error !is IOException) return false
         val message = error.message ?: ""
-        return message.contains("SERVICE_NOT_AVAILABLE") || 
-               message.contains("AUTHENTICATION_FAILED") ||
-               message.contains("TOO_MANY_REGISTRATIONS") ||
-               message.contains("FIS_AUTH_ERROR")
+        // Важно не путать транзиентные/конфигурационные ошибки с отсутствием GMS.
+        // Для сообщения пользователю используем только явный маркер недоступности сервиса.
+        return message.contains("SERVICE_NOT_AVAILABLE") ||
+            message.contains("MISSING_INSTANCEID_SERVICE")
     }
 
     /**
@@ -125,6 +146,13 @@ class FCMTokenManager @Inject constructor(
                     withContext(NonCancellable) {
                         socialRepository.updateUserFcmToken(currentUserId, token)
                     }
+
+                    // Авто-восстановление: если FCM-токен успешно получен и сохранён,
+                    // сбрасываем ранее выставленные флаги «FCM недоступен».
+                    prefs.edit {
+                        remove(KEY_FCM_UNAVAILABLE_DETECTED)
+                        remove(KEY_FCM_UNAVAILABLE_DIALOG_SHOWN)
+                    }
                     if (BuildConfig.DEBUG) {
                         Timber.tag(TAG).d("[fcm] Token saved for user=$currentUserId")
                     }
@@ -153,12 +181,13 @@ class FCMTokenManager @Inject constructor(
             } else {
                 // Определяем тип ошибки для правильного логирования
                 val isServiceUnavailable = isFcmServiceUnavailableError(lastError)
+                val hasGms = hasGooglePlayServices()
                 
-                if (isServiceUnavailable) {
+                if (isServiceUnavailable && !hasGms) {
                     // Это ожидаемая ошибка для устройств без Google Play Services или с ограничениями
-                    Timber.tag(TAG).w("FCM token unavailable: ${lastError?.message} (device may not support FCM)")
+                    Timber.tag(TAG).w("FCM token unavailable: ${lastError?.message} (no Google Play Services)")
                     // Сохраняем флаг для показа сообщения пользователю
-                    prefs.edit().putBoolean(KEY_FCM_UNAVAILABLE, true).apply()
+                    prefs.edit { putBoolean(KEY_FCM_UNAVAILABLE_DETECTED, true) }
                 } else {
                     Timber.tag(TAG).e(lastError, "Ошибка получения FCM токена")
                 }
@@ -199,9 +228,11 @@ class FCMTokenManager @Inject constructor(
         } catch (e: IOException) {
             // Ожидаемая ошибка для устройств без Google Play Services
             val errorMessage = e.message ?: ""
-            if (errorMessage.contains("SERVICE_NOT_AVAILABLE") || 
-                errorMessage.contains("AUTHENTICATION_FAILED") ||
-                errorMessage.contains("FIS_AUTH_ERROR")) {
+            if (!hasGooglePlayServices() && (
+                errorMessage.contains("SERVICE_NOT_AVAILABLE") ||
+                    errorMessage.contains("MISSING_INSTANCEID_SERVICE")
+                )
+            ) {
                 Timber.tag(TAG).w("Cannot subscribe to topic '$topic': FCM service unavailable (device may not support FCM)")
             } else {
                 Timber.tag(TAG).e(e, "Ошибка подписки на топик: $topic")
@@ -224,9 +255,11 @@ class FCMTokenManager @Inject constructor(
         } catch (e: IOException) {
             // Ожидаемая ошибка для устройств без Google Play Services
             val errorMessage = e.message ?: ""
-            if (errorMessage.contains("SERVICE_NOT_AVAILABLE") || 
-                errorMessage.contains("AUTHENTICATION_FAILED") ||
-                errorMessage.contains("FIS_AUTH_ERROR")) {
+            if (!hasGooglePlayServices() && (
+                errorMessage.contains("SERVICE_NOT_AVAILABLE") ||
+                    errorMessage.contains("MISSING_INSTANCEID_SERVICE")
+                )
+            ) {
                 Timber.tag(TAG).w("Cannot unsubscribe from topic '$topic': FCM service unavailable (device may not support FCM)")
             } else {
                 Timber.tag(TAG).e(e, "Ошибка отписки от топика: $topic")
