@@ -27,6 +27,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
@@ -62,9 +63,14 @@ import kotlinx.datetime.Instant
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AchievementsScreen(
+    userId: String? = null,
     onNavigateBack: () -> Unit,
     viewModel: AchievementsViewModel = hiltViewModel()
 ) {
+    LaunchedEffect(userId) {
+        viewModel.setTargetUserId(userId)
+    }
+
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     var selectedTabIndex by remember { mutableIntStateOf(0) }
     val isDarkTheme = isSystemInDarkTheme()

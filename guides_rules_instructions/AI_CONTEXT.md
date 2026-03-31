@@ -1,5 +1,16 @@
 # HabitTracker Project Context for AI Agents
 
+## Role Routing Rules
+
+For automatic role selection and matching skill selection, use:
+`/Users/racerkafa/Documents/MyProjects/Android/Compose/HabitTracker/.agents/roles/Roles.md`
+
+Priority order:
+1. Explicit user role/skills in prompt.
+2. Role auto-routing rules from `Roles.md`.
+3. Project conventions from this AI context file.
+
+
 This file provides a comprehensive overview of the HabitTracker project context, architecture, and logic to quickly onboard AI models and agents.
 
 ## 1. Project Overview

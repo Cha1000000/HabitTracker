@@ -23,7 +23,8 @@ data class HabitsUiState(
     val habitIdForValueInput: String? = null, // ID привычки для которой открыт диалог ввода значения
     val completedHabitForPhotoProof: CompletedHabitInfo? = null, // Информация о только что выполненной привычке для предложения добавить фото
     val habitForPhotoSheet: HabitPhotoSheetInfo? = null, // Информация для показа BottomSheet добавления фото
-    val isUploadingPhoto: Boolean = false // Флаг загрузки фото
+    val isUploadingPhoto: Boolean = false, // Флаг загрузки фото
+    val photoUploadSuccessMessage: String? = null // Сообщение об успешной загрузке фото (для показа в BottomSheet)
 )
 
 /**
@@ -43,5 +44,6 @@ data class HabitPhotoSheetInfo(
     val habitTitle: String,
     val habitUnit: String?,
     val date: LocalDate,
-    val photoUrl: String? = null
+    val photoUrl: String? = null,
+    val note: String? = null
 )

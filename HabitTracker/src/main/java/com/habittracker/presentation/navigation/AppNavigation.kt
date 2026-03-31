@@ -30,14 +30,19 @@ import com.habittracker.presentation.ui.discover.PublicHabitsScreen
 import com.habittracker.presentation.ui.habits.AddEditHabitScreen
 import com.habittracker.presentation.ui.habits.GroupHabitDetailScreen
 import com.habittracker.presentation.ui.habits.HabitsScreen
+import com.habittracker.presentation.ui.habits.SelfHabitDetailScreen
 import com.habittracker.presentation.ui.notifications.NotificationsScreen
+import com.habittracker.presentation.ui.settings.AboutScreen
+import com.habittracker.presentation.ui.settings.DonateScreen
 import com.habittracker.presentation.ui.settings.NotificationSettingsScreen
+import com.habittracker.presentation.ui.settings.PrivacyPolicyScreen
 import com.habittracker.presentation.ui.social.FriendsScreen
 import com.habittracker.presentation.ui.splash.SplashScreen
 import com.habittracker.presentation.ui.stats.GroupHabitStatScreen
 import com.habittracker.presentation.ui.stats.SelfHabitStatScreen
 import com.habittracker.presentation.ui.stats.StatsScreen
 import kotlinx.coroutines.flow.collectLatest
+import kotlinx.datetime.LocalDate
 import timber.log.Timber
 
 /**
@@ -59,10 +64,31 @@ sealed class Screen(val route: String) {
     }
     object Friends : Screen("friends_screen")
     object Notifications : Screen("notifications_screen")
-    object Stats : Screen("stats_screen")
-    object Achievements : Screen("achievements_screen")
-    object GroupHabitDetail : Screen("group_habit_detail_screen/{habitId}") {
-        fun createRoute(habitId: String) = "group_habit_detail_screen/$habitId"
+    object Stats : Screen("stats_screen?userId={userId}") {
+        fun createRoute(userId: String? = null) = 
+            if (userId != null) "stats_screen?userId=$userId" else "stats_screen"
+    }
+    object Achievements : Screen("achievements_screen?userId={userId}") {
+        fun createRoute(userId: String? = null) = 
+            if (userId != null) "achievements_screen?userId=$userId" else "achievements_screen"
+    }
+    object GroupHabitDetail : Screen("group_habit_detail_screen/{habitId}?selectedDate={selectedDate}") {
+        fun createRoute(habitId: String, selectedDate: LocalDate? = null): String {
+            return if (selectedDate != null) {
+                "group_habit_detail_screen/$habitId?selectedDate=$selectedDate"
+            } else {
+                "group_habit_detail_screen/$habitId"
+            }
+        }
+    }
+    object SelfHabitDetail : Screen("self_habit_detail_screen/{habitId}?selectedDate={selectedDate}") {
+        fun createRoute(habitId: String, selectedDate: LocalDate? = null): String {
+            return if (selectedDate != null) {
+                "self_habit_detail_screen/$habitId?selectedDate=$selectedDate"
+            } else {
+                "self_habit_detail_screen/$habitId"
+            }
+        }
     }
     object PublicHabits : Screen("public_habits_screen")
     // Challenges
@@ -80,6 +106,9 @@ sealed class Screen(val route: String) {
     object NotificationSettings : Screen("notification_settings_screen")
     object HabitSettings : Screen("habit_settings_screen")
     object ResetProgress : Screen("reset_progress_screen")
+    object About : Screen("about_screen")
+    object PrivacyPolicy : Screen("privacy_policy_screen")
+    object Donate : Screen("donate_screen")
     // Debug screens (только для debug сборки)
     object FCMTest : Screen("fcm_test_screen")
     // Habit Statistics
@@ -207,28 +236,94 @@ fun AppNavHost(
         
         composable(
             route = Screen.GroupHabitDetail.route,
-            arguments = listOf(navArgument("habitId") {
-                type = NavType.StringType
-                nullable = false
-            })
+            arguments = listOf(
+                navArgument("habitId") {
+                    type = NavType.StringType
+                    nullable = false
+                },
+                navArgument("selectedDate") {
+                    type = NavType.StringType
+                    nullable = true
+                    defaultValue = null
+                }
+            )
         ) { backStackEntry ->
             val habitId = backStackEntry.arguments?.getString("habitId") ?: ""
+            val selectedDate = backStackEntry.arguments
+                ?.getString("selectedDate")
+                ?.let {
+                    try {
+                        LocalDate.parse(it)
+                    } catch (_: IllegalArgumentException) {
+                        null
+                    }
+                }
             GroupHabitDetailScreen(
                 habitId = habitId,
+                selectedDate = selectedDate,
+                navController = navController
+            )
+        }
+
+        composable(
+            route = Screen.SelfHabitDetail.route,
+            arguments = listOf(
+                navArgument("habitId") {
+                    type = NavType.StringType
+                    nullable = false
+                },
+                navArgument("selectedDate") {
+                    type = NavType.StringType
+                    nullable = true
+                    defaultValue = null
+                }
+            )
+        ) { backStackEntry ->
+            val habitId = backStackEntry.arguments?.getString("habitId") ?: ""
+            val selectedDate = backStackEntry.arguments
+                ?.getString("selectedDate")
+                ?.let {
+                    try {
+                        LocalDate.parse(it)
+                    } catch (_: IllegalArgumentException) {
+                        null
+                    }
+                }
+            SelfHabitDetailScreen(
+                habitId = habitId,
+                selectedDate = selectedDate,
                 navController = navController
             )
         }
         
-        composable(route = Screen.Stats.route) {
+        composable(
+            route = Screen.Stats.route,
+            arguments = listOf(navArgument("userId") {
+                type = NavType.StringType
+                nullable = true
+                defaultValue = null
+            })
+        ) { backStackEntry ->
+            val userId = backStackEntry.arguments?.getString("userId")
             StatsScreen(
+                userId = userId,
                 onNavigateBack = {
                     safePopBackStack(navController)
                 }
             )
         }
         
-        composable(route = Screen.Achievements.route) {
+        composable(
+            route = Screen.Achievements.route,
+            arguments = listOf(navArgument("userId") {
+                type = NavType.StringType
+                nullable = true
+                defaultValue = null
+            })
+        ) { backStackEntry ->
+            val userId = backStackEntry.arguments?.getString("userId")
             AchievementsScreen(
+                userId = userId,
                 onNavigateBack = {
                     safePopBackStack(navController)
                 }
@@ -311,6 +406,18 @@ fun AppNavHost(
 
         composable(route = Screen.ResetProgress.route) {
             com.habittracker.presentation.ui.settings.ResetProgressScreen(navController = navController)
+        }
+
+        composable(route = Screen.About.route) {
+            AboutScreen(navController = navController)
+        }
+
+        composable(route = Screen.PrivacyPolicy.route) {
+            PrivacyPolicyScreen(navController = navController)
+        }
+
+        composable(route = Screen.Donate.route) {
+            DonateScreen(navController = navController)
         }
 
         // Habit Statistics Screens

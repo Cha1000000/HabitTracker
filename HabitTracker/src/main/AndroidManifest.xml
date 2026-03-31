@@ -142,6 +142,7 @@
             <intent-filter>
                 <action android:name="com.habittracker.ACTION_WIDGET_REFRESH_MIDNIGHT" />
                 <action android:name="com.habittracker.ACTION_WIDGET_REFRESH_AFTERNOON" />
+                <action android:name="com.habittracker.ACTION_WIDGET_FORCE_REFRESH_MORNING" />
             </intent-filter>
         </receiver>
         

@@ -15,6 +15,7 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
 import androidx.navigation.NavHostController
+import com.habittracker.data.service.FCMTokenManager
 import com.habittracker.data.service.PendingNotificationManager
 import com.habittracker.domain.repository.AuthRepository
 import com.habittracker.domain.repository.SocialRepository
@@ -58,6 +59,8 @@ class MainActivity : ComponentActivity() {
     lateinit var analyticsManager: AnalyticsManager
     @Inject
     lateinit var errorLogger: ErrorLogger
+    @Inject
+    lateinit var fcmTokenManager: FCMTokenManager
 
     private val authViewModel: AuthViewModel by viewModels()
     private var socialSyncJob: Job? = null
@@ -91,6 +94,14 @@ class MainActivity : ComponentActivity() {
                                 screenClass = destination.label?.toString()
                             )
                         }
+                        
+                        // Если есть отложенная навигация (например, auth случился раньше чем UI готов)
+                        pendingNavigation?.let { nav ->
+                            Timber.tag("MainActivity").d("[bootstrap] executing pendingNavigation after navController ready")
+                            nav()
+                            pendingNavigation = null
+                        }
+
                         // Обработка стартового интента из уведомления
                         handleIntentForNavigation(intent)
                     },
@@ -133,6 +144,8 @@ class MainActivity : ComponentActivity() {
                             launch(Dispatchers.IO) {
                                 runCatching { PendingNotificationManager.deliverForCurrentUser(applicationContext, authRepository) }
                             }
+                            // Проверяем, нужно ли показать сообщение о недоступности FCM
+                            checkAndShowFcmUnavailableDialog()
                             if (userId != null) {
                                 startSocialRealtimeSync(userId)
                                 // Если есть отложенная навигация — выполним её
@@ -146,12 +159,24 @@ class MainActivity : ComponentActivity() {
                                         // Если push/deeplink не ставил отложенную навигацию, идём на Habits
                                         val action: () -> Unit = {
                                             navController?.let { controller ->
-                                                Timber.tag("MainActivity").d("[bootstrap] default navigate to Habits")
-                                                runCatching {
-                                                    controller.navigate(Screen.Habits.route) {
-                                                        popUpTo(controller.graph.startDestinationId) { inclusive = true }
-                                                        launchSingleTop = true
+                                                val currentRoute = controller.currentBackStackEntry?.destination?.route
+                                                val isAtRoot = currentRoute == null ||
+                                                        currentRoute == Screen.Splash.route ||
+                                                        currentRoute == Screen.Login.route ||
+                                                        currentRoute == Screen.Register.route
+
+                                                // Don't navigate to Habits if we're still on the splash screen
+                                                // The splash screen will handle the navigation after animation completes
+                                                if (isAtRoot && currentRoute != Screen.Splash.route) {
+                                                    Timber.tag("MainActivity").d("[bootstrap] default navigate to Habits (currentRoute=$currentRoute)")
+                                                    runCatching {
+                                                        controller.navigate(Screen.Habits.route) {
+                                                            popUpTo(controller.graph.startDestinationId) { inclusive = true }
+                                                            launchSingleTop = true
+                                                        }
                                                     }
+                                                } else {
+                                                    Timber.tag("MainActivity").d("[bootstrap] already at $currentRoute, skipping default Habits nav")
                                                 }
                                             }
                                         }
@@ -226,6 +251,7 @@ class MainActivity : ComponentActivity() {
             "challenge_invitations" -> Screen.Challenges.createRoute("invitations")
             "notifications" -> Screen.Notifications.route
             "group_habit_detail" -> habitId?.let { Screen.GroupHabitDetail.createRoute(it) } ?: Screen.Habits.route
+            "self_habit_detail" -> habitId?.let { Screen.SelfHabitDetail.createRoute(it) } ?: Screen.Habits.route
             "edit_habit" -> habitId?.let { Screen.AddEditHabit.route + "?habitId=$it" } ?: Screen.Habits.route
             "challenge_detail" -> challengeId?.let { Screen.ChallengeDetail.createRoute(it) } ?: Screen.Challenges.route
             "habits" -> Screen.Habits.route
@@ -381,6 +407,7 @@ class MainActivity : ComponentActivity() {
             route.startsWith("stats_screen") -> AnalyticsEvents.Screens.HABIT_STATISTICS
             route.startsWith("achievements_screen") -> AnalyticsEvents.Screens.ACHIEVEMENTS
             route.startsWith("group_habit_detail_screen") -> AnalyticsEvents.Screens.GROUP_HABIT_DETAIL
+            route.startsWith("self_habit_detail_screen") -> AnalyticsEvents.Screens.SELF_HABIT_DETAIL
             route.startsWith("group_habit_stat_screen") -> AnalyticsEvents.Screens.GROUP_HABIT_STATISTICS
             route.startsWith("self_habit_stat_screen") -> AnalyticsEvents.Screens.HABIT_STATISTICS
             route.startsWith("public_habits_screen") -> AnalyticsEvents.Screens.PUBLIC_HABITS
@@ -390,6 +417,26 @@ class MainActivity : ComponentActivity() {
             route.startsWith("notification_settings_screen") -> AnalyticsEvents.Screens.SETTINGS
             route.startsWith("habit_settings_screen") -> AnalyticsEvents.Screens.SETTINGS
             else -> route
+        }
+    }
+
+    /**
+     * Проверяет, нужно ли показать диалог о недоступности FCM,
+     * и показывает его если необходимо
+     */
+    private fun checkAndShowFcmUnavailableDialog() {
+        if (fcmTokenManager.shouldShowFcmUnavailableMessage()) {
+            // Показываем диалог только один раз
+            fcmTokenManager.markFcmUnavailableMessageShown()
+            
+            android.app.AlertDialog.Builder(this)
+                .setTitle(getString(R.string.fcm_unavailable_title))
+                .setMessage(getString(R.string.fcm_unavailable_message))
+                .setPositiveButton(getString(R.string.fcm_unavailable_ok)) { dialog, _ ->
+                    dialog.dismiss()
+                }
+                .setCancelable(false)
+                .show()
         }
     }
 }

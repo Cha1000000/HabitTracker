@@ -1,5 +1,6 @@
 package com.habittracker.domain.repository
 
+import android.content.Context
 import android.content.Intent
 import com.habittracker.domain.model.User
 import kotlinx.coroutines.flow.Flow
@@ -44,10 +45,10 @@ interface AuthRepository {
     /**
      * Выполняет вход пользователя с помощью Google аккаунта через Credential Manager API.
      *
+     * @param activityContext Activity context, необходимый для Credential Manager UI.
      * @return Flow, который эмитит результат операции: успех или ошибку.
-     * Intent больше не нужен с новым Credential Manager API.
      */
-    suspend fun signInWithGoogle(): Flow<Result<Intent?>>
+    suspend fun signInWithGoogle(activityContext: Context): Flow<Result<Intent?>>
 
     /**
      * Выполняет выход текущего пользователя из системы.

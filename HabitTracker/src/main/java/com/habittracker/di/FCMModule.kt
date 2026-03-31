@@ -1,5 +1,6 @@
 package com.habittracker.di
 
+import android.content.Context
 import com.habittracker.data.service.FCMApiClient
 import com.habittracker.data.service.FCMTokenManager
 import com.habittracker.domain.repository.AuthRepository
@@ -7,6 +8,7 @@ import com.habittracker.domain.repository.SocialRepository
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
+import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.components.SingletonComponent
 import javax.inject.Singleton
 
@@ -27,8 +29,9 @@ object FCMModule {
     @Singleton
     fun provideFCMTokenManager(
         socialRepository: SocialRepository,
-        authRepository: AuthRepository
+        authRepository: AuthRepository,
+        @ApplicationContext context: Context
     ): FCMTokenManager {
-        return FCMTokenManager(socialRepository, authRepository)
+        return FCMTokenManager(socialRepository, authRepository, context)
     }
 }

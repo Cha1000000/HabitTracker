@@ -29,7 +29,7 @@ ksp {
 }
 
 // Единый источник versionName для использования и в defaultConfig, и в имени APK
-val appVersionName = "1.5.3"
+val appVersionName = "1.5.10"
 
 android {
     namespace = "com.habittracker"
@@ -39,7 +39,7 @@ android {
         applicationId = "com.habittracker"
         minSdk = 26
         targetSdk = 36
-        versionCode = 12
+        versionCode = 19
         versionName = appVersionName
 
         testInstrumentationRunner = "com.habittracker.HiltTestRunner"
@@ -279,6 +279,9 @@ dependencies {
 
     // AppMetrica Analytics
     implementation(libs.appmetrica.analytics)
+
+    // ZXing for QR Code generation
+    implementation(libs.zxing.core)
 
     // Firebase
     implementation(platform(libs.firebase.bom))

@@ -1,8 +1,12 @@
 package com.habittracker.presentation.ui.habits
 
+import android.content.ClipData
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.gestures.rememberTransformableState
+import androidx.compose.foundation.gestures.transformable
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -34,6 +38,8 @@ import androidx.compose.material3.ListItem
 import androidx.compose.material3.ListItemDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarDuration
 import androidx.compose.material3.SnackbarHost
@@ -50,24 +56,32 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.platform.LocalClipboardManager
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.ClipEntry
+import androidx.compose.ui.platform.LocalClipboard
+import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
 import androidx.core.graphics.toColorInt
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
+import coil.compose.AsyncImage
 import com.habittracker.R
 import com.habittracker.domain.model.Habit
 import com.habittracker.domain.model.HabitEntry
@@ -86,7 +100,9 @@ import com.habittracker.presentation.ui.habits.components.TahoeGradientBackgroun
 import com.habittracker.presentation.ui.theme.TahoeIcons
 import com.habittracker.presentation.utils.DateTimeFormatter
 import com.habittracker.presentation.viewmodel.GroupHabitDetailViewModel
+import kotlinx.coroutines.launch
 import kotlinx.datetime.Clock
+import kotlinx.datetime.LocalDate
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toInstant
 import kotlinx.datetime.todayIn
@@ -98,6 +114,7 @@ import kotlinx.datetime.todayIn
 @Composable
 fun GroupHabitDetailScreen(
     habitId: String,
+    selectedDate: LocalDate? = null,
     navController: NavController,
     viewModel: GroupHabitDetailViewModel = hiltViewModel(),
     onBackClick: () -> Unit = { navController.popBackStack() }
@@ -107,10 +124,14 @@ fun GroupHabitDetailScreen(
     var showMenu by remember { mutableStateOf(false) }
     var showResetMineDialog by remember { mutableStateOf(false) }
     var showResetAllDialog by remember { mutableStateOf(false) }
+    val effectiveDate = selectedDate ?: remember { Clock.System.todayIn(TimeZone.currentSystemDefault()) }
+    
+    // State for full screen photo viewer
+    var fullScreenPhotoUrl by remember { mutableStateOf<String?>(null) }
     
     // Загрузка данных привычки
-    LaunchedEffect(habitId) {
-        viewModel.loadHabitDetails(habitId)
+    LaunchedEffect(habitId, effectiveDate) {
+        viewModel.loadHabitDetails(habitId, effectiveDate)
     }
     
     // Обработка сообщений
@@ -156,7 +177,7 @@ fun GroupHabitDetailScreen(
         isDarkTheme = isSystemInDarkTheme()
     ) {
         Scaffold(
-            containerColor = Color.Transparent, // Прозрачный фон Scaffold
+            containerColor = Color.Transparent,
             contentColor = MaterialTheme.colorScheme.onBackground,
             topBar = {
                 TopAppBar(
@@ -257,7 +278,6 @@ fun GroupHabitDetailScreen(
             snackbarHost = { SnackbarHost(snackbarHostState) }
         ) { paddingValues ->
             if (uiState.isLoading && uiState.habit == null) {
-                // Индикатор загрузки
                 Box(
                     modifier = Modifier
                         .fillMaxSize()
@@ -276,7 +296,6 @@ fun GroupHabitDetailScreen(
                 ) {
                     val hasPhotoProofAlready = uiState.currentUserPhotoUrl != null &&
                             uiState.currentUserPhotoUrl!!.isNotEmpty()
-                    // Основная информация о привычке
                     item {
                         HabitInfoSection(
                             habit = uiState.habit,
@@ -284,14 +303,19 @@ fun GroupHabitDetailScreen(
                             isCompletedToday = uiState.isCompletedToday,
                             isMarkingCompletion = uiState.isMarkingCompletion,
                             hasPhotoProof = hasPhotoProofAlready,
+                            currentUserPhotoUrl = uiState.currentUserPhotoUrl,
+                            currentUserNote = uiState.currentUserNote,
+                            isSavingNote = uiState.isUploadingPhoto,
                             onAddPhotoClick = { viewModel.showPhotoSheet() },
+                            onPhotoClick = { url -> fullScreenPhotoUrl = url },
+                            onSaveNote = { note -> viewModel.updateHabitEntryNote(note) },
                             onToggleCompletion = { viewModel.toggleHabitCompletion() },
                         )
                     }
 
-                    // Прогресс группы
                     item {
                         GroupProgressSection(
+                            today = effectiveDate,
                             participants = uiState.participants,
                             habitEntries = uiState.habitEntries,
                             currentStreak = uiState.groupStreak,
@@ -299,9 +323,9 @@ fun GroupHabitDetailScreen(
                         )
                     }
 
-                    // Участники группы
                     item {
                         ParticipantsSection(
+                            today = effectiveDate,
                             participants = uiState.participants,
                             habitEntries = uiState.habitEntries,
                             isManageMode = uiState.isManageMode,
@@ -312,11 +336,11 @@ fun GroupHabitDetailScreen(
                             nudgedUserIds = uiState.nudgedUserIds,
                             isSendingNudge = uiState.isSendingNudge,
                             onNudge = { userId -> viewModel.sendNudge(userId) },
+                            onPhotoClick = { url -> fullScreenPhotoUrl = url },
                             modifier = Modifier.fillMaxWidth()
                         )
                     }
                     
-                    // Рейтинг участников (лидерборд)
                     if (uiState.participantLeaderboard.isNotEmpty()) {
                         item {
                             ParticipantLeaderboardSection(
@@ -326,7 +350,6 @@ fun GroupHabitDetailScreen(
                         }
                     }
 
-                    // Управление приглашениями (только для владельца)
                     if (uiState.isOwner) {
                         item {
                             InviteManagementSection(
@@ -343,7 +366,6 @@ fun GroupHabitDetailScreen(
                         }
                     }
 
-                    // История активности
                     item {
                         ActivityHistorySection(
                             habitEntries = uiState.habitEntries,
@@ -352,7 +374,6 @@ fun GroupHabitDetailScreen(
                         )
                     }
 
-                    // Кнопка выхода из группы (для участников)
                     if (!uiState.isOwner) {
                         item {
                             Spacer(modifier = Modifier.height(8.dp))
@@ -416,29 +437,110 @@ fun GroupHabitDetailScreen(
         )
     }
     
-    // BottomSheet для добавления фото-подтверждения
-    val today = Clock.System.todayIn(TimeZone.currentSystemDefault())
     if (uiState.showPhotoSheet && uiState.habit != null) {
         HabitEntryDetailSheet(
             entry = HabitEntry(
-                habitId = uiState.habit!!.id,
-                date = today,
+                habitId = uiState.habit?.id ?: "",
+                userId = uiState.currentUserId,
+                date = effectiveDate,
                 completed = uiState.isCompletedToday,
                 value = 0,
-                note = null,
-                isRestDay = false,
-                streakBonusAwardedDays = null,
-                completedAt = null,
-                photoUrl = uiState.currentUserPhotoUrl
+                note = uiState.currentUserNote,
+                photoUrl = uiState.currentUserPhotoUrl,
             ),
-            date = today,
-            habitTitle = uiState.habit!!.title,
-            habitUnit = uiState.habit!!.unit,
+            date = effectiveDate,
+            habitTitle = uiState.habit?.title ?: "",
+            habitUnit = uiState.habit?.unit,
             isUploading = uiState.isUploadingPhoto,
+            successMessage = uiState.photoUploadSuccessMessage,
             onDismiss = { viewModel.hidePhotoSheet() },
             onAddPhoto = { uri -> viewModel.attachPhoto(uri) },
-            onDeletePhoto = { viewModel.deletePhoto() }
+            onDeletePhoto = { viewModel.deletePhoto() },
+            onSaveComment = { note -> viewModel.updateHabitEntryNote(note) },
+            onSuccessMessageShown = { viewModel.clearPhotoUploadSuccessMessage() }
         )
+    }
+
+    fullScreenPhotoUrl?.let { url ->
+        FullScreenPhotoDialog(url = url, onDismiss = { fullScreenPhotoUrl = null })
+    }
+}
+
+@Composable
+internal fun FullScreenPhotoDialog(url: String, onDismiss: () -> Unit) {
+    var scale by remember(url) { mutableStateOf(1f) }
+    var offsetX by remember(url) { mutableStateOf(0f) }
+    var offsetY by remember(url) { mutableStateOf(0f) }
+
+    val transformableState = rememberTransformableState { zoomChange, panChange, _ ->
+        val newScale = (scale * zoomChange).coerceIn(1f, 4f)
+        if (newScale != scale) {
+            val scaleRatio = newScale / scale
+            offsetX *= scaleRatio
+            offsetY *= scaleRatio
+        }
+        scale = newScale
+        if (scale > 1f) {
+            offsetX += panChange.x
+            offsetY += panChange.y
+        } else {
+            offsetX = 0f
+            offsetY = 0f
+        }
+    }
+
+    Dialog(
+        onDismissRequest = onDismiss,
+        properties = DialogProperties(usePlatformDefaultWidth = false)
+    ) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(Color.Black)
+        ) {
+            AsyncImage(
+                model = url,
+                contentDescription = null,
+                modifier = Modifier
+                    .fillMaxSize()
+                    .pointerInput(url) {
+                        detectTapGestures(
+                            onDoubleTap = {
+                                if (scale > 1f) {
+                                    scale = 1f
+                                    offsetX = 0f
+                                    offsetY = 0f
+                                } else {
+                                    scale = 2f
+                                }
+                            }
+                        )
+                    }
+                    .graphicsLayer {
+                        scaleX = scale
+                        scaleY = scale
+                        translationX = offsetX
+                        translationY = offsetY
+                    }
+                    .transformable(state = transformableState),
+                contentScale = ContentScale.Fit
+            )
+
+            IconButton(
+                onClick = onDismiss,
+                modifier = Modifier
+                    .align(Alignment.TopEnd)
+                    .padding(16.dp)
+                    .size(40.dp)
+                    .background(Color.Black.copy(alpha = 0.5f), CircleShape)
+            ) {
+                Icon(
+                    TahoeIcons.XMark,
+                    contentDescription = stringResource(R.string.action_close),
+                    tint = Color.White
+                )
+            }
+        }
     }
 }
 
@@ -446,16 +548,32 @@ fun GroupHabitDetailScreen(
  * Секция с основной информацией о привычке
  */
 @Composable
-private fun HabitInfoSection(
+internal fun HabitInfoSection(
     habit: Habit?,
     modifier: Modifier = Modifier,
     isCompletedToday: Boolean = false,
     isMarkingCompletion: Boolean = false,
     onToggleCompletion: () -> Unit = {},
     hasPhotoProof: Boolean = false,
+    currentUserPhotoUrl: String? = null,
+    currentUserNote: String? = null,
+    isSavingNote: Boolean = false,
     onAddPhotoClick: () -> Unit = {},
+    onPhotoClick: (String) -> Unit = {},
+    onSaveNote: (String) -> Unit = {},
 ) {
     habit?.let { h ->
+        val focusManager = LocalFocusManager.current
+        var noteText by remember(h.id) { mutableStateOf(currentUserNote.orEmpty()) }
+        var isNoteDirty by remember(h.id) { mutableStateOf(false) }
+        val initialNote = currentUserNote.orEmpty()
+
+        LaunchedEffect(h.id, currentUserNote) {
+            if (!isNoteDirty) {
+                noteText = currentUserNote.orEmpty()
+            }
+        }
+
         SectionCard(
             modifier = modifier,
             outlined = false
@@ -464,7 +582,6 @@ private fun HabitInfoSection(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                // Иконка привычки с улучшенным дизайном
                 Box(
                     modifier = Modifier
                         .size(56.dp)
@@ -510,13 +627,12 @@ private fun HabitInfoSection(
                         )
                     }
                     
-                    Spacer(modifier = Modifier.height(8.dp))
+                    Spacer(modifier = Modifier.height(4.dp))
                     
                     Row(
                         horizontalArrangement = Arrangement.spacedBy(8.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        // Частота в виде чипса
                         AssistChip(
                             onClick = { },
                             label = {
@@ -541,7 +657,6 @@ private fun HabitInfoSection(
                             }
                         )
                         
-                        // Целевое значение в виде чипса
                         if (h.targetValue > 0) {
                             AssistChip(
                                 onClick = { },
@@ -556,7 +671,6 @@ private fun HabitInfoSection(
                     }
                 }
                 
-                // Кнопка отметки выполнения
                 IconButton(
                     onClick = onToggleCompletion,
                     enabled = !isMarkingCompletion,
@@ -596,9 +710,81 @@ private fun HabitInfoSection(
                 }
             }
             
-            // Кнопка "Добавить/Заменить фото" - показываем если привычка выполнена
             if (isCompletedToday) {
-                Spacer(modifier = Modifier.height(12.dp))
+                if (hasPhotoProof && !currentUserPhotoUrl.isNullOrBlank()) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(180.dp)
+                            .clip(RoundedCornerShape(16.dp))
+                            .clickable { onPhotoClick(currentUserPhotoUrl) }
+                    ) {
+                        AsyncImage(
+                            model = currentUserPhotoUrl,
+                            contentDescription = null,
+                            contentScale = ContentScale.Crop,
+                            modifier = Modifier.fillMaxSize()
+                        )
+
+                        Box(
+                            modifier = Modifier
+                                .align(Alignment.TopEnd)
+                                .padding(8.dp)
+                                .size(28.dp)
+                                .clip(CircleShape)
+                                .background(Color.Black.copy(alpha = 0.4f)),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(
+                                imageVector = TahoeIcons.MagnifyingGlass,
+                                contentDescription = stringResource(R.string.photo_proof_title),
+                                tint = Color.White,
+                                modifier = Modifier.size(16.dp)
+                            )
+                        }
+                    }
+                }
+
+                OutlinedTextField(
+                    value = noteText,
+                    onValueChange = { value ->
+                        noteText = value
+                        isNoteDirty = value != initialNote
+                    },
+                    modifier = Modifier.fillMaxWidth(),
+                    placeholder = {
+                        Text(text = stringResource(R.string.photo_proof_note_placeholder))
+                    },
+                    textStyle = MaterialTheme.typography.bodyMedium,
+                    shape = RoundedCornerShape(8.dp),
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedBorderColor = MaterialTheme.colorScheme.primary,
+                        unfocusedBorderColor = MaterialTheme.colorScheme.outlineVariant,
+                        focusedContainerColor = Color.Transparent,
+                        unfocusedContainerColor = Color.Transparent
+                    ),
+                    maxLines = 4,
+                    singleLine = false,
+                    trailingIcon = {
+                        if (isNoteDirty) {
+                            IconButton(
+                                onClick = {
+                                    onSaveNote(noteText.trim())
+                                    isNoteDirty = false
+                                    focusManager.clearFocus(force = true)
+                                },
+                                enabled = !isSavingNote
+                            ) {
+                                Icon(
+                                    imageVector = TahoeIcons.Check,
+                                    contentDescription = stringResource(R.string.save),
+                                    tint = MaterialTheme.colorScheme.primary
+                                )
+                            }
+                        }
+                    },
+                )
+
                 GlassmorphicButton(
                     onClick = onAddPhotoClick,
                     modifier = Modifier.fillMaxWidth(),
@@ -622,16 +808,16 @@ private fun HabitInfoSection(
 }
 
 /**
- * Секция прогресса группы с улучшенным дизайном
+ * Секция прогресса группы
  */
 @Composable
 private fun GroupProgressSection(
+    today: kotlinx.datetime.LocalDate,
     participants: List<User>,
     habitEntries: List<HabitEntry>,
     currentStreak: Int,
     modifier: Modifier = Modifier
 ) {
-    val today = Clock.System.todayIn(TimeZone.currentSystemDefault())
     val todayEntries = habitEntries.filter { it.date == today }
     val completedToday = todayEntries.count { it.completed }
     val totalParticipants = participants.size
@@ -643,7 +829,6 @@ private fun GroupProgressSection(
         subtitle = stringResource(R.string.group_progress_subtitle),
         outlined = false
     ) {
-        // Прогресс-бар
         Column {
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -696,26 +881,20 @@ private fun GroupProgressSection(
         
         Spacer(modifier = Modifier.height(16.dp))
         
-        // Метрики в ряд
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceEvenly
         ) {
-            // Выполнено сегодня
             StatisticItem(
                 value = "$completedToday",
                 label = stringResource(R.string.completed),
                 icon = TahoeIcons.CheckCircle
             )
-            
-            // Групповая серия
             StatisticItem(
                 value = "$currentStreak",
                 label = stringResource(R.string.streak_days),
                 icon = TahoeIcons.TrendingUp
             )
-            
-            // Всего участников
             StatisticItem(
                 value = "$totalParticipants",
                 label = stringResource(R.string.participants),
@@ -725,9 +904,6 @@ private fun GroupProgressSection(
     }
 }
 
-/**
- * Элемент статистики для прогресса
- */
 @Composable
 private fun StatisticItem(
     value: String,
@@ -765,6 +941,7 @@ private fun StatisticItem(
  */
 @Composable
 private fun ParticipantsSection(
+    today: kotlinx.datetime.LocalDate,
     participants: List<User>,
     habitEntries: List<HabitEntry>,
     isManageMode: Boolean,
@@ -773,9 +950,9 @@ private fun ParticipantsSection(
     nudgedUserIds: Set<String>,
     isSendingNudge: Boolean,
     onNudge: (String) -> Unit,
+    onPhotoClick: (String) -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val today = Clock.System.todayIn(TimeZone.currentSystemDefault())
     val todayEntries = habitEntries.filter { it.date == today }
     
     SectionCard(
@@ -800,18 +977,20 @@ private fun ParticipantsSection(
                 verticalArrangement = Arrangement.spacedBy(4.dp)
             ) {
                 participants.forEach { participant ->
-                    val isCompleted = todayEntries.any { it.userId == participant.id && it.completed }
+                    val entry = todayEntries.find { it.userId == participant.id }
+                    val isCompleted = entry?.completed == true
                     val isNudged = nudgedUserIds.contains(participant.id)
                     val isSelf = participant.id == currentUserId
                     ParticipantListItem(
                         participant = participant,
-                        isCompleted = isCompleted,
+                        entry = entry,
                         isOwner = participant.id == participants.firstOrNull()?.id,
                         isManageMode = isManageMode,
                         onRemove = { onRemoveParticipant(participant.id) },
                         canNudge = !isCompleted && !isNudged && !isSelf,
                         isNudgeDisabled = isNudged || isSendingNudge,
-                        onNudge = { onNudge(participant.id) }
+                        onNudge = { onNudge(participant.id) },
+                        onPhotoClick = onPhotoClick
                     )
                 }
             }
@@ -825,141 +1004,217 @@ private fun ParticipantsSection(
 @Composable
 private fun ParticipantListItem(
     participant: User,
-    isCompleted: Boolean,
+    entry: HabitEntry?,
     isOwner: Boolean,
     isManageMode: Boolean,
     onRemove: () -> Unit,
     canNudge: Boolean,
     isNudgeDisabled: Boolean,
     onNudge: () -> Unit,
+    onPhotoClick: (String) -> Unit,
     modifier: Modifier = Modifier
 ) {
-    ListItem(
+    val isCompleted = entry?.completed == true
+    val photoUrl = entry?.photoUrl
+    val note = entry?.note
+    val hasPhoto = !photoUrl.isNullOrBlank()
+    val hasNote = !note.isNullOrBlank()
+    
+    var isExpanded by remember { mutableStateOf(false) }
+
+    Column(
         modifier = modifier
             .clip(RoundedCornerShape(8.dp))
+            .background(
+                if (isCompleted) MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.1f)
+                else Color.Transparent
+            )
             .then(
                 if (isManageMode) Modifier.clickable { onRemove() }
+                else if (hasPhoto) Modifier.clickable { isExpanded = !isExpanded }
                 else Modifier
-            ),
-        colors = ListItemDefaults.colors(
-            containerColor = if (isCompleted) {
-                MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.1f)
-            } else {
-                Color.Transparent
-            }
-        ),
-        leadingContent = {
-            // Аватар участника
-            UserAvatar(
-                avatarThumbnailUrl = participant.avatarThumbnailUrl,
-                avatarUrl = participant.avatarUrl,
-                name = participant.name,
-                size = 40.dp
             )
-        },
-        headlineContent = {
-            Column {
-                if (isOwner) {
-                    Surface(
-                        color = MaterialTheme.colorScheme.primaryContainer,
-                        shape = RoundedCornerShape(4.dp),
-                        modifier = Modifier.padding(bottom = 4.dp)
-                    ) {
-                        Text(
-                            text = stringResource(R.string.owner),
-                            style = MaterialTheme.typography.labelSmall,
-                            modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
-                            color = MaterialTheme.colorScheme.onPrimaryContainer
-                        )
-                    }
-                }
-                Text(
-                    text = participant.name,
-                    style = MaterialTheme.typography.bodyLarge,
-                    maxLines = 1,
-                    softWrap = false,
-                    overflow = TextOverflow.Ellipsis
+    ) {
+        ListItem(
+            colors = ListItemDefaults.colors(containerColor = Color.Transparent),
+            leadingContent = {
+                UserAvatar(
+                    avatarThumbnailUrl = participant.avatarThumbnailUrl,
+                    avatarUrl = participant.avatarUrl,
+                    name = participant.name,
+                    size = 40.dp
                 )
-            }
-        },
-        supportingContent = {
-            Text(
-                text = if (isCompleted) {
-                    stringResource(R.string.completed_today)
-                } else {
-                    stringResource(R.string.not_completed_today)
-                },
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-        },
-        trailingContent = {
-            Column(
-                horizontalAlignment = Alignment.End
-            ) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    Icon(
-                        imageVector = if (isCompleted) {
-                            TahoeIcons.CheckCircle
-                        } else {
-                            TahoeIcons.Circle
-                        },
-                        contentDescription = null,
-                        tint = if (isCompleted) {
-                            MaterialTheme.colorScheme.primary
-                        } else {
-                            MaterialTheme.colorScheme.onSurfaceVariant
-                        },
-                        modifier = Modifier.size(24.dp)
-                    )
-                    if (isManageMode && !isOwner) {
-                        Icon(
-                            imageVector = TahoeIcons.UserMinus,
-                            contentDescription = stringResource(R.string.remove_participant),
-                            tint = MaterialTheme.colorScheme.error,
-                            modifier = Modifier.size(20.dp)
-                        )
-                    }
-                }
-
-                // Кнопка "Пнуть!" (только если не выполнено и не в режиме управления)
-                if (canNudge && !isManageMode) {
-                    Spacer(modifier = Modifier.height(6.dp))
-                    Surface(
-                        onClick = onNudge,
-                        enabled = !isNudgeDisabled,
-                        shape = RoundedCornerShape(16.dp),
-                        color = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = if (isNudgeDisabled) 0.5f else 1f),
-                        modifier = Modifier.height(32.dp).offset(x = 16.dp)
-                    ) {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            modifier = Modifier.padding(horizontal = 8.dp)
+            },
+            headlineContent = {
+                Column {
+                    if (isOwner) {
+                        Surface(
+                            color = MaterialTheme.colorScheme.primaryContainer,
+                            shape = RoundedCornerShape(4.dp),
+                            modifier = Modifier.padding(bottom = 4.dp)
                         ) {
                             Text(
-                                text = "🥾",
-                                style = MaterialTheme.typography.bodyMedium
+                                text = stringResource(R.string.owner),
+                                style = MaterialTheme.typography.labelSmall,
+                                modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
+                                color = MaterialTheme.colorScheme.onPrimaryContainer
                             )
-                            Spacer(modifier = Modifier.width(4.dp))
-                            Text(
-                                text = stringResource(R.string.nudge_button_text),
-                                style = MaterialTheme.typography.labelMedium,
-                                fontWeight = FontWeight.Medium,
-                                color = MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha = if (isNudgeDisabled) 0.5f else 1f)
+                        }
+                    }
+                    Text(
+                        text = participant.name,
+                        style = MaterialTheme.typography.bodyLarge,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                }
+            },
+            supportingContent = {
+                Column {
+                    Text(
+                        text = if (isCompleted) {
+                            stringResource(R.string.completed_today)
+                        } else {
+                            stringResource(R.string.not_completed_today)
+                        },
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    if (!hasPhoto && hasNote) {
+                        Spacer(modifier = Modifier.height(2.dp))
+                        Text(
+                            text = note,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            maxLines = 2,
+                            overflow = TextOverflow.Ellipsis,
+                            fontStyle = androidx.compose.ui.text.font.FontStyle.Italic
+                        )
+                    }
+                }
+            },
+            trailingContent = {
+                Column(
+                    horizontalAlignment = Alignment.End
+                ) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        if (hasPhoto) {
+                            Icon(
+                                imageVector = if (isExpanded) TahoeIcons.ChevronDown else TahoeIcons.ChevronRight,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.size(16.dp)
+                            )
+                        }
+                        
+                        Icon(
+                            imageVector = if (isCompleted) {
+                                TahoeIcons.CheckCircle
+                            } else {
+                                TahoeIcons.Circle
+                            },
+                            contentDescription = null,
+                            tint = if (isCompleted) {
+                                MaterialTheme.colorScheme.primary
+                            } else {
+                                MaterialTheme.colorScheme.onSurfaceVariant
+                            },
+                            modifier = Modifier.size(24.dp)
+                        )
+                        if (isManageMode && !isOwner) {
+                            Icon(
+                                imageVector = TahoeIcons.UserMinus,
+                                contentDescription = stringResource(R.string.remove_participant),
+                                tint = MaterialTheme.colorScheme.error,
+                                modifier = Modifier.size(20.dp)
+                            )
+                        }
+                    }
+
+                    if (canNudge && !isManageMode) {
+                        Spacer(modifier = Modifier.height(6.dp))
+                        Surface(
+                            onClick = onNudge,
+                            enabled = !isNudgeDisabled,
+                            shape = RoundedCornerShape(16.dp),
+                            color = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = if (isNudgeDisabled) 0.5f else 1f),
+                            modifier = Modifier.height(32.dp).offset(x = 16.dp)
+                        ) {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                modifier = Modifier.padding(horizontal = 8.dp)
+                            ) {
+                                Text(text = "🥾", style = MaterialTheme.typography.bodyMedium)
+                                Spacer(modifier = Modifier.width(4.dp))
+                                Text(
+                                    text = stringResource(R.string.nudge_button_text),
+                                    style = MaterialTheme.typography.labelMedium,
+                                    fontWeight = FontWeight.Medium,
+                                    color = MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha = if (isNudgeDisabled) 0.5f else 1f)
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+        )
+        
+        if (isExpanded && hasPhoto) {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(start = 16.dp, end = 16.dp, bottom = 12.dp)
+            ) {
+                Column(modifier = Modifier.fillMaxWidth()) {
+                    if (hasNote) {
+                        Text(
+                            text = note,
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurface,
+                            modifier = Modifier.padding(bottom = 8.dp),
+                            fontStyle = androidx.compose.ui.text.font.FontStyle.Italic
+                        )
+                    }
+                    
+                    Box(
+                        modifier = Modifier
+                            .height(160.dp)
+                            .clip(RoundedCornerShape(8.dp))
+                            .clickable { photoUrl.let { onPhotoClick(it) } }
+                    ) {
+                        AsyncImage(
+                            model = photoUrl,
+                            contentDescription = stringResource(R.string.photo_proof_add),
+                            modifier = Modifier.fillMaxSize(),
+                            contentScale = ContentScale.Crop
+                        )
+                        
+                        Box(
+                            modifier = Modifier
+                                .align(Alignment.BottomEnd)
+                                .padding(8.dp)
+                                .background(Color.Black.copy(alpha = 0.5f), CircleShape)
+                                .padding(4.dp)
+                        ) {
+                            Icon(
+                                imageVector = TahoeIcons.MagnifyingGlass,
+                                contentDescription = null,
+                                tint = Color.White,
+                                modifier = Modifier.size(16.dp)
                             )
                         }
                     }
                 }
             }
         }
-    )
+    }
 }
 
 /**
- * Секция управления приглашениями (для автора/владельца привычки)
+ * Секция управления приглашениями
  */
 @Composable
 private fun InviteManagementSection(
@@ -973,8 +1228,8 @@ private fun InviteManagementSection(
     onTogglePublic: (Boolean) -> Unit,
     modifier: Modifier = Modifier
 ) {
-    @Suppress("DEPRECATION")
-    val clipboardManager = LocalClipboardManager.current
+    val clipboard = LocalClipboard.current
+    val scope = rememberCoroutineScope()
     
     SectionCard(
         modifier = modifier,
@@ -984,15 +1239,12 @@ private fun InviteManagementSection(
         } else null,
         outlined = false
     ) {
-        // Публичный доступ
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Row(
-                verticalAlignment = Alignment.CenterVertically
-            ) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
                 Icon(
                     imageVector = TahoeIcons.Globe,
                     contentDescription = null,
@@ -1022,7 +1274,6 @@ private fun InviteManagementSection(
         HorizontalDivider()
         Spacer(modifier = Modifier.height(16.dp))
         
-        // Код приглашения
         Column {
             Text(
                 text = stringResource(R.string.invite_code),
@@ -1053,29 +1304,25 @@ private fun InviteManagementSection(
                             color = MaterialTheme.colorScheme.primary
                         )
                         Row {
-                            IconButton(
-                                onClick = {
-                                    clipboardManager.setText(AnnotatedString(inviteCode))
+                            IconButton(onClick = { 
+                                scope.launch {
+                                    clipboard.setClipEntry(ClipEntry(ClipData.newPlainText("invite_code", inviteCode)))
                                 }
-                            ) {
+                            }) {
                                 Icon(
                                     imageVector = TahoeIcons.Clipboard,
                                     contentDescription = stringResource(R.string.copy_code),
                                     tint = MaterialTheme.colorScheme.primary
                                 )
                             }
-                            IconButton(
-                                onClick = { onShareCode(inviteCode) }
-                            ) {
+                            IconButton(onClick = { onShareCode(inviteCode) }) {
                                 Icon(
                                     imageVector = TahoeIcons.Share,
                                     contentDescription = stringResource(R.string.share_code),
                                     tint = MaterialTheme.colorScheme.primary
                                 )
                             }
-                            IconButton(
-                                onClick = onDisableCode
-                            ) {
+                            IconButton(onClick = onDisableCode) {
                                 Icon(
                                     imageVector = TahoeIcons.XMark,
                                     contentDescription = stringResource(R.string.disable_code),
@@ -1092,10 +1339,7 @@ private fun InviteManagementSection(
                     enabled = !isGeneratingCode
                 ) {
                     if (isGeneratingCode) {
-                        CircularProgressIndicator(
-                            modifier = Modifier.size(16.dp),
-                            strokeWidth = 2.dp
-                        )
+                        CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp)
                     } else {
                         Icon(
                             imageVector = TahoeIcons.UserPlus,
@@ -1104,9 +1348,7 @@ private fun InviteManagementSection(
                         )
                     }
                     Spacer(modifier = Modifier.width(8.dp))
-                    Text(
-                        text = stringResource(R.string.generate_invite_code)
-                    )
+                    Text(text = stringResource(R.string.generate_invite_code))
                 }
             }
         }
@@ -1137,15 +1379,8 @@ private fun ActivityHistorySection(
         }
     ) {
         if (habitEntries.isEmpty()) {
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(vertical = 24.dp),
-                contentAlignment = Alignment.Center
-            ) {
-                Column(
-                    horizontalAlignment = Alignment.CenterHorizontally
-                ) {
+            Box(modifier = Modifier.fillMaxWidth().padding(vertical = 24.dp), contentAlignment = Alignment.Center) {
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
                     Icon(
                         imageVector = TahoeIcons.ClockHistory,
                         contentDescription = null,
@@ -1161,20 +1396,14 @@ private fun ActivityHistorySection(
                 }
             }
         } else {
-            // Показываем последние 5 записей
-            Column(
-                verticalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 habitEntries
                     .sortedByDescending { it.completedAt }
                     .take(5)
                     .forEach { entry ->
                         val participant = participants.find { it.id == entry.userId }
                         if (participant != null) {
-                            ActivityItem(
-                                participant = participant,
-                                entry = entry
-                            )
+                            ActivityItem(participant = participant, entry = entry)
                             Spacer(modifier = Modifier.height(8.dp))
                         }
                     }
@@ -1183,29 +1412,20 @@ private fun ActivityHistorySection(
     }
 }
 
-/**
- * Элемент активности
- */
 @Composable
 private fun ActivityItem(
     participant: User,
     entry: HabitEntry,
     modifier: Modifier = Modifier
 ) {
-    Row(
-        modifier = modifier.fillMaxWidth(),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        // Аватар
+    Row(modifier = modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
         UserAvatar(
             avatarThumbnailUrl = participant.avatarThumbnailUrl,
             avatarUrl = participant.avatarUrl,
             name = participant.name,
             size = 32.dp
         )
-        
         Spacer(modifier = Modifier.width(12.dp))
-        
         Column(modifier = Modifier.weight(1f)) {
             Text(
                 text = if (entry.completed) {
@@ -1215,18 +1435,14 @@ private fun ActivityItem(
                 },
                 style = MaterialTheme.typography.bodyMedium
             )
-            
             entry.completedAt?.let { completedDateTime ->
                 Text(
-                    text = DateTimeFormatter.formatRelativeTime(
-                        completedDateTime.toInstant(TimeZone.currentSystemDefault())
-                    ),
+                    text = DateTimeFormatter.formatRelativeTime(completedDateTime.toInstant(TimeZone.currentSystemDefault())),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
         }
-
         Icon(
             imageVector = if (entry.completed) TahoeIcons.CheckCircle else TahoeIcons.XCircle,
             contentDescription = null,
@@ -1237,7 +1453,7 @@ private fun ActivityItem(
 }
 
 /**
- * Секция выхода из группы с диалогом подтверждения
+ * Секция выхода из группы
  */
 @Composable
 private fun LeaveGroupSection(
@@ -1246,80 +1462,46 @@ private fun LeaveGroupSection(
     modifier: Modifier = Modifier
 ) {
     var showConfirmDialog by remember { mutableStateOf(false) }
-    
-    // Диалог подтверждения
     if (showConfirmDialog) {
         GlassmorphicDialog(
             onDismissRequest = { showConfirmDialog = false },
             title = { Text(text = stringResource(R.string.leave_group_title)) },
             content = {
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(
-                        imageVector = TahoeIcons.ArrowPath,
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.error
-                    )
+                    Icon(imageVector = TahoeIcons.ArrowPath, contentDescription = null, tint = MaterialTheme.colorScheme.error)
                     Spacer(modifier = Modifier.width(8.dp))
-                    Text(
-                        text = stringResource(R.string.leave_group_warning),
-                        style = MaterialTheme.typography.bodyMedium
-                    )
+                    Text(text = stringResource(R.string.leave_group_warning), style = MaterialTheme.typography.bodyMedium)
                 }
             },
             actions = {
-                TextButton(onClick = { showConfirmDialog = false }) {
-                    Text(text = stringResource(R.string.cancel))
-                }
+                TextButton(onClick = { showConfirmDialog = false }) { Text(text = stringResource(R.string.cancel)) }
                 Spacer(modifier = Modifier.width(8.dp))
                 GlassmorphicButton(
-                    onClick = {
-                        onLeaveGroup()
-                        showConfirmDialog = false
-                    }
+                    onClick = { onLeaveGroup(); showConfirmDialog = false }
                 ) {
                     if (isLoading) {
-                        CircularProgressIndicator(
-                            modifier = Modifier.size(16.dp),
-                            strokeWidth = 2.dp
-                        )
+                        CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp)
                     } else {
-                        Text(
-                            text = stringResource(R.string.leave_confirm),
-                            color = MaterialTheme.colorScheme.error
-                        )
+                        Text(text = stringResource(R.string.leave_confirm), color = MaterialTheme.colorScheme.error)
                     }
                 }
             }
         )
     }
-    
-    // Кнопка выхода
     OutlinedButton(
         onClick = { showConfirmDialog = true },
         modifier = modifier,
-        colors = ButtonDefaults.outlinedButtonColors(
-            contentColor = MaterialTheme.colorScheme.error
-        ),
-        border = BorderStroke(
-            width = 1.dp,
-            color = MaterialTheme.colorScheme.error
-        )
+        colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.error),
+        border = BorderStroke(width = 1.dp, color = MaterialTheme.colorScheme.error)
     ) {
-        Icon(
-            imageVector = TahoeIcons.ArrowPath,
-            contentDescription = null,
-            modifier = Modifier.size(18.dp)
-        )
+        Icon(imageVector = TahoeIcons.ArrowPath, contentDescription = null, modifier = Modifier.size(18.dp))
         Spacer(modifier = Modifier.width(8.dp))
-        Text(
-            text = stringResource(R.string.leave_group),
-            style = MaterialTheme.typography.labelLarge
-        )
+        Text(text = stringResource(R.string.leave_group), style = MaterialTheme.typography.labelLarge)
     }
 }
 
 /**
- * Секция рейтинга участников привычки
+ * Секция рейтинга участников
  */
 @Composable
 private fun ParticipantLeaderboardSection(
@@ -1331,9 +1513,7 @@ private fun ParticipantLeaderboardSection(
         title = stringResource(R.string.leaderboard_habit_title),
         outlined = false
     ) {
-        Column(
-            verticalArrangement = Arrangement.spacedBy(4.dp)
-        ) {
+        Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
             leaderboard.forEachIndexed { index, entry ->
                 LeaderboardParticipantItem(entry = entry)
                 if (index < leaderboard.lastIndex) {
@@ -1351,42 +1531,28 @@ private fun ParticipantLeaderboardSection(
 private fun LeaderboardParticipantItem(
     entry: com.habittracker.domain.usecase.gamification.LeaderboardEntry
 ) {
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.SpaceBetween
-    ) {
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            modifier = Modifier.weight(1f)
-        ) {
-            // Ранг
+    Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween) {
+        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.weight(1f)) {
             Text(
                 text = "${entry.rank}",
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.Bold,
                 color = when (entry.rank) {
-                    1 -> Color(0xFFFFD700) // Gold
-                    2 -> Color(0xFFC0C0C0) // Silver
-                    3 -> Color(0xFFCD7F32) // Bronze
+                    1 -> Color(0xFFFFD700)
+                    2 -> Color(0xFFC0C0C0)
+                    3 -> Color(0xFFCD7F32)
                     else -> MaterialTheme.colorScheme.onSurface
                 },
                 modifier = Modifier.width(24.dp)
             )
-            
             Spacer(modifier = Modifier.width(12.dp))
-            
-            // Аватар
             UserAvatar(
                 avatarThumbnailUrl = entry.user.avatarThumbnailUrl,
                 avatarUrl = entry.user.avatarUrl,
                 name = entry.user.name,
                 size = 36.dp
             )
-            
             Spacer(modifier = Modifier.width(12.dp))
-            
-            // Имя
             Text(
                 text = entry.user.name.ifBlank { "User" },
                 style = MaterialTheme.typography.bodyMedium,
@@ -1395,8 +1561,6 @@ private fun LeaderboardParticipantItem(
                 overflow = TextOverflow.Ellipsis
             )
         }
-        
-        // Статистика
         Column(horizontalAlignment = Alignment.End) {
             Text(
                 text = "${entry.weeklyCompletions}",
@@ -1417,6 +1581,6 @@ private fun LeaderboardParticipantItem(
 @Composable
 private fun GroupHabitDetailScreenPreview() {
     MaterialTheme {
-        // Preview будет добавлен после создания ViewModel
+        // Preview
     }
 }

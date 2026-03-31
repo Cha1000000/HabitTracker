@@ -17,8 +17,9 @@ object TodayHabitsWidgetAutoRefreshScheduler {
 
     fun scheduleAll(context: Context) {
         Timber.tag(TAG).d("scheduleAll() called")
-        schedule(context, TodayHabitsWidgetAutoRefreshReceiver.ACTION_REFRESH_MIDNIGHT, requestCode = 2001, hour = 0, minute = 0)
-        schedule(context, TodayHabitsWidgetAutoRefreshReceiver.ACTION_REFRESH_AFTERNOON, requestCode = 2002, hour = 14, minute = 0)
+        schedule(context, TodayHabitsWidgetAutoRefreshReceiver.ACTION_REFRESH_MIDNIGHT, requestCode = 2001, hour = 0, minute = 10)
+        schedule(context, TodayHabitsWidgetAutoRefreshReceiver.ACTION_REFRESH_AFTERNOON, requestCode = 2002, hour = 15, minute = 0)
+        schedule(context, TodayHabitsWidgetAutoRefreshReceiver.ACTION_FORCE_REFRESH_MORNING, requestCode = 2003, hour = 5, minute = 0)
     }
 
     private fun schedule(
@@ -60,6 +61,7 @@ object TodayHabitsWidgetAutoRefreshScheduler {
     fun cancelAll(context: Context) {
         cancel(context, TodayHabitsWidgetAutoRefreshReceiver.ACTION_REFRESH_MIDNIGHT, requestCode = 2001)
         cancel(context, TodayHabitsWidgetAutoRefreshReceiver.ACTION_REFRESH_AFTERNOON, requestCode = 2002)
+        cancel(context, TodayHabitsWidgetAutoRefreshReceiver.ACTION_FORCE_REFRESH_MORNING, requestCode = 2003)
     }
 
     private fun cancel(context: Context, action: String, requestCode: Int) {

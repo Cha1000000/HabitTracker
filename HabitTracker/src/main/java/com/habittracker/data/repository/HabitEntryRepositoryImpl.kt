@@ -12,6 +12,7 @@ import com.habittracker.domain.model.HabitEntryWithUser
 import com.habittracker.domain.repository.HabitEntryRepository
 import com.habittracker.domain.util.HabitEntryIds
 import com.habittracker.domain.util.SyncPayloads
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -162,6 +163,8 @@ class HabitEntryRepositoryImpl @Inject constructor(
                     scope.launch {
                         try {
                             mergeFirebaseEntries(list)
+                        } catch (_: CancellationException) {
+                            // Scope was cancelled - this is expected when Flow is closed
                         } catch (e: Exception) {
                             Timber.tag("HabitEntryRepo").w(e, "Merge entries failed: ${e.message}")
                         }
@@ -202,6 +205,8 @@ class HabitEntryRepositoryImpl @Inject constructor(
                     scope.launch {
                         try {
                             mergeFirebaseEntries(list)
+                        } catch (_: CancellationException) {
+                            // Scope was cancelled - this is expected when Flow is closed
                         } catch (e: Exception) {
                             Timber.tag("HabitEntryRepo").w(e, "Merge entries failed: ${e.message}")
                         }
@@ -243,6 +248,8 @@ class HabitEntryRepositoryImpl @Inject constructor(
                     scope.launch {
                         try {
                             mergeFirebaseEntries(list)
+                        } catch (_: CancellationException) {
+                            // Scope was cancelled - this is expected when Flow is closed
                         } catch (e: Exception) {
                             Timber.tag("HabitEntryRepo").w(e, "Merge entries failed: ${e.message}")
                         }
@@ -299,6 +306,7 @@ class HabitEntryRepositoryImpl @Inject constructor(
                 completed = true,
                 completedAt = now,
                 note = note,
+                isRestDay = false,
                 updatedAt = today
             )
             updateEntry(updatedEntry)
@@ -447,11 +455,15 @@ class HabitEntryRepositoryImpl @Inject constructor(
                 // Локальной записи нет - вставляем из Firebase
                 entriesToInsert.add(entry)
             } else {
+                val localDomain = localEntry.habitEntryToDomain()
                 // Сравниваем updatedAt - Firebase данные применяем только если они новее
-                if (entry.updatedAt > localEntry.updatedAt) {
+                // Если updatedAt совпадает по дате, но контент отличается, тоже обновляем
+                if (entry.updatedAt > localDomain.updatedAt ||
+                    (entry.updatedAt == localDomain.updatedAt && !isSameContent(entry, localDomain))
+                ) {
                     entriesToInsert.add(entry)
                 } else {
-                    Timber.tag("HabitEntryRepo").d("Skipping Firebase entry (local is newer): $entityId, local=${localEntry.updatedAt}, firebase=${entry.updatedAt}")
+                    Timber.tag("HabitEntryRepo").d("Skipping Firebase entry (local is newer or equal): $entityId, local=${localDomain.updatedAt}, firebase=${entry.updatedAt}")
                 }
             }
         }
@@ -459,5 +471,15 @@ class HabitEntryRepositoryImpl @Inject constructor(
         if (entriesToInsert.isNotEmpty()) {
             habitEntryDao.insertEntries(entriesToInsert.map { it.habitEntryToEntity() })
         }
+    }
+
+    private fun isSameContent(a: HabitEntry, b: HabitEntry): Boolean {
+        return a.completed == b.completed &&
+            a.completedAt == b.completedAt &&
+            a.value == b.value &&
+            a.note == b.note &&
+            a.isRestDay == b.isRestDay &&
+            a.streakBonusAwardedDays == b.streakBonusAwardedDays &&
+            a.photoUrl == b.photoUrl
     }
 }

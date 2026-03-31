@@ -200,7 +200,9 @@
     <string name="profile_title">Profile</string>
     <string name="profile_welcome">Welcome to profile</string>
     <string name="profile_stats_button">My Statistics</string>
+    <string name="profile_stats_button_other">Statistics</string>
     <string name="profile_achievements_button">My Achievements</string>
+    <string name="profile_achievements_button_other">Achievements</string>
     <string name="profile_notifications_button">Notification settings</string>
     <string name="profile_sign_out_button">Sign Out</string>
     <string name="profile_reset_progress_button">Reset Progress</string>
@@ -264,7 +266,7 @@
     <string name="accept_request">Accept</string>
     <string name="decline_request">Decline</string>
     <string name="cancel_request">Cancel Request</string>
-    <string name="send_request">Send Request</string>
+    <string name="send_request">Let\'s be friends!</string>
     <string name="incoming_requests">Incoming Requests</string>
     <string name="outgoing_requests">Outgoing Requests</string>
     <string name="incoming_requests_count">📥 Incoming Requests (%1$d)</string>
@@ -477,7 +479,11 @@
     <string name="request_sent_at">Request sent %1$s</string>
 
     <!-- Group Habits - additional strings -->
-    <string name="share_invite_code_text">Join group habit \"%1$s\"!\n\nInvite code: %2$s\n\nEnter this code in HabitTracker app to join our group.</string>
+    <string name="share_invite_code_text">Join group habit \"%1$s\"!
+
+Invite code: %2$s
+
+Enter this code in HabitTracker app to join our group.</string>
     <string name="share_invite_code_subject">Group Habit Invitation</string>
     <string name="share_invite_code_title">Share Invite Code</string>
     <string name="invite_code_shared">Invite code shared</string>
@@ -772,6 +778,8 @@
 
     <!-- Group Habit Detail Screen -->
     <string name="group_habit_details">Group Habit Details</string>
+    <string name="self_habit_details">Habit Details</string>
+    <string name="self_habit_recent_empty">No activity yet</string>
     <string name="manage_group">Manage Group</string>
     <string name="group_progress">Group Progress</string>
     <string name="not_completed_today">Not completed today</string>
@@ -973,6 +981,117 @@
     <string name="day_sat_short">SAT</string>
     <string name="day_sun_short">SUN</string>
     <string name="button_today">Today</string>
+
+    <!-- About Screen -->
+    <string name="about_title">About</string>
+    <string name="about_app_name">Habit Tracker</string>
+    <string name="about_subtitle">Build habits together</string>
+    <string name="about_version_format">Version %1$s</string>
+    <string name="about_privacy_policy">Privacy Policy</string>
+    <string name="about_rate_app">Rate App</string>
+    <string name="about_share_app">Share with Friends</string>
+    <string name="about_feedback">Feedback</string>
+    <string name="about_donate">Buy Developer a Coffee</string>
+    <string name="about_share_subject">Check out Habit Tracker!</string>
+    <string name="about_share_text">Join me in building habits together! Download Habit Tracker from RuStore: https://www.rustore.ru/catalog/app/com.habittracker</string>
+    <string name="about_feedback_subject">HabitTracker User Feedback</string>
+    <string name="about_feedback_email">racerkafa@yandex.ru</string>
+    <string name="about_coming_soon">Coming soon</string>
+    <string name="about_button">About</string>
+
+    <!-- Donate Screen -->
+    <string name="donate_title">Support Developer</string>
+    <string name="donate_subtitle">Your support helps improve the app</string>
+    <string name="donate_description">If you enjoy using Habit Tracker, consider buying me a coffee. Your donation helps keep the app free and supports future development.</string>
+    <string name="donate_select_amount">Select amount:</string>
+    <string name="donate_amount_small">100 ₽</string>
+    <string name="donate_amount_medium">300 ₽</string>
+    <string name="donate_amount_large">500 ₽</string>
+    <string name="donate_custom_amount">Custom amount</string>
+    <string name="donate_qr_title">Scan QR code with your bank app</string>
+    <string name="donate_qr_description">Open your banking app and scan the QR code to make a payment via SBP (Fast Payment System)</string>
+    <string name="donate_share_qr">Share QR code</string>
+    <string name="donate_copy_link">Copy payment link</string>
+    <string name="donate_link_copied">Payment link copied to clipboard</string>
+    <string name="donate_thanks">Thank you for your support! ☕</string>
+    <string name="donate_sbp_label">SBP (Fast Payment System)</string>
+
+    <!-- FCM Error Messages -->
+    <string name="fcm_unavailable_title">Notifications Unavailable</string>
+    <string name="fcm_unavailable_message">Push notifications are not available on this device. This may be due to:\n
+
+• Device without Google Play Services\n
+• Modified or rooted device\n
+• Corporate restrictions\n\n
+
+The app will work normally, but you won\'t receive push notifications about friend requests and habit invitations.</string>
+    <string name="fcm_unavailable_ok">Got it</string>
+
+    <!-- Privacy Policy Screen -->
+    <string name="privacy_policy_title">Privacy Policy</string>
+    <string name="privacy_policy_last_updated">Last updated: February 11, 2026</string>
+    <string name="privacy_policy_section_1_title">1. General Provisions</string>
+    <string name="privacy_policy_section_1_text">This Privacy Policy describes how Habit Tracker ("we", "our", or "us") collects, uses, stores, and protects your personal information when you use our mobile application.\n
+
+By using the Application, you agree to the collection and use of information in accordance with this Privacy Policy. If you do not agree with the terms of this Policy, please do not use the Application.</string>
+    <string name="privacy_policy_section_2_title">2. Information We Collect</string>
+    <string name="privacy_policy_section_2_text">We collect the following types of information:\n
+
+• Account Information: email address, name, profile photo (optional)\n
+• Device Information: device model, operating system version, unique device identifiers\n
+• Usage Data: information about how you use the Application, including your habits, completion history, and app interactions\n
+• Firebase Cloud Messaging Token: for sending push notifications\n
+• Analytics Data: anonymous usage statistics to improve the Application\n
+
+We do not collect your precise geolocation data.</string>
+    <string name="privacy_policy_section_3_title">3. How We Use Your Information</string>
+    <string name="privacy_policy_section_3_text">We use your personal information for the following purposes:\n
+
+• To provide and maintain the Application functionality\n
+• To synchronize your data across devices\n
+• To send you push notifications about your habits and friend activities\n
+• To improve and personalize your experience\n
+• To communicate with you about updates and support\n
+• To ensure security and prevent fraud</string>
+    <string name="privacy_policy_section_4_title">4. Data Storage and Security</string>
+    <string name="privacy_policy_section_4_text">Your data is stored securely using:\n
+
+• Firebase Firestore (Google) for cloud data synchronization\n
+• Firebase Authentication for secure account management\n
+• Local encryption on your device\n
+• Secure data transmission via HTTPS/SSL\n
+
+We implement appropriate technical and organizational measures to protect your personal data against unauthorized access, alteration, disclosure, or destruction.</string>
+    <string name="privacy_policy_section_5_title">5. Data Sharing</string>
+    <string name="privacy_policy_section_5_text">We do not sell or rent your personal information to third parties. We may share your data only with:\n
+
+• Service Providers: Google Firebase (hosting, authentication, analytics)\n
+• Legal Requirements: when required by law or to protect our rights\n
+• With Your Consent: when you explicitly agree to share\n
+
+Your habit data is shared only with participants of your group habits as intended by the Application functionality.</string>
+    <string name="privacy_policy_section_6_title">6. Your Rights</string>
+    <string name="privacy_policy_section_6_text">Under applicable data protection laws, you have the right to:\n
+
+• Access your personal data\n
+• Correct inaccurate or incomplete data\n
+• Delete your account and associated data\n
+• Export your data\n
+• Withdraw consent for data processing\n
+
+To exercise these rights, contact us at: racerkafa@yandex.ru</string>
+    <string name="privacy_policy_section_7_title">7. Children\'s Privacy</string>
+    <string name="privacy_policy_section_7_text">The Application is not intended for use by children under the age of 16. We do not knowingly collect personal information from children under 16. If you become aware that a child has provided us with personal information, please contact us immediately.</string>
+    <string name="privacy_policy_section_8_title">8. Changes to This Policy</string>
+    <string name="privacy_policy_section_8_text">We may update our Privacy Policy from time to time. We will notify you of any changes by posting the new Privacy Policy on this page and updating the "Last updated" date.
+
+You are advised to review this Privacy Policy periodically for any changes.</string>
+    <string name="privacy_policy_section_9_title">9. Contact Us</string>
+    <string name="privacy_policy_section_9_text">If you have any questions about this Privacy Policy or our data practices, please contact us:
+
+Email: racerkafa@yandex.ru
+
+We will respond to your inquiry within 30 days.</string>
 
     <!-- Achievements Screen -->
     <string name="achievements_unknown_error">Unknown error</string>
@@ -1203,6 +1322,7 @@
     <string name="photo_proof_status_rest">Rest day</string>
     <string name="photo_proof_uploading">Uploading photo…</string>
     <string name="photo_proof_upload_success">Photo uploaded successfully</string>
+    <string name="photo_proof_note_success">Comment saved successfully</string>
     <string name="photo_proof_upload_error">Failed to upload photo</string>
     <string name="photo_proof_delete_error">Failed to delete photo</string>
     <string name="photo_proof_delete_confirm">Delete this photo?</string>
@@ -1213,6 +1333,9 @@
     <string name="photo_proof_select_source">Select photo source</string>
     <string name="photo_proof_camera">Camera</string>
     <string name="photo_proof_gallery">Gallery</string>
+    <string name="photo_proof_note_placeholder">Add a comment...</string>
+    <string name="habit_note_edit_title">Edit Comment</string>
+    <string name="photo_proof_no_photo">No photo proof attached</string>
 
     <!-- Nudge (Social Interactions) -->
     <string name="nudge_button">Nudge</string>

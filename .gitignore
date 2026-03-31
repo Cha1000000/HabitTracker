@@ -63,4 +63,10 @@ yandex-app-metrica.txt
 HabitTracker/*firebase-adminsdk*.json
 **/*firebase-adminsdk*.json
 **/*adminsdk*.json
+
 /scripts/firestore-seed/node_modules/
+/.codex/environments/environment.toml
+/art/habr/
+.niuma-local/last_response.md
+.niuma-local/stats.json
+.niuma-local/history/*

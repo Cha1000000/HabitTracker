@@ -129,3 +129,12 @@ com.habittracker/
 - Шифрование чувствительных данных локально
 - Не храни пароли в plain text
 - GDPR compliance для пользовательских данных
+## Role Routing
+
+Для автоматического выбора роли и skills при обработке запроса используй правила из:
+`/Users/racerkafa/Documents/MyProjects/Android/Compose/HabitTracker/.agents/roles/Roles.md`
+
+Требования:
+1. Сначала определить роль(и) по интенту задачи.
+2. Затем выбрать соответствующие skills по `Roles.md`.
+3. При явном указании роли/skills пользователем — это приоритетнее авто-роутинга.

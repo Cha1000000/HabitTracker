@@ -852,49 +852,56 @@ private fun SearchResultCard(
         cornerRadius = 16.dp,
         elevation = 2.dp
     ) {
-        Row(
+        Column(
             modifier = Modifier
                 .padding(16.dp)
-                .fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically
+                .fillMaxWidth()
         ) {
-            // Аватар
-            UserAvatar(
-                avatarThumbnailUrl = user.avatarThumbnailUrl,
-                avatarUrl = user.avatarUrl,
-                name = user.name,
-                size = 48.dp,
-                backgroundColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.1f),
-                contentDescription = user.name
-            )
-            
-            Spacer(modifier = Modifier.width(12.dp))
-            
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = user.name,
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                // Аватар
+                UserAvatar(
+                    avatarThumbnailUrl = user.avatarThumbnailUrl,
+                    avatarUrl = user.avatarUrl,
+                    name = user.name,
+                    size = 48.dp,
+                    backgroundColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.1f),
+                    contentDescription = user.name
                 )
-                Text(
-                    text = stringResource(id = R.string.level_points_format, user.level, user.points),
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
-                )
+                
+                Spacer(modifier = Modifier.width(12.dp))
+                
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = user.name,
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                    Text(
+                        text = stringResource(id = R.string.level_points_format, user.level, user.points),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
+                    )
+                }
             }
+            
+            Spacer(modifier = Modifier.height(16.dp))
             
             // Кнопка отправки запроса
             GlassmorphicButton(
-                onClick = onSendRequest
+                onClick = onSendRequest,
+                modifier = Modifier.fillMaxWidth()
             ) {
                 Icon(
                     TahoeIcons.UserPlus,
                     contentDescription = null,
-                    modifier = Modifier.size(16.dp)
+                    modifier = Modifier.size(18.dp)
                 )
-                Spacer(modifier = Modifier.width(4.dp))
+                Spacer(modifier = Modifier.width(8.dp))
                 Text(stringResource(id = R.string.send_request))
             }
         }

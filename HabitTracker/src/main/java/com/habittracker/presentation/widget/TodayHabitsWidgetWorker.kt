@@ -14,11 +14,13 @@ class TodayHabitsWidgetWorker @AssistedInject constructor(
 ) : CoroutineWorker(appContext, params) {
 
     override suspend fun doWork(): Result {
-        TodayHabitsWidgetRefresh.refresh(applicationContext)
+        val force = inputData.getBoolean(KEY_FORCE_REFRESH, false)
+        TodayHabitsWidgetRefresh.refresh(applicationContext, force = force)
         return Result.success()
     }
 
     companion object {
         const val UNIQUE_NAME = "today_habits_widget_refresh"
+        const val KEY_FORCE_REFRESH = "key_force_refresh"
     }
 }

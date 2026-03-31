@@ -16,7 +16,6 @@ import com.habittracker.domain.model.User
 import com.habittracker.domain.repository.AuthRepository
 import com.habittracker.domain.repository.UserRepository
 import com.habittracker.domain.usecase.auth.UpsertSignedInUserUseCase
-import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.tasks.await
@@ -31,13 +30,8 @@ class AuthRepositoryImpl @Inject constructor(
     private val firebaseMessaging: FirebaseMessaging,
     private val upsertSignedInUser: UpsertSignedInUserUseCase,
     private val userRepository: UserRepository,
-    @ApplicationContext private val context: Context,
     private val getGoogleIdOption: GetGoogleIdOption
 ) : AuthRepository {
-
-    private val credentialManager: CredentialManager by lazy {
-        CredentialManager.create(context)
-    }
 
     override fun getCurrentUser(): Flow<User?> = flow {
         // Эта логика будет усложнена, когда мы добавим Firestore
@@ -133,14 +127,15 @@ class AuthRepositoryImpl @Inject constructor(
         }
     }
 
-    override suspend fun signInWithGoogle(): Flow<Result<Intent?>> = flow {
+    override suspend fun signInWithGoogle(activityContext: Context): Flow<Result<Intent?>> = flow {
         try {
             val request = GetCredentialRequest.Builder()
                 .addCredentialOption(getGoogleIdOption)
                 .build()
             
-            val result = credentialManager.getCredential(
-                context = context,
+            val credMgr = CredentialManager.create(activityContext)
+            val result = credMgr.getCredential(
+                context = activityContext,
                 request = request
             )
             

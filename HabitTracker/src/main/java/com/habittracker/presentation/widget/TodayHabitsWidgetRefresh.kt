@@ -11,7 +11,11 @@ import timber.log.Timber
 
 object TodayHabitsWidgetRefresh {
 
-    suspend fun refresh(context: Context) {
+    suspend fun refresh(context: Context, force: Boolean = false) {
+        if (force) {
+            TodayHabitsWidget.clearTodayHabits(context)
+        }
+
         val entryPoint = EntryPointAccessors.fromApplication(
             context.applicationContext,
             TodayHabitsWidgetEntryPoint::class.java
@@ -20,6 +24,9 @@ object TodayHabitsWidgetRefresh {
         val userId = entryPoint.authRepository().getCurrentUserId()
         if (userId.isNullOrBlank()) {
             Timber.tag("TodayHabitsWidget").d("refresh: skip (no user)")
+            if (force) {
+                TodayHabitsWidget.updateTodayHabits(context, emptyList())
+            }
             return
         }
 

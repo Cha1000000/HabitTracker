@@ -3,6 +3,7 @@ package com.habittracker.presentation.ui.habits.components
 import android.Manifest
 import android.content.Context
 import android.net.Uri
+import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
@@ -32,13 +33,18 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
+import androidx.compose.material3.SheetValue.Hidden
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -49,6 +55,8 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -56,6 +64,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import androidx.core.content.FileProvider
+import androidx.core.net.toUri
 import coil.compose.AsyncImage
 import com.habittracker.R
 import com.habittracker.domain.model.HabitEntry
@@ -65,14 +74,12 @@ import com.habittracker.presentation.ui.theme.TahoeDeepBlue
 import com.habittracker.presentation.ui.theme.TahoeIcons
 import com.habittracker.presentation.ui.theme.TahoeLightBackground
 import com.habittracker.presentation.ui.theme.TahoeSkyBlue
+import kotlinx.coroutines.delay
 import kotlinx.datetime.LocalDate
 import java.io.File
 import java.time.format.DateTimeFormatter
 import java.util.Locale
 
-/**
- * BottomSheet для отображения деталей дня и управления фото-подтверждением.
- */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HabitEntryDetailSheet(
@@ -81,50 +88,88 @@ fun HabitEntryDetailSheet(
     habitTitle: String,
     habitUnit: String?,
     isUploading: Boolean,
+    successMessage: String?,
+    modifier: Modifier = Modifier,
     onDismiss: () -> Unit,
-    onAddPhoto: (Uri) -> Unit,
-    onDeletePhoto: () -> Unit,
-    modifier: Modifier = Modifier
+    onAddPhoto: (Uri) -> Unit = {},
+    onDeletePhoto: () -> Unit = {},
+    onSaveComment: ((String) -> Unit)? = null,
+    onSuccessMessageShown: () -> Unit,
+    isReadOnly: Boolean = false,
 ) {
     val isDarkTheme = isSystemInDarkTheme()
     val context = LocalContext.current
-    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+    val focusManager = LocalFocusManager.current
+    var isPickingPhoto by rememberSaveable { mutableStateOf(false) }
+    val sheetState = rememberModalBottomSheetState(
+        skipPartiallyExpanded = true,
+        confirmValueChange = { newValue ->
+            if (newValue == Hidden) {
+                !isUploading && !isPickingPhoto
+            } else {
+                true
+            }
+        }
+    )
     
     var showPhotoSourceDialog by remember { mutableStateOf(false) }
     var showDeleteConfirmDialog by remember { mutableStateOf(false) }
-    var tempCameraUri by remember { mutableStateOf<Uri?>(null) }
+    var tempCameraUriString by rememberSaveable { mutableStateOf<String?>(null) }
+    val tempCameraUri = remember(tempCameraUriString) { tempCameraUriString?.toUri() }
     var fullScreenPhotoUrl by remember { mutableStateOf<String?>(null) }
-    
-    // Launcher для выбора фото из галереи
+
+    // Локальное состояние для комментария
+    var commentText by remember(entry?.note) { mutableStateOf(entry?.note ?: "") }
+    val isCommentModified = commentText != (entry?.note ?: "")
+
+    BackHandler(enabled = isUploading || isPickingPhoto || successMessage != null) {
+        // Block back
+    }
+
     val galleryLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.GetContent()
     ) { uri: Uri? ->
-        uri?.let { onAddPhoto(it) }
+        if (uri == null) {
+            isPickingPhoto = false
+        } else {
+            onAddPhoto(uri)
+        }
     }
     
-    // Launcher для съёмки фото камерой (TakePicture с Uri)
     val cameraLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.TakePicture()
     ) { success ->
         if (success) {
             tempCameraUri?.let { uri -> onAddPhoto(uri) }
+        } else {
+            isPickingPhoto = false
         }
     }
     
-    // Launcher для запроса разрешения камеры
     val cameraPermissionLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.RequestPermission()
     ) { isGranted ->
         if (isGranted) {
-            // Разрешение получено, запускаем камеру
             val uri = createTempImageUri(context)
-            tempCameraUri = uri
+            tempCameraUriString = uri.toString()
             cameraLauncher.launch(uri)
+        } else {
+            isPickingPhoto = false
+        }
+    }
+
+    LaunchedEffect(isUploading, successMessage) {
+        if (isUploading || successMessage != null) {
+            isPickingPhoto = false
         }
     }
 
     ModalBottomSheet(
-        onDismissRequest = onDismiss,
+        onDismissRequest = {
+            if (!isUploading && !isPickingPhoto) {
+                onDismiss()
+            }
+        },
         sheetState = sheetState,
         containerColor = if (isDarkTheme) TahoeDeepBlue else TahoeLightBackground,
         dragHandle = {
@@ -145,7 +190,41 @@ fun HabitEntryDetailSheet(
                 .padding(horizontal = 20.dp)
                 .padding(bottom = 32.dp)
         ) {
-            // Заголовок с датой
+            if (successMessage != null) {
+                LaunchedEffect(successMessage) {
+                    delay(1500)
+                    onSuccessMessageShown()
+                }
+                GlassmorphicCard(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(bottom = 12.dp),
+                    isDarkTheme = isDarkTheme,
+                    cornerRadius = 10.dp,
+                    glassAlpha = if (isDarkTheme) 0.2f else 0.85f
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 12.dp, vertical = 10.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(
+                            imageVector = TahoeIcons.CheckCircle,
+                            contentDescription = null,
+                            tint = Color(0xFF4CAF50),
+                            modifier = Modifier.size(18.dp)
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            text = successMessage,
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
+                    }
+                }
+            }
+            
             Text(
                 text = formatDate(date),
                 style = MaterialTheme.typography.titleLarge,
@@ -161,29 +240,34 @@ fun HabitEntryDetailSheet(
             
             Spacer(modifier = Modifier.height(20.dp))
             
-            // Статус выполнения
-            StatusBadge(
-                entry = entry
-            )
+            EntryStatusBadge(entry = entry)
             
             Spacer(modifier = Modifier.height(16.dp))
             
-            // Детали (время, значение, заметка)
             if (entry != null) {
                 EntryDetails(
                     entry = entry,
-                    habitUnit = habitUnit
+                    habitUnit = habitUnit,
+                    commentText = commentText,
+                    onCommentChange = { commentText = it },
+                    isReadOnly = isReadOnly,
+                    isModified = isCommentModified,
+                    onSave = {
+                        onSaveComment?.invoke(commentText)
+                        focusManager.clearFocus(force = true)
+                    },
+                    isDarkTheme = isDarkTheme
                 )
                 
                 Spacer(modifier = Modifier.height(20.dp))
             }
             
-            // Секция фото-подтверждения (только для выполненных)
             if (entry?.completed == true) {
                 PhotoProofSection(
                     photoUrl = entry.photoUrl,
                     isUploading = isUploading,
                     isDarkTheme = isDarkTheme,
+                    isReadOnly = isReadOnly,
                     onPhotoClick = { fullScreenPhotoUrl = entry.photoUrl },
                     onAddClick = { showPhotoSourceDialog = true },
                     onDeleteClick = { showDeleteConfirmDialog = true }
@@ -193,92 +277,19 @@ fun HabitEntryDetailSheet(
     }
 
     fullScreenPhotoUrl?.let { url ->
-        var scale by remember(url) { mutableFloatStateOf(1f) }
-        var offsetX by remember(url) { mutableFloatStateOf(0f) }
-        var offsetY by remember(url) { mutableFloatStateOf(0f) }
-
-        val transformableState = rememberTransformableState { zoomChange, panChange, _ ->
-            val newScale = (scale * zoomChange).coerceIn(1f, 4f)
-            if (newScale != scale) {
-                val scaleRatio = newScale / scale
-                offsetX *= scaleRatio
-                offsetY *= scaleRatio
-            }
-            scale = newScale
-            if (scale > 1f) {
-                offsetX += panChange.x
-                offsetY += panChange.y
-            } else {
-                offsetX = 0f
-                offsetY = 0f
-            }
-        }
-
-        Dialog(
-            onDismissRequest = { fullScreenPhotoUrl = null },
-            properties = DialogProperties(usePlatformDefaultWidth = false)
-        ) {
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .background(Color.Black)
-            ) {
-                AsyncImage(
-                    model = url,
-                    contentDescription = null,
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .pointerInput(url) {
-                            detectTapGestures(
-                                onDoubleTap = {
-                                    if (scale > 1f) {
-                                        scale = 1f
-                                        offsetX = 0f
-                                        offsetY = 0f
-                                    } else {
-                                        scale = 2f
-                                    }
-                                }
-                            )
-                        }
-                        .graphicsLayer {
-                            scaleX = scale
-                            scaleY = scale
-                            translationX = offsetX
-                            translationY = offsetY
-                        }
-                        .transformable(state = transformableState),
-                    contentScale = ContentScale.Fit
-                )
-
-                IconButton(
-                    onClick = { fullScreenPhotoUrl = null },
-                    modifier = Modifier
-                        .align(Alignment.TopEnd)
-                        .padding(16.dp)
-                        .size(40.dp)
-                        .background(Color.Black.copy(alpha = 0.5f), CircleShape)
-                ) {
-                    Icon(
-                        TahoeIcons.XMark,
-                        contentDescription = stringResource(R.string.action_close),
-                        tint = Color.White
-                    )
-                }
-            }
-        }
+        FullScreenImageDialog(url = url, onDismiss = { fullScreenPhotoUrl = null })
     }
     
-    // Диалог выбора источника фото
     if (showPhotoSourceDialog) {
         PhotoSourceDialog(
             onDismiss = { showPhotoSourceDialog = false },
             onCameraClick = {
+                isPickingPhoto = true
                 showPhotoSourceDialog = false
-                // Запрашиваем разрешение на камеру
                 cameraPermissionLauncher.launch(Manifest.permission.CAMERA)
             },
             onGalleryClick = {
+                isPickingPhoto = true
                 showPhotoSourceDialog = false
                 galleryLauncher.launch("image/*")
             },
@@ -286,53 +297,20 @@ fun HabitEntryDetailSheet(
         )
     }
     
-    // Диалог подтверждения удаления
     if (showDeleteConfirmDialog) {
-        GlassmorphicDialog(
-            onDismissRequest = { showDeleteConfirmDialog = false },
-            isDarkTheme = isDarkTheme,
-            title = {
-                Text(
-                    text = stringResource(R.string.photo_proof_delete),
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold
-                )
+        DeleteConfirmDialog(
+            onDismiss = { showDeleteConfirmDialog = false },
+            onConfirm = {
+                showDeleteConfirmDialog = false
+                onDeletePhoto()
             },
-            content = {
-                Text(
-                    text = stringResource(R.string.photo_proof_delete_confirm),
-                    style = MaterialTheme.typography.bodyMedium
-                )
-                Spacer(modifier = Modifier.height(20.dp))
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
-                    GlassmorphicOutlinedButton(
-                        onClick = { showDeleteConfirmDialog = false },
-                        isDarkTheme = isDarkTheme,
-                        modifier = Modifier.weight(1f)
-                    ) {
-                        Text(stringResource(R.string.cancel))
-                    }
-                    GlassmorphicButton(
-                        onClick = {
-                            showDeleteConfirmDialog = false
-                            onDeletePhoto()
-                        },
-                        isDarkTheme = isDarkTheme,
-                        modifier = Modifier.weight(1f)
-                    ) {
-                        Text(stringResource(R.string.delete))
-                    }
-                }
-            }
+            isDarkTheme = isDarkTheme
         )
     }
 }
 
 @Composable
-private fun StatusBadge(entry: HabitEntry?) {
+private fun EntryStatusBadge(entry: HabitEntry?) {
     val (statusText, statusColor) = when {
         entry?.isRestDay == true -> stringResource(R.string.photo_proof_status_rest) to Color(0xFFFFB74D)
         entry?.completed == true -> stringResource(R.string.photo_proof_status_completed) to Color(0xFF4CAF50)
@@ -359,9 +337,20 @@ private fun StatusBadge(entry: HabitEntry?) {
 }
 
 @Composable
-private fun EntryDetails(entry: HabitEntry, habitUnit: String?) {
+private fun EntryDetails(
+    entry: HabitEntry,
+    habitUnit: String?,
+    commentText: String,
+    onCommentChange: (String) -> Unit,
+    isReadOnly: Boolean,
+    isModified: Boolean,
+    onSave: () -> Unit,
+    isDarkTheme: Boolean
+) {
+    val focusManager = LocalFocusManager.current
+    val keyboardController = LocalSoftwareKeyboardController.current
+
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        // Время выполнения
         entry.completedAt?.let { completedAt ->
             val timeStr = String.format(
                 Locale.getDefault(),
@@ -387,7 +376,6 @@ private fun EntryDetails(entry: HabitEntry, habitUnit: String?) {
             }
         }
         
-        // Значение (для измеряемых привычек)
         if (entry.value > 0 && !habitUnit.isNullOrBlank()) {
             Row(
                 verticalAlignment = Alignment.CenterVertically,
@@ -407,24 +395,62 @@ private fun EntryDetails(entry: HabitEntry, habitUnit: String?) {
             }
         }
         
-        // Заметка
-        entry.note?.takeIf { it.isNotBlank() }?.let { note ->
-            Row(
-                verticalAlignment = Alignment.Top,
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                Icon(
-                    TahoeIcons.Edit,
-                    contentDescription = null,
-                    modifier = Modifier.size(16.dp),
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-                Text(
-                    text = stringResource(R.string.photo_proof_note, note),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
+        if (isReadOnly) {
+            if (commentText.isNotBlank()) {
+                Row(
+                    verticalAlignment = Alignment.Top,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Icon(
+                        TahoeIcons.Edit,
+                        contentDescription = null,
+                        modifier = Modifier.size(16.dp),
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Text(
+                        text = stringResource(R.string.photo_proof_note, commentText),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
             }
+        } else {
+            OutlinedTextField(
+                value = commentText,
+                onValueChange = onCommentChange,
+                modifier = Modifier.fillMaxWidth(),
+                placeholder = {
+                    Text(
+                        text = stringResource(R.string.photo_proof_note_placeholder),
+                        style = MaterialTheme.typography.bodySmall
+                    )
+                },
+                textStyle = MaterialTheme.typography.bodyMedium,
+                shape = RoundedCornerShape(8.dp),
+                colors = OutlinedTextFieldDefaults.colors(
+                    focusedBorderColor = MaterialTheme.colorScheme.primary,
+                    unfocusedBorderColor = MaterialTheme.colorScheme.outlineVariant,
+                    focusedContainerColor = Color.Transparent,
+                    unfocusedContainerColor = Color.Transparent
+                ),
+                trailingIcon = {
+                    if (isModified) {
+                        IconButton(
+                            onClick = {
+                                onSave()
+                                focusManager.clearFocus(force = true)
+                                keyboardController?.hide()
+                            }
+                        ) {
+                            Icon(
+                                imageVector = TahoeIcons.Check,
+                                contentDescription = stringResource(R.string.save),
+                                tint = MaterialTheme.colorScheme.primary
+                            )
+                        }
+                    }
+                }
+            )
         }
     }
 }
@@ -434,6 +460,7 @@ private fun PhotoProofSection(
     photoUrl: String?,
     isUploading: Boolean,
     isDarkTheme: Boolean,
+    isReadOnly: Boolean,
     onPhotoClick: () -> Unit,
     onAddClick: () -> Unit,
     onDeleteClick: () -> Unit
@@ -449,7 +476,6 @@ private fun PhotoProofSection(
         Spacer(modifier = Modifier.height(12.dp))
         
         if (photoUrl != null) {
-            // Показываем фото с кнопками изменить/удалить
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -466,51 +492,42 @@ private fun PhotoProofSection(
                     contentScale = ContentScale.Crop
                 )
                 
-                // Кнопки действий
-                Row(
-                    modifier = Modifier
-                        .align(Alignment.TopEnd)
-                        .padding(8.dp),
-                    horizontalArrangement = Arrangement.spacedBy(4.dp)
-                ) {
-                    // Изменить
-                    IconButton(
-                        onClick = onAddClick,
+                if (!isReadOnly) {
+                    Row(
                         modifier = Modifier
-                            .size(36.dp)
-                            .background(
-                                color = Color.Black.copy(alpha = 0.5f),
-                                shape = CircleShape
-                            )
+                            .align(Alignment.TopEnd)
+                            .padding(8.dp),
+                        horizontalArrangement = Arrangement.spacedBy(4.dp)
                     ) {
-                        Icon(
-                            TahoeIcons.Edit,
-                            contentDescription = stringResource(R.string.photo_proof_change),
-                            tint = Color.White,
-                            modifier = Modifier.size(18.dp)
-                        )
-                    }
-                    
-                    // Удалить
-                    IconButton(
-                        onClick = onDeleteClick,
-                        modifier = Modifier
-                            .size(36.dp)
-                            .background(
-                                color = Color.Black.copy(alpha = 0.5f),
-                                shape = CircleShape
+                        IconButton(
+                            onClick = onAddClick,
+                            modifier = Modifier
+                                .size(36.dp)
+                                .background(Color.Black.copy(alpha = 0.5f), CircleShape)
+                        ) {
+                            Icon(
+                                TahoeIcons.Edit,
+                                contentDescription = stringResource(R.string.photo_proof_change),
+                                tint = Color.White,
+                                modifier = Modifier.size(18.dp)
                             )
-                    ) {
-                        Icon(
-                            TahoeIcons.Delete,
-                            contentDescription = stringResource(R.string.photo_proof_delete),
-                            tint = Color.White,
-                            modifier = Modifier.size(18.dp)
-                        )
+                        }
+                        IconButton(
+                            onClick = onDeleteClick,
+                            modifier = Modifier
+                                .size(36.dp)
+                                .background(Color.Black.copy(alpha = 0.5f), CircleShape)
+                        ) {
+                            Icon(
+                                TahoeIcons.Delete,
+                                contentDescription = stringResource(R.string.photo_proof_delete),
+                                tint = Color.White,
+                                modifier = Modifier.size(18.dp)
+                            )
+                        }
                     }
                 }
                 
-                // Индикатор загрузки
                 if (isUploading) {
                     Box(
                         modifier = Modifier
@@ -519,10 +536,7 @@ private fun PhotoProofSection(
                         contentAlignment = Alignment.Center
                     ) {
                         Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                            CircularProgressIndicator(
-                                color = Color.White,
-                                modifier = Modifier.size(32.dp)
-                            )
+                            CircularProgressIndicator(color = Color.White, modifier = Modifier.size(32.dp))
                             Spacer(modifier = Modifier.height(8.dp))
                             Text(
                                 text = stringResource(R.string.photo_proof_uploading),
@@ -534,61 +548,141 @@ private fun PhotoProofSection(
                 }
             }
         } else {
-            // Плейсхолдер для добавления фото
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .aspectRatio(16f / 9f)
-                    .clip(RoundedCornerShape(12.dp))
-                    .background(
-                        brush = Brush.linearGradient(
-                            colors = if (isDarkTheme) {
-                                listOf(GlassWhite10, GlassWhite10.copy(alpha = 0.05f))
-                            } else {
-                                listOf(GlassBlack10, GlassBlack10.copy(alpha = 0.05f))
-                            }
+            if (!isReadOnly) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .aspectRatio(16f / 9f)
+                        .clip(RoundedCornerShape(12.dp))
+                        .background(
+                            brush = Brush.linearGradient(
+                                colors = if (isDarkTheme) listOf(GlassWhite10, GlassWhite10.copy(alpha = 0.05f))
+                                else listOf(GlassBlack10, GlassBlack10.copy(alpha = 0.05f))
+                            )
                         )
-                    )
-                    .border(
-                        width = 2.dp,
-                        color = if (isDarkTheme) GlassWhite10 else GlassBlack10,
-                        shape = RoundedCornerShape(12.dp)
-                    )
-                    .clickable(enabled = !isUploading) { onAddClick() },
-                contentAlignment = Alignment.Center
-            ) {
-                if (isUploading) {
-                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        .border(
+                            width = 2.dp,
+                            color = if (isDarkTheme) GlassWhite10 else GlassBlack10,
+                            shape = RoundedCornerShape(12.dp)
+                        )
+                        .clickable(enabled = !isUploading) { onAddClick() },
+                    contentAlignment = Alignment.Center
+                ) {
+                    if (isUploading) {
                         CircularProgressIndicator(
                             color = if (isDarkTheme) TahoeSkyBlue else MaterialTheme.colorScheme.primary,
                             modifier = Modifier.size(32.dp)
                         )
-                        Spacer(modifier = Modifier.height(8.dp))
-                        Text(
-                            text = stringResource(R.string.photo_proof_uploading),
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            style = MaterialTheme.typography.bodySmall
-                        )
-                    }
-                } else {
-                    Column(
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                        verticalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        Icon(
-                            TahoeIcons.Camera,
-                            contentDescription = null,
-                            modifier = Modifier.size(48.dp),
-                            tint = if (isDarkTheme) TahoeSkyBlue else MaterialTheme.colorScheme.primary
-                        )
-                        Text(
-                            text = stringResource(R.string.photo_proof_placeholder),
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            textAlign = TextAlign.Center
-                        )
+                    } else {
+                        Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                            Icon(
+                                TahoeIcons.Camera,
+                                contentDescription = null,
+                                modifier = Modifier.size(48.dp),
+                                tint = if (isDarkTheme) TahoeSkyBlue else MaterialTheme.colorScheme.primary
+                            )
+                            Text(
+                                text = stringResource(R.string.photo_proof_placeholder),
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                textAlign = TextAlign.Center
+                            )
+                        }
                     }
                 }
+            } else {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(100.dp)
+                        .clip(RoundedCornerShape(12.dp))
+                        .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = stringResource(R.string.photo_proof_no_photo),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun FullScreenImageDialog(url: String, onDismiss: () -> Unit) {
+    var scale by remember(url) { mutableFloatStateOf(1f) }
+    var offsetX by remember(url) { mutableFloatStateOf(0f) }
+    var offsetY by remember(url) { mutableFloatStateOf(0f) }
+
+    val transformableState = rememberTransformableState { zoomChange, panChange, _ ->
+        val newScale = (scale * zoomChange).coerceIn(1f, 4f)
+        if (newScale != scale) {
+            val scaleRatio = newScale / scale
+            offsetX *= scaleRatio
+            offsetY *= scaleRatio
+        }
+        scale = newScale
+        if (scale > 1f) {
+            offsetX += panChange.x
+            offsetY += panChange.y
+        } else {
+            offsetX = 0f
+            offsetY = 0f
+        }
+    }
+
+    Dialog(
+        onDismissRequest = onDismiss,
+        properties = DialogProperties(usePlatformDefaultWidth = false)
+    ) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(Color.Black)
+        ) {
+            AsyncImage(
+                model = url,
+                contentDescription = null,
+                modifier = Modifier
+                    .fillMaxSize()
+                    .pointerInput(url) {
+                        detectTapGestures(
+                            onDoubleTap = {
+                                if (scale > 1f) {
+                                    scale = 1f
+                                    offsetX = 0f
+                                    offsetY = 0f
+                                } else {
+                                    scale = 2f
+                                }
+                            }
+                        )
+                    }
+                    .graphicsLayer {
+                        scaleX = scale
+                        scaleY = scale
+                        translationX = offsetX
+                        translationY = offsetY
+                    }
+                    .transformable(state = transformableState),
+                contentScale = ContentScale.Fit
+            )
+
+            IconButton(
+                onClick = onDismiss,
+                modifier = Modifier
+                    .align(Alignment.TopEnd)
+                    .padding(16.dp)
+                    .size(40.dp)
+                    .background(Color.Black.copy(alpha = 0.5f), CircleShape)
+            ) {
+                Icon(
+                    TahoeIcons.XMark,
+                    contentDescription = stringResource(R.string.action_close),
+                    tint = Color.White
+                )
             }
         }
     }
@@ -612,48 +706,47 @@ private fun PhotoSourceDialog(
             )
         },
         content = {
-            Column(
-                modifier = Modifier.fillMaxWidth(),
-                verticalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                // Камера
-                GlassmorphicButton(
-                    onClick = onCameraClick,
-                    isDarkTheme = isDarkTheme,
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Icon(
-                        TahoeIcons.Camera,
-                        contentDescription = null,
-                        modifier = Modifier.size(20.dp)
-                    )
+            Column(modifier = Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                GlassmorphicButton(onClick = onCameraClick, isDarkTheme = isDarkTheme, modifier = Modifier.fillMaxWidth()) {
+                    Icon(TahoeIcons.Camera, contentDescription = null, modifier = Modifier.size(20.dp))
                     Spacer(modifier = Modifier.width(8.dp))
                     Text(stringResource(R.string.photo_proof_camera))
                 }
-                
-                // Галерея
-                GlassmorphicButton(
-                    onClick = onGalleryClick,
-                    isDarkTheme = isDarkTheme,
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Icon(
-                        TahoeIcons.Image,
-                        contentDescription = null,
-                        modifier = Modifier.size(20.dp)
-                    )
+                GlassmorphicButton(onClick = onGalleryClick, isDarkTheme = isDarkTheme, modifier = Modifier.fillMaxWidth()) {
+                    Icon(TahoeIcons.Image, contentDescription = null, modifier = Modifier.size(20.dp))
                     Spacer(modifier = Modifier.width(8.dp))
                     Text(stringResource(R.string.photo_proof_gallery))
                 }
-                
                 Spacer(modifier = Modifier.height(8.dp))
-                
-                GlassmorphicOutlinedButton(
-                    onClick = onDismiss,
-                    isDarkTheme = isDarkTheme,
-                    modifier = Modifier.fillMaxWidth()
-                ) {
+                GlassmorphicOutlinedButton(onClick = onDismiss, isDarkTheme = isDarkTheme, modifier = Modifier.fillMaxWidth()) {
                     Text(stringResource(R.string.cancel))
+                }
+            }
+        }
+    )
+}
+
+@Composable
+private fun DeleteConfirmDialog(onDismiss: () -> Unit, onConfirm: () -> Unit, isDarkTheme: Boolean) {
+    GlassmorphicDialog(
+        onDismissRequest = onDismiss,
+        isDarkTheme = isDarkTheme,
+        title = {
+            Text(
+                text = stringResource(R.string.photo_proof_delete),
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold
+            )
+        },
+        content = {
+            Text(text = stringResource(R.string.photo_proof_delete_confirm), style = MaterialTheme.typography.bodyMedium)
+            Spacer(modifier = Modifier.height(20.dp))
+            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                GlassmorphicOutlinedButton(onClick = onDismiss, isDarkTheme = isDarkTheme, modifier = Modifier.weight(1f)) {
+                    Text(stringResource(R.string.cancel))
+                }
+                GlassmorphicButton(onClick = onConfirm, isDarkTheme = isDarkTheme, modifier = Modifier.weight(1f)) {
+                    Text(stringResource(R.string.delete))
                 }
             }
         }
@@ -666,18 +759,7 @@ private fun formatDate(date: LocalDate): String {
     return javaDate.format(formatter)
 }
 
-/**
- * Создаёт временный Uri для сохранения фото с камеры
- */
 private fun createTempImageUri(context: Context): Uri {
-    val tempFile = File.createTempFile(
-        "camera_photo_${System.currentTimeMillis()}",
-        ".jpg",
-        context.cacheDir
-    )
-    return FileProvider.getUriForFile(
-        context,
-        "${context.packageName}.fileprovider",
-        tempFile
-    )
+    val tempFile = File.createTempFile("camera_photo_${System.currentTimeMillis()}", ".jpg", context.cacheDir)
+    return FileProvider.getUriForFile(context, "${context.packageName}.fileprovider", tempFile)
 }

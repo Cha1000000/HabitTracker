@@ -82,12 +82,19 @@ class TodayHabitsWidget : GlanceAppWidget() {
                     ) {
                         Text(
                             text = context.getString(R.string.widget_today_title),
-                            modifier = GlanceModifier.clickable(actionRunCallback<RefreshTodayHabitsWidgetAction>()),
                             style = TextStyle(
                                 fontWeight = FontWeight.Bold,
                                 fontSize = 18.sp,
                                 color = textMain
                             )
+                        )
+                        Spacer(modifier = GlanceModifier.width(8.dp))
+                        Image(
+                            provider = ImageProvider(R.drawable.ic_tahoe_arrow_path),
+                            contentDescription = context.getString(R.string.cd_refresh),
+                            modifier = GlanceModifier
+                                .size(18.dp)
+                                .clickable(actionRunCallback<RefreshTodayHabitsWidgetAction>())
                         )
                         Spacer(modifier = GlanceModifier.defaultWeight())
                         Row(verticalAlignment = Alignment.CenterVertically) {
@@ -308,6 +315,20 @@ class TodayHabitsWidget : GlanceAppWidget() {
             TodayHabitsWidget().updateAll(context)
         }
 
+        suspend fun clearTodayHabits(context: Context) {
+            val manager = GlanceAppWidgetManager(context)
+            val glanceIds = manager.getGlanceIds(TodayHabitsWidget::class.java)
+            if (glanceIds.isEmpty()) return
+
+            glanceIds.forEach { glanceId ->
+                updateAppWidgetState(context, glanceId) { mutablePrefs ->
+                    mutablePrefs.remove(PREF_KEY)
+                    mutablePrefs.remove(PREF_KEY_REFRESH_UNTIL_MS)
+                }
+            }
+            TodayHabitsWidget().updateAll(context)
+        }
+
         /**
          * Optimistically toggles habit state in the widget and returns the new state.
          * Returns null if habit was not found in the current widget state.
@@ -359,7 +380,7 @@ class TodayHabitsWidget : GlanceAppWidget() {
 }
 
 private fun buildOpenHabitIntent(context: Context, item: TodayHabitWidgetItem): Intent {
-    val navigateTo = if (item.isGroup) "group_habit_detail" else "edit_habit"
+    val navigateTo = if (item.isGroup) "group_habit_detail" else "self_habit_detail"
     return Intent(context, MainActivity::class.java).apply {
         flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP
         putExtra("navigate_to", navigateTo)

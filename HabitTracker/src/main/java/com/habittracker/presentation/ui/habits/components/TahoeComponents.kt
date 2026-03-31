@@ -16,7 +16,6 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
-import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -610,6 +609,7 @@ fun GlassmorphicTextField(
     visualTransformation: VisualTransformation = VisualTransformation.None,
     keyboardOptions: KeyboardOptions = KeyboardOptions.Default,
     singleLine: Boolean = true,
+    maxLines: Int = if (singleLine) 1 else Int.MAX_VALUE,
     readOnly: Boolean = false,
     textStyle: TextStyle = LocalTextStyle.current,
 ) {
@@ -627,6 +627,7 @@ fun GlassmorphicTextField(
         keyboardOptions = keyboardOptions,
         colors = colors,
         singleLine = singleLine,
+        maxLines = maxLines,
         shape = RoundedCornerShape(12.dp),
         readOnly = readOnly,
         textStyle = textStyle

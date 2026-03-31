@@ -9,10 +9,15 @@ class ReleaseTree(private val errorLogger: ErrorLogger) : Timber.Tree() {
             return
         }
 
-        errorLogger.logNonFatal("Tag: $tag, Message: $message")
+        // Report only real errors in release; warnings and informational logs are too noisy.
+        if (priority < 6) {
+            return
+        }
 
         if (t != null) {
             errorLogger.logError(t, message)
+        } else {
+            errorLogger.logNonFatal("Tag: $tag, Message: $message")
         }
     }
 }

@@ -2,6 +2,7 @@ package com.habittracker.data.repository
 
 import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.FirebaseFirestore
+import com.google.firebase.firestore.FirebaseFirestoreException
 import com.habittracker.R
 import com.habittracker.data.firestore.UserFirestoreConverter
 import com.habittracker.data.local.dao.FriendRequestDao
@@ -162,8 +163,13 @@ class SocialRepositoryImpl @Inject constructor(
         
             Timber.tag("SocialRepository").d("🎯 After filtering: ${allResults.size} users")
             allResults
-        } catch (e: Exception) {
-            Timber.tag("SocialRepository").e("💥 Firestore search failed: ${e.message}")
+        } catch (e: FirebaseFirestoreException) {
+            // Не логгируем offline-ошибки - это ожидаемое поведение для offline-first приложения
+            if (e.code == FirebaseFirestoreException.Code.UNAVAILABLE) {
+                Timber.tag("SocialRepository").d("searchUsers: device is offline, using local fallback")
+            } else {
+                Timber.tag("SocialRepository").w("Firestore search failed: ${e.code}")
+            }
             
             // Fallback на локальный поиск
             val localResults = userDao.searchUsers("%$queryLower%")
@@ -233,8 +239,16 @@ class SocialRepositoryImpl @Inject constructor(
                 Timber.tag("SocialRepository").w("❌ User not found in Firestore: $userId")
                 null
             }
+        } catch (e: FirebaseFirestoreException) {
+            // Не логгируем offline-ошибки - это ожидаемое поведение для offline-first приложения
+            if (e.code == FirebaseFirestoreException.Code.UNAVAILABLE) {
+                Timber.tag("SocialRepository").d("getUserByIdFromFirestore: device is offline")
+            } else {
+                Timber.tag("SocialRepository").w(e, "getUserByIdFromFirestore failed for userId=$userId: ${e.code}")
+            }
+            null
         } catch (e: Exception) {
-            Timber.tag("SocialRepository").e(e, "❌ getUserByIdFromFirestore failed for userId=$userId")
+            Timber.tag("SocialRepository").w(e, "getUserByIdFromFirestore failed for userId=$userId")
             null
         }
     }

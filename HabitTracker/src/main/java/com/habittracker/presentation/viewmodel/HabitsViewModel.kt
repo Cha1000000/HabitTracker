@@ -71,7 +71,8 @@ data class HabitWithCompletion(
     val isLoading: Boolean = false,
     val participantsProgress: List<ParticipantProgress> = emptyList(), // Прогресс участников для групповых привычек
     val currentValue: Int = 0, // Текущее значение выполнения (для измеримых привычек)
-    val photoUrl: String? = null // URL фото-подтверждения для текущего дня
+    val photoUrl: String? = null, // URL фото-подтверждения для текущего дня
+    val note: String? = null // Заметка для текущего дня
 )
 
 @HiltViewModel
@@ -458,7 +459,8 @@ class HabitsViewModel @Inject constructor(
                                     isLoading = false,
                                     participantsProgress = participantsProgress,
                                     currentValue = currentValue,
-                                    photoUrl = habitEntry?.photoUrl
+                                    photoUrl = habitEntry?.photoUrl,
+                                    note = habitEntry?.note
                                 )
                             }
                         }.awaitAll()
@@ -746,7 +748,8 @@ class HabitsViewModel @Inject constructor(
                 habitTitle = habit.habit.title,
                 habitUnit = habit.habit.unit,
                 date = selectedDate,
-                photoUrl = habit.photoUrl
+                photoUrl = habit.photoUrl,
+                note = habit.note
             )
         )
     }
@@ -796,20 +799,86 @@ class HabitsViewModel @Inject constructor(
                         habitsWithCompletion = updatedHabits,
                         isUploadingPhoto = false,
                         habitForPhotoSheet = photoSheetInfo.copy(photoUrl = cloudUrl),
-                        message = getApplication<Application>().getString(R.string.photo_proof_upload_success)
+                        message = getApplication<Application>().getString(R.string.photo_proof_upload_success),
+                        photoUploadSuccessMessage = getApplication<Application>().getString(R.string.photo_proof_upload_success)
                     )
                 } else {
                     _uiState.value = _uiState.value.copy(
                         isUploadingPhoto = false,
-                        error = getApplication<Application>().getString(R.string.photo_proof_upload_error)
-                    )
-                }
-            } catch (e: Exception) {
+                    error = getApplication<Application>().getString(R.string.photo_proof_upload_error)
+                )
+            }
+        } catch (e: Exception) {
                 Timber.tag(TAG).e(e, "Failed to attach photo")
                 _uiState.value = _uiState.value.copy(
                     isUploadingPhoto = false,
                     error = getApplication<Application>().getString(R.string.photo_proof_upload_error)
                 )
+            }
+        }
+    }
+
+    fun clearPhotoUploadSuccessMessage() {
+        _uiState.value = _uiState.value.copy(photoUploadSuccessMessage = null)
+    }
+
+    /**
+     * Обновляет заметку к записи привычки
+     */
+    fun updateHabitEntryNote(note: String) {
+        val photoSheetInfo = _uiState.value.habitForPhotoSheet ?: return
+        updateHabitEntryNoteForDate(
+            habitId = photoSheetInfo.habitId,
+            date = photoSheetInfo.date,
+            note = note
+        )
+    }
+
+    /**
+     * Обновляет заметку к записи выбранной привычки на текущей выбранной дате (для карточек списка).
+     */
+    fun updateHabitEntryNoteForSelectedDate(habitId: String, note: String) {
+        val selectedDate = _uiState.value.selectedDate ?: today
+        updateHabitEntryNoteForDate(habitId = habitId, date = selectedDate, note = note)
+    }
+
+    private fun updateHabitEntryNoteForDate(habitId: String, date: LocalDate, note: String) {
+        val normalizedNote = note.trim().ifBlank { null }
+        val habitState = _uiState.value.habitsWithCompletion.find { it.habit.id == habitId }
+        
+        viewModelScope.launch {
+            try {
+                val entry = habitEntryRepository.getEntry(habitId, currentUserId, date)
+                if (entry != null) {
+                    habitEntryRepository.updateEntry(entry.copy(note = normalizedNote))
+                } else {
+                    habitEntryRepository.insertEntry(
+                        com.habittracker.domain.model.HabitEntry(
+                            habitId = habitId,
+                            userId = currentUserId,
+                            date = date,
+                            completed = habitState?.isCompletedToday == true,
+                            value = habitState?.currentValue ?: 0,
+                            note = normalizedNote,
+                            photoUrl = habitState?.photoUrl
+                        )
+                    )
+                }
+                val updatedHabits = _uiState.value.habitsWithCompletion.map { hwc ->
+                    if (hwc.habit.id == habitId) hwc.copy(note = normalizedNote) else hwc
+                }
+                val photoSheetInfo = _uiState.value.habitForPhotoSheet
+                _uiState.value = _uiState.value.copy(
+                    habitsWithCompletion = updatedHabits,
+                    habitForPhotoSheet = if (photoSheetInfo?.habitId == habitId && photoSheetInfo.date == date) {
+                        photoSheetInfo.copy(note = normalizedNote)
+                    } else {
+                        photoSheetInfo
+                    },
+                    photoUploadSuccessMessage = getApplication<Application>().getString(R.string.photo_proof_note_success)
+                )
+            } catch (e: Exception) {
+                Timber.tag(TAG).e(e, "Failed to update note")
             }
         }
     }

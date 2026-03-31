@@ -199,9 +199,36 @@ com.habittracker/
    - Откройте проект в Android Studio и запустите на устройстве/эмуляторе;
    - либо используйте Gradle:
 
-     ```bash
-     ./gradlew assembleDebug
-     ```
+   Сборка:
+   
+   ```bash
+   ./gradlew installDebug
+   ```
+
+Очистка и сборка:
+   ```bash
+   ./gradlew clean build --info
+   ```
+
+Сборка с глубоким тестированием:
+   ```bash
+   ./gradlew lint test
+   ```
+
+Проверка работоспособности приложения:
+   ```bash
+   ./gradlew assembleDebug
+   ```
+
+Запуск приложения:
+   ```bash
+   ./gradlew installDebug && adb shell am start -n com.habittracker/.MainActivity
+   ```
+
+Sync
+   ```bash
+   ./gradlew --refresh-dependencies
+   ```
 
 ## Тестирование
 

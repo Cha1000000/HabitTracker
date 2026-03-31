@@ -2,6 +2,7 @@ package com.habittracker.data.repository
 
 import com.google.firebase.firestore.DocumentSnapshot
 import com.google.firebase.firestore.FirebaseFirestore
+import com.google.firebase.firestore.FirebaseFirestoreException
 import com.google.firebase.firestore.Query
 import com.habittracker.data.model.FirebaseHabitEntry
 import com.habittracker.data.model.FirebaseHabitEntry.Companion.toDomain
@@ -21,10 +22,10 @@ import kotlinx.datetime.LocalDate.Companion.parse
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.atStartOfDayIn
 import kotlinx.datetime.toLocalDateTime
+import timber.log.Timber
 import javax.inject.Inject
 import javax.inject.Singleton
 import kotlin.coroutines.resume
-import timber.log.Timber
 
 /**
  * Реализация FirestoreRepository для работы с Firebase Firestore.
@@ -204,9 +205,14 @@ class FirestoreRepositoryImpl @Inject constructor(
         val listener = firestore.collection(HABITS_COLLECTION)
             .addSnapshotListener { snapshot, error ->
                 if (error != null) {
-                    Timber.tag(TAG).e(error, "❌ [getUserHabits] Error getting habits for user: $userId")
-                    Timber.tag(TAG).e("❌ [getUserHabits] Error code: ${error.code}")
-                    Timber.tag(TAG).e("❌ [getUserHabits] Error message: ${error.message}")
+                    // Не логгируем offline-ошибки - это ожидаемое поведение для offline-first приложения
+                    if (error.code == FirebaseFirestoreException.Code.UNAVAILABLE) {
+                        Timber.tag(TAG).d("[getUserHabits] Device is offline, using cached data")
+                    } else {
+                        Timber.tag(TAG).e(error, "❌ [getUserHabits] Error getting habits for user: $userId")
+                        Timber.tag(TAG).e("❌ [getUserHabits] Error code: ${error.code}")
+                        Timber.tag(TAG).e("❌ [getUserHabits] Error message: ${error.message}")
+                    }
                     // При PERMISSION_DENIED (sign out) просто игнорируем, не крашим
                     return@addSnapshotListener
                 }
@@ -249,6 +255,20 @@ class FirestoreRepositoryImpl @Inject constructor(
                 Timber.tag(TAG).d("Habit not found: $habitId")
                 null
             }
+        } catch (e: FirebaseFirestoreException) {
+            // Не логгируем offline-ошибки - это ожидаемое поведение для offline-first приложения
+            if (
+                e.code == FirebaseFirestoreException.Code.UNAVAILABLE ||
+                e.code == FirebaseFirestoreException.Code.PERMISSION_DENIED ||
+                e.code == FirebaseFirestoreException.Code.UNAUTHENTICATED ||
+                e.code == FirebaseFirestoreException.Code.CANCELLED
+            ) {
+                Timber.tag(TAG).d("getHabitById: transient/unauthorized state for habit=$habitId, code=${e.code}")
+                return null
+            } else {
+                Timber.tag(TAG).e(e, "Error getting habit: $habitId, code=${e.code}")
+            }
+            throw e
         } catch (e: Exception) {
             Timber.tag(TAG).e(e, "Error getting habit: $habitId")
             throw e
@@ -265,7 +285,12 @@ class FirestoreRepositoryImpl @Inject constructor(
             .orderBy("date", Query.Direction.DESCENDING)
             .addSnapshotListener { snapshot, error ->
                 if (error != null) {
-                    Timber.tag(TAG).e(error, "Error getting habit entries")
+                    // Не логгируем offline-ошибки - это ожидаемое поведение для offline-first приложения
+                    if (error.code == FirebaseFirestoreException.Code.UNAVAILABLE) {
+                        Timber.tag(TAG).d("[getHabitEntries] Device is offline, using cached data")
+                    } else {
+                        Timber.tag(TAG).e(error, "Error getting habit entries: ${error.code}")
+                    }
                     // При PERMISSION_DENIED (sign out) просто игнорируем
                     return@addSnapshotListener
                 }
@@ -304,6 +329,22 @@ class FirestoreRepositoryImpl @Inject constructor(
         } catch (e: CancellationException) {
             Timber.tag(TAG).d("getHabitEntry cancelled: habit=$habitId user=$userId date=$date")
             throw e
+        } catch (e: FirebaseFirestoreException) {
+            // Не логгируем offline-ошибки - это ожидаемое поведение для offline-first приложения
+            if (
+                e.code == FirebaseFirestoreException.Code.UNAVAILABLE ||
+                e.code == FirebaseFirestoreException.Code.PERMISSION_DENIED ||
+                e.code == FirebaseFirestoreException.Code.UNAUTHENTICATED ||
+                e.code == FirebaseFirestoreException.Code.CANCELLED
+            ) {
+                Timber.tag(TAG).d(
+                    "getHabitEntry: transient/unauthorized state habit=$habitId user=$userId date=$date code=${e.code}"
+                )
+                return null
+            } else {
+                Timber.tag(TAG).e(e, "Error getting habit entry: ${e.code}")
+            }
+            throw e
         } catch (e: Exception) {
             Timber.tag(TAG).e(e, "Error getting habit entry")
             throw e
@@ -340,7 +381,7 @@ class FirestoreRepositoryImpl @Inject constructor(
             @Suppress("UNCHECKED_CAST")
             val reminderDaysRaw: List<Int> = (data["reminderDays"] as? List<*>)?.filterIsInstance<Number>()?.map { it.toInt() } ?: emptyList()
             val notificationsMuted = data["notificationsMuted"] as? Boolean ?: false
-            val seasonStartDate = (data["seasonStartDate"] as? String)?.let { kotlinx.datetime.LocalDate.parse(it) }
+            val seasonStartDate = (data["seasonStartDate"] as? String)?.let { parse(it) }
             val timeZone = data["timeZone"] as? String
             val updatedAt = (data["updatedAt"] as? Number)?.toLong() ?: System.currentTimeMillis()
             HabitParticipantSettings(
@@ -359,6 +400,14 @@ class FirestoreRepositoryImpl @Inject constructor(
         } catch (_: CancellationException) {
             Timber.tag(TAG).d("getParticipantSettings cancelled: habit=$habitId user=$userId")
             null
+        } catch (e: FirebaseFirestoreException) {
+            // Не логгируем offline-ошибки - это ожидаемое поведение для offline-first приложения
+            if (e.code == FirebaseFirestoreException.Code.UNAVAILABLE) {
+                Timber.tag(TAG).d("getParticipantSettings: device is offline, habit=$habitId user=$userId")
+            } else {
+                Timber.tag(TAG).e(e, "Error getParticipantSettings: habit=$habitId user=$userId, code=${e.code}")
+            }
+            null
         } catch (e: Exception) {
             Timber.tag(TAG).e(e, "Error getParticipantSettings: habit=$habitId user=$userId")
             null
@@ -375,7 +424,12 @@ class FirestoreRepositoryImpl @Inject constructor(
 
             val listener = query.addSnapshotListener { snapshot, error ->
                 if (error != null) {
-                    Timber.tag(TAG).e(error, "Error getting public habits")
+                    // Не логгируем offline-ошибки - это ожидаемое поведение для offline-first приложения
+                    if (error.code == FirebaseFirestoreException.Code.UNAVAILABLE) {
+                        Timber.tag(TAG).d("[getAllPublicHabits] Device is offline, using cached data")
+                    } else {
+                        Timber.tag(TAG).e(error, "Error getting public habits: ${error.code}")
+                    }
                     trySend(emptyList())
                     return@addSnapshotListener
                 }
@@ -427,7 +481,12 @@ class FirestoreRepositoryImpl @Inject constructor(
                 continuation.resume(habit)
             }
             .addOnFailureListener { exception ->
-                Timber.tag(TAG).e(exception, "❌ [getHabitByInviteCode] Error searching for habit")
+                // Не логгируем offline-ошибки - это ожидаемое поведение для offline-first приложения
+                if (exception is FirebaseFirestoreException && exception.code == FirebaseFirestoreException.Code.UNAVAILABLE) {
+                    Timber.tag(TAG).d("[getHabitByInviteCode] Device is offline")
+                } else {
+                    Timber.tag(TAG).e(exception, "❌ [getHabitByInviteCode] Error searching for habit")
+                }
                 continuation.resume(null)
             }
     }

@@ -18,6 +18,8 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -32,18 +34,23 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.navigation.NavController
 import com.habittracker.BuildConfig
 import com.habittracker.R
 import com.habittracker.presentation.navigation.Screen
 import com.habittracker.presentation.ui.habits.components.TahoeGradientBackground
+import com.habittracker.presentation.viewmodel.AuthState
+import com.habittracker.presentation.viewmodel.AuthViewModel
 import kotlinx.coroutines.delay
 
 @Composable
 fun SplashScreen(
-    navController: NavController
+    navController: NavController,
+    viewModel: AuthViewModel = hiltViewModel()
 ) {
     val isDarkTheme = isSystemInDarkTheme()
+    val authState by viewModel.authState.collectAsState()
     
     // Анимация появления логотипа
     val logoScale = remember { Animatable(0f) }
@@ -81,10 +88,23 @@ fun SplashScreen(
             animationSpec = tween(800)
         )
         
-        // Переход на экран логина
+        // Ждем завершения анимации, затем проверяем аутентификацию
         delay(2000)
-        navController.navigate(Screen.Login.route) {
-            popUpTo(Screen.Splash.route) { inclusive = true }
+        
+        // Определяем, куда переходить в зависимости от состояния аутентификации
+        when (authState) {
+            is AuthState.Success -> {
+                // Если пользователь уже вошел, переходим на главный экран
+                navController.navigate(Screen.Habits.route) {
+                    popUpTo(Screen.Splash.route) { inclusive = true }
+                }
+            }
+            else -> {
+                // Если пользователь не вошел, переходим на экран логина
+                navController.navigate(Screen.Login.route) {
+                    popUpTo(Screen.Splash.route) { inclusive = true }
+                }
+            }
         }
     }
     

@@ -36,6 +36,7 @@ import androidx.compose.material3.SnackbarResult
 import androidx.compose.material3.SwipeToDismissBox
 import androidx.compose.material3.SwipeToDismissBoxValue
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.rememberSwipeToDismissBoxState
@@ -82,7 +83,9 @@ import com.habittracker.presentation.ui.components.UserAvatar
 import com.habittracker.presentation.ui.habits.components.ConfirmDialog
 import com.habittracker.presentation.ui.habits.components.EnhancedHabitItem
 import com.habittracker.presentation.ui.habits.components.ExpandableFAB
+import com.habittracker.presentation.ui.habits.components.GlassmorphicDialog
 import com.habittracker.presentation.ui.habits.components.GlassmorphicSectionHeader
+import com.habittracker.presentation.ui.habits.components.GlassmorphicTextField
 import com.habittracker.presentation.ui.habits.components.HabitEntryDetailSheet
 import com.habittracker.presentation.ui.habits.components.HabitTypeSelectionDialog
 import com.habittracker.presentation.ui.habits.components.HabitValueInputDialog
@@ -355,7 +358,7 @@ fun HabitsScreen(
                 TahoeDockItem(
                     icon = TahoeIcons.ChartBar,
                     label = stringResource(R.string.cd_stats),
-                    onClick = { navController.navigate(Screen.Stats.route) },
+                    onClick = { navController.navigate(Screen.Stats.createRoute()) },
                     selected = false
                 )
 
@@ -365,7 +368,7 @@ fun HabitsScreen(
                 TahoeDockItem(
                     icon = TahoeIcons.Trophy,
                     label = stringResource(R.string.cd_achievements),
-                    onClick = { navController.navigate(Screen.Achievements.route) },
+                    onClick = { navController.navigate(Screen.Achievements.createRoute()) },
                     selected = false
                 )
 
@@ -521,6 +524,7 @@ fun HabitsScreen(
                                             HabitItemRow(
                                                 habitWithCompletion = habitWithCompletion,
                                                 isFutureDate = isFutureDate,
+                                                selectedDate = selectedDate,
                                                 navController = navController,
                                                 viewModel = viewModel,
                                                 scope = scope,
@@ -580,19 +584,22 @@ fun HabitsScreen(
                     date = photoSheetInfo.date,
                     completed = true,
                     value = 0,
-                    note = null,
                     isRestDay = false,
                     streakBonusAwardedDays = null,
                     completedAt = null,
-                    photoUrl = photoSheetInfo.photoUrl
+                    photoUrl = photoSheetInfo.photoUrl,
+                    note = photoSheetInfo.note
                 ),
                 date = photoSheetInfo.date,
                 habitTitle = photoSheetInfo.habitTitle,
                 habitUnit = photoSheetInfo.habitUnit,
                 isUploading = uiState.isUploadingPhoto,
+                successMessage = uiState.photoUploadSuccessMessage,
                 onDismiss = { viewModel.hidePhotoSheet() },
                 onAddPhoto = { uri -> viewModel.attachPhoto(uri) },
-                onDeletePhoto = { viewModel.deletePhoto() }
+                onDeletePhoto = { viewModel.deletePhoto() },
+                onSaveComment = { note -> viewModel.updateHabitEntryNote(note) },
+                onSuccessMessageShown = { viewModel.clearPhotoUploadSuccessMessage() }
             )
         }
     }
@@ -621,6 +628,7 @@ private fun HabitSectionHeader(
 private fun HabitItemRow(
     habitWithCompletion: HabitWithCompletion,
     isFutureDate: Boolean,
+    selectedDate: kotlinx.datetime.LocalDate,
     navController: NavController,
     viewModel: HabitsViewModel,
     scope: kotlinx.coroutines.CoroutineScope,
@@ -630,6 +638,10 @@ private fun HabitItemRow(
     recomposeKey: Int
 ) {
     var showDeleteDialog by remember { mutableStateOf(false) }
+    var showEditNoteDialog by remember { mutableStateOf(false) }
+    var editableNote by remember(habitWithCompletion.habit.id, habitWithCompletion.note) {
+        mutableStateOf(habitWithCompletion.note.orEmpty())
+    }
     @Suppress("DEPRECATION")
     val dismissState = rememberSwipeToDismissBoxState(
         confirmValueChange = { value ->
@@ -677,10 +689,24 @@ private fun HabitItemRow(
             EnhancedHabitItem(
                 habitWithCompletion = habitWithCompletion,
                 onHabitClick = { habit ->
-                    if (habit.habit.isGroupHabit()) {
-                        navController.navigate(Screen.GroupHabitDetail.createRoute(habit.habit.id))
-                    } else {
+                    if (isFutureDate) {
                         navController.navigate(Screen.AddEditHabit.route + "?habitId=${habit.habit.id}")
+                        return@EnhancedHabitItem
+                    }
+                    if (habit.habit.isGroupHabit()) {
+                        navController.navigate(
+                            Screen.GroupHabitDetail.createRoute(
+                                habitId = habit.habit.id,
+                                selectedDate = selectedDate
+                            )
+                        )
+                    } else {
+                        navController.navigate(
+                            Screen.SelfHabitDetail.createRoute(
+                                habitId = habit.habit.id,
+                                selectedDate = selectedDate
+                            )
+                        )
                     }
                 },
                 onToggleCompletion = {
@@ -697,6 +723,10 @@ private fun HabitItemRow(
                 },
                 onAddPhoto = { habit ->
                     viewModel.showPhotoSheet(habit.habit.id)
+                },
+                onNoteClick = { habit ->
+                    editableNote = habit.note.orEmpty()
+                    showEditNoteDialog = true
                 },
                 isFutureDate = isFutureDate
             )
@@ -726,6 +756,59 @@ private fun HabitItemRow(
                 }
             },
             onDismiss = { showDeleteDialog = false }
+        )
+    }
+
+    if (showEditNoteDialog) {
+        GlassmorphicDialog(
+            onDismissRequest = { showEditNoteDialog = false },
+            title = {
+                Text(
+                    text = stringResource(id = R.string.habit_note_edit_title),
+                    style = MaterialTheme.typography.titleMedium
+                )
+            },
+            content = {
+                GlassmorphicTextField(
+                    value = editableNote,
+                    onValueChange = { editableNote = it },
+                    modifier = Modifier.fillMaxWidth(),
+                    singleLine = false,
+                    maxLines = 4,
+                    placeholder = { Text(text = stringResource(id = R.string.photo_proof_note_placeholder)) }
+                )
+            },
+            actions = {
+                TextButton(onClick = { showEditNoteDialog = false }) {
+                    Text(text = stringResource(id = R.string.cancel))
+                }
+                TextButton(
+                    onClick = {
+                        viewModel.updateHabitEntryNoteForSelectedDate(
+                            habitId = habitWithCompletion.habit.id,
+                            note = editableNote
+                        )
+                        showEditNoteDialog = false
+                    }
+                ) {
+                    Text(text = stringResource(id = R.string.save))
+                }
+                TextButton(
+                    onClick = {
+                        editableNote = ""
+                        viewModel.updateHabitEntryNoteForSelectedDate(
+                            habitId = habitWithCompletion.habit.id,
+                            note = ""
+                        )
+                        showEditNoteDialog = false
+                    }
+                ) {
+                    Text(
+                        text = stringResource(id = R.string.delete),
+                        color = MaterialTheme.colorScheme.error
+                    )
+                }
+            }
         )
     }
 }
