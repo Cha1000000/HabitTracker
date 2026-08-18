@@ -3,7 +3,7 @@
 ## Role Routing Rules
 
 When handling tasks, apply role routing and skill mapping from:
-`/Users/racerkafa/Documents/MyProjects/Android/Compose/HabitTracker/.agents/roles/Roles.md`
+`.agents/roles/Roles.md` (path relative to the repository root)
 
 If the user explicitly asks for a role or names specific skills, that explicit instruction overrides automatic routing.
 
@@ -86,3 +86,24 @@ The app uses a strict **Room-First** approach.
 *   **Icons:** The app uses a mix of Material Icons and custom "Tahoe" icons (xml vectors).
 *   **Time:** Uses `java.time` (LocalDate, etc.) and `kotlinx-datetime`.
 *   **Secrets:** Never commit keys. Use `local.properties`.
+
+## 9. Second-brain sync (start & end of session)
+
+Vladimir keeps a **knowledge card** for this project in his Obsidian "second brain" (an LLM Wiki
+in the spirit of Karpathy), **outside this repo**:
+
+- CachyOS: `~/YandexDisk/Obsidian/My Vault/projects/Habit Tracker.md`
+- Other OSes (macOS/Windows): the vault path differs — confirm with Vladimir or check the vault's
+  `reference/Рабочие репозитории.md` registry.
+
+**At the START of a session:** read that card first to recover prior context (past decisions,
+what was done, open questions, working rules). Reading is read-only. If the path doesn't exist
+(different OS / not synced), ask Vladimir for the vault path; don't block the work.
+
+**At the END of a session:** proactively **ask** whether to record the outcome into the card.
+If yes, append to `## Решения и заметки` (newest on top, dated), **in Russian**: 1–3 line summary
+— what changed, key decisions, version/branch, follow-ups; add `[[wiki-links]]`, bump `updated:`.
+Editing means writing to an absolute path (request permission). **Never** commit the card edit
+into this repo's git — it belongs to the vault (synced by Yandex.Disk).
+
+Reminder: **do not commit or push** until Vladimir has verified the build locally and approved.
