@@ -55,7 +55,9 @@ import com.habittracker.data.local.entity.UserEntity
         GroupHabitNotificationEntity::class
     ],
     version = 18,
-    exportSchema = false
+    // Схемы экспортируются в HabitTracker/schemas (см. ksp.arg("room.schemaLocation")).
+    // Нужны как эталон структуры БД для проверки миграций.
+    exportSchema = true
 )
 @TypeConverters(Converters::class)
 abstract class HabitTrackerDatabase : RoomDatabase() {
