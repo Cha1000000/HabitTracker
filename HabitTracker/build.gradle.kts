@@ -31,6 +31,33 @@ ksp {
 // Единый источник versionName для использования и в defaultConfig, и в имени APK
 val appVersionName = "1.5.10"
 
+// Release signing via local.properties or environment variables
+val releaseStoreFile = localProperties.getProperty("RELEASE_STORE_FILE") ?: System.getenv("RELEASE_STORE_FILE")
+val releaseStorePassword = localProperties.getProperty("RELEASE_STORE_PASSWORD") ?: System.getenv("RELEASE_STORE_PASSWORD")
+val releaseKeyAlias = localProperties.getProperty("RELEASE_KEY_ALIAS") ?: System.getenv("RELEASE_KEY_ALIAS")
+val releaseKeyPassword = localProperties.getProperty("RELEASE_KEY_PASSWORD") ?: System.getenv("RELEASE_KEY_PASSWORD")
+// Resolve keystore path robustly (supports absolute and relative to root/app)
+val resolvedStoreFile = run {
+    if (releaseStoreFile.isNullOrBlank()) null else {
+        val candidates = listOf(
+            // As provided
+            file(releaseStoreFile),
+            // Relative to app module
+            File(projectDir, releaseStoreFile),
+            // Relative to root project
+            File(rootProject.projectDir, releaseStoreFile),
+            // If mistakenly starts with '/', try trimming it relative to root and app
+            File(rootProject.projectDir, releaseStoreFile.removePrefix("/")),
+            File(projectDir, releaseStoreFile.removePrefix("/"))
+        )
+        candidates.firstOrNull { it.exists() }
+    }
+}
+val hasReleaseSigning = resolvedStoreFile != null &&
+        !releaseStorePassword.isNullOrBlank() &&
+        !releaseKeyAlias.isNullOrBlank() &&
+        !releaseKeyPassword.isNullOrBlank()
+
 android {
     namespace = "com.habittracker"
     compileSdk = 36
@@ -65,42 +92,17 @@ android {
         buildConfigField("String", "APPMETRICA_API_KEY", "\"$appmetricaApiKey\"")
     }
 
-    // Release signing via local.properties or environment variables
-    val releaseStoreFile = localProperties.getProperty("RELEASE_STORE_FILE") ?: System.getenv("RELEASE_STORE_FILE")
-    val releaseStorePassword = localProperties.getProperty("RELEASE_STORE_PASSWORD") ?: System.getenv("RELEASE_STORE_PASSWORD")
-    val releaseKeyAlias = localProperties.getProperty("RELEASE_KEY_ALIAS") ?: System.getenv("RELEASE_KEY_ALIAS")
-    val releaseKeyPassword = localProperties.getProperty("RELEASE_KEY_PASSWORD") ?: System.getenv("RELEASE_KEY_PASSWORD")
-    // Resolve keystore path robustly (supports absolute and relative to root/app)
-    val resolvedStoreFile = run {
-        if (releaseStoreFile.isNullOrBlank()) null else {
-            val candidates = listOf(
-                // As provided
-                file(releaseStoreFile),
-                // Relative to app module
-                File(projectDir, releaseStoreFile),
-                // Relative to root project
-                File(rootProject.projectDir, releaseStoreFile),
-                // If mistakenly starts with '/', try trimming it relative to root and app
-                File(rootProject.projectDir, releaseStoreFile.removePrefix("/")),
-                File(projectDir, releaseStoreFile.removePrefix("/"))
-            )
-            candidates.firstOrNull { it.exists() }
-        }
-    }
-    val hasReleaseSigning = resolvedStoreFile != null &&
-            !releaseStorePassword.isNullOrBlank() &&
-            !releaseKeyAlias.isNullOrBlank() &&
-            !releaseKeyPassword.isNullOrBlank()
-
+    // Конфиг подписи создаём только если ключи реально настроены.
+    // Иначе debug-сборка падала бы на этапе конфигурации на машине без keystore
+    // (блок signingConfigs выполняется всегда, независимо от собираемого варианта).
     signingConfigs {
-        create("release") {
-            if (!hasReleaseSigning) {
-                throw GradleException("Release signing is not configured. Please set RELEASE_* in local.properties or env and ensure keystore path is correct.")
+        if (hasReleaseSigning) {
+            create("release") {
+                storeFile = resolvedStoreFile
+                storePassword = releaseStorePassword
+                keyAlias = releaseKeyAlias
+                keyPassword = releaseKeyPassword
             }
-            storeFile = resolvedStoreFile
-            storePassword = releaseStorePassword
-            keyAlias = releaseKeyAlias
-            keyPassword = releaseKeyPassword
         }
     }
 
@@ -116,8 +118,8 @@ android {
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
-            // Strictly use release signing
-            signingConfig = signingConfigs.getByName("release")
+            // Strictly use release signing (проверка наличия — в gradle.taskGraph ниже)
+            signingConfig = signingConfigs.findByName("release")
         }
     }
 
@@ -172,6 +174,22 @@ android {
                 val newName = "HabitTracker-${variant.name}-${variant.versionName}-${dateStr}.apk"
                 output.outputFileName = newName
             }
+    }
+}
+
+// Release-подпись обязательна, но ругаемся только когда release реально собирается,
+// а не на каждой конфигурации проекта. Так debug собирается на машине без keystore.
+if (!hasReleaseSigning) {
+    gradle.taskGraph.whenReady {
+        val needsReleaseSigning = allTasks.any { task ->
+            task.project == project &&
+                    Regex("^(assemble|bundle|package|install)Release$").matches(task.name)
+        }
+        if (needsReleaseSigning) {
+            throw GradleException(
+                "Release signing is not configured. Please set RELEASE_* in local.properties or env and ensure keystore path is correct."
+            )
+        }
     }
 }
 
