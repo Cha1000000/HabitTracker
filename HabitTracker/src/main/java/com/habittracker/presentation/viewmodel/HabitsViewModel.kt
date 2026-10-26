@@ -49,11 +49,12 @@ import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.launch
-import kotlinx.datetime.Clock
+import kotlin.time.Clock
 import kotlinx.datetime.DateTimeUnit
 import kotlinx.datetime.DayOfWeek
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.TimeZone
+import kotlinx.datetime.isoDayNumber
 import kotlinx.datetime.minus
 import kotlinx.datetime.plus
 import kotlinx.datetime.toLocalDateTime
@@ -401,7 +402,7 @@ class HabitsViewModel @Inject constructor(
                                     append("|")
                                     append(habit.reminderTime?.toString() ?: "null")
                                     append("|")
-                                    append(habit.reminderDays.sortedBy { it.value }.joinToString(","))
+                                    append(habit.reminderDays.sortedBy { it.isoDayNumber }.joinToString(","))
                                     append("|")
                                     append(habit.frequency.name)
                                     append("|")

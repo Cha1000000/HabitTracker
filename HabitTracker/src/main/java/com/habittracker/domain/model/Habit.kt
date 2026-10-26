@@ -1,7 +1,7 @@
 package com.habittracker.domain.model
 
 import com.google.firebase.firestore.PropertyName
-import kotlinx.datetime.Clock
+import kotlin.time.Clock
 import kotlinx.datetime.DayOfWeek
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.LocalTime

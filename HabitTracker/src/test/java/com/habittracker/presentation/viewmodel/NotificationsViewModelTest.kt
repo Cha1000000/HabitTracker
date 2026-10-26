@@ -1,5 +1,5 @@
 package com.habittracker.presentation.viewmodel
-import kotlinx.datetime.Clock
+import kotlin.time.Clock
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toLocalDateTime
 

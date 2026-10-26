@@ -106,6 +106,7 @@ import com.habittracker.presentation.viewmodel.AddEditHabitViewModel
 import com.habittracker.presentation.viewmodel.IAddEditHabitViewModel
 import kotlinx.datetime.DayOfWeek
 import kotlinx.datetime.LocalTime
+import kotlinx.datetime.isoDayNumber
 import kotlinx.datetime.toLocalDateTime
 
 
@@ -1349,7 +1350,7 @@ fun AddEditHabitScreen(
                                 label = stringResource(R.string.habit_end_date_label),
                                 placeholder = stringResource(R.string.habit_end_date_placeholder),
                                 isEnabled = true,
-                                minDate = uiState.startDate ?: kotlinx.datetime.Clock.System.now()
+                                minDate = uiState.startDate ?: kotlin.time.Clock.System.now()
                                     .toLocalDateTime(kotlinx.datetime.TimeZone.currentSystemDefault())
                                     .date,
                                 modifier = Modifier.fillMaxWidth()
@@ -1431,7 +1432,7 @@ fun AddEditHabitScreen(
                                                             )
                                                         }
                                                         val daysText = uiState.reminderDaysInput
-                                                            .sortedBy { it.value }
+                                                            .sortedBy { it.isoDayNumber }
                                                             .joinToString(", ") { day ->
                                                                 dayNames[day] ?: ""
                                                             }

@@ -5,7 +5,7 @@ import com.habittracker.data.sync.SyncWorkScheduler
 import com.habittracker.domain.model.Habit
 import com.habittracker.domain.model.HabitType
 import com.habittracker.domain.repository.HabitRepository
-import kotlinx.datetime.Clock
+import kotlin.time.Clock
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toLocalDateTime
 import javax.inject.Inject

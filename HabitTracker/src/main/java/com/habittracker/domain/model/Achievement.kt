@@ -3,7 +3,7 @@ package com.habittracker.domain.model
 import androidx.annotation.StringRes
 import androidx.room.Entity
 import androidx.room.PrimaryKey
-import kotlinx.datetime.Instant
+import kotlin.time.Instant
 
 /**
  * Модель достижения

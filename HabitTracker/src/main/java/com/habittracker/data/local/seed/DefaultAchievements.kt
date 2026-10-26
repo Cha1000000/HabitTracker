@@ -2,7 +2,7 @@ package com.habittracker.data.local.seed
 
 import com.habittracker.R
 import com.habittracker.data.local.entity.AchievementEntity
-import kotlinx.datetime.Clock
+import kotlin.time.Clock
 
 /**
  * Список всех достижений приложения.

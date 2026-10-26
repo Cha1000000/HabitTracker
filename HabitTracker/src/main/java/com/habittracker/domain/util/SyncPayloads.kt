@@ -12,8 +12,9 @@ import com.habittracker.domain.model.HabitEntry
 import com.habittracker.domain.model.HabitInvitation
 import com.habittracker.domain.model.HabitParticipantSettings
 import com.habittracker.domain.model.User
-import kotlinx.datetime.Instant
+import kotlin.time.Instant
 import kotlinx.datetime.TimeZone
+import kotlinx.datetime.isoDayNumber
 import kotlinx.datetime.toLocalDateTime
 
 object SyncPayloads {
@@ -26,7 +27,7 @@ object SyncPayloads {
                 put("reminderTime", mapOf("hour" to settings.reminderTime.hour, "minute" to settings.reminderTime.minute))
             }
             if (settings.reminderDays.isNotEmpty()) {
-                put("reminderDays", settings.reminderDays.map { it.value })
+                put("reminderDays", settings.reminderDays.map { it.isoDayNumber })
             }
             put("notificationsMuted", settings.notificationsMuted)
             settings.seasonStartDate?.let { put("seasonStartDate", it.toString()) }
@@ -53,7 +54,7 @@ object SyncPayloads {
                 put("reminderTime", mapOf("hour" to rt.hour, "minute" to rt.minute))
             }
             if (habit.reminderDays.isNotEmpty()) {
-                put("reminderDays", habit.reminderDays.map { it.value })
+                put("reminderDays", habit.reminderDays.map { it.isoDayNumber })
             }
             
             put("targetValue", habit.targetValue)

@@ -22,7 +22,7 @@ import com.habittracker.domain.repository.HabitRepository
 import com.habittracker.domain.repository.SocialRepository
 import com.habittracker.domain.repository.UserRepository
 import kotlinx.coroutines.flow.firstOrNull
-import kotlinx.datetime.Clock
+import kotlin.time.Clock
 import kotlinx.datetime.DateTimeUnit
 import kotlinx.datetime.DayOfWeek
 import kotlinx.datetime.LocalDate

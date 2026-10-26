@@ -3,7 +3,7 @@ package com.habittracker.presentation.widget
 import android.content.Context
 import dagger.hilt.android.EntryPointAccessors
 import kotlinx.coroutines.flow.firstOrNull
-import kotlinx.datetime.Clock
+import kotlin.time.Clock
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toLocalDateTime
 import com.habittracker.domain.model.isGroupHabit

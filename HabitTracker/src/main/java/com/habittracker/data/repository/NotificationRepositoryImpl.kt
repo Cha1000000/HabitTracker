@@ -5,8 +5,8 @@ import com.habittracker.data.local.entity.NotificationReadStatusEntity
 import com.habittracker.domain.repository.NotificationRepository
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
-import kotlinx.datetime.Clock
-import kotlinx.datetime.Instant
+import kotlin.time.Clock
+import kotlin.time.Instant
 import javax.inject.Inject
 import javax.inject.Singleton
 

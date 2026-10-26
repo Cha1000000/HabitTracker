@@ -3,6 +3,7 @@ package com.habittracker.data.local.mappers
 import com.habittracker.data.local.entity.HabitParticipantSettingsEntity
 import com.habittracker.domain.model.HabitParticipantSettings
 import kotlinx.datetime.DayOfWeek
+import kotlinx.datetime.isoDayNumber
 
 fun HabitParticipantSettingsEntity.toDomain(): HabitParticipantSettings = HabitParticipantSettings(
     habitId = habitId,
@@ -10,7 +11,7 @@ fun HabitParticipantSettingsEntity.toDomain(): HabitParticipantSettings = HabitP
     reminderTime = reminderTime,
     reminderEnabled = reminderEnabled,
     reminderDays = reminderDays.mapNotNull { d ->
-        DayOfWeek.entries.firstOrNull { it.value == d }
+        DayOfWeek.entries.firstOrNull { it.isoDayNumber == d }
     }.toSet(),
     notificationsMuted = notificationsMuted,
     personalEndDate = personalEndDate,
@@ -25,7 +26,7 @@ fun HabitParticipantSettings.toEntity(): HabitParticipantSettingsEntity = HabitP
     userId = userId,
     reminderTime = reminderTime,
     reminderEnabled = reminderEnabled,
-    reminderDays = reminderDays.map { it.value },
+    reminderDays = reminderDays.map { it.isoDayNumber },
     notificationsMuted = notificationsMuted,
     personalEndDate = personalEndDate,
     seasonStartDate = seasonStartDate,

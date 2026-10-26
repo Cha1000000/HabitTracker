@@ -1,7 +1,7 @@
 package com.habittracker.domain.repository
 
 import kotlinx.coroutines.flow.Flow
-import kotlinx.datetime.Instant
+import kotlin.time.Instant
 
 /**
  * Репозиторий для управления статусами уведомлений

@@ -6,7 +6,6 @@ import java.util.Properties
 
 plugins {
     alias(libs.plugins.android.application)
-    alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.ksp)
     alias(libs.plugins.hilt.android)
     alias(libs.plugins.kotlin.serialization)
@@ -60,7 +59,7 @@ val hasReleaseSigning = resolvedStoreFile != null &&
 
 android {
     namespace = "com.habittracker"
-    compileSdk = 36
+    compileSdk = 37
 
     defaultConfig {
         applicationId = "com.habittracker"
@@ -126,15 +125,13 @@ android {
     buildFeatures {
         compose = true
         buildConfig = true
+        resValues = true
     }
 
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
         isCoreLibraryDesugaringEnabled = true
-    }
-    kotlinOptions {
-        jvmTarget = "17"
     }
     //@Suppress("UnstableApiUsage")
     testOptions {
@@ -162,17 +159,18 @@ android {
             excludes += "/META-INF/INDEX.LIST"
         }
     }
+}
 
-    // Правильное переименование APK через Variant API
-    // Это гарантирует, что IDE и Gradle знают правильный путь к файлу для установки
-    applicationVariants.all {
-        val variant = this
+// Правильное переименование APK через Variant API
+// Это гарантирует, что IDE и Gradle знают правильный путь к файлу для установки
+androidComponents {
+    onVariants { variant ->
+        val dateStr = SimpleDateFormat("yyyyMMdd").format(Date())
+        // outputFileName есть только во внутреннем VariantOutputImpl — явный каст, чтобы при смене API сборка упала, а не молча оставила дефолтное имя
         variant.outputs
-            .map { it as com.android.build.gradle.internal.api.BaseVariantOutputImpl }
+            .map { it as com.android.build.api.variant.impl.VariantOutputImpl }
             .forEach { output ->
-                val dateStr = SimpleDateFormat("yyyyMMdd").format(Date())
-                val newName = "HabitTracker-${variant.name}-${variant.versionName}-${dateStr}.apk"
-                output.outputFileName = newName
+                output.outputFileName.set("HabitTracker-${variant.name}-${output.versionName.orNull}-${dateStr}.apk")
             }
     }
 }
@@ -265,9 +263,6 @@ dependencies {
     
     // ExifInterface для корректной ориентации фото
     implementation(libs.androidx.exifinterface)
-    
-    // FlowLayout from Accompanist
-    implementation(libs.accompanist.flowlayout)
     
     // Konfetti (Confetti animations)
     implementation(libs.konfetti.compose)
