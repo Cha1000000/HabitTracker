@@ -70,3 +70,4 @@ HabitTracker/*firebase-adminsdk*.json
 .niuma-local/last_response.md
 .niuma-local/stats.json
 .niuma-local/history/*
+/mcp_audit.db

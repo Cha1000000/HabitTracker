@@ -13,7 +13,7 @@ import com.habittracker.presentation.ui.components.AchievementToastData
 import com.habittracker.domain.util.AnalyticsEvents
 import com.habittracker.domain.util.AnalyticsManager
 import kotlinx.coroutines.flow.firstOrNull
-import kotlinx.datetime.Clock
+import kotlin.time.Clock
 import java.util.UUID
 import javax.inject.Inject
 import timber.log.Timber

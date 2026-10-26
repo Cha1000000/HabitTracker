@@ -122,11 +122,12 @@ import com.habittracker.presentation.ui.theme.TahoeLightPurpleAccent
 import com.habittracker.presentation.ui.theme.TahoeMidnightBlue
 import com.habittracker.presentation.ui.theme.TahoeRoyalBlue
 import com.habittracker.presentation.ui.theme.TahoeSkyBlue
-import kotlinx.datetime.Clock
+import kotlin.time.Clock
 import kotlinx.datetime.DayOfWeek
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.Month
 import kotlinx.datetime.TimeZone
+import kotlinx.datetime.isoDayNumber
 import kotlinx.datetime.toLocalDateTime
 import java.time.LocalDate.of
 import java.time.format.DateTimeFormatter
@@ -1909,7 +1910,7 @@ private fun TahoeCalendarGrid(
             LocalDate(year, month, day)
         }
 
-        val daysFromPreviousMonth = firstDay.dayOfWeek.value - 1
+        val daysFromPreviousMonth = firstDay.dayOfWeek.isoDayNumber - 1
         
         buildList {
             // Пустые ячейки для выравнивания

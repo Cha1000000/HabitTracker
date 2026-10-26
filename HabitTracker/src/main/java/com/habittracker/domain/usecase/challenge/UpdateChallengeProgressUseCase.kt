@@ -11,7 +11,7 @@ import com.habittracker.domain.repository.HabitEntryRepository
 import com.habittracker.domain.repository.SocialRepository
 import com.habittracker.domain.util.AnalyticsEvents
 import com.habittracker.domain.util.AnalyticsManager
-import kotlinx.datetime.Clock
+import kotlin.time.Clock
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toLocalDateTime
 import kotlinx.datetime.todayIn

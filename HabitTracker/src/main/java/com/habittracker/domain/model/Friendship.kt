@@ -1,7 +1,7 @@
 package com.habittracker.domain.model
 
 import androidx.room.Entity
-import kotlinx.datetime.Clock
+import kotlin.time.Clock
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.LocalDateTime
 import kotlinx.datetime.TimeZone

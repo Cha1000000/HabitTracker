@@ -2,7 +2,7 @@ package com.habittracker.data.model
 
 import com.google.firebase.firestore.PropertyName
 import com.habittracker.domain.model.HabitEntry
-import kotlinx.datetime.Clock
+import kotlin.time.Clock
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.LocalDateTime
 import kotlinx.datetime.TimeZone

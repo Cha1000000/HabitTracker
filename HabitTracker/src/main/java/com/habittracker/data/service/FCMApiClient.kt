@@ -83,7 +83,7 @@ class FCMApiClient @Inject constructor() {
                 .createScoped(listOf(FCM_SCOPE))
             
             credentials.refreshIfExpired()
-            credentials.accessToken.tokenValue
+            checkNotNull(credentials.accessToken) { "OAuth access token не получен" }.tokenValue
         } catch (e: Exception) {
             Timber.tag(TAG).e(e, "Ошибка получения access token")
             throw e

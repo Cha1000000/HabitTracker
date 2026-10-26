@@ -19,7 +19,7 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.onStart
 import kotlinx.coroutines.launch
-import kotlinx.datetime.Clock
+import kotlin.time.Clock
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toLocalDateTime
 import javax.inject.Inject
@@ -72,7 +72,7 @@ class HabitRepositoryImpl @Inject constructor(
         val now = Clock.System.now().toEpochMilliseconds()
         val updated = habit.copy(
             updatedAtMillis = now,
-            updatedAt = kotlinx.datetime.Instant.fromEpochMilliseconds(now)
+            updatedAt = kotlin.time.Instant.fromEpochMilliseconds(now)
                 .toLocalDateTime(TimeZone.currentSystemDefault()).date,
             deletedAtMillis = null
         )
@@ -100,7 +100,7 @@ class HabitRepositoryImpl @Inject constructor(
         val now = Clock.System.now().toEpochMilliseconds()
         val updated = habit.copy(
             updatedAtMillis = now,
-            updatedAt = kotlinx.datetime.Instant.fromEpochMilliseconds(now)
+            updatedAt = kotlin.time.Instant.fromEpochMilliseconds(now)
                 .toLocalDateTime(TimeZone.currentSystemDefault()).date
         )
         // 1. Local update
@@ -192,7 +192,7 @@ class HabitRepositoryImpl @Inject constructor(
         val updatedHabit = baseHabit.copy(
             participants = participants,
             updatedAtMillis = updatedAt,
-            updatedAt = kotlinx.datetime.Instant.fromEpochMilliseconds(updatedAt)
+            updatedAt = kotlin.time.Instant.fromEpochMilliseconds(updatedAt)
                 .toLocalDateTime(TimeZone.currentSystemDefault()).date
         )
 
@@ -229,7 +229,7 @@ class HabitRepositoryImpl @Inject constructor(
         val updatedHabit = baseHabit.copy(
             participants = participants,
             updatedAtMillis = updatedAt,
-            updatedAt = kotlinx.datetime.Instant.fromEpochMilliseconds(updatedAt)
+            updatedAt = kotlin.time.Instant.fromEpochMilliseconds(updatedAt)
                 .toLocalDateTime(TimeZone.currentSystemDefault()).date
         )
 

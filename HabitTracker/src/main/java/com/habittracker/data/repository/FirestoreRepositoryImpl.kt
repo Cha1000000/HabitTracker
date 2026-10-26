@@ -16,11 +16,12 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.tasks.await
-import kotlinx.datetime.Clock
+import kotlin.time.Clock
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.LocalDate.Companion.parse
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.atStartOfDayIn
+import kotlinx.datetime.isoDayNumber
 import kotlinx.datetime.toLocalDateTime
 import timber.log.Timber
 import javax.inject.Inject
@@ -171,7 +172,7 @@ class FirestoreRepositoryImpl @Inject constructor(
                 reminderTime = reminderTime,
                 reminderEnabled = reminderEnabled,
                 reminderDays = reminderDaysRaw.mapNotNull { d ->
-                    kotlinx.datetime.DayOfWeek.entries.firstOrNull { it.value == d }
+                    kotlinx.datetime.DayOfWeek.entries.firstOrNull { it.isoDayNumber == d }
                 }.toSet(),
                 targetValue = targetValue,
                 unit = unit,
@@ -390,7 +391,7 @@ class FirestoreRepositoryImpl @Inject constructor(
                 reminderTime = reminderTime,
                 reminderEnabled = reminderEnabled,
                 reminderDays = reminderDaysRaw.mapNotNull { d ->
-                    kotlinx.datetime.DayOfWeek.entries.firstOrNull { it.value == d }
+                    kotlinx.datetime.DayOfWeek.entries.firstOrNull { it.isoDayNumber == d }
                 }.toSet(),
                 notificationsMuted = notificationsMuted,
                 seasonStartDate = seasonStartDate,

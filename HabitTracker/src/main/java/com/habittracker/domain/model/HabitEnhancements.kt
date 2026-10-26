@@ -1,6 +1,6 @@
 package com.habittracker.domain.model
 
-import kotlinx.datetime.Instant
+import kotlin.time.Instant
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toLocalDateTime
 
@@ -213,8 +213,8 @@ object HabitFactory {
         difficulty = difficulty,
         category = category,
         basePoints = difficulty.points,
-        createdAt = kotlinx.datetime.Clock.System.now(),
-        updatedAt = kotlinx.datetime.Clock.System.now()
+        createdAt = kotlin.time.Clock.System.now(),
+        updatedAt = kotlin.time.Clock.System.now()
     )
     
     fun createGroupHabit(
@@ -236,8 +236,8 @@ object HabitFactory {
         privacyLevel = privacyLevel,
         groupNotificationSettings = GroupNotificationSettings(),
         inviteCode = HabitValidation.generateInviteCode(),
-        createdAt = kotlinx.datetime.Clock.System.now(),
-        updatedAt = kotlinx.datetime.Clock.System.now()
+        createdAt = kotlin.time.Clock.System.now(),
+        updatedAt = kotlin.time.Clock.System.now()
     )
     
     private fun generateHabitId(): String = java.util.UUID.randomUUID().toString()

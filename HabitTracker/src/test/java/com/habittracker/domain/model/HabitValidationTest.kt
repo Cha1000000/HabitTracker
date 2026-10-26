@@ -1,7 +1,7 @@
 package com.habittracker.domain.model
 
 import com.habittracker.domain.provider.StringProvider
-import kotlinx.datetime.Clock
+import kotlin.time.Clock
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toLocalDateTime
 import org.junit.Test

@@ -63,7 +63,7 @@ import com.habittracker.presentation.ui.components.AnimatedCheckmark
 import com.habittracker.presentation.ui.theme.TahoeIcons
 import com.habittracker.presentation.util.SoundManager
 import com.habittracker.presentation.viewmodel.HabitWithCompletion
-import kotlinx.datetime.Clock
+import kotlin.time.Clock
 import kotlinx.datetime.LocalTime
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toLocalDateTime

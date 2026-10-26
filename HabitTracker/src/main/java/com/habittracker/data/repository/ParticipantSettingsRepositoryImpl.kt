@@ -11,7 +11,7 @@ import com.habittracker.domain.repository.ParticipantSettingsRepository
 import com.habittracker.domain.util.SyncPayloads
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
-import kotlinx.datetime.Clock
+import kotlin.time.Clock
 import javax.inject.Inject
 import javax.inject.Singleton
 import timber.log.Timber

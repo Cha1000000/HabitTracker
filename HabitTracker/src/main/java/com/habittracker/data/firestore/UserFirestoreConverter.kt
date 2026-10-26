@@ -1,8 +1,8 @@
 package com.habittracker.data.firestore
 
 import com.habittracker.domain.model.User
-import kotlinx.datetime.Clock
-import kotlinx.datetime.Instant.Companion.fromEpochMilliseconds
+import kotlin.time.Clock
+import kotlin.time.Instant.Companion.fromEpochMilliseconds
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.atStartOfDayIn

@@ -8,7 +8,7 @@ import com.habittracker.domain.repository.HabitRepository
 import com.habittracker.domain.repository.ParticipantSettingsRepository
 import com.habittracker.domain.repository.UserRepository
 import kotlinx.coroutines.flow.firstOrNull
-import kotlinx.datetime.Clock
+import kotlin.time.Clock
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.todayIn
 import javax.inject.Inject

@@ -49,7 +49,7 @@ import com.habittracker.presentation.navigation.Screen
 import com.habittracker.presentation.ui.habits.components.TahoeGradientBackground
 import com.habittracker.presentation.ui.theme.TahoeIcons
 import com.habittracker.presentation.viewmodel.NotificationsViewModel
-import kotlinx.datetime.Clock
+import kotlin.time.Clock
 
 /**
  * Экран уведомлений групповых привычек

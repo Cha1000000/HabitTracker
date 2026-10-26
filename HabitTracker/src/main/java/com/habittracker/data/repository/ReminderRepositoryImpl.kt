@@ -10,10 +10,11 @@ import com.habittracker.domain.model.Habit
 import com.habittracker.domain.model.HabitFrequency
 import com.habittracker.domain.repository.AuthRepository
 import com.habittracker.domain.repository.ReminderRepository
-import kotlinx.datetime.Clock
+import kotlin.time.Clock
 import kotlinx.datetime.DateTimeUnit
 import kotlinx.datetime.LocalDateTime
 import kotlinx.datetime.TimeZone
+import kotlinx.datetime.isoDayNumber
 import kotlinx.datetime.plus
 import kotlinx.datetime.toInstant
 import kotlinx.datetime.toLocalDateTime
@@ -143,7 +144,7 @@ class ReminderRepositoryImpl @Inject constructor(
                         return@repeat
                     }
                     
-                    val dow = targetDate.dayOfWeek.value // 1..7
+                    val dow = targetDate.dayOfWeek.isoDayNumber // 1..7
                     if (allowedDays.contains(dow)) {
                         scheduleReminderForDay(habit, dayOffset, initialDelay)
                     }
@@ -163,7 +164,7 @@ class ReminderRepositoryImpl @Inject constructor(
                 scheduleWeekendReminders(habit, initialDelay)
             }
             HabitFrequency.WEEKLY, HabitFrequency.TWICE_A_WEEK, HabitFrequency.CUSTOM -> {
-                val selected = habit.reminderDays.map { it.value }.toSet()
+                val selected = habit.reminderDays.map { it.isoDayNumber }.toSet()
                 if (selected.isNotEmpty()) {
                     scheduleByAllowedDays(selected)
                 } else {
@@ -242,7 +243,7 @@ class ReminderRepositoryImpl @Inject constructor(
                     return@repeat
                 }
                 
-                val dayOfWeek = targetDate.dayOfWeek.value // 1=понедельник, 7=воскресенье
+                val dayOfWeek = targetDate.dayOfWeek.isoDayNumber // 1=понедельник, 7=воскресенье
                 
                 // Проверяем, что это будний день (пн-пт)
                 if (dayOfWeek in 1..5) {
@@ -269,7 +270,7 @@ class ReminderRepositoryImpl @Inject constructor(
                     return@repeat
                 }
                 
-                val dayOfWeek = targetDate.dayOfWeek.value // 1=понедельник, 7=воскресенье
+                val dayOfWeek = targetDate.dayOfWeek.isoDayNumber // 1=понедельник, 7=воскресенье
                 
                 // Проверяем, что это выходной день (сб-вс)
                 if (dayOfWeek in 6..7) {
@@ -287,7 +288,7 @@ class ReminderRepositoryImpl @Inject constructor(
         Timber.tag("ReminderRepositoryImpl").d("calculateDelayForNextOccurrence: time=$reminderTime, freq=${habit.frequency}, days=${habit.reminderDays}")
         val nowInstant = Clock.System.now()
         val now = nowInstant.toLocalDateTime(TimeZone.currentSystemDefault())
-        val selectedDays = habit.reminderDays.map { it.value }.toSet()
+        val selectedDays = habit.reminderDays.map { it.isoDayNumber }.toSet()
 
         for (dayOffset in 0..28) {
             val targetDate = now.date.plus(dayOffset, DateTimeUnit.DAY)
@@ -298,7 +299,7 @@ class ReminderRepositoryImpl @Inject constructor(
                 break
             }
             
-            val dow = targetDate.dayOfWeek.value
+            val dow = targetDate.dayOfWeek.isoDayNumber
             val targetDateTime = LocalDateTime(targetDate, reminderTime)
             val targetInstant = targetDateTime.toInstant(TimeZone.currentSystemDefault())
             val strictlyFuture = targetInstant > nowInstant

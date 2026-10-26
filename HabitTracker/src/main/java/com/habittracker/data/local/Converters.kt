@@ -6,7 +6,7 @@ import com.google.gson.reflect.TypeToken
 import com.habittracker.domain.model.HabitFrequency
 import com.habittracker.domain.model.HabitTimeOfDay
 import com.habittracker.domain.model.HabitType
-import kotlinx.datetime.Instant
+import kotlin.time.Instant
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.LocalDateTime
 import kotlinx.datetime.LocalTime

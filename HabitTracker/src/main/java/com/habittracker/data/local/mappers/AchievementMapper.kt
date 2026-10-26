@@ -9,7 +9,7 @@ import com.habittracker.domain.model.AchievementMetric
 import com.habittracker.domain.model.AchievementTimeframe
 import com.habittracker.domain.model.AchievementType
 import com.habittracker.domain.model.UserAchievement
-import kotlinx.datetime.Instant
+import kotlin.time.Instant
 
 // Achievement mappers
 fun AchievementEntity.toDomain(): Achievement {

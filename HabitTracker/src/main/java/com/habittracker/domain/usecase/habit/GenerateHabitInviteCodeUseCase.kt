@@ -6,7 +6,7 @@ import com.habittracker.domain.model.isGroupHabit
 import com.habittracker.domain.provider.StringProvider
 import com.habittracker.domain.repository.HabitRepository
 import com.habittracker.domain.usecase.UpdateHabitUseCase
-import kotlinx.datetime.Clock
+import kotlin.time.Clock
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toLocalDateTime
 import javax.inject.Inject

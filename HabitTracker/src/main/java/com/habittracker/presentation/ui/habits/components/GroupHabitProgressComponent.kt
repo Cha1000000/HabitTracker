@@ -41,7 +41,7 @@ import com.habittracker.domain.model.isGroupHabit
 import com.habittracker.presentation.ui.components.UserAvatar
 import com.habittracker.presentation.ui.theme.TahoeIcons
 import androidx.compose.runtime.Immutable
-import kotlinx.datetime.Clock
+import kotlin.time.Clock
 import kotlinx.datetime.LocalTime
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toLocalDateTime
