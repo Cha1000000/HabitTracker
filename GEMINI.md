@@ -26,7 +26,6 @@ If the user explicitly asks for a role or names specific skills, that explicit i
 *   **Notifications:** Firebase Cloud Messaging (FCM) + Local WorkManager.
 *   **Images:** Coil.
 *   **Analytics/Crashlytics:** Firebase, AppMetrica.
-*   **Backend (Future):** Planned migration to Symfony 7 + PostgreSQL (see `backend/` folder).
 
 ## 3. Architecture & Data Flow
 
@@ -63,7 +62,6 @@ The app uses a strict **Room-First** approach.
 *   `HabitTracker/`: Android App Module.
     *   `src/main/java/com/habittracker/`: Source code.
     *   `src/main/res/`: Resources (drawables, values).
-*   `backend/`: Documentation and schemas for the planned custom backend.
 *   `guides_rules_instructions/`: **Highly important architectural documentation.**
     *   `sync_architecture.md`: Deep dive into the sync logic.
     *   `FCM_SETUP_INSTRUCTIONS.md`: Push notification setup.
