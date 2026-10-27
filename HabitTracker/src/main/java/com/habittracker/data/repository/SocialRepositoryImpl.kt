@@ -311,8 +311,8 @@ class SocialRepositoryImpl @Inject constructor(
         }
     }
 
-    override suspend fun updateUserFcmToken(userId: String, token: String) {
-        try {
+    override suspend fun updateUserFcmToken(userId: String, token: String): Boolean {
+        return try {
             // 1) Удаляем этот токен из всех других пользователей (перемещение токена между аккаунтами)
             try {
                 // Поиск в массивах fcmTokens (array-contains)
@@ -355,6 +355,9 @@ class SocialRepositoryImpl @Inject constructor(
                 payloadJson = payload,
                 updatedAt = now
             )
+            true
+        } catch (e: CancellationException) {
+            throw e
         } catch (e: Exception) {
             // Обновляем локально (сохраним единственный токен в legacy поле)
             Timber.tag("SocialRepository").w(e, "updateUserFcmToken remote update failed for user=$userId: ${e.message}")
@@ -362,6 +365,7 @@ class SocialRepositoryImpl @Inject constructor(
             user?.let {
                 userDao.updateUser(it.copy(fcmToken = token))
             }
+            false
         }
     }
 

@@ -12,10 +12,16 @@ import com.google.firebase.messaging.FirebaseMessaging
 import com.google.firebase.storage.FirebaseStorage
 import com.google.firebase.storage.StorageException
 import com.google.firebase.storage.StorageReference
+import com.habittracker.data.local.AccountDeletionMarker
 import com.habittracker.data.local.HabitTrackerDatabase
 import com.habittracker.data.sync.RemoteDataSync
 import com.habittracker.data.sync.SyncManager
+import com.habittracker.data.sync.SyncWorkScheduler
 import com.habittracker.data.local.seed.AchievementSeeder
+import com.habittracker.domain.model.DeletionStage
+import com.habittracker.domain.model.NoConnectionException
+import com.habittracker.domain.model.SyncInProgressException
+import com.habittracker.domain.model.PendingAccountDeletion
 import com.habittracker.domain.repository.AccountRepository
 import com.habittracker.domain.repository.ReminderRepository
 import com.habittracker.domain.scheduler.DailyReminderScheduler
@@ -24,6 +30,7 @@ import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.TimeoutCancellationException
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.tasks.await
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeout
@@ -50,6 +57,8 @@ class AccountRepositoryImpl @Inject constructor(
     private val database: HabitTrackerDatabase,
     private val remoteDataSync: RemoteDataSync,
     private val syncManager: SyncManager,
+    private val syncWorkScheduler: SyncWorkScheduler,
+    private val deletionMarker: AccountDeletionMarker,
     private val achievementSeeder: AchievementSeeder,
     private val reminderRepository: ReminderRepository,
     private val dailyReminderScheduler: DailyReminderScheduler
@@ -57,12 +66,40 @@ class AccountRepositoryImpl @Inject constructor(
 
     override suspend fun pauseSync() {
         // Зависший дренаж дописал бы данные (например, профиль) уже после удаления
-        if (!syncManager.pauseAndAwait()) throw IOException("Pending sync did not finish in time")
+        if (!syncManager.pauseAndAwait()) throw SyncInProgressException()
     }
 
     override fun resumeSync() = syncManager.resume()
 
+    override fun pendingDeletion(): PendingAccountDeletion? = deletionMarker.state.value
+
+    override fun observePendingDeletion(): Flow<PendingAccountDeletion?> = deletionMarker.state
+
+    override suspend fun markDeletion(userId: String, stage: DeletionStage) = withContext(Dispatchers.IO) {
+        // commit() пишет на диск синхронно — не на главном потоке
+        deletionMarker.set(userId, stage)
+        Timber.tag(TAG).d("deletion marked: $stage")
+    }
+
+    override fun cancelPendingDeletion() {
+        deletionMarker.clear()
+        syncManager.resume()
+        // Пока стояла отметка, изменения копились в очереди — отправляем их, не дожидаясь новых
+        syncWorkScheduler.scheduleOneTimeSync()
+        Timber.tag(TAG).d("pending deletion cancelled")
+    }
+
     override suspend fun deleteRemoteUserData(userId: String) = withContext(Dispatchers.IO) {
+        try {
+            deleteRemoteUserDataSteps(userId)
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            throw e.toDeletionError()
+        }
+    }
+
+    private suspend fun deleteRemoteUserDataSteps(userId: String) {
         Timber.tag(TAG).d("deleteRemoteUserData: start")
         leaveOrDeleteHabits(userId)
         leaveOrDeleteChallenges(userId)
@@ -205,13 +242,16 @@ class AccountRepositoryImpl @Inject constructor(
 
     /**
      * Оффлайн запись в Firestore ждёт сеть бесконечно — обрываем по таймауту. Таймаут превращаем
-     * в [IOException]: [kotlinx.coroutines.TimeoutCancellationException] наследует
-     * CancellationException, и выше его приняли бы за отмену, а не за ошибку.
+     * в [NoConnectionException]: [TimeoutCancellationException] наследует CancellationException,
+     * и выше его приняли бы за отмену, а не за ошибку.
      */
-    private suspend fun <T> withNetworkTimeout(block: suspend () -> T): T = try {
-        withTimeout(NETWORK_TIMEOUT_MS) { block() }
+    private suspend fun <T> withNetworkTimeout(
+        timeoutMs: Long = NETWORK_TIMEOUT_MS,
+        block: suspend () -> T
+    ): T = try {
+        withTimeout(timeoutMs) { block() }
     } catch (e: TimeoutCancellationException) {
-        throw IOException("Network operation timed out", e)
+        throw NoConnectionException(e)
     }
 
     private sealed interface BatchOp {
@@ -224,44 +264,55 @@ class AccountRepositoryImpl @Inject constructor(
         wipeStep("sign out") { firebaseAuth.signOut() }
         wipeStep("fcm token") {
             // Токен без профиля никому не нужен: пуши на него просто перестанут доходить
-            withNetworkTimeout { firebaseMessaging.deleteToken().await() }
+            withNetworkTimeout(FCM_TOKEN_TIMEOUT_MS) { firebaseMessaging.deleteToken().await() }
         }
         wipeStep("reminders") {
             reminderRepository.cancelAllReminders()
             dailyReminderScheduler.cancel()
         }
-        wipeStep("database") {
+        val databaseWiped = wipeStep("database") {
             // Синк к этому моменту ещё может дописывать снимок: ждём его и не пускаем новые записи
             remoteDataSync.withWritesBlocked { database.clearAllTables() }
             // Справочник достижений общий для всех — сразу засеваем заново
             achievementSeeder.forceReseed()
         }
-        wipeStep("datastore") { context.dataStore.edit { it.clear() } }
-        wipeStep("shared prefs") {
+        val datastoreWiped = wipeStep("datastore") { context.dataStore.edit { it.clear() } }
+        val prefsWiped = wipeStep("shared prefs") {
             USER_PREFS.forEach { name ->
                 // clear() вместо deleteSharedPreferences: синглтоны держат открытые экземпляры
-                context.getSharedPreferences(name, Context.MODE_PRIVATE).edit().clear().commit()
+                val cleared = context.getSharedPreferences(name, Context.MODE_PRIVATE).edit().clear().commit()
+                if (!cleared) throw IOException("Failed to clear prefs '$name'")
             }
         }
         wipeStep("files") { File(context.filesDir, "proofs").deleteRecursively() }
         wipeStep("widget") { TodayHabitsWidget.clearTodayHabits(context) }
-        Timber.tag(TAG).d("wipeLocalData: done")
+        // Последним: если процесс умрёт раньше, при следующем запуске стирание повторится. По той
+        // же причине отметку оставляем, если не стёрлись личные данные
+        if (databaseWiped && datastoreWiped && prefsWiped) {
+            wipeStep("deletion marker") { deletionMarker.clear() }
+            Timber.tag(TAG).d("wipeLocalData: done")
+        } else {
+            Timber.tag(TAG).e("wipeLocalData: personal data left on device, marker kept for retry on next start")
+        }
     }
 
-    private suspend fun wipeStep(name: String, block: suspend () -> Unit) {
-        try {
-            block()
-        } catch (e: CancellationException) {
-            throw e
-        } catch (e: Exception) {
-            Timber.tag(TAG).e(e, "wipeLocalData: step '$name' failed")
-        }
+    /** @return `true`, если шаг прошёл без ошибки. */
+    private suspend fun wipeStep(name: String, block: suspend () -> Unit): Boolean = try {
+        block()
+        true
+    } catch (e: CancellationException) {
+        throw e
+    } catch (e: Exception) {
+        Timber.tag(TAG).e(e, "wipeLocalData: step '$name' failed")
+        false
     }
 
     private companion object {
         const val TAG = "AccountRepository"
         const val BATCH_LIMIT = 450
         const val NETWORK_TIMEOUT_MS = 30_000L
+        /** Удаление токена — не повод держать пользователя на экране удаления полминуты. */
+        const val FCM_TOKEN_TIMEOUT_MS = 10_000L
 
         const val USERS = "users"
         const val HABITS = "habits"

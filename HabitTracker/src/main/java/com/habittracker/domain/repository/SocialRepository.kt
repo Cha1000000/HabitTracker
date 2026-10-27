@@ -14,7 +14,8 @@ interface SocialRepository {
     suspend fun searchUsers(query: String, currentUserId: String): List<User>
     suspend fun getUserById(userId: String): User?
     suspend fun getUserByIdFromFirestore(userId: String): User?
-    suspend fun updateUserFcmToken(userId: String, token: String)
+    /** @return `true`, если токен поставлен в очередь на отправку в профиль. */
+    suspend fun updateUserFcmToken(userId: String, token: String): Boolean
     suspend fun updateFriendsCount(userId: String, count: Int)
     suspend fun recalculateFriendsCount(userId: String)
     

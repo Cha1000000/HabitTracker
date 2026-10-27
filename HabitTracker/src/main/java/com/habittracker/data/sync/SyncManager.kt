@@ -2,6 +2,7 @@ package com.habittracker.data.sync
 
 import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.FirebaseFirestore
+import com.habittracker.data.local.AccountDeletionMarker
 import com.habittracker.data.local.dao.SyncOutboxDao
 import com.habittracker.data.local.entity.SyncOutboxEntity
 import kotlinx.coroutines.CancellationException
@@ -31,7 +32,8 @@ import timber.log.Timber
 @Singleton
 class SyncManager @Inject constructor(
     private val firestore: FirebaseFirestore,
-    private val outboxDao: SyncOutboxDao
+    private val outboxDao: SyncOutboxDao,
+    private val deletionMarker: AccountDeletionMarker
 ) {
     /** Пока `true`, очередь не отправляется (например, на время удаления аккаунта). */
     @Volatile
@@ -197,8 +199,11 @@ class SyncManager @Inject constructor(
         drainMutex.withLock { drainLocked(maxBatch) }
     }
 
+    /** Пауза на время удаления аккаунта; отметка держит её и после перезапуска процесса. */
+    private val isHalted: Boolean get() = paused || deletionMarker.isActive
+
     private suspend fun drainLocked(maxBatch: Int) {
-        if (paused) {
+        if (isHalted) {
             Timber.tag("SyncManager").d("[drainPending] paused, skip")
             return
         }
@@ -211,7 +216,7 @@ class SyncManager @Inject constructor(
         // ждут — иначе повтор старого удаления лёг бы поверх новой отметки
         val blocked = mutableSetOf<Pair<String, String>>()
         for (item in batch) {
-            if (paused) break
+            if (isHalted) break
             val entity = item.entityType to item.entityId
             if (entity in blocked) continue
             try {

@@ -73,12 +73,18 @@ interface AuthRepository {
     /** Способ входа текущего пользователя; `null`, если никто не вошёл. */
     fun currentSignInMethod(): SignInMethod?
 
+    /** Вход был настолько недавно, что Firebase даст удалить аккаунт без повторного входа. */
+    fun isRecentSignIn(): Boolean
+
     /**
      * Повторно подтверждает вход текущего пользователя.
      *
      * @throws com.habittracker.domain.model.InvalidCredentialsException неверный пароль или чужой аккаунт.
      * @throws com.habittracker.domain.model.AuthCancelledException пользователь закрыл выбор аккаунта.
      * @throws com.habittracker.domain.model.AccountAlreadyDeletedException учётной записи уже нет.
+     * @throws com.habittracker.domain.model.NoGoogleAccountException на устройстве нет аккаунта Google.
+     * @throws com.habittracker.domain.model.TooManyAttemptsException Firebase временно блокирует попытки.
+     * @throws com.habittracker.domain.model.NoConnectionException нет сети.
      */
     suspend fun reauthenticate(request: ReauthRequest)
 
@@ -86,6 +92,13 @@ interface AuthRepository {
      * Удаляет учётную запись текущего пользователя из Firebase Auth.
      *
      * @throws com.habittracker.domain.model.ReauthRequiredException вход устарел, нужен [reauthenticate].
+     * @throws com.habittracker.domain.model.AccountAlreadyDeletedException учётной записи уже нет.
      */
     suspend fun deleteCurrentAuthUser()
+
+    /**
+     * Сервер подтвердил, что учётки текущего пользователя в Auth больше нет (её удалили в другом
+     * месте). Без сети, при таймауте или если никто не вошёл — `false`: удалённость не доказана.
+     */
+    suspend fun isCurrentUserDeleted(): Boolean
 }

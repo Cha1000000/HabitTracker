@@ -174,6 +174,8 @@ class FakeAuthRepository(private var currentUserId: String?) : AuthRepository {
     override fun currentSignInMethod(): com.habittracker.domain.model.SignInMethod? = null
     override suspend fun reauthenticate(request: com.habittracker.domain.model.ReauthRequest) = Unit
     override suspend fun deleteCurrentAuthUser() = Unit
+    override fun isRecentSignIn() = false
+    override suspend fun isCurrentUserDeleted() = false
 }
 
 class FakeUserRepository : UserRepository {
@@ -266,7 +268,7 @@ class FakeSocialRepository : SocialRepository {
     override suspend fun getUserById(userId: String): User? = null
     override suspend fun getUserByIdFromFirestore(userId: String): User? = null
     override suspend fun searchUsers(query: String, currentUserId: String): List<User> = emptyList()
-    override suspend fun updateUserFcmToken(userId: String, token: String) {}
+    override suspend fun updateUserFcmToken(userId: String, token: String) = true
     override suspend fun updateFriendsCount(userId: String, count: Int) {}
     override suspend fun recalculateFriendsCount(userId: String) {}
     override suspend fun sendFriendRequest(fromUserId: String, toUserId: String, message: String?): Result<com.habittracker.domain.model.FriendRequest> = Result.failure(NotImplementedError())

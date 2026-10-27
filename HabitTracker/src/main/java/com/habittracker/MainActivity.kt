@@ -18,6 +18,7 @@ import androidx.navigation.NavHostController
 import com.habittracker.data.service.FCMTokenManager
 import com.habittracker.data.service.PendingNotificationManager
 import com.habittracker.data.sync.RemoteDataSync
+import com.habittracker.domain.repository.AccountRepository
 import com.habittracker.domain.repository.AuthRepository
 import com.habittracker.domain.repository.SocialRepository
 import com.habittracker.domain.repository.UserPreferencesRepository
@@ -39,6 +40,8 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -68,6 +71,9 @@ class MainActivity : ComponentActivity() {
 
     @Inject
     lateinit var remoteDataSync: RemoteDataSync
+
+    @Inject
+    lateinit var accountRepository: AccountRepository
 
     private val authViewModel: AuthViewModel by viewModels()
     private var navController: NavHostController? = null
@@ -104,7 +110,7 @@ class MainActivity : ComponentActivity() {
                         // Если есть отложенная навигация (например, auth случился раньше чем UI готов)
                         pendingNavigation?.let { nav ->
                             Timber.tag("MainActivity").d("[bootstrap] executing pendingNavigation after navController ready")
-                            nav()
+                            if (!isAccountDeletionPending()) nav()
                             pendingNavigation = null
                         }
 
@@ -153,7 +159,7 @@ class MainActivity : ComponentActivity() {
                                 // Если есть отложенная навигация — выполним её
                                 pendingNavigation?.let { nav ->
                                     Timber.tag("MainActivity").d("[push-nav] executing pendingNavigation after auth success")
-                                    nav()
+                                    if (!isAccountDeletionPending()) nav()
                                     pendingNavigation = null
                                 } ?: run {
                                     val deep = intent?.getStringExtra("navigate_to")
@@ -206,11 +212,17 @@ class MainActivity : ComponentActivity() {
         // Подписки идут за сессией Firebase, а не за authState: вход, выход и удаление аккаунта
         // проходят в ViewModel экранов, и этот экземпляр AuthViewModel о них не узнаёт.
         // В фоне слушатели снимаем: соединение не держится, а события доставляют пуши.
+        // На время удаления аккаунта тоже: облако как раз пустеет, и это не повод чистить Room.
         lifecycleScope.launch {
             repeatOnLifecycle(Lifecycle.State.STARTED) {
-                authRepository.observeCurrentUserId().collectLatest { userId ->
-                    if (userId != null) runRealtimeSync(userId)
-                }
+                combine(
+                    authRepository.observeCurrentUserId(),
+                    accountRepository.observePendingDeletion()
+                ) { userId, pendingDeletion -> userId.takeIf { pendingDeletion == null } }
+                    .distinctUntilChanged()
+                    .collectLatest { userId ->
+                        if (userId != null) runRealtimeSync(userId)
+                    }
             }
         }
     }
@@ -226,6 +238,12 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun handleIntentForNavigation(intent: android.content.Intent) {
+        // Незаконченное удаление аккаунта разбирает заставка: переход из пуша увёл бы мимо неё
+        if (isAccountDeletionPending()) {
+            Timber.tag("MainActivity").d("[push-nav] account deletion pending -> ignore intent")
+            clearDeepLinkExtras()
+            return
+        }
         // Обработка deep links (habittracker://invite?code=XXX или https://habittracker.app/invite/XXX)
         val deepLinkUri = intent.data
         if (deepLinkUri != null) {
@@ -314,6 +332,8 @@ class MainActivity : ComponentActivity() {
             clearDeepLinkExtras()
         }
     }
+
+    private fun isAccountDeletionPending(): Boolean = accountRepository.pendingDeletion() != null
 
     private fun clearDeepLinkExtras() {
         try {

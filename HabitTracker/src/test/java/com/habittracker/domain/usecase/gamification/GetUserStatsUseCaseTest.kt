@@ -191,7 +191,7 @@ class GetUserStatsUseCaseTest {
                 override suspend fun searchUsers(query: String, currentUserId: String): List<User> = emptyList()
                 override suspend fun getUserById(userId: String): User? = null
                 override suspend fun getUserByIdFromFirestore(userId: String): User? = getUserById(userId)
-                override suspend fun updateUserFcmToken(userId: String, token: String) {}
+                override suspend fun updateUserFcmToken(userId: String, token: String) = true
                 override suspend fun updateFriendsCount(userId: String, count: Int) {}
                 override suspend fun recalculateFriendsCount(userId: String) {}
 

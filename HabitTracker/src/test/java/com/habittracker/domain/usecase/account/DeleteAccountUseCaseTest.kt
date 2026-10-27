@@ -1,21 +1,19 @@
 package com.habittracker.domain.usecase.account
 
 import com.habittracker.domain.model.AccountAlreadyDeletedException
+import com.habittracker.domain.model.DeletionStage
 import com.habittracker.domain.model.InvalidCredentialsException
+import com.habittracker.domain.model.NoConnectionException
 import com.habittracker.domain.model.NotSignedInException
+import com.habittracker.domain.model.PendingAccountDeletion
 import com.habittracker.domain.model.ReauthRequest
-import com.habittracker.domain.model.ReauthRequiredException
-import com.habittracker.domain.model.SignInMethod
-import com.habittracker.domain.model.User
-import com.habittracker.domain.repository.AccountRepository
-import com.habittracker.domain.repository.AuthRepository
+import com.habittracker.domain.model.SyncInProgressException
 import kotlinx.coroutines.TimeoutCancellationException
-import kotlinx.coroutines.awaitCancellation
-import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.cancelAndJoin
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.runTest
-import kotlinx.coroutines.withTimeout
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.io.IOException
@@ -34,9 +32,13 @@ class DeleteAccountUseCaseTest {
 
         assertTrue(result.isSuccess)
         assertEquals(
-            listOf("reauth", "pauseSync", "deleteRemote:me", "deleteAuth", "wipeLocal", "resumeSync"),
+            listOf(
+                "reauth", "pauseSync", "mark:CLOUD_IN_PROGRESS", "deleteRemote:me",
+                "mark:CLOUD_DONE", "deleteAuth", "wipeLocal", "resumeSync"
+            ),
             calls
         )
+        assertNull(account.pendingDeletion())
     }
 
     @Test
@@ -48,8 +50,9 @@ class DeleteAccountUseCaseTest {
         assertTrue(result.exceptionOrNull() is IOException)
         assertTrue("wipeLocal" !in calls)
         assertTrue("deleteAuth" !in calls)
-        // Очередь синхронизации не потеряна — отправка возобновлена
         assertEquals("resumeSync", calls.last())
+        // Часть облака могла уже удалиться — отметка держит очередь, пока пользователь не решит
+        assertEquals(DeletionStage.CLOUD_IN_PROGRESS, account.pendingDeletion()?.stage)
     }
 
     @Test
@@ -84,13 +87,52 @@ class DeleteAccountUseCaseTest {
     }
 
     @Test
-    fun auth_requiring_reauth_is_reported_and_local_data_kept() = runTest {
-        auth.deleteError = ReauthRequiredException()
+    fun auth_failure_after_cloud_deletion_keeps_device_for_retry() = runTest {
+        // Устройство не стираем: пользователь в аккаунте и может повторить — иначе осталась бы
+        // пустая учётка, которую уже не удалить из приложения без нового входа
+        auth.deleteError = NoConnectionException()
 
         val result = useCase(reauth)
 
-        assertTrue(result.exceptionOrNull() is ReauthRequiredException)
+        assertTrue(result.exceptionOrNull() is NoConnectionException)
         assertTrue("wipeLocal" !in calls)
+        assertEquals(DeletionStage.CLOUD_DONE, account.pendingDeletion()?.stage)
+    }
+
+    @Test
+    fun retry_after_cloud_deletion_skips_cloud() = runTest {
+        account.marker.value = PendingAccountDeletion("me", DeletionStage.CLOUD_DONE)
+
+        val result = useCase(reauth)
+
+        assertTrue(result.isSuccess)
+        assertEquals(listOf("reauth", "deleteAuth", "wipeLocal"), calls)
+        assertNull(account.pendingDeletion())
+    }
+
+    @Test
+    fun auth_account_gone_after_cloud_deletion_still_wipes() = runTest {
+        auth.deleteError = AccountAlreadyDeletedException()
+
+        val result = useCase(reauth)
+
+        assertTrue(result.isSuccess)
+        assertEquals("wipeLocal", calls.dropLast(1).last())
+        assertNull(account.pendingDeletion())
+    }
+
+    @Test
+    fun cancelled_cloud_deletion_drops_marker() = runTest {
+        account.hangOnRemote = true
+
+        val job = launch { useCase(reauth) }
+        testScheduler.runCurrent()
+        job.cancelAndJoin()
+
+        // Отмена — как «Назад»: синк возобновлён, отметка не держит его до перезапуска
+        assertNull(account.pendingDeletion())
+        assertTrue("cancelPending" in calls)
+        assertEquals("resumeSync", calls.last())
     }
 
     @Test
@@ -105,61 +147,13 @@ class DeleteAccountUseCaseTest {
 
     @Test
     fun stuck_sync_stops_before_any_deletion() = runTest {
-        account.pauseError = IOException("Pending sync did not finish in time")
+        account.pauseError = SyncInProgressException()
 
         val result = useCase(reauth)
 
-        assertTrue(result.exceptionOrNull() is IOException)
+        assertTrue(result.exceptionOrNull() is SyncInProgressException)
+        assertNull(account.pendingDeletion())
         // pauseSync сам снимает паузу при неудаче — resumeSync не нужен
         assertEquals(listOf("reauth", "pauseSync"), calls)
-    }
-
-    private class FakeAuth(private val calls: MutableList<String>) : AuthRepository {
-        var userId: String? = "me"
-        var reauthError: Exception? = null
-        var deleteError: Exception? = null
-
-        override fun getCurrentUserId(): String? = userId
-        override fun observeCurrentUserId(): Flow<String?> = flowOf(userId)
-        override fun currentSignInMethod(): SignInMethod? = SignInMethod.PASSWORD
-        override suspend fun reauthenticate(request: ReauthRequest) {
-            calls += "reauth"
-            reauthError?.let { throw it }
-        }
-        override suspend fun deleteCurrentAuthUser() {
-            calls += "deleteAuth"
-            deleteError?.let { throw it }
-        }
-
-        override fun getCurrentUser(): Flow<User?> = flowOf(null)
-        override suspend fun login(email: String, password: String) = flowOf(Result.success(Unit))
-        override suspend fun register(email: String, password: String) = flowOf(Result.success(Unit))
-        override suspend fun signInWithGoogle(activityContext: android.content.Context) =
-            flowOf(Result.success<android.content.Intent?>(null))
-        override suspend fun signOut() = flowOf(Result.success(Unit))
-        override suspend fun sendPasswordResetEmail(email: String) = flowOf(Result.success(Unit))
-    }
-
-    private class FakeAccount(private val calls: MutableList<String>) : AccountRepository {
-        var remoteError: Exception? = null
-        var pauseError: Exception? = null
-
-        var timeoutOnRemote = false
-
-        override suspend fun pauseSync() {
-            calls += "pauseSync"
-            pauseError?.let { throw it }
-        }
-        override fun resumeSync() {
-            calls += "resumeSync"
-        }
-        override suspend fun deleteRemoteUserData(userId: String) {
-            calls += "deleteRemote:$userId"
-            remoteError?.let { throw it }
-            if (timeoutOnRemote) withTimeout(1) { awaitCancellation() }
-        }
-        override suspend fun wipeLocalData() {
-            calls += "wipeLocal"
-        }
     }
 }

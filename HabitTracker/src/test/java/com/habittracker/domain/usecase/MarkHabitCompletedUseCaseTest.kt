@@ -229,7 +229,7 @@ class FakeSocialRepository : SocialRepository {
     override suspend fun getUserById(userId: String): User = User(id = userId, name = "Test User", email = "test@test.com", createdAt = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault()).date, lastActiveAt = Clock.System.now().toEpochMilliseconds())
     override suspend fun getUserByIdFromFirestore(userId: String): User? = getUserById(userId)
     override suspend fun searchUsers(query: String, currentUserId: String): List<User> = emptyList()
-    override suspend fun updateUserFcmToken(userId: String, token: String) {}
+    override suspend fun updateUserFcmToken(userId: String, token: String) = true
     override suspend fun updateFriendsCount(userId: String, count: Int) {}
     override suspend fun recalculateFriendsCount(userId: String) {}
     override suspend fun sendFriendRequest(fromUserId: String, toUserId: String, message: String?): Result<FriendRequest> = Result.failure(NotImplementedError())

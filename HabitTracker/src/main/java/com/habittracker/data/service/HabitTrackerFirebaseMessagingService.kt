@@ -38,6 +38,9 @@ class HabitTrackerFirebaseMessagingService : FirebaseMessagingService() {
     
     @Inject
     lateinit var authRepository: AuthRepository
+
+    @Inject
+    lateinit var fcmTokenManager: FCMTokenManager
     
     @Inject
     lateinit var appStateManager: AppStateManager
@@ -71,15 +74,18 @@ class HabitTrackerFirebaseMessagingService : FirebaseMessagingService() {
      */
     override fun onNewToken(token: String) {
         super.onNewToken(token)
-        Timber.tag(TAG).d("Получен новый FCM токен: $token")
+        // Токен — адрес для пушей на это устройство, в логи целиком не пишем
+        Timber.tag(TAG).d("Получен новый FCM токен: ${token.take(4)}****")
         
         // Сохраняем токен в базе данных
         serviceScope.launch {
             try {
                 val currentUserId = authRepository.getCurrentUserId()
                 if (currentUserId != null) {
-                    socialRepository.updateUserFcmToken(currentUserId, token)
-                    Timber.tag(TAG).d("FCM токен успешно обновлен для пользователя: $currentUserId")
+                    if (socialRepository.updateUserFcmToken(currentUserId, token)) {
+                        fcmTokenManager.markTokenSaved(currentUserId, token)
+                        Timber.tag(TAG).d("FCM токен успешно обновлен для пользователя: $currentUserId")
+                    }
                 } else {
                     Timber.tag(TAG).w("Пользователь не авторизован, токен не сохранен")
                 }

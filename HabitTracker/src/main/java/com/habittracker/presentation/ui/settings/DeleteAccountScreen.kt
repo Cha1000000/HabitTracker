@@ -34,6 +34,7 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
@@ -69,6 +70,7 @@ import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
 import com.habittracker.R
+import com.habittracker.domain.model.DeletionStage
 import com.habittracker.presentation.navigation.Screen
 import com.habittracker.presentation.ui.habits.components.GlassmorphicCard
 import com.habittracker.presentation.ui.habits.components.GlassmorphicSectionHeader
@@ -81,6 +83,7 @@ import com.habittracker.presentation.ui.theme.TahoeIcons
 import com.habittracker.presentation.ui.theme.TahoeLightAccent
 import com.habittracker.presentation.ui.theme.TahoeSkyBlue
 import com.habittracker.presentation.viewmodel.DeleteAccountViewModel
+import com.habittracker.presentation.viewmodel.DeleteAccountViewModel.Confirmation
 
 /**
  * Удаление аккаунта: что пропадёт, что будет с группами, подтверждение словом и (для входа
@@ -101,7 +104,12 @@ fun DeleteAccountScreen(
     var password by remember { mutableStateOf("") }
     val requiredWord = stringResource(R.string.delete_account_confirm_word)
     val wordMatches = confirmText.trim().equals(requiredWord, ignoreCase = true)
-    val canConfirm = wordMatches && (!state.needsPassword || password.isNotEmpty()) && !state.isDeleting
+    val confirmationReady = when (state.confirmation) {
+        Confirmation.PASSWORD -> password.isNotEmpty()
+        Confirmation.GOOGLE, Confirmation.RECENT_SIGN_IN -> true
+        Confirmation.SIGN_IN_AGAIN -> false
+    }
+    val canConfirm = wordMatches && confirmationReady && !state.isDeleting
 
     LaunchedEffect(state.isDeleted, state.isSignedOut) {
         if (state.isDeleted || state.isSignedOut) {
@@ -111,8 +119,23 @@ fun DeleteAccountScreen(
         }
     }
 
+    // После прерванного удаления экран открывается со старта, и под ним в стеке пусто
+    val hasPreviousScreen = remember { navController.previousBackStackEntry != null }
+    val cloudAlreadyDeleted = state.interruptedStage == DeletionStage.CLOUD_DONE
+    val goBack: () -> Unit = {
+        when {
+            // Облако уже пустое — возвращаться некуда: стираем устройство и уходим на вход
+            cloudAlreadyDeleted -> viewModel.abandonAfterCloudDeletion()
+            hasPreviousScreen -> navController.popBackStack()
+            else -> navController.navigate(Screen.Habits.createRoute()) {
+                popUpTo(Screen.DeleteAccount.route) { inclusive = true }
+            }
+        }
+    }
+
     // Пока идёт удаление, назад не уходим: экран должен дождаться результата
     BackHandler(enabled = state.isDeleting) { }
+    BackHandler(enabled = !state.isDeleting && (!hasPreviousScreen || cloudAlreadyDeleted)) { goBack() }
 
     TahoeGradientBackground(
         modifier = Modifier.fillMaxSize(),
@@ -125,7 +148,7 @@ fun DeleteAccountScreen(
                     title = { Text(stringResource(R.string.delete_account_title)) },
                     navigationIcon = {
                         IconButton(
-                            onClick = { navController.popBackStack() },
+                            onClick = goBack,
                             enabled = !state.isDeleting
                         ) {
                             Icon(
@@ -157,6 +180,10 @@ fun DeleteAccountScreen(
                     .verticalScroll(rememberScrollState())
                     .padding(horizontal = 16.dp, vertical = 8.dp)
             ) {
+                state.interruptedStage?.let { stage ->
+                    InterruptedBanner(stage)
+                    Spacer(modifier = Modifier.height(16.dp))
+                }
                 WarningCard(email = state.email, isDarkTheme = isDarkTheme)
 
                 Spacer(modifier = Modifier.height(24.dp))
@@ -194,57 +221,129 @@ fun DeleteAccountScreen(
                 Spacer(modifier = Modifier.height(24.dp))
                 SectionHeader(stringResource(R.string.delete_account_section_confirm))
                 GlassmorphicCard(modifier = Modifier.fillMaxWidth(), isDarkTheme = isDarkTheme) {
-                    Column(modifier = Modifier.padding(16.dp)) {
-                        FieldLabel(stringResource(R.string.delete_account_confirm_prompt, requiredWord))
-                        CompactGlassField(
-                            value = confirmText,
-                            onValueChange = { confirmText = it },
-                            placeholder = requiredWord,
-                            label = stringResource(R.string.delete_account_confirm_prompt, requiredWord),
-                            enabled = !state.isDeleting,
-                            isDarkTheme = isDarkTheme,
-                            // Без автозамены: клавиатура иначе «исправляет» слово и оно не совпадает
-                            keyboardOptions = KeyboardOptions(
-                                capitalization = KeyboardCapitalization.Characters,
-                                autoCorrectEnabled = false
-                            ),
-                            trailing = if (wordMatches) {
-                                {
-                                    Icon(
-                                        imageVector = TahoeIcons.CheckCircle,
-                                        contentDescription = stringResource(R.string.cd_delete_account_word_matches),
-                                        tint = MaterialTheme.colorScheme.primary,
-                                        modifier = Modifier.size(20.dp)
-                                    )
-                                }
-                            } else null
-                        )
-
-                        Spacer(modifier = Modifier.height(16.dp))
-                        if (state.needsPassword) {
-                            FieldLabel(stringResource(R.string.delete_account_password_label))
+                    if (state.confirmation == Confirmation.SIGN_IN_AGAIN) {
+                        SignInAgainContent(enabled = !state.isDeleting, onSignOut = viewModel::signOut)
+                    } else {
+                        Column(modifier = Modifier.padding(16.dp)) {
+                            FieldLabel(stringResource(R.string.delete_account_confirm_prompt, requiredWord))
                             CompactGlassField(
-                                value = password,
-                                onValueChange = { password = it },
-                                placeholder = stringResource(R.string.auth_password_label),
-                                label = stringResource(R.string.delete_account_password_label),
+                                value = confirmText,
+                                onValueChange = { confirmText = it },
+                                placeholder = requiredWord,
+                                label = stringResource(R.string.delete_account_confirm_prompt, requiredWord),
                                 enabled = !state.isDeleting,
                                 isDarkTheme = isDarkTheme,
-                                visualTransformation = PasswordVisualTransformation(),
-                                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password)
+                                // Без автозамены: клавиатура иначе «исправляет» слово и оно не совпадает
+                                keyboardOptions = KeyboardOptions(
+                                    capitalization = KeyboardCapitalization.Characters,
+                                    autoCorrectEnabled = false
+                                ),
+                                trailing = if (wordMatches) {
+                                    {
+                                        Icon(
+                                            imageVector = TahoeIcons.CheckCircle,
+                                            contentDescription = stringResource(R.string.cd_delete_account_word_matches),
+                                            tint = MaterialTheme.colorScheme.primary,
+                                            modifier = Modifier.size(20.dp)
+                                        )
+                                    }
+                                } else null
                             )
-                        } else {
-                            Text(
-                                text = stringResource(R.string.delete_account_google_note),
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        }
 
+                            when (state.confirmation) {
+                                Confirmation.PASSWORD -> {
+                                    Spacer(modifier = Modifier.height(16.dp))
+                                    FieldLabel(stringResource(R.string.delete_account_password_label))
+                                    CompactGlassField(
+                                        value = password,
+                                        onValueChange = { password = it },
+                                        placeholder = stringResource(R.string.auth_password_label),
+                                        label = stringResource(R.string.delete_account_password_label),
+                                        enabled = !state.isDeleting,
+                                        isDarkTheme = isDarkTheme,
+                                        visualTransformation = PasswordVisualTransformation(),
+                                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password)
+                                    )
+                                }
+                                Confirmation.GOOGLE -> {
+                                    Spacer(modifier = Modifier.height(16.dp))
+                                    Text(
+                                        text = stringResource(R.string.delete_account_google_note),
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                }
+                                // Вход свежий — подтверждать нечего, хватит слова
+                                Confirmation.RECENT_SIGN_IN, Confirmation.SIGN_IN_AGAIN -> Unit
+                            }
+                        }
                     }
                 }
                 Spacer(modifier = Modifier.height(16.dp))
             }
+        }
+    }
+}
+
+/** Вход незнакомым способом подтвердить на этом экране нечем — предлагаем войти заново. */
+@Composable
+private fun SignInAgainContent(enabled: Boolean, onSignOut: () -> Unit) {
+    Column(modifier = Modifier.padding(16.dp)) {
+        Text(
+            text = stringResource(R.string.delete_account_other_method_note),
+            style = MaterialTheme.typography.bodyMedium,
+            color = primaryTextColor()
+        )
+        Spacer(modifier = Modifier.height(12.dp))
+        OutlinedButton(
+            onClick = onSignOut,
+            enabled = enabled,
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(12.dp)
+        ) {
+            Text(stringResource(R.string.delete_account_sign_out_button))
+        }
+    }
+}
+
+/** Прошлая попытка удаления оборвалась на полпути — объясняем, чем грозит каждый выбор. */
+@Composable
+private fun InterruptedBanner(stage: DeletionStage) {
+    val (titleRes, textRes) = when (stage) {
+        DeletionStage.CLOUD_IN_PROGRESS ->
+            R.string.delete_account_interrupted_title to R.string.delete_account_interrupted_text
+        DeletionStage.CLOUD_DONE ->
+            R.string.delete_account_finishing_title to R.string.delete_account_finishing_text
+    }
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(16.dp))
+            .background(MaterialTheme.colorScheme.errorContainer)
+            .padding(16.dp)
+            .semantics(mergeDescendants = true) { },
+        verticalAlignment = Alignment.Top
+    ) {
+        Icon(
+            imageVector = TahoeIcons.ExclamationCircle,
+            contentDescription = null,
+            tint = MaterialTheme.colorScheme.onErrorContainer,
+            modifier = Modifier.size(22.dp)
+        )
+        Spacer(modifier = Modifier.width(12.dp))
+        Column {
+            Text(
+                text = stringResource(titleRes),
+                style = MaterialTheme.typography.titleSmall,
+                fontWeight = FontWeight.SemiBold,
+                color = MaterialTheme.colorScheme.onErrorContainer
+            )
+            Spacer(modifier = Modifier.height(4.dp))
+            Text(
+                text = stringResource(textRes),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onErrorContainer
+            )
         }
     }
 }

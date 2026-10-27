@@ -7,20 +7,25 @@ import androidx.credentials.CustomCredential
 import androidx.credentials.GetCredentialRequest
 import androidx.credentials.exceptions.GetCredentialCancellationException
 import androidx.credentials.exceptions.GetCredentialException
+import androidx.credentials.exceptions.NoCredentialException
 import com.google.android.libraries.identity.googleid.GetGoogleIdOption
 import com.google.android.libraries.identity.googleid.GoogleIdTokenCredential
 import com.google.android.libraries.identity.googleid.GoogleIdTokenParsingException
+import com.google.firebase.FirebaseException
 import com.google.firebase.auth.AuthCredential
 import com.google.firebase.auth.EmailAuthProvider
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.FirebaseAuthInvalidCredentialsException
 import com.google.firebase.auth.FirebaseAuthInvalidUserException
 import com.google.firebase.auth.FirebaseAuthRecentLoginRequiredException
+import com.google.firebase.auth.FirebaseUser
 import com.google.firebase.auth.GoogleAuthProvider
 import com.google.firebase.messaging.FirebaseMessaging
 import com.habittracker.domain.model.AccountAlreadyDeletedException
 import com.habittracker.domain.model.AuthCancelledException
 import com.habittracker.domain.model.InvalidCredentialsException
+import com.habittracker.domain.model.NoConnectionException
+import com.habittracker.domain.model.NoGoogleAccountException
 import com.habittracker.domain.model.ReauthRequest
 import com.habittracker.domain.model.ReauthRequiredException
 import com.habittracker.domain.model.SignInMethod
@@ -28,12 +33,16 @@ import com.habittracker.domain.model.User
 import com.habittracker.domain.repository.AuthRepository
 import com.habittracker.domain.repository.UserRepository
 import com.habittracker.domain.usecase.auth.UpsertSignedInUserUseCase
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.TimeoutCancellationException
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.tasks.await
+import kotlinx.coroutines.withTimeout
+import kotlinx.coroutines.withTimeoutOrNull
 import kotlin.time.Clock
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toLocalDateTime
@@ -252,9 +261,22 @@ class AuthRepositoryImpl @Inject constructor(
         }
     }
 
+    override fun isRecentSignIn(): Boolean {
+        val signedInAt = firebaseAuth.currentUser?.metadata?.lastSignInTimestamp ?: return false
+        // Firebase требует вход не старше 5 минут; берём с запасом на расхождение часов
+        return System.currentTimeMillis() - signedInAt in 0..RECENT_SIGN_IN_MS
+    }
+
     override suspend fun reauthenticate(request: ReauthRequest) {
         val user = checkNotNull(firebaseAuth.currentUser) { "No signed-in user" }
         val credential = when (request) {
+            // Вход должен быть свежим и к концу удаления: проверяем до того, как трогать облако
+            ReauthRequest.None -> {
+                if (!isRecentSignIn()) throw ReauthRequiredException()
+                // Входа заново нет, а значит, и проверки сети — без неё удаление упёрлось бы в таймауты
+                checkServerReachable(user)
+                return
+            }
             is ReauthRequest.Password -> {
                 val email = checkNotNull(user.email) { "Signed-in user has no email" }
                 EmailAuthProvider.getCredential(email, request.password)
@@ -268,11 +290,13 @@ class AuthRepositoryImpl @Inject constructor(
         } catch (e: FirebaseAuthInvalidUserException) {
             throw when (e.errorCode) {
                 "ERROR_USER_NOT_FOUND" -> AccountAlreadyDeletedException(e)
-                // Пароль тут ни при чём — пусть уходит общей ошибкой, а не «неверный пароль»
-                "ERROR_USER_DISABLED", "ERROR_USER_TOKEN_EXPIRED", "ERROR_INVALID_USER_TOKEN" -> e
+                // Пароль тут ни при чём — пусть уходит своей ошибкой, а не «неверный пароль»
+                "ERROR_USER_DISABLED", "ERROR_USER_TOKEN_EXPIRED", "ERROR_INVALID_USER_TOKEN" -> e.toDeletionError()
                 // ERROR_USER_MISMATCH — выбран аккаунт Google, отличный от текущего
                 else -> InvalidCredentialsException(e)
             }
+        } catch (e: FirebaseException) {
+            throw e.toDeletionError()
         }
     }
 
@@ -282,6 +306,41 @@ class AuthRepositoryImpl @Inject constructor(
             user.delete().await()
         } catch (e: FirebaseAuthRecentLoginRequiredException) {
             throw ReauthRequiredException(e)
+        } catch (e: FirebaseAuthInvalidUserException) {
+            throw if (e.errorCode == "ERROR_USER_NOT_FOUND") AccountAlreadyDeletedException(e) else e.toDeletionError()
+        } catch (e: FirebaseException) {
+            throw e.toDeletionError()
+        }
+    }
+
+    override suspend fun isCurrentUserDeleted(): Boolean {
+        val user = firebaseAuth.currentUser ?: return false
+        return try {
+            // Без ответа сервера за отведённое время ничего не утверждаем
+            withTimeoutOrNull(RELOAD_TIMEOUT_MS) { user.reload().await() }
+            false
+        } catch (e: FirebaseAuthInvalidUserException) {
+            val deleted = e.errorCode == "ERROR_USER_NOT_FOUND"
+            if (!deleted) Timber.tag("AuthRepository").w(e, "Current user is invalid: ${e.errorCode}")
+            deleted
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            Timber.tag("AuthRepository").w(e, "Failed to reload current user")
+            false
+        }
+    }
+
+    /** Перезагружает профиль: так сервер Auth подтверждает, что он доступен и учётка жива. */
+    private suspend fun checkServerReachable(user: FirebaseUser) {
+        try {
+            withTimeout(RELOAD_TIMEOUT_MS) { user.reload().await() }
+        } catch (e: TimeoutCancellationException) {
+            throw NoConnectionException(e)
+        } catch (e: FirebaseAuthInvalidUserException) {
+            throw if (e.errorCode == "ERROR_USER_NOT_FOUND") AccountAlreadyDeletedException(e) else e.toDeletionError()
+        } catch (e: FirebaseException) {
+            throw e.toDeletionError()
         }
     }
 
@@ -293,6 +352,8 @@ class AuthRepositoryImpl @Inject constructor(
             CredentialManager.create(activityContext).getCredential(activityContext, request)
         } catch (e: GetCredentialCancellationException) {
             throw AuthCancelledException(e)
+        } catch (e: NoCredentialException) {
+            throw NoGoogleAccountException(e)
         }
         val credential = response.credential
         check(credential is CustomCredential && credential.type == GoogleIdTokenCredential.TYPE_GOOGLE_ID_TOKEN_CREDENTIAL) {
@@ -300,5 +361,10 @@ class AuthRepositoryImpl @Inject constructor(
         }
         val idToken = GoogleIdTokenCredential.createFrom(credential.data).idToken
         return GoogleAuthProvider.getCredential(idToken, null)
+    }
+
+    private companion object {
+        const val RELOAD_TIMEOUT_MS = 5_000L
+        const val RECENT_SIGN_IN_MS = 4 * 60_000L
     }
 }
