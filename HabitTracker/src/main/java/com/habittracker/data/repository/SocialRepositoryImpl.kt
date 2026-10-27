@@ -36,12 +36,17 @@ import com.habittracker.domain.repository.GroupHabitNotificationRepository
 import com.habittracker.domain.repository.HabitRepository
 import com.habittracker.domain.repository.SocialRepository
 import com.habittracker.domain.util.SyncPayloads
+import com.habittracker.domain.util.UserSearchKeys
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.channels.awaitClose
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
 import kotlinx.coroutines.flow.first
@@ -127,26 +132,63 @@ class SocialRepositoryImpl @Inject constructor(
     }
 
     override suspend fun searchUsers(query: String, currentUserId: String): List<User> {
-        val queryLower = query.lowercase()
-        
+        val queryLower = UserSearchKeys.normalize(query)
+        // Токены в профиле не длиннее MAX_TOKEN_LENGTH; полное слово всё равно проверит matches()
+        val firstWord = UserSearchKeys.words(queryLower).firstOrNull()
+            ?.take(UserSearchKeys.MAX_TOKEN_LENGTH)
+            ?: return emptyList()
+
         // Получаем список ID друзей для исключения из результатов
         val friendIds = try {
             friendshipDao.getFriendIdsForUser(currentUserId)
-        } catch (_: Exception) {
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            // Без списка друзей они попадут в выдачу — неприятно, но поиск важнее
+            Timber.tag("SocialRepository").e(e, "searchUsers: failed to load friend ids")
             emptyList()
         }
-        
+        // Себя и друзей отсеиваем после запроса — берём с запасом, чтобы выдача не пустела
+        val queryLimit = (SEARCH_LIMIT + friendIds.size + 1).coerceAtMost(MAX_SEARCH_QUERY_LIMIT).toLong()
+
         return try {
             Timber.tag("SocialRepository").d("🔍 Searching users: query='$query', currentUserId='$currentUserId'")
-            
-            // Загружаем всех пользователей и фильтруем локально
-            // (Firestore не поддерживает поиск подстроки в середине строки)
-            val allUsersSnapshot = firestore.collection("users")
-                .limit(200)
-                .get(com.google.firebase.firestore.Source.SERVER)
-                .await()
 
-            val allResults = allUsersSnapshot.documents
+            // Серверный поиск по индексируемым полям (Firestore не ищет подстроку в середине строки).
+            // Legacy-запросы находят профили, у которых ещё нет ключей поиска (владелец давно не заходил).
+            val trimmed = query.trim()
+            val capitalized = trimmed.replaceFirstChar { it.titlecase() }
+            val users = firestore.collection("users")
+            val queries = listOf(
+                users.whereArrayContains(UserSearchKeys.FIELD_TOKENS, firstWord),
+                users.whereEqualTo(UserSearchKeys.FIELD_EMAIL_LOWER, queryLower),
+                users.whereEqualTo("email", trimmed),
+                users.whereGreaterThanOrEqualTo("name", capitalized)
+                    .whereLessThan("name", capitalized + "\uf8ff")
+            )
+            // Запросы независимы: сбой одного (правила, индекс) не должен прятать результаты остальных
+            val outcomes = coroutineScope {
+                queries.map { q ->
+                    async {
+                        try {
+                            Result.success(
+                                q.limit(queryLimit).get(com.google.firebase.firestore.Source.SERVER).await()
+                            )
+                        } catch (e: FirebaseFirestoreException) {
+                            Result.failure(e)
+                        }
+                    }
+                }.awaitAll()
+            }
+            val snapshots = outcomes.mapNotNull { it.getOrNull() }
+            val errors = outcomes.mapNotNull { it.exceptionOrNull() }
+            // Все запросы упали — скорее всего, нет сети: уходим в локальный поиск ниже
+            if (snapshots.isEmpty()) throw errors.first()
+            errors.filterIsInstance<FirebaseFirestoreException>().forEach { logSearchFailure(it, "one of the queries failed") }
+
+            val allResults = snapshots
+                .flatMap { it.documents }
+                .distinctBy { it.id }
                 .mapNotNull { doc ->
                     try {
                         UserFirestoreConverter.fromFirestore(doc.data ?: emptyMap(), doc.id)
@@ -157,31 +199,36 @@ class SocialRepositoryImpl @Inject constructor(
                 .filter { user ->
                     user.id != currentUserId &&
                     user.id !in friendIds &&
-                    (user.name.lowercase().contains(queryLower) || user.email.lowercase().contains(queryLower))
+                    UserSearchKeys.matches(queryLower, user.name, user.email)
                 }
-                .take(20)
-        
+                .take(SEARCH_LIMIT)
+
             Timber.tag("SocialRepository").d("🎯 After filtering: ${allResults.size} users")
             allResults
         } catch (e: FirebaseFirestoreException) {
-            // Не логгируем offline-ошибки - это ожидаемое поведение для offline-first приложения
-            if (e.code == FirebaseFirestoreException.Code.UNAVAILABLE) {
-                Timber.tag("SocialRepository").d("searchUsers: device is offline, using local fallback")
-            } else {
-                Timber.tag("SocialRepository").w("Firestore search failed: ${e.code}")
-            }
-            
+            logSearchFailure(e, "all queries failed, using local fallback")
+
             // Fallback на локальный поиск
-            val localResults = userDao.searchUsers("%$queryLower%")
+            val pattern = queryLower.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+            val localResults = userDao.searchUsers("%$pattern%")
                 .map { it.toDomain() }
                 .filter { user ->
                     user.id != currentUserId &&
                     user.id !in friendIds &&
                     (user.name.lowercase().contains(queryLower) || user.email.lowercase().contains(queryLower))
                 }
-                
+
             Timber.tag("SocialRepository").d("🗄️ Fallback local results: ${localResults.size} users")
-            localResults
+            localResults.take(SEARCH_LIMIT)
+        }
+    }
+
+    /** Офлайн — ожидаемое состояние offline-first приложения; остальное (правила, индексы) — ошибка. */
+    private fun logSearchFailure(e: FirebaseFirestoreException, message: String) {
+        if (e.code == FirebaseFirestoreException.Code.UNAVAILABLE) {
+            Timber.tag("SocialRepository").d("searchUsers: $message (offline)")
+        } else {
+            Timber.tag("SocialRepository").e(e, "searchUsers: $message, code=${e.code}")
         }
     }
 
@@ -2361,5 +2408,7 @@ class SocialRepositoryImpl @Inject constructor(
     
     companion object {
         private const val TAG = "SocialRepository"
+        private const val SEARCH_LIMIT = 20
+        private const val MAX_SEARCH_QUERY_LIMIT = 60
     }
 }

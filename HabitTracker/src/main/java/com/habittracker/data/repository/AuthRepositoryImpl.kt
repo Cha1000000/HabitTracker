@@ -5,18 +5,33 @@ import android.content.Intent
 import androidx.credentials.CredentialManager
 import androidx.credentials.CustomCredential
 import androidx.credentials.GetCredentialRequest
+import androidx.credentials.exceptions.GetCredentialCancellationException
 import androidx.credentials.exceptions.GetCredentialException
 import com.google.android.libraries.identity.googleid.GetGoogleIdOption
 import com.google.android.libraries.identity.googleid.GoogleIdTokenCredential
 import com.google.android.libraries.identity.googleid.GoogleIdTokenParsingException
+import com.google.firebase.auth.AuthCredential
+import com.google.firebase.auth.EmailAuthProvider
 import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.auth.FirebaseAuthInvalidCredentialsException
+import com.google.firebase.auth.FirebaseAuthInvalidUserException
+import com.google.firebase.auth.FirebaseAuthRecentLoginRequiredException
 import com.google.firebase.auth.GoogleAuthProvider
 import com.google.firebase.messaging.FirebaseMessaging
+import com.habittracker.domain.model.AccountAlreadyDeletedException
+import com.habittracker.domain.model.AuthCancelledException
+import com.habittracker.domain.model.InvalidCredentialsException
+import com.habittracker.domain.model.ReauthRequest
+import com.habittracker.domain.model.ReauthRequiredException
+import com.habittracker.domain.model.SignInMethod
 import com.habittracker.domain.model.User
 import com.habittracker.domain.repository.AuthRepository
 import com.habittracker.domain.repository.UserRepository
 import com.habittracker.domain.usecase.auth.UpsertSignedInUserUseCase
+import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.callbackFlow
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.tasks.await
 import kotlin.time.Clock
@@ -57,6 +72,12 @@ class AuthRepositoryImpl @Inject constructor(
     override fun getCurrentUserId(): String? {
         return firebaseAuth.currentUser?.uid
     }
+
+    override fun observeCurrentUserId(): Flow<String?> = callbackFlow {
+        val listener = FirebaseAuth.AuthStateListener { trySend(it.currentUser?.uid) }
+        firebaseAuth.addAuthStateListener(listener)
+        awaitClose { firebaseAuth.removeAuthStateListener(listener) }
+    }.distinctUntilChanged()
 
     override suspend fun login(email: String, password: String): Flow<Result<Unit>> = flow {
         try {
@@ -219,5 +240,65 @@ class AuthRepositoryImpl @Inject constructor(
         } catch (e: Exception) {
             emit(Result.failure(e))
         }
+    }
+
+    override fun currentSignInMethod(): SignInMethod? {
+        val user = firebaseAuth.currentUser ?: return null
+        val providers = user.providerData.map { it.providerId }
+        return when {
+            GoogleAuthProvider.PROVIDER_ID in providers -> SignInMethod.GOOGLE
+            EmailAuthProvider.PROVIDER_ID in providers -> SignInMethod.PASSWORD
+            else -> SignInMethod.OTHER
+        }
+    }
+
+    override suspend fun reauthenticate(request: ReauthRequest) {
+        val user = checkNotNull(firebaseAuth.currentUser) { "No signed-in user" }
+        val credential = when (request) {
+            is ReauthRequest.Password -> {
+                val email = checkNotNull(user.email) { "Signed-in user has no email" }
+                EmailAuthProvider.getCredential(email, request.password)
+            }
+            is ReauthRequest.Google -> requestGoogleCredential(request.activityContext)
+        }
+        try {
+            user.reauthenticate(credential).await()
+        } catch (e: FirebaseAuthInvalidCredentialsException) {
+            throw InvalidCredentialsException(e)
+        } catch (e: FirebaseAuthInvalidUserException) {
+            throw when (e.errorCode) {
+                "ERROR_USER_NOT_FOUND" -> AccountAlreadyDeletedException(e)
+                // Пароль тут ни при чём — пусть уходит общей ошибкой, а не «неверный пароль»
+                "ERROR_USER_DISABLED", "ERROR_USER_TOKEN_EXPIRED", "ERROR_INVALID_USER_TOKEN" -> e
+                // ERROR_USER_MISMATCH — выбран аккаунт Google, отличный от текущего
+                else -> InvalidCredentialsException(e)
+            }
+        }
+    }
+
+    override suspend fun deleteCurrentAuthUser() {
+        val user = checkNotNull(firebaseAuth.currentUser) { "No signed-in user" }
+        try {
+            user.delete().await()
+        } catch (e: FirebaseAuthRecentLoginRequiredException) {
+            throw ReauthRequiredException(e)
+        }
+    }
+
+    private suspend fun requestGoogleCredential(activityContext: Context): AuthCredential {
+        val request = GetCredentialRequest.Builder()
+            .addCredentialOption(getGoogleIdOption)
+            .build()
+        val response = try {
+            CredentialManager.create(activityContext).getCredential(activityContext, request)
+        } catch (e: GetCredentialCancellationException) {
+            throw AuthCancelledException(e)
+        }
+        val credential = response.credential
+        check(credential is CustomCredential && credential.type == GoogleIdTokenCredential.TYPE_GOOGLE_ID_TOKEN_CREDENTIAL) {
+            "Unexpected credential type: ${credential.type}"
+        }
+        val idToken = GoogleIdTokenCredential.createFrom(credential.data).idToken
+        return GoogleAuthProvider.getCredential(idToken, null)
     }
 }

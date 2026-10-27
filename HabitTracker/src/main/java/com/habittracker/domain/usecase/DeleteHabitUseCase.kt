@@ -31,9 +31,13 @@ class DeleteHabitUseCase @Inject constructor(
     }
 
     internal fun decideGroupDeletion(habit: Habit, userId: String): Decision {
+        // В части документов создатель записан и в participants — без этого он «передал» бы привычку
+        // самому себе, а участника посчитали бы дважды
+        val others = habit.participants.filter { it != habit.createdBy }.distinct()
+
         // Creator leaves
         if (userId == habit.createdBy) {
-            val participants = habit.participants
+            val participants = others
             if (participants.isEmpty()) return Decision.DeleteAll
 
             val newCreatedBy = participants.first()
@@ -48,7 +52,7 @@ class DeleteHabitUseCase @Inject constructor(
         }
 
         // Regular participant leaves
-        val remainingParticipants = habit.participants.filter { it != userId }
+        val remainingParticipants = others.filter { it != userId }
         val remainingCount = 1 + remainingParticipants.size // 1 for createdBy
         return when {
             remainingCount <= 0 -> Decision.DeleteAll // defensive

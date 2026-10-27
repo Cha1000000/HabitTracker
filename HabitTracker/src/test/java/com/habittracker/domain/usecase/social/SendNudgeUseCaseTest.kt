@@ -160,6 +160,7 @@ class FakeAuthRepository(private var currentUserId: String?) : AuthRepository {
     }
 
     override fun getCurrentUserId(): String? = currentUserId
+    override fun observeCurrentUserId(): Flow<String?> = flowOf(currentUserId)
     override fun getCurrentUser(): Flow<User?> = flowOf(currentUserId?.let { 
         User(id = it, name = "Test User", email = "test@test.com", 
             createdAt = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault()).date,
@@ -170,6 +171,9 @@ class FakeAuthRepository(private var currentUserId: String?) : AuthRepository {
     override suspend fun signInWithGoogle(activityContext: android.content.Context): Flow<Result<android.content.Intent?>> = flowOf(Result.failure(NotImplementedError()))
     override suspend fun signOut(): Flow<Result<Unit>> = flowOf(Result.success(Unit))
     override suspend fun sendPasswordResetEmail(email: String): Flow<Result<Unit>> = flowOf(Result.success(Unit))
+    override fun currentSignInMethod(): com.habittracker.domain.model.SignInMethod? = null
+    override suspend fun reauthenticate(request: com.habittracker.domain.model.ReauthRequest) = Unit
+    override suspend fun deleteCurrentAuthUser() = Unit
 }
 
 class FakeUserRepository : UserRepository {

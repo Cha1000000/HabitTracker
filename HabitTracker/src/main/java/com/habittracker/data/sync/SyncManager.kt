@@ -7,7 +7,10 @@ import com.habittracker.data.local.entity.SyncOutboxEntity
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.suspendCancellableCoroutine
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeoutOrNull
 import org.json.JSONArray
 import org.json.JSONObject
 import java.util.UUID
@@ -25,6 +28,35 @@ class SyncManager @Inject constructor(
     private val firestore: FirebaseFirestore,
     private val outboxDao: SyncOutboxDao
 ) {
+    /** Пока `true`, очередь не отправляется (например, на время удаления аккаунта). */
+    @Volatile
+    private var paused = false
+
+    /** Дренажи идут по одному — так [pauseAndAwait] может дождаться текущего. */
+    private val drainMutex = Mutex()
+
+    /**
+     * Останавливает отправку очереди и дожидается окончания текущего дренажа.
+     * Новые операции копятся в outbox и уйдут после [resume].
+     *
+     * @return false, если текущий дренаж не закончился за отведённое время; пауза тогда снята.
+     */
+    suspend fun pauseAndAwait(): Boolean {
+        paused = true
+        // Оффлайн запись в Firestore может висеть до появления сети — долго не ждём
+        val drained = withTimeoutOrNull(PAUSE_WAIT_MS) { drainMutex.withLock { } } != null
+        if (!drained) paused = false
+        return drained
+    }
+
+    fun resume() {
+        paused = false
+    }
+
+    private companion object {
+        const val PAUSE_WAIT_MS = 10_000L
+    }
+
     // Публичные API для репозиториев
     suspend fun enqueueUpsert(
         entityType: String,
@@ -152,9 +184,18 @@ class SyncManager @Inject constructor(
 
     // Дренаж очереди: вызывать WorkManager'ом периодически и вручную при старте/онбординге
     suspend fun drainPending(maxBatch: Int = 50) = withContext(Dispatchers.IO) {
+        drainMutex.withLock { drainLocked(maxBatch) }
+    }
+
+    private suspend fun drainLocked(maxBatch: Int) {
+        if (paused) {
+            Timber.tag("SyncManager").d("[drainPending] paused, skip")
+            return
+        }
         val batch = outboxDao.getByState("PENDING", maxBatch)
         Timber.tag("SyncManager").d("[drainPending] fetched=${batch.size}")
         for (item in batch) {
+            if (paused) break
             try {
                 Timber.tag("SyncManager").d(
                     "[drainPending] process id=${item.id} op=${item.opType} type=${item.entityType} entity=${item.entityId} updatedAt=${item.updatedAt}"

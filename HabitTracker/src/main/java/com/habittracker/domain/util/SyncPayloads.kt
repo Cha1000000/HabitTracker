@@ -183,6 +183,7 @@ object SyncPayloads {
             put("createdAt", user.createdAt)
             put("timezone", user.timezone)
             put("updatedAt", updatedAtMillis)
+            putAll(UserSearchKeys.fields(user.name, user.email))
             user.avatarUrl?.let { put("avatarUrl", it) }
             user.avatarThumbnailUrl?.let { put("avatarThumbnailUrl", it) }
             user.fcmToken?.let { put("fcmToken", it) }

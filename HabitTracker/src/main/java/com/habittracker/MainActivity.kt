@@ -33,6 +33,7 @@ import com.habittracker.domain.util.AnalyticsEvents
 import com.habittracker.domain.util.AnalyticsManager
 import com.habittracker.domain.util.ErrorLogger
 import dagger.hilt.android.AndroidEntryPoint
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.coroutineScope
@@ -147,7 +148,6 @@ class MainActivity : ComponentActivity() {
                             // Проверяем, нужно ли показать сообщение о недоступности FCM
                             checkAndShowFcmUnavailableDialog()
                             if (userId != null) {
-                                startSocialRealtimeSync(userId)
                                 // Если есть отложенная навигация — выполним её
                                 pendingNavigation?.let { nav ->
                                     Timber.tag("MainActivity").d("[push-nav] executing pendingNavigation after auth success")
@@ -192,16 +192,21 @@ class MainActivity : ComponentActivity() {
                                     }
                                 }
                             } else {
-                                Timber.tag("MainActivity").w("[bootstrap] Cannot start social realtime sync: currentUserId is null")
+                                Timber.tag("MainActivity").w("[bootstrap] AuthState.Success but currentUserId is null")
                             }
-                        }
-                        is AuthState.Unauthenticated, is AuthState.Error -> {
-                            Timber.tag("MainActivity").d("[bootstrap] AuthState=${state::class.simpleName}. Stopping social realtime sync if active…")
-                            stopSocialRealtimeSync()
                         }
                         else -> Unit
                     }
                 }
+            }
+        }
+
+        // Подписки на соцданные идут за сессией Firebase, а не за authState: вход, выход и удаление
+        // аккаунта проходят в ViewModel экранов, и этот экземпляр AuthViewModel о них не узнаёт
+        lifecycleScope.launch {
+            authRepository.observeCurrentUserId().collect { userId ->
+                stopSocialRealtimeSync()
+                if (userId != null) startSocialRealtimeSync(userId)
             }
         }
     }
@@ -348,6 +353,9 @@ class MainActivity : ComponentActivity() {
                     launch { socialRepository.getIncomingFriendRequests(userId).collect { } }
                     launch { socialRepository.getOutgoingFriendRequests(userId).collect { } }
                 }
+            } catch (e: CancellationException) {
+                // Штатная остановка при выходе — не ошибка
+                throw e
             } catch (e: Exception) {
                 Timber.tag("MainActivity").w(e, "[bootstrap] Social sync error: ${e.message}")
             } finally {

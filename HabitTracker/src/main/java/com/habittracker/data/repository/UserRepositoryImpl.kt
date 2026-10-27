@@ -9,6 +9,7 @@ import com.habittracker.data.sync.SyncWorkScheduler
 import com.habittracker.domain.model.User
 import com.habittracker.domain.repository.UserRepository
 import com.habittracker.domain.util.SyncPayloads
+import com.habittracker.domain.util.UserSearchKeys
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -292,8 +293,15 @@ class UserRepositoryImpl @Inject constructor(
             // Обновляем локально
             userDao.updateLastActive(userId, now)
             
-            // Обновляем в Firestore через Outbox
-            val json = "{\"lastActiveAt\": $now}"
+            // Обновляем в Firestore через Outbox. Заодно досылаем ключи поиска —
+            // так профили, созданные до их появления, становятся находимыми.
+            val payload = org.json.JSONObject().put("lastActiveAt", now)
+            userDao.getUserById(userId)?.let { local ->
+                UserSearchKeys.fields(local.name, local.email).forEach { (key, value) ->
+                    payload.put(key, if (value is List<*>) org.json.JSONArray(value) else value)
+                }
+            }
+            val json = payload.toString()
             syncManager.enqueueUpsert(
                 entityType = "user",
                 entityId = userId,
@@ -303,7 +311,7 @@ class UserRepositoryImpl @Inject constructor(
 
             kickSync()
         } catch (e: Exception) {
-            Timber.tag("UserRepository").d("updateLastActive failed: ${e.message}")
+            Timber.tag("UserRepository").w(e, "updateLastActive failed")
         }
     }
 }
