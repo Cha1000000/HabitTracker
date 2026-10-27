@@ -17,6 +17,8 @@ import androidx.lifecycle.repeatOnLifecycle
 import androidx.navigation.NavHostController
 import com.habittracker.data.service.FCMTokenManager
 import com.habittracker.data.service.PendingNotificationManager
+import com.habittracker.data.sync.RemoteDataSync
+import com.habittracker.domain.repository.AccountRepository
 import com.habittracker.domain.repository.AuthRepository
 import com.habittracker.domain.repository.SocialRepository
 import com.habittracker.domain.repository.UserPreferencesRepository
@@ -33,11 +35,16 @@ import com.habittracker.domain.util.AnalyticsEvents
 import com.habittracker.domain.util.AnalyticsManager
 import com.habittracker.domain.util.ErrorLogger
 import dagger.hilt.android.AndroidEntryPoint
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.Job
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import javax.inject.Inject
 import timber.log.Timber
 
@@ -62,8 +69,13 @@ class MainActivity : ComponentActivity() {
     @Inject
     lateinit var fcmTokenManager: FCMTokenManager
 
+    @Inject
+    lateinit var remoteDataSync: RemoteDataSync
+
+    @Inject
+    lateinit var accountRepository: AccountRepository
+
     private val authViewModel: AuthViewModel by viewModels()
-    private var socialSyncJob: Job? = null
     private var navController: NavHostController? = null
     private var pendingNavigation: (() -> Unit)? = null
 
@@ -98,7 +110,7 @@ class MainActivity : ComponentActivity() {
                         // Если есть отложенная навигация (например, auth случился раньше чем UI готов)
                         pendingNavigation?.let { nav ->
                             Timber.tag("MainActivity").d("[bootstrap] executing pendingNavigation after navController ready")
-                            nav()
+                            if (!isAccountDeletionPending()) nav()
                             pendingNavigation = null
                         }
 
@@ -117,9 +129,6 @@ class MainActivity : ComponentActivity() {
         lifecycleScope.launch(Dispatchers.IO) {
             runCatching { PendingNotificationManager.deliverForCurrentUser(applicationContext, authRepository) }
         }
-
-        // Обновляем время последней активности при старте
-        updateUserLastActive()
 
         // Проверяем и планируем ежедневное напоминание при старте
         lifecycleScope.launch(Dispatchers.IO) {
@@ -147,11 +156,10 @@ class MainActivity : ComponentActivity() {
                             // Проверяем, нужно ли показать сообщение о недоступности FCM
                             checkAndShowFcmUnavailableDialog()
                             if (userId != null) {
-                                startSocialRealtimeSync(userId)
                                 // Если есть отложенная навигация — выполним её
                                 pendingNavigation?.let { nav ->
                                     Timber.tag("MainActivity").d("[push-nav] executing pendingNavigation after auth success")
-                                    nav()
+                                    if (!isAccountDeletionPending()) nav()
                                     pendingNavigation = null
                                 } ?: run {
                                     val deep = intent?.getStringExtra("navigate_to")
@@ -192,16 +200,29 @@ class MainActivity : ComponentActivity() {
                                     }
                                 }
                             } else {
-                                Timber.tag("MainActivity").w("[bootstrap] Cannot start social realtime sync: currentUserId is null")
+                                Timber.tag("MainActivity").w("[bootstrap] AuthState.Success but currentUserId is null")
                             }
-                        }
-                        is AuthState.Unauthenticated, is AuthState.Error -> {
-                            Timber.tag("MainActivity").d("[bootstrap] AuthState=${state::class.simpleName}. Stopping social realtime sync if active…")
-                            stopSocialRealtimeSync()
                         }
                         else -> Unit
                     }
                 }
+            }
+        }
+
+        // Подписки идут за сессией Firebase, а не за authState: вход, выход и удаление аккаунта
+        // проходят в ViewModel экранов, и этот экземпляр AuthViewModel о них не узнаёт.
+        // В фоне слушатели снимаем: соединение не держится, а события доставляют пуши.
+        // На время удаления аккаунта тоже: облако как раз пустеет, и это не повод чистить Room.
+        lifecycleScope.launch {
+            repeatOnLifecycle(Lifecycle.State.STARTED) {
+                combine(
+                    authRepository.observeCurrentUserId(),
+                    accountRepository.observePendingDeletion()
+                ) { userId, pendingDeletion -> userId.takeIf { pendingDeletion == null } }
+                    .distinctUntilChanged()
+                    .collectLatest { userId ->
+                        if (userId != null) runRealtimeSync(userId)
+                    }
             }
         }
     }
@@ -217,6 +238,12 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun handleIntentForNavigation(intent: android.content.Intent) {
+        // Незаконченное удаление аккаунта разбирает заставка: переход из пуша увёл бы мимо неё
+        if (isAccountDeletionPending()) {
+            Timber.tag("MainActivity").d("[push-nav] account deletion pending -> ignore intent")
+            clearDeepLinkExtras()
+            return
+        }
         // Обработка deep links (habittracker://invite?code=XXX или https://habittracker.app/invite/XXX)
         val deepLinkUri = intent.data
         if (deepLinkUri != null) {
@@ -306,6 +333,8 @@ class MainActivity : ComponentActivity() {
         }
     }
 
+    private fun isAccountDeletionPending(): Boolean = accountRepository.pendingDeletion() != null
+
     private fun clearDeepLinkExtras() {
         try {
             val hadNavigateTo = intent?.hasExtra("navigate_to") == true
@@ -333,53 +362,58 @@ class MainActivity : ComponentActivity() {
         }
     }
 
-    // Ранний запуск подписок на социальные данные после логина для регистрации Firestore listeners
-    private fun startSocialRealtimeSync(userId: String) {
-        if (socialSyncJob?.isActive == true) {
-            Timber.tag("MainActivity").d("[bootstrap] Social realtime sync already active. Skip start for user=$userId")
-            return
-        }
-        socialSyncJob = lifecycleScope.launch(Dispatchers.IO) {
-            Timber.tag("MainActivity").d("[bootstrap] Start social realtime sync for user=$userId")
-            try {
-                coroutineScope {
-                    // Эти collect лишь регистрируют snapshot listeners и наполняют Room. UI не используется здесь.
-                    launch { socialRepository.getFriends(userId).collect { } }
-                    launch { socialRepository.getIncomingFriendRequests(userId).collect { } }
-                    launch { socialRepository.getOutgoingFriendRequests(userId).collect { } }
-                }
-            } catch (e: Exception) {
-                Timber.tag("MainActivity").w(e, "[bootstrap] Social sync error: ${e.message}")
-            } finally {
-                Timber.tag("MainActivity").d("[bootstrap] Social sync finished for user=$userId")
+    /** Слушатели Firestore для вошедшего пользователя: наполняют Room, пока их не отменят. */
+    private suspend fun runRealtimeSync(userId: String) = withContext(Dispatchers.IO) {
+        Timber.tag("MainActivity").d("[bootstrap] Start realtime sync for user=$userId")
+        try {
+            coroutineScope {
+                launchSync("user data") { remoteDataSync.run(userId) }
+                launchSync("friends") { socialRepository.getFriends(userId).collect { } }
+                launchSync("incoming requests") { socialRepository.getIncomingFriendRequests(userId).collect { } }
+                launchSync("outgoing requests") { socialRepository.getOutgoingFriendRequests(userId).collect { } }
             }
+        } finally {
+            Timber.tag("MainActivity").d("[bootstrap] Realtime sync stopped for user=$userId")
         }
     }
 
-    private fun stopSocialRealtimeSync() {
-        socialSyncJob?.cancel()
-        socialSyncJob = null
-        Timber.tag("MainActivity").d("[bootstrap] Social realtime sync stopped")
+    private fun CoroutineScope.launchSync(name: String, block: suspend () -> Unit) = launch {
+        try {
+            block()
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            Timber.tag("MainActivity").w(e, "[bootstrap] $name sync failed: ${e.message}")
+        }
     }
 
     override fun onResume() {
         super.onResume()
         // Обновляем время последней активности при возобновлении
-        updateUserLastActive()
+        updateUserLastActive(force = false)
     }
 
     override fun onPause() {
         super.onPause()
         // Обновляем время последней активности при сворачивании/закрытии
         // чтобы статус "был X мин назад" отсчитывался от момента закрытия
-        updateUserLastActive()
+        updateUserLastActive(force = true)
     }
 
-    private fun updateUserLastActive() {
+    /**
+     * Каждая запись профиля рассылается всем, кто его слушает, поэтому при открытии — не чаще раза
+     * в 5 минут. При сворачивании ([force]) пишем всегда: от этого момента считается «был X мин назад».
+     */
+    private fun updateUserLastActive(force: Boolean) {
         val userId = authRepository.getCurrentUserId() ?: return
-        lifecycleScope.launch(Dispatchers.IO) {
-            runCatching { userRepository.updateLastActive(userId) }
-        }
+        val now = System.currentTimeMillis()
+        val recentlySent = lastActiveSent?.let { (sentFor, sentAt) ->
+            sentFor == userId && now - sentAt < LAST_ACTIVE_MIN_INTERVAL_MS
+        } ?: false
+        if (recentlySent && !force) return
+        lastActiveSent = userId to now
+        // Сбои updateLastActive логирует сам; сеть — забота outbox
+        lifecycleScope.launch(Dispatchers.IO) { userRepository.updateLastActive(userId) }
     }
 
     private val notificationsPermissionLauncher =
@@ -438,5 +472,12 @@ class MainActivity : ComponentActivity() {
                 .setCancelable(false)
                 .show()
         }
+    }
+
+    private companion object {
+        const val LAST_ACTIVE_MIN_INTERVAL_MS = 5 * 60 * 1000L
+
+        // На процесс, а не на экземпляр: поворот экрана не должен сбрасывать отсчёт
+        var lastActiveSent: Pair<String, Long>? = null
     }
 }

@@ -13,11 +13,9 @@ import com.habittracker.domain.repository.FirestoreRepository
 import com.habittracker.domain.repository.HabitRepository
 import com.habittracker.domain.util.SyncPayloads
 import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
-import kotlinx.coroutines.flow.onStart
 import kotlinx.coroutines.launch
 import kotlin.time.Clock
 import kotlinx.datetime.TimeZone
@@ -36,38 +34,6 @@ class HabitRepositoryImpl @Inject constructor(
     private val applicationScope: CoroutineScope
 ) : HabitRepository {
     
-    private var syncJob: Job? = null
-    private var currentSyncUserId: String? = null
-
-    private fun startObservingRemoteHabits(userId: String) {
-        if (currentSyncUserId == userId && syncJob?.isActive == true) return
-        
-        syncJob?.cancel()
-        currentSyncUserId = userId
-        syncJob = applicationScope.launch {
-            firestoreRepository.getUserHabits(userId).collect { remoteHabits ->
-                // Для каждой привычки проверяем, не новее ли локальная версия
-                for (remoteHabit in remoteHabits) {
-                    val localHabit = habitDao.getHabitById(remoteHabit.id)
-                    if (localHabit == null) {
-                        // Локальной версии нет — вставляем
-                        habitDao.insertHabit(remoteHabit.toEntity())
-                    } else {
-                        // LWW: сравниваем updatedAtMillis (fallback уже нормализован на уровне парсинга)
-                        if (remoteHabit.updatedAtMillis >= localHabit.updatedAtMillis) {
-                            // Дополнительно проверяем, нет ли pending операций в Outbox для этой привычки
-                            val hasPendingSync = syncManager.hasPendingOperations("habit", remoteHabit.id)
-                            if (!hasPendingSync) {
-                                habitDao.insertHabit(remoteHabit.toEntity())
-                            }
-                        }
-                        // Если local новее — не перезаписываем
-                    }
-                }
-            }
-        }
-    }
-
     override suspend fun insertHabit(habit: Habit) {
         val now = Clock.System.now().toEpochMilliseconds()
         val updated = habit.copy(
@@ -165,19 +131,16 @@ class HabitRepositoryImpl @Inject constructor(
     override fun getHabitsByUserId(userId: String): Flow<List<Habit>> {
         return habitDao.getUserHabits(userId)
             .map { entities -> entities.map { it.toDomain() } }
-            .onStart { startObservingRemoteHabits(userId) }
     }
     
     override fun getPersonalHabits(userId: String): Flow<List<Habit>> {
         return habitDao.getUserPersonalHabits(userId)
             .map { entities -> entities.map { it.toDomain() } }
-            .onStart { startObservingRemoteHabits(userId) }
     }
     
     override fun getGroupHabits(userId: String): Flow<List<Habit>> {
         return habitDao.getUserGroupHabits(userId)
             .map { entities -> entities.map { it.toDomain() } }
-            .onStart { startObservingRemoteHabits(userId) }
     }
     
     override suspend fun addParticipantToHabit(habitId: String, userId: String) {

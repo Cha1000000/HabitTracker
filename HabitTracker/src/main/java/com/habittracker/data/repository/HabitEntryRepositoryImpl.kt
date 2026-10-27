@@ -3,8 +3,6 @@ package com.habittracker.data.repository
 import com.google.firebase.firestore.FirebaseFirestore
 import com.habittracker.data.local.dao.HabitEntryDao
 import com.habittracker.data.local.mappers.toDomain
-import com.habittracker.data.model.FirebaseHabitEntry
-import com.habittracker.data.model.FirebaseHabitEntry.Companion.toDomain
 import com.habittracker.data.sync.SyncManager
 import com.habittracker.data.sync.SyncWorkScheduler
 import com.habittracker.domain.model.HabitEntry
@@ -12,14 +10,10 @@ import com.habittracker.domain.model.HabitEntryWithUser
 import com.habittracker.domain.repository.HabitEntryRepository
 import com.habittracker.domain.util.HabitEntryIds
 import com.habittracker.domain.util.SyncPayloads
-import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
-import kotlinx.coroutines.cancel
-import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.callbackFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
@@ -141,134 +135,16 @@ class HabitEntryRepositoryImpl @Inject constructor(
         return habitEntryDao.getEntry(habitId, userId, date)?.habitEntryToDomain()
     }
 
-    override fun getEntriesForHabit(habitId: String): Flow<List<HabitEntry>> {
-        return callbackFlow {
-            val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+    // Отметки из облака кладёт в Room RemoteDataSync, здесь только чтение Room
 
-            val registration = firestore.collection("habit_entries")
-                .whereEqualTo("habitId", habitId)
-                .addSnapshotListener { snapshot, error ->
-                    if (error != null) {
-                        Timber.tag("HabitEntryRepo").w(error, "Listener error (habitId=$habitId): ${error.message}")
-                        return@addSnapshotListener
-                    }
-                    val list = snapshot?.documents?.mapNotNull { doc ->
-                        try { 
-                            doc.toObject(FirebaseHabitEntry::class.java)?.toDomain()
-                        } catch (e: Exception) {
-                            Timber.tag("HabitEntryRepo").d("Map doc to HabitEntry failed: ${e.message}")
-                            null
-                        }
-                    } ?: emptyList()
-                    scope.launch {
-                        try {
-                            mergeFirebaseEntries(list)
-                        } catch (_: CancellationException) {
-                            // Scope was cancelled - this is expected when Flow is closed
-                        } catch (e: Exception) {
-                            Timber.tag("HabitEntryRepo").w(e, "Merge entries failed: ${e.message}")
-                        }
-                    }
-                }
+    override fun getEntriesForHabit(habitId: String): Flow<List<HabitEntry>> =
+        habitEntryDao.getEntriesForHabit(habitId).map { entities -> entities.map { it.habitEntryToDomain() } }
 
-            val job = scope.launch {
-                habitEntryDao.getEntriesForHabit(habitId).collect { entities ->
-                    trySend(entities.map { it.habitEntryToDomain() })
-                }
-            }
+    override fun getEntriesForUser(userId: String): Flow<List<HabitEntry>> =
+        habitEntryDao.getEntriesForUser(userId).map { entities -> entities.map { it.habitEntryToDomain() } }
 
-            awaitClose {
-                registration.remove()
-                job.cancel()
-                scope.cancel()
-            }
-        }
-    }
-
-    override fun getEntriesForUser(userId: String): Flow<List<HabitEntry>> {
-        return callbackFlow {
-            val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
-
-            val registration = firestore.collection("habit_entries")
-                .whereEqualTo("userId", userId)
-                .addSnapshotListener { snapshot, error ->
-                    if (error != null) {
-                        Timber.tag("HabitEntryRepo").w(error, "Listener error (userId=$userId): ${error.message}")
-                        return@addSnapshotListener
-                    }
-                    val list = snapshot?.documents?.mapNotNull { doc ->
-                        try { doc.toObject(FirebaseHabitEntry::class.java)?.toDomain() } catch (e: Exception) {
-                            Timber.tag("HabitEntryRepo").d("Map doc to HabitEntry failed: ${e.message}")
-                            null
-                        }
-                    } ?: emptyList()
-                    scope.launch {
-                        try {
-                            mergeFirebaseEntries(list)
-                        } catch (_: CancellationException) {
-                            // Scope was cancelled - this is expected when Flow is closed
-                        } catch (e: Exception) {
-                            Timber.tag("HabitEntryRepo").w(e, "Merge entries failed: ${e.message}")
-                        }
-                    }
-                }
-
-            val job = scope.launch {
-                habitEntryDao.getEntriesForUser(userId).collect { entities ->
-                    trySend(entities.map { it.habitEntryToDomain() })
-                }
-            }
-
-            awaitClose {
-                registration.remove()
-                job.cancel()
-                scope.cancel()
-            }
-        }
-    }
-
-    override fun getEntriesForUserAndHabit(userId: String, habitId: String): Flow<List<HabitEntry>> {
-        return callbackFlow {
-            val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
-
-            val registration = firestore.collection("habit_entries")
-                .whereEqualTo("habitId", habitId)
-                .whereEqualTo("userId", userId)
-                .addSnapshotListener { snapshot, error ->
-                    if (error != null) {
-                        Timber.tag("HabitEntryRepo").w(error, "Listener error (userId=$userId, habitId=$habitId): ${error.message}")
-                        return@addSnapshotListener
-                    }
-                    val list = snapshot?.documents?.mapNotNull { doc ->
-                        try { doc.toObject(FirebaseHabitEntry::class.java)?.toDomain() } catch (e: Exception) {
-                            Timber.tag("HabitEntryRepo").d("Map doc to HabitEntry failed: ${e.message}")
-                            null
-                        }
-                    } ?: emptyList()
-                    scope.launch {
-                        try {
-                            mergeFirebaseEntries(list)
-                        } catch (_: CancellationException) {
-                            // Scope was cancelled - this is expected when Flow is closed
-                        } catch (e: Exception) {
-                            Timber.tag("HabitEntryRepo").w(e, "Merge entries failed: ${e.message}")
-                        }
-                    }
-                }
-
-            val job = scope.launch {
-                habitEntryDao.getEntriesForUserAndHabit(habitId, userId).collect { entities ->
-                    trySend(entities.map { it.habitEntryToDomain() })
-                }
-            }
-
-            awaitClose {
-                registration.remove()
-                job.cancel()
-                scope.cancel()
-            }
-        }
-    }
+    override fun getEntriesForUserAndHabit(userId: String, habitId: String): Flow<List<HabitEntry>> =
+        habitEntryDao.getEntriesForUserAndHabit(habitId, userId).map { entities -> entities.map { it.habitEntryToDomain() } }
 
     override suspend fun getEntriesForUserAndPeriod(
         habitId: String,
@@ -418,68 +294,5 @@ class HabitEntryRepositoryImpl @Inject constructor(
 
     override suspend fun getEntryOnce(habitId: String, userId: String, date: LocalDate): HabitEntry? {
         return habitEntryDao.getEntry(habitId, userId, date)?.toDomain()
-    }
-    
-    /**
-     * Умное слияние данных из Firebase с локальными данными.
-     * Не перезаписывает локальные данные, если:
-     * 1. Есть pending операции синхронизации для этой записи
-     * 2. Локальные данные новее (по updatedAt)
-     */
-    private suspend fun mergeFirebaseEntries(firebaseEntries: List<HabitEntry>) {
-        if (firebaseEntries.isEmpty()) return
-        
-        val entriesToInsert = mutableListOf<HabitEntry>()
-        
-        for (entry in firebaseEntries) {
-            val entityId = HabitEntryIds.make(entry.habitId, entry.userId, entry.date)
-            
-            // Проверяем, есть ли pending операции
-            val hasPending = try {
-                syncManager.hasPendingOperations("habit_entry", entityId)
-            } catch (e: Exception) {
-                Timber.tag("HabitEntryRepo").w("hasPendingOperations failed: ${e.message}")
-                false
-            }
-            
-            if (hasPending) {
-                // Есть pending операции - не перезаписываем локальные данные
-                Timber.tag("HabitEntryRepo").d("Skipping Firebase entry (pending sync): $entityId")
-                continue
-            }
-            
-            // Проверяем локальную запись
-            val localEntry = habitEntryDao.getEntry(entry.habitId, entry.userId, entry.date)
-            
-            if (localEntry == null) {
-                // Локальной записи нет - вставляем из Firebase
-                entriesToInsert.add(entry)
-            } else {
-                val localDomain = localEntry.habitEntryToDomain()
-                // Сравниваем updatedAt - Firebase данные применяем только если они новее
-                // Если updatedAt совпадает по дате, но контент отличается, тоже обновляем
-                if (entry.updatedAt > localDomain.updatedAt ||
-                    (entry.updatedAt == localDomain.updatedAt && !isSameContent(entry, localDomain))
-                ) {
-                    entriesToInsert.add(entry)
-                } else {
-                    Timber.tag("HabitEntryRepo").d("Skipping Firebase entry (local is newer or equal): $entityId, local=${localDomain.updatedAt}, firebase=${entry.updatedAt}")
-                }
-            }
-        }
-        
-        if (entriesToInsert.isNotEmpty()) {
-            habitEntryDao.insertEntries(entriesToInsert.map { it.habitEntryToEntity() })
-        }
-    }
-
-    private fun isSameContent(a: HabitEntry, b: HabitEntry): Boolean {
-        return a.completed == b.completed &&
-            a.completedAt == b.completedAt &&
-            a.value == b.value &&
-            a.note == b.note &&
-            a.isRestDay == b.isRestDay &&
-            a.streakBonusAwardedDays == b.streakBonusAwardedDays &&
-            a.photoUrl == b.photoUrl
     }
 }

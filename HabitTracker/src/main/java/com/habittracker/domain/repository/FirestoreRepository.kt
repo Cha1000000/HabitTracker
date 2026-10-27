@@ -28,25 +28,6 @@ interface FirestoreRepository {
     suspend fun getHabitById(habitId: String): Habit?
 
     /**
-     * Получает записи о выполнении привычки из Firestore.
-     *
-     * @param habitId ID привычки
-     * @param userId UID пользователя
-     * @return Flow со списком записей
-     */
-    fun getHabitEntries(habitId: String, userId: String): Flow<List<HabitEntry>>
-
-    /**
-     * Получает запись о выполнении привычки за конкретную дату.
-     *
-     * @param habitId ID привычки
-     * @param userId UID пользователя
-     * @param date Дата
-     * @return Запись о выполнении или null
-     */
-    suspend fun getHabitEntry(habitId: String, userId: String, date: kotlinx.datetime.LocalDate): HabitEntry?
-
-    /**
      * Синхронизирует локальные данные с Firestore.
      * Загружает изменения с сервера и отправляет локальные изменения.
      */

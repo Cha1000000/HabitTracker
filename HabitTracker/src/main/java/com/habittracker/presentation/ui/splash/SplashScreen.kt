@@ -18,7 +18,6 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
@@ -35,6 +34,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
 import com.habittracker.BuildConfig
 import com.habittracker.R
@@ -42,15 +42,20 @@ import com.habittracker.presentation.navigation.Screen
 import com.habittracker.presentation.ui.habits.components.TahoeGradientBackground
 import com.habittracker.presentation.viewmodel.AuthState
 import com.habittracker.presentation.viewmodel.AuthViewModel
+import com.habittracker.presentation.viewmodel.SplashViewModel
+import com.habittracker.domain.usecase.account.PendingDeletionOutcome
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.filterNotNull
+import kotlinx.coroutines.flow.first
 
 @Composable
 fun SplashScreen(
     navController: NavController,
-    viewModel: AuthViewModel = hiltViewModel()
+    viewModel: AuthViewModel = hiltViewModel(),
+    splashViewModel: SplashViewModel = hiltViewModel()
 ) {
     val isDarkTheme = isSystemInDarkTheme()
-    val authState by viewModel.authState.collectAsState()
+    val authState by viewModel.authState.collectAsStateWithLifecycle()
     
     // Анимация появления логотипа
     val logoScale = remember { Animatable(0f) }
@@ -91,6 +96,23 @@ fun SplashScreen(
         // Ждем завершения анимации, затем проверяем аутентификацию
         delay(2000)
         
+        // Прерванное удаление аккаунта важнее обычного маршрута
+        when (splashViewModel.pendingDeletion.filterNotNull().first()) {
+            PendingDeletionOutcome.FINISHED -> {
+                navController.navigate(Screen.Login.route) {
+                    popUpTo(Screen.Splash.route) { inclusive = true }
+                }
+                return@LaunchedEffect
+            }
+            PendingDeletionOutcome.NEEDS_CONFIRMATION -> {
+                navController.navigate(Screen.DeleteAccount.route) {
+                    popUpTo(Screen.Splash.route) { inclusive = true }
+                }
+                return@LaunchedEffect
+            }
+            PendingDeletionOutcome.NONE -> Unit
+        }
+
         // Определяем, куда переходить в зависимости от состояния аутентификации
         when (authState) {
             is AuthState.Success -> {

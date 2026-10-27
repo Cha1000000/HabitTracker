@@ -23,7 +23,6 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.rememberTimePickerState
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -37,6 +36,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
 import com.habittracker.R
 import com.habittracker.presentation.ui.habits.components.GlassmorphicCard
@@ -54,7 +54,7 @@ fun HabitSettingsScreen(
     navController: NavController,
     viewModel: HabitSettingsViewModel = hiltViewModel()
 ) {
-    val userPreferences by viewModel.userPreferences.collectAsState()
+    val userPreferences by viewModel.userPreferences.collectAsStateWithLifecycle()
     var showTimePicker by remember { mutableStateOf(false) }
 
     TahoeGradientBackground {

@@ -59,6 +59,7 @@ interface UserDao {
     @Query("UPDATE users SET avatarUrl = :avatarUrl, avatarThumbnailUrl = :avatarThumbnailUrl WHERE id = :userId")
     suspend fun updateUserAvatars(userId: String, avatarUrl: String?, avatarThumbnailUrl: String?)
 
-    @Query("SELECT * FROM users WHERE name LIKE :query OR email LIKE :query ORDER BY name ASC LIMIT 20")
+    /** [query] — LIKE-шаблон; спецсимволы в пользовательском вводе экранируются символом `\`. */
+    @Query("SELECT * FROM users WHERE name LIKE :query ESCAPE '\\' OR email LIKE :query ESCAPE '\\' ORDER BY name ASC LIMIT 50")
     suspend fun searchUsers(query: String): List<UserEntity>
 }

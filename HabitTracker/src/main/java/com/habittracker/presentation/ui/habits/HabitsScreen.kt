@@ -43,7 +43,6 @@ import androidx.compose.material3.rememberSwipeToDismissBoxState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableIntStateOf
@@ -66,6 +65,7 @@ import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
 import androidx.navigation.compose.rememberNavController
 import com.habittracker.HabitTrackerApplication
@@ -122,15 +122,15 @@ fun HabitsScreen(
     challengesViewModel: ChallengesViewModel = hiltViewModel()
 ) {
     val context = LocalContext.current
-    val uiState by viewModel.uiState.collectAsState()
+    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
     val habitDeletedText = stringResource(id = R.string.habit_deleted)
     val undoText = stringResource(id = R.string.undo)
-    val badgeCount by notificationsViewModel.badgeCount.collectAsState()
-    val friendsUiState by friendsViewModel.uiState.collectAsState()
+    val badgeCount by notificationsViewModel.badgeCount.collectAsStateWithLifecycle()
+    val friendsUiState by friendsViewModel.uiState.collectAsStateWithLifecycle()
     val friendRequestsBadgeCount = friendsUiState.incomingRequests.size
-    val challengesUiState by challengesViewModel.uiState.collectAsState()
+    val challengesUiState by challengesViewModel.uiState.collectAsStateWithLifecycle()
     val challengeInvitationsBadgeCount = challengesUiState.pendingInvitations.size
     var isRefreshing by remember { mutableStateOf(false) }
     var recomposeKey by remember { mutableIntStateOf(0) }

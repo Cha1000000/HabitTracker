@@ -160,6 +160,7 @@ class FakeAuthRepository(private var currentUserId: String?) : AuthRepository {
     }
 
     override fun getCurrentUserId(): String? = currentUserId
+    override fun observeCurrentUserId(): Flow<String?> = flowOf(currentUserId)
     override fun getCurrentUser(): Flow<User?> = flowOf(currentUserId?.let { 
         User(id = it, name = "Test User", email = "test@test.com", 
             createdAt = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault()).date,
@@ -170,6 +171,11 @@ class FakeAuthRepository(private var currentUserId: String?) : AuthRepository {
     override suspend fun signInWithGoogle(activityContext: android.content.Context): Flow<Result<android.content.Intent?>> = flowOf(Result.failure(NotImplementedError()))
     override suspend fun signOut(): Flow<Result<Unit>> = flowOf(Result.success(Unit))
     override suspend fun sendPasswordResetEmail(email: String): Flow<Result<Unit>> = flowOf(Result.success(Unit))
+    override fun currentSignInMethod(): com.habittracker.domain.model.SignInMethod? = null
+    override suspend fun reauthenticate(request: com.habittracker.domain.model.ReauthRequest) = Unit
+    override suspend fun deleteCurrentAuthUser() = Unit
+    override fun isRecentSignIn() = false
+    override suspend fun isCurrentUserDeleted() = false
 }
 
 class FakeUserRepository : UserRepository {
@@ -203,7 +209,6 @@ class FakeUserRepository : UserRepository {
     override suspend fun updateUserLevel(userId: String, level: Int, points: Int) {}
     override suspend fun upsertUserRemoteAndLocal(user: User, fcmToken: String?) {}
     override fun observeUser(userId: String): Flow<User?> = flowOf(users[userId])
-    override suspend fun backfillAvatarThumbnails(): Result<Int> = Result.success(0)
     override suspend fun updateLastActive(userId: String) {}
     override suspend fun getUserFromFirestore(userId: String): User? = users[userId]
 }
@@ -263,7 +268,7 @@ class FakeSocialRepository : SocialRepository {
     override suspend fun getUserById(userId: String): User? = null
     override suspend fun getUserByIdFromFirestore(userId: String): User? = null
     override suspend fun searchUsers(query: String, currentUserId: String): List<User> = emptyList()
-    override suspend fun updateUserFcmToken(userId: String, token: String) {}
+    override suspend fun updateUserFcmToken(userId: String, token: String) = true
     override suspend fun updateFriendsCount(userId: String, count: Int) {}
     override suspend fun recalculateFriendsCount(userId: String) {}
     override suspend fun sendFriendRequest(fromUserId: String, toUserId: String, message: String?): Result<com.habittracker.domain.model.FriendRequest> = Result.failure(NotImplementedError())

@@ -48,12 +48,18 @@ class CloseExpiredChallengesUseCaseTest {
     ) : AuthRepository {
         override fun getCurrentUser() = MutableStateFlow<User?>(null)
         override fun getCurrentUserId(): String? = currentUserId
+        override fun observeCurrentUserId() = MutableStateFlow(currentUserId)
         override suspend fun login(email: String, password: String) = MutableStateFlow(Result.failure<Unit>(Exception("not used")))
         override suspend fun register(email: String, password: String) = MutableStateFlow(Result.failure<Unit>(Exception("not used")))
         override suspend fun signInWithGoogle(activityContext: android.content.Context) = MutableStateFlow(Result.failure<android.content.Intent?>(Exception("not used")))
         override suspend fun signOut() = MutableStateFlow(Result.success(Unit))
         override suspend fun sendPasswordResetEmail(email: String) =
             MutableStateFlow(Result.failure<Unit>(Exception("not used")))
+        override fun currentSignInMethod(): com.habittracker.domain.model.SignInMethod? = null
+        override suspend fun reauthenticate(request: com.habittracker.domain.model.ReauthRequest) = Unit
+        override suspend fun deleteCurrentAuthUser() = Unit
+        override fun isRecentSignIn() = false
+        override suspend fun isCurrentUserDeleted() = false
     }
     
     // Fake UpdateUserPointsUseCase
@@ -208,7 +214,7 @@ class CloseExpiredChallengesUseCaseTest {
         override suspend fun searchUsers(query: String, currentUserId: String) = emptyList<User>()
         override suspend fun getUserById(userId: String): User = User(id = userId, name = "User$userId")
         override suspend fun getUserByIdFromFirestore(userId: String): User = getUserById(userId)
-        override suspend fun updateUserFcmToken(userId: String, token: String) = Unit
+        override suspend fun updateUserFcmToken(userId: String, token: String) = true
         override suspend fun updateFriendsCount(userId: String, count: Int) = Unit
         override suspend fun recalculateFriendsCount(userId: String) = Unit
 

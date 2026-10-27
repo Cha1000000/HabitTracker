@@ -1,5 +1,7 @@
 package com.habittracker.data.repository
 
+import com.google.firebase.firestore.DocumentChange
+import com.google.firebase.firestore.FieldPath
 import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.FirebaseFirestoreException
@@ -18,6 +20,7 @@ import com.habittracker.data.remote.model.FriendRequestRemote
 import com.habittracker.data.service.FCMApiClient
 import com.habittracker.data.service.UnregisteredTokenException
 import com.habittracker.data.sync.SyncManager
+import com.habittracker.data.sync.keepRestarting
 import com.habittracker.data.sync.SyncWorkScheduler
 import com.habittracker.domain.model.FriendRequest
 import com.habittracker.domain.model.FriendRequestStatus
@@ -36,17 +39,28 @@ import com.habittracker.domain.repository.GroupHabitNotificationRepository
 import com.habittracker.domain.repository.HabitRepository
 import com.habittracker.domain.repository.SocialRepository
 import com.habittracker.domain.util.SyncPayloads
+import com.habittracker.domain.util.UserSearchKeys
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.cancel
+import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.channels.awaitClose
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.buffer
 import kotlinx.coroutines.flow.callbackFlow
+import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.tasks.await
 import kotlinx.coroutines.withContext
 import kotlin.time.Clock
@@ -64,6 +78,7 @@ import javax.inject.Singleton
  * Реализация SocialRepository для работы с социальными функциями
  * Управляет друзьями, запросами дружбы, приглашениями в привычки и уведомлениями
  */
+@OptIn(ExperimentalCoroutinesApi::class)
 @Singleton
 class SocialRepositoryImpl @Inject constructor(
     private val userDao: UserDao,
@@ -127,26 +142,63 @@ class SocialRepositoryImpl @Inject constructor(
     }
 
     override suspend fun searchUsers(query: String, currentUserId: String): List<User> {
-        val queryLower = query.lowercase()
-        
+        val queryLower = UserSearchKeys.normalize(query)
+        // Токены в профиле не длиннее MAX_TOKEN_LENGTH; полное слово всё равно проверит matches()
+        val firstWord = UserSearchKeys.words(queryLower).firstOrNull()
+            ?.take(UserSearchKeys.MAX_TOKEN_LENGTH)
+            ?: return emptyList()
+
         // Получаем список ID друзей для исключения из результатов
         val friendIds = try {
             friendshipDao.getFriendIdsForUser(currentUserId)
-        } catch (_: Exception) {
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            // Без списка друзей они попадут в выдачу — неприятно, но поиск важнее
+            Timber.tag("SocialRepository").e(e, "searchUsers: failed to load friend ids")
             emptyList()
         }
-        
+        // Себя и друзей отсеиваем после запроса — берём с запасом, чтобы выдача не пустела
+        val queryLimit = (SEARCH_LIMIT + friendIds.size + 1).coerceAtMost(MAX_SEARCH_QUERY_LIMIT).toLong()
+
         return try {
             Timber.tag("SocialRepository").d("🔍 Searching users: query='$query', currentUserId='$currentUserId'")
-            
-            // Загружаем всех пользователей и фильтруем локально
-            // (Firestore не поддерживает поиск подстроки в середине строки)
-            val allUsersSnapshot = firestore.collection("users")
-                .limit(200)
-                .get(com.google.firebase.firestore.Source.SERVER)
-                .await()
 
-            val allResults = allUsersSnapshot.documents
+            // Серверный поиск по индексируемым полям (Firestore не ищет подстроку в середине строки).
+            // Legacy-запросы находят профили, у которых ещё нет ключей поиска (владелец давно не заходил).
+            val trimmed = query.trim()
+            val capitalized = trimmed.replaceFirstChar { it.titlecase() }
+            val users = firestore.collection("users")
+            val queries = listOf(
+                users.whereArrayContains(UserSearchKeys.FIELD_TOKENS, firstWord),
+                users.whereEqualTo(UserSearchKeys.FIELD_EMAIL_LOWER, queryLower),
+                users.whereEqualTo("email", trimmed),
+                users.whereGreaterThanOrEqualTo("name", capitalized)
+                    .whereLessThan("name", capitalized + "\uf8ff")
+            )
+            // Запросы независимы: сбой одного (правила, индекс) не должен прятать результаты остальных
+            val outcomes = coroutineScope {
+                queries.map { q ->
+                    async {
+                        try {
+                            Result.success(
+                                q.limit(queryLimit).get(com.google.firebase.firestore.Source.SERVER).await()
+                            )
+                        } catch (e: FirebaseFirestoreException) {
+                            Result.failure(e)
+                        }
+                    }
+                }.awaitAll()
+            }
+            val snapshots = outcomes.mapNotNull { it.getOrNull() }
+            val errors = outcomes.mapNotNull { it.exceptionOrNull() }
+            // Все запросы упали — скорее всего, нет сети: уходим в локальный поиск ниже
+            if (snapshots.isEmpty()) throw errors.first()
+            errors.filterIsInstance<FirebaseFirestoreException>().forEach { logSearchFailure(it, "one of the queries failed") }
+
+            val allResults = snapshots
+                .flatMap { it.documents }
+                .distinctBy { it.id }
                 .mapNotNull { doc ->
                     try {
                         UserFirestoreConverter.fromFirestore(doc.data ?: emptyMap(), doc.id)
@@ -157,31 +209,36 @@ class SocialRepositoryImpl @Inject constructor(
                 .filter { user ->
                     user.id != currentUserId &&
                     user.id !in friendIds &&
-                    (user.name.lowercase().contains(queryLower) || user.email.lowercase().contains(queryLower))
+                    UserSearchKeys.matches(queryLower, user.name, user.email)
                 }
-                .take(20)
-        
+                .take(SEARCH_LIMIT)
+
             Timber.tag("SocialRepository").d("🎯 After filtering: ${allResults.size} users")
             allResults
         } catch (e: FirebaseFirestoreException) {
-            // Не логгируем offline-ошибки - это ожидаемое поведение для offline-first приложения
-            if (e.code == FirebaseFirestoreException.Code.UNAVAILABLE) {
-                Timber.tag("SocialRepository").d("searchUsers: device is offline, using local fallback")
-            } else {
-                Timber.tag("SocialRepository").w("Firestore search failed: ${e.code}")
-            }
-            
+            logSearchFailure(e, "all queries failed, using local fallback")
+
             // Fallback на локальный поиск
-            val localResults = userDao.searchUsers("%$queryLower%")
+            val pattern = queryLower.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+            val localResults = userDao.searchUsers("%$pattern%")
                 .map { it.toDomain() }
                 .filter { user ->
                     user.id != currentUserId &&
                     user.id !in friendIds &&
                     (user.name.lowercase().contains(queryLower) || user.email.lowercase().contains(queryLower))
                 }
-                
+
             Timber.tag("SocialRepository").d("🗄️ Fallback local results: ${localResults.size} users")
-            localResults
+            localResults.take(SEARCH_LIMIT)
+        }
+    }
+
+    /** Офлайн — ожидаемое состояние offline-first приложения; остальное (правила, индексы) — ошибка. */
+    private fun logSearchFailure(e: FirebaseFirestoreException, message: String) {
+        if (e.code == FirebaseFirestoreException.Code.UNAVAILABLE) {
+            Timber.tag("SocialRepository").d("searchUsers: $message (offline)")
+        } else {
+            Timber.tag("SocialRepository").e(e, "searchUsers: $message, code=${e.code}")
         }
     }
 
@@ -195,11 +252,12 @@ class SocialRepositoryImpl @Inject constructor(
 
         return try {
             val doc = firestore.collection("users").document(userId).get().await()
-            if (doc.exists()) {
-                UserFirestoreConverter.fromFirestore(doc.data ?: emptyMap(), doc.id)
-            } else {
-                null
-            }
+            val remote = doc.data?.let { UserFirestoreConverter.fromFirestore(it, doc.id) }
+            // Кладём в Room, чтобы следующий вызов не ходил в сеть
+            remote?.let { cacheUser(it) }
+            remote
+        } catch (e: CancellationException) {
+            throw e
         } catch (e: Exception) {
             Timber.tag("SocialRepository").w(e, "getUserById Firestore failed for userId=$userId: ${e.message}")
             null
@@ -253,8 +311,8 @@ class SocialRepositoryImpl @Inject constructor(
         }
     }
 
-    override suspend fun updateUserFcmToken(userId: String, token: String) {
-        try {
+    override suspend fun updateUserFcmToken(userId: String, token: String): Boolean {
+        return try {
             // 1) Удаляем этот токен из всех других пользователей (перемещение токена между аккаунтами)
             try {
                 // Поиск в массивах fcmTokens (array-contains)
@@ -297,6 +355,9 @@ class SocialRepositoryImpl @Inject constructor(
                 payloadJson = payload,
                 updatedAt = now
             )
+            true
+        } catch (e: CancellationException) {
+            throw e
         } catch (e: Exception) {
             // Обновляем локально (сохраним единственный токен в legacy поле)
             Timber.tag("SocialRepository").w(e, "updateUserFcmToken remote update failed for user=$userId: ${e.message}")
@@ -304,6 +365,7 @@ class SocialRepositoryImpl @Inject constructor(
             user?.let {
                 userDao.updateUser(it.copy(fcmToken = token))
             }
+            false
         }
     }
 
@@ -1102,37 +1164,99 @@ class SocialRepositoryImpl @Inject constructor(
                     }
                 }
 
-            val job = scope.launch {
-                friendshipDao.getFriendsForUser(userId).collect { friendshipEntities ->
-                    val list = friendshipEntities.mapNotNull { friendshipEntity ->
-                        val friendship = friendshipEntity.toDomain()
-                        try {
-                            // Используем Firestore для получения актуальных данных (включая lastActiveAt)
-                            val friendId = if (friendship.userId1 == userId) friendship.userId2 else friendship.userId1
-                            val currentUser = runBlocking { getUserById(userId) }
-                            val friendUser = runBlocking { getUserByIdFromFirestore(friendId) }
-                            if (currentUser != null && friendUser != null) {
-                                // Сохраняем порядок user1/user2 как в friendship
-                                if (friendship.userId1 == userId) {
-                                    FriendshipWithUsers(friendship, currentUser, friendUser)
-                                } else {
-                                    FriendshipWithUsers(friendship, friendUser, currentUser)
-                                }
-                            } else null
-                        } catch (_: Exception) {
-                            null
+            // Профили друзей держим свежими одним слушателем на пачку id, а не чтением каждого профиля
+            // при любом изменении дружбы
+            val profilesJob = scope.launch {
+                keepRestarting("SocialRepository", "friend ids") {
+                    friendshipDao.getFriendsForUser(userId)
+                        .map { entities ->
+                            entities.map { it.toDomain() }
+                                .filter { it.status == FriendshipStatus.ACCEPTED }
+                                .map { if (it.userId1 == userId) it.userId2 else it.userId1 }
+                                .toSortedSet()
                         }
-                    }.filter { it.friendship.status == FriendshipStatus.ACCEPTED }
-                    trySend(list)
+                        .distinctUntilChanged()
+                        .collectLatest { friendIds -> observeUserProfiles(friendIds.toList()) }
+                }
+            }
+
+            val job = scope.launch {
+                // Профиля нет в Room (новое устройство, слушатель профилей ещё не успел) — один раз
+                // берём его из сети, иначе дружба выпала бы из списка
+                val requested = mutableSetOf<String>()
+                keepRestarting("SocialRepository", "friends list") {
+                    friendshipDao.getFriendsForUser(userId)
+                        .flatMapLatest { entities ->
+                            val friendships = entities.map { it.toDomain() }
+                                .filter { it.status == FriendshipStatus.ACCEPTED }
+                            val ids = (friendships.flatMap { listOf(it.userId1, it.userId2) } + userId).distinct()
+                            userDao.getUsersByIdsFlow(ids).map { users ->
+                                val local = users.associate { it.id to it.toDomain() }
+                                val fetched = ids.filter { it !in local && requested.add(it) }
+                                    .mapNotNull { getUserById(it) }
+                                val byId = local + fetched.associateBy { it.id }
+                                friendships.mapNotNull { friendship ->
+                                    val user1 = byId[friendship.userId1]
+                                    val user2 = byId[friendship.userId2]
+                                    if (user1 == null || user2 == null) {
+                                        Timber.tag("SocialRepository").w("friendship ${friendship.userId1}-${friendship.userId2} skipped: no profile yet")
+                                        return@mapNotNull null
+                                    }
+                                    FriendshipWithUsers(friendship, user1, user2)
+                                }
+                            }
+                        }
+                        .collect { trySend(it) }
                 }
             }
 
             awaitClose {
                 reg1.remove()
                 reg2.remove()
+                profilesJob.cancel()
                 job.cancel()
                 scope.cancel()
             }
+        }
+    }
+
+    /** Кладёт профиль в Room; сбой записи только логируем — профиль из сети у вызывающего уже есть. */
+    private suspend fun cacheUser(user: User) {
+        try {
+            upsertLocalUser(user.toEntity())
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            Timber.tag("SocialRepository").w(e, "cache user ${user.id} failed")
+        }
+    }
+
+    /** Слушает профили пользователей пачками по 30 id и обновляет их в Room, пока корутину не отменят. */
+    private suspend fun observeUserProfiles(userIds: List<String>) = coroutineScope {
+        userIds.chunked(30).forEach { chunk ->
+            launch {
+                keepRestarting("SocialRepository", "friend profiles") { observeProfilesChunk(chunk) }
+            }
+        }
+    }
+
+    private suspend fun observeProfilesChunk(chunk: List<String>) {
+        callbackFlow {
+            val registration = firestore.collection("users")
+                .whereIn(FieldPath.documentId(), chunk)
+                .addSnapshotListener { snapshot, error ->
+                    if (error != null) {
+                        close(error)
+                        return@addSnapshotListener
+                    }
+                    val changed = snapshot?.documentChanges.orEmpty()
+                        .filter { it.type != DocumentChange.Type.REMOVED }
+                        .mapNotNull { UserFirestoreConverter.fromFirestore(it.document.data, it.document.id) }
+                    if (changed.isNotEmpty()) trySend(changed)
+                }
+            awaitClose { registration.remove() }
+        }.buffer(Channel.UNLIMITED).collect { users ->
+            users.forEach { cacheUser(it) }
         }
     }
 
@@ -2361,5 +2485,7 @@ class SocialRepositoryImpl @Inject constructor(
     
     companion object {
         private const val TAG = "SocialRepository"
+        private const val SEARCH_LIMIT = 20
+        private const val MAX_SEARCH_QUERY_LIMIT = 60
     }
 }

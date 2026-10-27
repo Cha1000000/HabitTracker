@@ -6,6 +6,7 @@ import com.google.firebase.firestore.FirebaseFirestoreException
 import com.google.firebase.firestore.Query
 import com.habittracker.data.model.FirebaseHabitEntry
 import com.habittracker.data.model.FirebaseHabitEntry.Companion.toDomain
+import com.habittracker.data.model.FirebaseParticipantSettings
 import com.habittracker.domain.model.Habit
 import com.habittracker.domain.model.HabitEntry
 import com.habittracker.domain.model.HabitParticipantSettings
@@ -39,7 +40,15 @@ class FirestoreRepositoryImpl @Inject constructor(
     companion object {
         private const val HABITS_COLLECTION = "habits"
         private const val HABIT_ENTRIES_COLLECTION = "habit_entries"
+        private const val PUBLIC_HABITS_LIMIT = 100L
         private const val TAG = "FirestoreRepository"
+
+        /** Свои привычки и те, где пользователь участник: без дублей (берём свежую копию), свежие сверху. */
+        internal fun mergeUserHabits(created: List<Habit>, participating: List<Habit>): List<Habit> =
+            (created + participating)
+                .groupBy { it.id }
+                .map { (_, copies) -> copies.maxBy { it.updatedAtMillis } }
+                .sortedByDescending { it.updatedAtMillis }
     }
 
     private fun parseHabitSafely(doc: DocumentSnapshot): Habit? {
@@ -198,45 +207,46 @@ class FirestoreRepositoryImpl @Inject constructor(
     }
 
     override fun getUserHabits(userId: String): Flow<List<Habit>> = callbackFlow {
-        Timber.tag(TAG).d("🔄 [getUserHabits] Starting listener for user: $userId")
-        
-        // Важно: Firestore не поддерживает простой OR по полям (createdBy OR participants contains).
-        // Берем все документы и фильтруем на клиенте. При желании можно добавить whereEqualTo("active", true),
-        // но поле может называться по-разному ("active"/"isActive") на старых данных, поэтому безопаснее без фильтра.
-        val listener = firestore.collection(HABITS_COLLECTION)
-            .addSnapshotListener { snapshot, error ->
+        Timber.tag(TAG).d("[getUserHabits] Starting listeners for user: $userId")
+
+        // Firestore не умеет OR по разным полям, поэтому два запроса: свои и те, где пользователь
+        // участник. Раньше слушали всю коллекцию и фильтровали на клиенте — каждый запуск читал
+        // привычки всех пользователей (сотни документов вместо десятка)
+        var created: List<Habit>? = null
+        var participating: List<Habit>? = null
+
+        fun emitMerged() {
+            // Ждём оба снимка, иначе первым уйдёт неполный список
+            val own = created ?: return
+            val joined = participating ?: return
+            val habits = mergeUserHabits(own, joined)
+            Timber.tag(TAG).d("[getUserHabits] Sending ${habits.size} habits for user: $userId")
+            trySend(habits)
+        }
+
+        fun listen(query: Query, label: String, onHabits: (List<Habit>) -> Unit) =
+            query.addSnapshotListener { snapshot, error ->
                 if (error != null) {
-                    // Не логгируем offline-ошибки - это ожидаемое поведение для offline-first приложения
-                    if (error.code == FirebaseFirestoreException.Code.UNAVAILABLE) {
-                        Timber.tag(TAG).d("[getUserHabits] Device is offline, using cached data")
-                    } else {
-                        Timber.tag(TAG).e(error, "❌ [getUserHabits] Error getting habits for user: $userId")
-                        Timber.tag(TAG).e("❌ [getUserHabits] Error code: ${error.code}")
-                        Timber.tag(TAG).e("❌ [getUserHabits] Error message: ${error.message}")
-                    }
-                    // При PERMISSION_DENIED (sign out) просто игнорируем, не крашим
+                    // Слушатель после ошибки замолкает навсегда; закрываем поток, перезапуск — у вызывающего
+                    close(error)
                     return@addSnapshotListener
                 }
-
-                Timber.tag(TAG).d("📊 [getUserHabits] Firestore listener triggered for user: $userId, documents count: ${snapshot?.documents?.size ?: 0}")
-
-                val habits = snapshot?.documents?.mapNotNull { doc ->
-                    parseHabitSafely(doc)
-                }?.filter { habit ->
-                    // Клиентская фильтрация: привычки пользователя (создал сам или участник)
-                    (habit.createdBy == userId || habit.participants.contains(userId))
-                }?.sortedByDescending { it.updatedAtMillis } ?: emptyList()
-
-                Timber.tag(TAG).d("✅ [getUserHabits] Sending ${habits.size} habits to Flow for user: $userId")
-                habits.forEach { habit ->
-                    Timber.tag(TAG).d("   📋 Habit: ${habit.title} (${habit.id}), participants: ${habit.participants}")
-                }
-                trySend(habits)
+                val docs = snapshot?.documents.orEmpty()
+                Timber.tag(TAG).d("[getUserHabits] $label snapshot: ${docs.size} documents")
+                onHabits(docs.mapNotNull { parseHabitSafely(it) })
+                emitMerged()
             }
 
-        awaitClose { 
-            Timber.tag(TAG).d("🔒 [getUserHabits] Closing listener for user: $userId")
-            listener.remove() 
+        val habits = firestore.collection(HABITS_COLLECTION)
+        val createdListener = listen(habits.whereEqualTo("createdBy", userId), "createdBy") { created = it }
+        val participantListener = listen(habits.whereArrayContains("participants", userId), "participants") {
+            participating = it
+        }
+
+        awaitClose {
+            Timber.tag(TAG).d("[getUserHabits] Closing listeners for user: $userId")
+            createdListener.remove()
+            participantListener.remove()
         }
     }
 
@@ -277,81 +287,6 @@ class FirestoreRepositoryImpl @Inject constructor(
     }
 
 
-    override fun getHabitEntries(habitId: String, userId: String): Flow<List<HabitEntry>> = callbackFlow {
-        Timber.tag(TAG).d("Getting habit entries for habit: $habitId, user: $userId")
-        
-        val listener = firestore.collection(HABIT_ENTRIES_COLLECTION)
-            .whereEqualTo("habitId", habitId)
-            .whereEqualTo("userId", userId)
-            .orderBy("date", Query.Direction.DESCENDING)
-            .addSnapshotListener { snapshot, error ->
-                if (error != null) {
-                    // Не логгируем offline-ошибки - это ожидаемое поведение для offline-first приложения
-                    if (error.code == FirebaseFirestoreException.Code.UNAVAILABLE) {
-                        Timber.tag(TAG).d("[getHabitEntries] Device is offline, using cached data")
-                    } else {
-                        Timber.tag(TAG).e(error, "Error getting habit entries: ${error.code}")
-                    }
-                    // При PERMISSION_DENIED (sign out) просто игнорируем
-                    return@addSnapshotListener
-                }
-
-                val entries = snapshot?.documents?.mapNotNull { doc ->
-                    try {
-                        doc.toObject(FirebaseHabitEntry::class.java)?.toDomain()
-                    } catch (e: Exception) {
-                        Timber.tag(TAG).e(e, "Error parsing habit entry: ${doc.id}")
-                        null
-                    }
-                } ?: emptyList()
-
-                Timber.tag(TAG).d("Loaded ${entries.size} habit entries from Firestore")
-                trySend(entries)
-            }
-
-        awaitClose { listener.remove() }
-    }
-
-    override suspend fun getHabitEntry(habitId: String, userId: String, date: LocalDate): HabitEntry? {
-        return try {
-            Timber.tag(TAG).d("Getting habit entry for: $habitId, $userId, $date")
-            val entryId = "${habitId}_${userId}_$date"
-            val document = firestore.collection(HABIT_ENTRIES_COLLECTION)
-                .document(entryId)
-                .get()
-                .await()
-            
-            if (document.exists()) {
-                document.toObject(FirebaseHabitEntry::class.java)?.toDomain()
-            } else {
-                Timber.tag(TAG).d("Habit entry not found: $entryId")
-                null
-            }
-        } catch (e: CancellationException) {
-            Timber.tag(TAG).d("getHabitEntry cancelled: habit=$habitId user=$userId date=$date")
-            throw e
-        } catch (e: FirebaseFirestoreException) {
-            // Не логгируем offline-ошибки - это ожидаемое поведение для offline-first приложения
-            if (
-                e.code == FirebaseFirestoreException.Code.UNAVAILABLE ||
-                e.code == FirebaseFirestoreException.Code.PERMISSION_DENIED ||
-                e.code == FirebaseFirestoreException.Code.UNAUTHENTICATED ||
-                e.code == FirebaseFirestoreException.Code.CANCELLED
-            ) {
-                Timber.tag(TAG).d(
-                    "getHabitEntry: transient/unauthorized state habit=$habitId user=$userId date=$date code=${e.code}"
-                )
-                return null
-            } else {
-                Timber.tag(TAG).e(e, "Error getting habit entry: ${e.code}")
-            }
-            throw e
-        } catch (e: Exception) {
-            Timber.tag(TAG).e(e, "Error getting habit entry")
-            throw e
-        }
-    }
-
     override suspend fun syncData() {
         // Базовая синхронизация - в будущем можно расширить
         // для более сложной логики конфликтов и офлайн-поддержки
@@ -359,48 +294,13 @@ class FirestoreRepositoryImpl @Inject constructor(
     }
 
     // region Participant settings
-    private fun participantSettingsDoc(habitId: String, userId: String) =
-        firestore.collection(HABITS_COLLECTION)
-            .document(habitId)
-            .collection("participants")
-            .document(userId)
-            .collection("meta")
-            .document("settings")
-
     override suspend fun getParticipantSettings(habitId: String, userId: String): HabitParticipantSettings? {
         return try {
-            val doc = participantSettingsDoc(habitId, userId).get().await()
-            if (!doc.exists()) return null
+            val doc = FirebaseParticipantSettings.document(firestore, habitId, userId).get().await()
             val data = doc.data ?: return null
-            val rt = data["reminderTime"] as? Map<*, *>
-            val reminderTime = if (rt != null) {
-                val hour = (rt["hour"] as? Number)?.toInt()
-                val minute = (rt["minute"] as? Number)?.toInt()
-                if (hour != null && minute != null) kotlinx.datetime.LocalTime(hour, minute) else null
-            } else null
-            val reminderEnabled = (data["reminderEnabled"] as? Boolean) ?: (reminderTime != null)
-            @Suppress("UNCHECKED_CAST")
-            val reminderDaysRaw: List<Int> = (data["reminderDays"] as? List<*>)?.filterIsInstance<Number>()?.map { it.toInt() } ?: emptyList()
-            val notificationsMuted = data["notificationsMuted"] as? Boolean ?: false
-            val seasonStartDate = (data["seasonStartDate"] as? String)?.let { parse(it) }
-            val timeZone = data["timeZone"] as? String
-            val updatedAt = (data["updatedAt"] as? Number)?.toLong() ?: System.currentTimeMillis()
-            HabitParticipantSettings(
-                habitId = habitId,
-                userId = userId,
-                reminderTime = reminderTime,
-                reminderEnabled = reminderEnabled,
-                reminderDays = reminderDaysRaw.mapNotNull { d ->
-                    kotlinx.datetime.DayOfWeek.entries.firstOrNull { it.isoDayNumber == d }
-                }.toSet(),
-                notificationsMuted = notificationsMuted,
-                seasonStartDate = seasonStartDate,
-                timeZone = timeZone,
-                updatedAt = updatedAt
-            )
-        } catch (_: CancellationException) {
-            Timber.tag(TAG).d("getParticipantSettings cancelled: habit=$habitId user=$userId")
-            null
+            FirebaseParticipantSettings.toDomain(habitId, userId, data)
+        } catch (e: CancellationException) {
+            throw e
         } catch (e: FirebaseFirestoreException) {
             // Не логгируем offline-ошибки - это ожидаемое поведение для offline-first приложения
             if (e.code == FirebaseFirestoreException.Code.UNAVAILABLE) {
@@ -422,6 +322,8 @@ class FirestoreRepositoryImpl @Inject constructor(
             val query: Query = firestore.collection(HABITS_COLLECTION)
                 .whereEqualTo("public", true)
                 .whereEqualTo("isActive", true)
+                // Каталог листают глазами: больше сотни никто не просмотрит, а читается каждый документ
+                .limit(PUBLIC_HABITS_LIMIT)
 
             val listener = query.addSnapshotListener { snapshot, error ->
                 if (error != null) {

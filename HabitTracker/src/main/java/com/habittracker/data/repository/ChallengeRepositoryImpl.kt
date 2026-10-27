@@ -1,17 +1,25 @@
 package com.habittracker.data.repository
 
+import com.google.firebase.firestore.DocumentSnapshot
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.FirebaseFirestoreException
+import com.google.firebase.firestore.Query
+import com.google.firebase.firestore.QuerySnapshot
 import com.habittracker.data.local.dao.ChallengeDao
 import com.habittracker.data.local.dao.HabitEntryDao
 import com.habittracker.data.local.entity.ChallengeEntity
+import com.habittracker.data.model.FirebaseHabitEntry
+import com.habittracker.data.model.FirebaseHabitEntry.Companion.toDomain
+import com.habittracker.data.sync.RemoteDataSync
 import com.habittracker.data.sync.SyncManager
 import com.habittracker.data.sync.SyncWorkScheduler
+import com.habittracker.data.sync.keepRestarting
 import com.habittracker.domain.model.Challenge
 import com.habittracker.domain.model.ChallengeRules
 import com.habittracker.domain.model.ChallengeType
 import com.habittracker.domain.repository.ChallengeRepository
 import com.habittracker.domain.util.SyncPayloads
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -19,6 +27,7 @@ import kotlinx.coroutines.cancel
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
+import kotlinx.coroutines.flow.conflate
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
@@ -224,118 +233,110 @@ class ChallengeRepositoryImpl @Inject constructor(
         val scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
 
         // Слушаем локальную базу Room для реактивного обновления UI
-        val roomJob = scope.launch {
+        scope.launch {
             challengeDao.getUserChallenges(userId).collect { entities ->
                 val challenges = entities.map { it.challengeToDomain() }
                 trySend(challenges)
             }
         }
 
-        // Слушатель для челленджей, где пользователь — участник
-        val registration = firestore.collection("challenges")
-            .whereArrayContains("participants", userId)
-            .addSnapshotListener { snapshot, error ->
-                if (error != null) {
-                    Timber.tag(TAG).w(error, "Challenges listener error: ${error.message}")
-                    return@addSnapshotListener
-                }
-
-                val docs = snapshot?.documents ?: emptyList()
-                Timber.tag(TAG).d("Challenges listener: userId=$userId, docs=${docs.size}")
-
-                scope.launch {
-                    // Получаем ID челленджей из Firestore, где пользователь участник
-                    val remoteParticipantChallengeIds = docs.mapNotNull { it.id }.toSet()
-                    
-                    // Получаем локальные челленджи пользователя (где он участник, но не создатель)
-                    val localChallenges = challengeDao.getUserChallengesSync(userId)
-                    
-                    // Удаляем из локальной базы челленджи, где пользователь больше не участник
-                    // (кроме тех, где он создатель - они обрабатываются отдельным listener)
-                    for (localChallenge in localChallenges) {
-                        if (localChallenge.createdBy != userId && 
-                            !remoteParticipantChallengeIds.contains(localChallenge.id)) {
-                            val hasPending = try {
-                                syncManager.hasPendingOperations("challenge", localChallenge.id)
-                            } catch (e: Exception) {
-                                Timber.tag(TAG).w("Pending check failed for challenge=${localChallenge.id}: ${e.message}")
-                                false
-                            }
-                            if (!hasPending) {
-                                Timber.tag(TAG).d("Removing challenge ${localChallenge.id} - user no longer participant")
-                                val now = System.currentTimeMillis()
-                                challengeDao.softDeleteChallengeById(localChallenge.id, deletedAtMillis = now, updatedAtMillis = now)
-                            }
-                        }
+        // Челленджи, где пользователь — участник. Слушатель после ошибки замолкает навсегда,
+        // поэтому поднимаем его заново, а экран продолжает показывать Room
+        scope.launch {
+            keepRestarting(TAG, "participant challenges") {
+                challengeSnapshots(
+                    firestore.collection("challenges").whereArrayContains("participants", userId)
+                ).collect { snapshot ->
+                    val docs = snapshot.documents
+                    Timber.tag(TAG).d("Challenges listener: userId=$userId, docs=${docs.size}, fromCache=${snapshot.metadata.isFromCache}")
+                    // Снимок из кэша бывает неполным (холодный старт офлайн) — по нему не удаляем
+                    if (!snapshot.metadata.isFromCache) {
+                        dropLeftChallenges(userId, remoteIds = docs.map { it.id }.toSet())
                     }
-                    
-                    for (doc in docs) {
-                        try {
-                            val remoteChallenge = doc.toChallengeEntity()
-                            if (remoteChallenge != null) {
-                                val hasPending = try {
-                                    syncManager.hasPendingOperations("challenge", remoteChallenge.id)
-                                } catch (e: Exception) {
-                                    Timber.tag(TAG).w("Pending check failed for challenge=${remoteChallenge.id}: ${e.message}")
-                                    false
-                                }
-                                if (hasPending) continue
-                                // LWW: проверяем updatedAtMillis
-                                val local = challengeDao.getChallengeById(remoteChallenge.id)
-                                if (local == null || remoteChallenge.updatedAtMillis >= local.updatedAtMillis) {
-                                    challengeDao.insertChallenge(remoteChallenge)
-                                    Timber.tag(TAG).d("Merged challenge from Firestore: ${remoteChallenge.id}")
-                                }
-                            }
-                        } catch (e: Exception) {
-                            Timber.tag(TAG).e(e, "Error processing challenge doc: ${doc.id}")
-                        }
-                    }
+                    mergeRemoteChallenges(docs)
                 }
             }
+        }
 
         // Также слушаем челленджи, созданные пользователем
-        val createdByRegistration = firestore.collection("challenges")
-            .whereEqualTo("createdBy", userId)
-            .addSnapshotListener { snapshot, error ->
-                if (error != null) {
-                    Timber.tag(TAG).w(error, "CreatedBy challenges listener error: ${error.message}")
-                    return@addSnapshotListener
-                }
-
-                val docs = snapshot?.documents ?: emptyList()
-                Timber.tag(TAG).d("CreatedBy challenges listener: userId=$userId, docs=${docs.size}")
-
-                scope.launch {
-                    for (doc in docs) {
-                        try {
-                            val remoteChallenge = doc.toChallengeEntity()
-                            if (remoteChallenge != null) {
-                                val hasPending = try {
-                                    syncManager.hasPendingOperations("challenge", remoteChallenge.id)
-                                } catch (e: Exception) {
-                                    Timber.tag(TAG).w("Pending check failed for challenge=${remoteChallenge.id}: ${e.message}")
-                                    false
-                                }
-                                if (hasPending) continue
-                                val local = challengeDao.getChallengeById(remoteChallenge.id)
-                                if (local == null || remoteChallenge.updatedAtMillis >= local.updatedAtMillis) {
-                                    challengeDao.insertChallenge(remoteChallenge)
-                                }
-                            }
-                        } catch (e: Exception) {
-                            Timber.tag(TAG).e(e, "Error processing createdBy challenge doc: ${doc.id}")
-                        }
-                    }
+        scope.launch {
+            keepRestarting(TAG, "created challenges") {
+                challengeSnapshots(
+                    firestore.collection("challenges").whereEqualTo("createdBy", userId)
+                ).collect { snapshot ->
+                    Timber.tag(TAG).d("CreatedBy challenges listener: userId=$userId, docs=${snapshot.size()}")
+                    mergeRemoteChallenges(snapshot.documents)
                 }
             }
-
-        awaitClose {
-            registration.remove()
-            createdByRegistration.remove()
-            roomJob.cancel()
-            scope.cancel()
         }
+
+        awaitClose { scope.cancel() }
+    }
+
+    private fun challengeSnapshots(query: Query): Flow<QuerySnapshot> = callbackFlow {
+        val registration = query.addSnapshotListener { snapshot, error ->
+            if (error != null) {
+                close(error)
+                return@addSnapshotListener
+            }
+            snapshot?.let { trySend(it) }
+        }
+        awaitClose { registration.remove() }
+    }.conflate()
+
+    /** Удаляем из Room челленджи, где пользователь больше не участник (свои — не трогаем). */
+    private suspend fun dropLeftChallenges(userId: String, remoteIds: Set<String>) {
+        for (localChallenge in challengeDao.getUserChallengesSync(userId)) {
+            if (localChallenge.createdBy == userId || localChallenge.id in remoteIds) continue
+            if (hasPendingChallengeOps(localChallenge.id)) continue
+            Timber.tag(TAG).d("Removing challenge ${localChallenge.id} - user no longer participant")
+            val now = System.currentTimeMillis()
+            challengeDao.softDeleteChallengeById(localChallenge.id, deletedAtMillis = now, updatedAtMillis = now)
+        }
+    }
+
+    /** LWW по updatedAtMillis; челленджи с неотправленными правками не трогаем. */
+    private suspend fun mergeRemoteChallenges(docs: List<DocumentSnapshot>) {
+        for (doc in docs) {
+            try {
+                val remoteChallenge = doc.toChallengeEntity() ?: continue
+                if (hasPendingChallengeOps(remoteChallenge.id)) continue
+                val local = challengeDao.getChallengeById(remoteChallenge.id)
+                if (local == null || remoteChallenge.updatedAtMillis >= local.updatedAtMillis) {
+                    challengeDao.insertChallenge(remoteChallenge)
+                    Timber.tag(TAG).d("Merged challenge from Firestore: ${remoteChallenge.id}")
+                }
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                Timber.tag(TAG).e(e, "Error processing challenge doc: ${doc.id}")
+            }
+        }
+    }
+
+    private suspend fun hasPendingChallengeOps(challengeId: String): Boolean = try {
+        syncManager.hasPendingOperations("challenge", challengeId)
+    } catch (e: CancellationException) {
+        throw e
+    } catch (e: Exception) {
+        Timber.tag(TAG).w(e, "Pending check failed for challenge=$challengeId")
+        false
+    }
+
+    /** Удалённые отметки остаются в облаке надгробиями — в счёт челленджа их не берём. */
+    private fun List<DocumentSnapshot>.liveEntries(): List<DocumentSnapshot> = filter { doc ->
+        val updatedAt = try {
+            doc.toObject(FirebaseHabitEntry::class.java)?.toDomain()?.updatedAt
+        } catch (e: Exception) {
+            Timber.tag(TAG).w(e, "skip malformed habit entry ${doc.id}")
+            null
+        } ?: return@filter false
+        !RemoteDataSync.isTombstone(
+            deletedAtMillis = doc.getLong("deletedAtMillis"),
+            updatedAtMillis = doc.getLong("updatedAtMillis"),
+            deletedOn = doc.getString("deletedOn")?.let { runCatching { LocalDate.parse(it) }.getOrNull() },
+            updatedAt = updatedAt
+        )
     }
 
     private fun com.google.firebase.firestore.DocumentSnapshot.toChallengeEntity(): ChallengeEntity? {
@@ -438,7 +439,7 @@ class ChallengeRepositoryImpl @Inject constructor(
                 .get()
                 .await()
             
-            snapshot.documents.size
+            snapshot.documents.liveEntries().size
         } catch (e: FirebaseFirestoreException) {
             // Не логгируем offline-ошибки - это ожидаемое поведение для offline-first приложения
             if (e.code == FirebaseFirestoreException.Code.UNAVAILABLE) {
@@ -469,7 +470,7 @@ class ChallengeRepositoryImpl @Inject constructor(
                 .get()
                 .await()
 
-            val completedDates = snapshot.documents.mapNotNull { doc ->
+            val completedDates = snapshot.documents.liveEntries().mapNotNull { doc ->
                 (doc.getString("date") ?: doc.get("date") as? String)?.let { runCatching { LocalDate.parse(it) }.getOrNull() }
             }.toSet()
 
@@ -574,7 +575,7 @@ class ChallengeRepositoryImpl @Inject constructor(
                 .get()
                 .await()
             
-            snapshot.documents.sumOf { doc ->
+            snapshot.documents.liveEntries().sumOf { doc ->
                 (doc.getLong("value") ?: 0L).toInt()
             }
         } catch (e: FirebaseFirestoreException) {

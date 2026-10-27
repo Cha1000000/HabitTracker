@@ -1,6 +1,7 @@
 package com.habittracker.data.firestore
 
 import com.habittracker.domain.model.User
+import com.habittracker.domain.util.UserSearchKeys
 import kotlin.time.Clock
 import kotlin.time.Instant.Companion.fromEpochMilliseconds
 import kotlinx.datetime.LocalDate
@@ -40,6 +41,7 @@ object UserFirestoreConverter {
             "lastActiveAt" to user.lastActiveAt, // Long timestamp для точного онлайн-статуса
             "timezone" to (user.timezone ?: "")
         )
+        base.putAll(UserSearchKeys.fields(user.name, user.email))
         user.avatarThumbnailUrl?.takeIf { it.isNotBlank() }?.let { thumb ->
             base["avatarThumbnailUrl"] = thumb
         }

@@ -20,6 +20,12 @@ abstract class RepositoryModule {
 
     @Binds
     @Singleton
+    abstract fun bindAccountRepository(
+        accountRepositoryImpl: AccountRepositoryImpl
+    ): AccountRepository
+
+    @Binds
+    @Singleton
     abstract fun bindUserRepository(
         userRepositoryImpl: UserRepositoryImpl
     ): UserRepository

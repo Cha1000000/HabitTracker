@@ -1,5 +1,7 @@
 package com.habittracker.data.repository
 
+import com.google.firebase.firestore.DocumentChange
+import com.google.firebase.firestore.Query
 import com.google.firebase.firestore.FirebaseFirestore
 import com.habittracker.data.local.dao.GroupHabitNotificationDao
 import com.habittracker.data.local.entity.GroupHabitNotificationEntity
@@ -29,6 +31,7 @@ class GroupHabitNotificationRepositoryImpl @Inject constructor(
     companion object {
         private const val TAG = "GroupHabitNotifRepo"
         private const val COLLECTION_NOTIFICATIONS = "group_habit_notifications"
+        private const val LISTEN_LIMIT = 50L
     }
     
     // Хранилище активных listeners для предотвращения дублирования
@@ -74,15 +77,27 @@ class GroupHabitNotificationRepositoryImpl @Inject constructor(
      * Синхронизирует уведомления из Firestore в локальную БД
      */
     private fun syncNotificationsFromFirestore(userId: String) {
+        // Вошедший пользователь один: слушатель прежнего после смены аккаунта только ловит отказы правил
+        activeListeners.values.forEach { it.remove() }
+        activeListeners.clear()
+        // Только последние: старые уже в Room, а без лимита каждый запуск перечитывал бы все.
+        // Индекс (userId, createdAt desc)
         val listener = firestore.collection(COLLECTION_NOTIFICATIONS)
             .whereEqualTo("userId", userId)
+            .orderBy("createdAt", Query.Direction.DESCENDING)
+            .limit(LISTEN_LIMIT)
             .addSnapshotListener { snapshot, error ->
                 if (error != null) {
+                    // Слушатель после ошибки замолкает: снимаем его, следующий подписчик поднимет заново
                     Timber.tag(TAG).e(error, "Error listening to notifications")
+                    activeListeners.remove(userId)?.remove()
                     return@addSnapshotListener
                 }
                 
-                val docs = snapshot?.documents ?: emptyList()
+                // Только новые и изменённые документы: первый снимок отдаёт все
+                val docs = snapshot?.documentChanges.orEmpty()
+                    .filter { it.type != DocumentChange.Type.REMOVED }
+                    .map { it.document }
                 if (docs.isEmpty()) return@addSnapshotListener
 
                 syncScope.launch {

@@ -2,7 +2,6 @@ package com.habittracker.domain.usecase
 
 import com.habittracker.domain.model.isActiveOnDate
 import com.habittracker.domain.model.isActiveOnDayOfWeek
-import com.habittracker.domain.repository.FirestoreRepository
 import com.habittracker.domain.repository.HabitEntryRepository
 import com.habittracker.domain.repository.HabitRepository
 import kotlinx.coroutines.async
@@ -18,11 +17,10 @@ import javax.inject.Inject
 /**
  * Use case для получения данных о выполнении привычек за неделю.
  * Возвращает Map с ключами - датами и значениями - процентом выполнения (0f-1f).
- * Приоритетно использует Firestore с локальным фоллбэком на Room для оффлайн поддержки.
+ * Читает только Room: данные из облака туда кладёт RemoteDataSync.
  */
 class GetWeekCompletionDataUseCase @Inject constructor(
     private val habitEntryRepository: HabitEntryRepository,
-    private val firestoreRepository: FirestoreRepository,
     private val habitRepository: HabitRepository
 ) {
     /**
@@ -39,14 +37,7 @@ class GetWeekCompletionDataUseCase @Inject constructor(
         val startOfWeek = getStartOfWeek(date)
         val weekDates = (0..6).map { startOfWeek.plus(it, DateTimeUnit.DAY) }
         
-        // Получаем все привычки пользователя с фоллбэком на локальную БД
-        val habits = try {
-            // Сначала пытаемся получить из Firestore (поддерживает оффлайн кэш)
-            firestoreRepository.getUserHabits(userId).firstOrNull() ?: emptyList()
-        } catch (_: Exception) {
-            // При ошибке используем локальные данные из Room
-            habitRepository.getHabitsByUserId(userId).firstOrNull() ?: emptyList()
-        }
+        val habits = habitRepository.getHabitsByUserId(userId).firstOrNull() ?: emptyList()
         
         if (habits.isEmpty()) {
             return@coroutineScope weekDates.associateWith { 0f }
@@ -67,23 +58,11 @@ class GetWeekCompletionDataUseCase @Inject constructor(
                 
                 // Проверяем выполнение каждой активной привычки в этот день
                 activeHabitsForDay.forEach { habit ->
-                    val isCompleted = try {
-                        // Сначала пытаемся получить из Firestore
-                        val firestoreEntry = firestoreRepository.getHabitEntry(
-                            habitId = habit.id,
-                            userId = userId,
-                            date = weekDate
-                        )
-                        firestoreEntry?.completed ?: false
-                    } catch (_: Exception) {
-                        // При ошибке используем локальные данные
-                        val localEntry = habitEntryRepository.getEntry(
-                            habitId = habit.id,
-                            userId = userId,
-                            date = weekDate
-                        )
-                        localEntry?.completed ?: false
-                    }
+                    val isCompleted = habitEntryRepository.getEntry(
+                        habitId = habit.id,
+                        userId = userId,
+                        date = weekDate
+                    )?.completed ?: false
                     
                     if (isCompleted) {
                         completedHabits++

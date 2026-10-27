@@ -107,7 +107,6 @@ class GetUserStatsUseCaseTest {
                 override suspend fun updateUserLevel(userId: String, level: Int, points: Int) {}
                 override suspend fun upsertUserRemoteAndLocal(user: User, fcmToken: String?) {}
                 override fun observeUser(userId: String): Flow<User?> = flowOf(null)
-                override suspend fun backfillAvatarThumbnails(): Result<Int> = Result.success(0)
                 override suspend fun updateLastActive(userId: String) {}
                 override suspend fun getUserFromFirestore(userId: String): User? = null
             },
@@ -192,7 +191,7 @@ class GetUserStatsUseCaseTest {
                 override suspend fun searchUsers(query: String, currentUserId: String): List<User> = emptyList()
                 override suspend fun getUserById(userId: String): User? = null
                 override suspend fun getUserByIdFromFirestore(userId: String): User? = getUserById(userId)
-                override suspend fun updateUserFcmToken(userId: String, token: String) {}
+                override suspend fun updateUserFcmToken(userId: String, token: String) = true
                 override suspend fun updateFriendsCount(userId: String, count: Int) {}
                 override suspend fun recalculateFriendsCount(userId: String) {}
 

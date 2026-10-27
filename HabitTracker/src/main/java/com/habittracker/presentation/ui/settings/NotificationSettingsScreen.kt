@@ -20,7 +20,6 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -28,6 +27,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
 import com.habittracker.R
 import com.habittracker.presentation.ui.habits.components.GlassmorphicCard
@@ -43,7 +43,7 @@ fun NotificationSettingsScreen(
     navController: NavController,
     viewModel: NotificationSettingsViewModel = hiltViewModel()
 ) {
-    val preferences by viewModel.preferences.collectAsState()
+    val preferences by viewModel.preferences.collectAsStateWithLifecycle()
     val isDarkTheme = isSystemInDarkTheme()
     
     TahoeGradientBackground(

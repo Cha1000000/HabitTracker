@@ -6,9 +6,12 @@ import com.habittracker.data.local.dao.UserDao
 import com.habittracker.data.local.entity.UserEntity
 import com.habittracker.data.sync.SyncManager
 import com.habittracker.data.sync.SyncWorkScheduler
+import com.habittracker.data.sync.keepRestarting
 import com.habittracker.domain.model.User
 import com.habittracker.domain.repository.UserRepository
 import com.habittracker.domain.util.SyncPayloads
+import com.habittracker.domain.util.UserSearchKeys
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -16,6 +19,7 @@ import kotlinx.coroutines.cancel
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
+import kotlinx.coroutines.flow.conflate
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
@@ -195,94 +199,55 @@ class UserRepositoryImpl @Inject constructor(
     override fun observeUser(userId: String): Flow<User?> = callbackFlow {
         val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
-        val registration = firestore.collection("users")
-            .document(userId)
-            .addSnapshotListener { snapshot, error ->
-                if (error != null) {
-                    // При PERMISSION_DENIED (sign out) просто игнорируем, не крашим
-                    Timber.tag("UserRepository").d("observeUser listener error (userId=$userId): ${error.message}")
-                    return@addSnapshotListener
-                }
-                val data = snapshot?.data
-                val remote = if (data != null) UserFirestoreConverter.fromFirestore(data, snapshot.id) else null
-                if (remote != null) {
-                    scope.launch {
-                        try {
-                            val hasPending = try {
-                                syncManager.hasPendingOperations("user", remote.id)
-                            } catch (e: Exception) {
-                                Timber.tag("UserRepository").w("observeUser: hasPendingOperations failed (userId=${remote.id}): ${e.message}")
-                                false
-                            }
-                            if (!hasPending) {
-                                upsertLocal(remote.userToEntity())
-                            }
-                        } catch (e: Exception) {
-                            Timber.tag("UserRepository").d("observeUser: local insert failed (non-fatal): ${e.message}")
-                        }
-                    }
+        // Слушатель после ошибки (сеть, выход из аккаунта) замолкает навсегда — поднимаем заново,
+        // а экран тем временем показывает Room
+        scope.launch {
+            keepRestarting("UserRepository", "user profile") {
+                remoteUser(userId).collect { remote ->
+                    if (remote != null) mergeRemoteUser(remote)
                 }
             }
+        }
 
-        val job = scope.launch {
+        scope.launch {
             userDao.getUserByIdFlow(userId).collect { entity ->
                 trySend(entity?.userToDomain())
             }
         }
 
-        awaitClose {
-            registration.remove()
-            job.cancel()
-            scope.cancel()
-        }
+        awaitClose { scope.cancel() }
     }
 
-    override suspend fun backfillAvatarThumbnails(): Result<Int> {
-        return try {
-            val snapshot = firestore.collection("users").get().await()
-            var updated = 0
-            val now = System.currentTimeMillis()
-            for (doc in snapshot.documents) {
-                val data = doc.data ?: continue
-                val id = doc.id
-                val avatarUrl = data["avatarUrl"] as? String
-                val avatarThumb = data["avatarThumbnailUrl"] as? String
-                
-                if (!avatarUrl.isNullOrBlank() && avatarThumb.isNullOrBlank()) {
-                    try {
-                        // Convert to domain object to ensure consistent updates
-                        val user = UserFirestoreConverter.fromFirestore(data, id)
-                        if (user != null) {
-                            val updatedUser = user.copy(
-                                avatarThumbnailUrl = avatarUrl
-                                // we don't change other fields, but we must update 'updatedAt' for sync logic? 
-                                // Actually, User model doesn't store 'updatedAt' explicitly in domain usually? 
-                                // Repo handles it. But we need to update the local entity.
-                            )
-                            
-                            // Local update
-                            userDao.insertUser(updatedUser.userToEntity())
-                            
-                            // Enqueue Sync (Outbox)
-                            val json = SyncPayloads.userToJson(updatedUser, now)
-                            syncManager.enqueueUpsert(
-                                entityType = "user",
-                                entityId = id,
-                                payloadJson = json,
-                                updatedAt = now
-                            )
-                            updated++
-                        }
-                    } catch (e: Exception) {
-                        Timber.tag("UserRepository").d("backfillAvatarThumbnails: skipping doc=${id}, reason=${e.message}")
-                    }
+    private fun remoteUser(userId: String): Flow<User?> = callbackFlow {
+        val registration = firestore.collection("users")
+            .document(userId)
+            .addSnapshotListener { snapshot, error ->
+                if (error != null) {
+                    close(error)
+                    return@addSnapshotListener
                 }
+                val data = snapshot?.data
+                trySend(if (data != null) UserFirestoreConverter.fromFirestore(data, snapshot.id) else null)
             }
+        awaitClose { registration.remove() }
+    }.conflate()
 
-            if (updated > 0) kickSync()
-            Result.success(updated)
+    /** Профиль с неотправленными правками не перетираем: облако о них ещё не знает. */
+    private suspend fun mergeRemoteUser(remote: User) {
+        try {
+            val hasPending = try {
+                syncManager.hasPendingOperations("user", remote.id)
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                Timber.tag("UserRepository").w("observeUser: hasPendingOperations failed (userId=${remote.id}): ${e.message}")
+                false
+            }
+            if (!hasPending) upsertLocal(remote.userToEntity())
+        } catch (e: CancellationException) {
+            throw e
         } catch (e: Exception) {
-            Result.failure(e)
+            Timber.tag("UserRepository").w(e, "observeUser: local insert failed")
         }
     }
 
@@ -292,8 +257,15 @@ class UserRepositoryImpl @Inject constructor(
             // Обновляем локально
             userDao.updateLastActive(userId, now)
             
-            // Обновляем в Firestore через Outbox
-            val json = "{\"lastActiveAt\": $now}"
+            // Обновляем в Firestore через Outbox. Заодно досылаем ключи поиска —
+            // так профили, созданные до их появления, становятся находимыми.
+            val payload = org.json.JSONObject().put("lastActiveAt", now)
+            userDao.getUserById(userId)?.let { local ->
+                UserSearchKeys.fields(local.name, local.email).forEach { (key, value) ->
+                    payload.put(key, if (value is List<*>) org.json.JSONArray(value) else value)
+                }
+            }
+            val json = payload.toString()
             syncManager.enqueueUpsert(
                 entityType = "user",
                 entityId = userId,
@@ -303,7 +275,7 @@ class UserRepositoryImpl @Inject constructor(
 
             kickSync()
         } catch (e: Exception) {
-            Timber.tag("UserRepository").d("updateLastActive failed: ${e.message}")
+            Timber.tag("UserRepository").w(e, "updateLastActive failed")
         }
     }
 }

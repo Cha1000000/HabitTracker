@@ -107,4 +107,28 @@ class FirestoreRepositoryImplTest {
     // Note: Full Firestore integration tests would require Firebase Test SDK
     // or testcontainers. These basic tests verify the repository structure
     // and model consistency without complex Firestore mocking.
+
+    @Test
+    fun mergeUserHabits_dropsDuplicatesAndPutsFreshFirst() {
+        val own = testHabit.copy(id = "own", updatedAtMillis = 1L)
+        val shared = testHabit.copy(id = "shared", updatedAtMillis = 3L)
+        val joined = testHabit.copy(id = "joined", updatedAtMillis = 2L)
+
+        val merged = FirestoreRepositoryImpl.mergeUserHabits(
+            created = listOf(own, shared),
+            participating = listOf(shared, joined)
+        )
+
+        assertEquals(listOf("shared", "joined", "own"), merged.map { it.id })
+    }
+
+    @Test
+    fun mergeUserHabits_keepsFreshestCopyOfDuplicate() {
+        val stale = testHabit.copy(id = "shared", title = "old", updatedAtMillis = 1L)
+        val fresh = testHabit.copy(id = "shared", title = "new", updatedAtMillis = 2L)
+
+        val merged = FirestoreRepositoryImpl.mergeUserHabits(created = listOf(stale), participating = listOf(fresh))
+
+        assertEquals(listOf("new"), merged.map { it.title })
+    }
 }

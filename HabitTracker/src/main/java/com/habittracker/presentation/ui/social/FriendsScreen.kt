@@ -20,6 +20,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.habittracker.presentation.ui.theme.TahoeIcons
 import androidx.compose.material3.Badge
 import androidx.compose.material3.BadgedBox
@@ -40,7 +41,6 @@ import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -80,7 +80,7 @@ fun FriendsScreen(
     initialSelectedTab: Int = 0,
     viewModel: FriendsViewModel = hiltViewModel()
 ) {
-    val uiState by viewModel.uiState.collectAsState()
+    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     var selectedTab by remember(initialSelectedTab) { mutableIntStateOf(initialSelectedTab.coerceIn(0, 2)) }
     // Состояния диалога удаления друга
     var showRemoveDialog by remember { mutableStateOf(false) }

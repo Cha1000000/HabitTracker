@@ -33,6 +33,7 @@ import com.habittracker.presentation.ui.habits.HabitsScreen
 import com.habittracker.presentation.ui.habits.SelfHabitDetailScreen
 import com.habittracker.presentation.ui.notifications.NotificationsScreen
 import com.habittracker.presentation.ui.settings.AboutScreen
+import com.habittracker.presentation.ui.settings.DeleteAccountScreen
 import com.habittracker.presentation.ui.settings.DonateScreen
 import com.habittracker.presentation.ui.settings.NotificationSettingsScreen
 import com.habittracker.presentation.ui.settings.PrivacyPolicyScreen
@@ -106,6 +107,7 @@ sealed class Screen(val route: String) {
     object NotificationSettings : Screen("notification_settings_screen")
     object HabitSettings : Screen("habit_settings_screen")
     object ResetProgress : Screen("reset_progress_screen")
+    object DeleteAccount : Screen("delete_account_screen")
     object About : Screen("about_screen")
     object PrivacyPolicy : Screen("privacy_policy_screen")
     object Donate : Screen("donate_screen")
@@ -406,6 +408,10 @@ fun AppNavHost(
 
         composable(route = Screen.ResetProgress.route) {
             com.habittracker.presentation.ui.settings.ResetProgressScreen(navController = navController)
+        }
+
+        composable(route = Screen.DeleteAccount.route) {
+            DeleteAccountScreen(navController = navController)
         }
 
         composable(route = Screen.About.route) {

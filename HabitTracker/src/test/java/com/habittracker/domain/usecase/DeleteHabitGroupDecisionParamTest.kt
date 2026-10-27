@@ -131,6 +131,22 @@ class DeleteHabitGroupDecisionParamTest(
                     Kind.UPDATE_GROUP,
                     "u1",
                     listOf("u3")
+                ),
+                arrayOf(
+                    "creator listed in participants leaves -> ConvertToPersonal(new=u2), not to himself",
+                    group(createdBy = "u1", participants = listOf("u1", "u2")),
+                    "u1",
+                    Kind.CONVERT_TO_PERSONAL,
+                    "u2",
+                    null
+                ),
+                arrayOf(
+                    "participant leaves, creator also listed in participants -> ConvertToPersonal(new=u1)",
+                    group(createdBy = "u1", participants = listOf("u1", "u2")),
+                    "u2",
+                    Kind.CONVERT_TO_PERSONAL,
+                    "u1",
+                    null
                 )
             )
         }

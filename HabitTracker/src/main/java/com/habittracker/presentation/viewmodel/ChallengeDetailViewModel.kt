@@ -15,6 +15,7 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
@@ -314,21 +315,17 @@ class ChallengeDetailViewModel @Inject constructor(
             val challenge = _uiState.value.challenge ?: return@launch
             
             // Загружаем друзей, которые ещё не участвуют в челлендже
-            socialRepository.getFriends(currentUserId).collect { friendships ->
-                val friends = friendships.map { friendship ->
-                    if (friendship.user1.id == currentUserId) friendship.user2 else friendship.user1
-                }
-                val availableFriends = friends.filter { friend ->
-                    !challenge.participants.contains(friend.id)
-                }
-                
-                _uiState.value = _uiState.value.copy(
-                    showAddParticipantDialog = true,
-                    availableFriends = availableFriends,
-                    selectedNewParticipants = emptyList()
-                )
-                return@collect
-            }
+            // first(): return@collect не останавливал сбор, и слушатели друзей жили до закрытия экрана
+            val friendships = socialRepository.getFriends(currentUserId).first()
+            val availableFriends = friendships
+                .map { friendship -> if (friendship.user1.id == currentUserId) friendship.user2 else friendship.user1 }
+                .filter { friend -> !challenge.participants.contains(friend.id) }
+
+            _uiState.value = _uiState.value.copy(
+                showAddParticipantDialog = true,
+                availableFriends = availableFriends,
+                selectedNewParticipants = emptyList()
+            )
         }
     }
     

@@ -35,6 +35,12 @@ class FCMTokenManager @Inject constructor(
         private const val PREFS_NAME = "fcm_manager_prefs"
         private const val KEY_FCM_UNAVAILABLE_DETECTED = "fcm_unavailable_detected"
         private const val KEY_FCM_UNAVAILABLE_DIALOG_SHOWN = "fcm_unavailable_dialog_shown"
+        private const val KEY_SAVED_TOKEN = "saved_token"
+        private const val KEY_SAVED_FOR_USER = "saved_token_user"
+        private const val KEY_SAVED_AT = "saved_token_at"
+
+        /** Раз в неделю пишем токен заново, даже если он не менялся: вдруг его убрали из профиля. */
+        private const val TOKEN_RESAVE_INTERVAL_MS = 7 * 24 * 60 * 60 * 1000L
     }
 
     private val prefs: SharedPreferences by lazy {
@@ -142,10 +148,22 @@ class FCMTokenManager @Inject constructor(
                         Timber.tag(TAG).d("[fcm] Updating token for user=$currentUserId")
                     }
 
+                    // Каждая запись профиля рассылается всем, кто его слушает, а старт процесса
+                    // частый (виджет, пуши) — неизменившийся токен заново не пишем
+                    if (!forceRefresh && isTokenSaved(currentUserId, token)) {
+                        if (BuildConfig.DEBUG) {
+                            Timber.tag(TAG).d("[fcm] Token already saved for user=$currentUserId, skip")
+                        }
+                        result = Result.success(token)
+                        break
+                    }
+
                     // Используем NonCancellable, чтобы гарантировать сохранение токена
-                    withContext(NonCancellable) {
+                    val queued = withContext(NonCancellable) {
                         socialRepository.updateUserFcmToken(currentUserId, token)
                     }
+                    // Не попал в очередь — не запоминаем, чтобы следующий старт попробовал снова
+                    if (queued) markTokenSaved(currentUserId, token)
 
                     // Авто-восстановление: если FCM-токен успешно получен и сохранён,
                     // сбрасываем ранее выставленные флаги «FCM недоступен».
@@ -195,6 +213,20 @@ class FCMTokenManager @Inject constructor(
             }
         } finally {
             isRefreshing.set(false)
+        }
+    }
+
+    private fun isTokenSaved(userId: String, token: String): Boolean =
+        prefs.getString(KEY_SAVED_FOR_USER, null) == userId &&
+            prefs.getString(KEY_SAVED_TOKEN, null) == token &&
+            System.currentTimeMillis() - prefs.getLong(KEY_SAVED_AT, 0L) in 0 until TOKEN_RESAVE_INTERVAL_MS
+
+    /** Токен поставлен в очередь синхронизации — дальше его доставку обеспечивает outbox. */
+    fun markTokenSaved(userId: String, token: String) {
+        prefs.edit {
+            putString(KEY_SAVED_FOR_USER, userId)
+            putString(KEY_SAVED_TOKEN, token)
+            putLong(KEY_SAVED_AT, System.currentTimeMillis())
         }
     }
 
