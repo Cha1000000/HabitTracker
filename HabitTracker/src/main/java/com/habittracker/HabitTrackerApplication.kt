@@ -4,6 +4,7 @@ import android.app.Application
 import androidx.hilt.work.HiltWorkerFactory
 import androidx.work.Configuration
 import com.google.firebase.appcheck.FirebaseAppCheck
+import com.habittracker.di.appCheckProviderFactory
 import com.habittracker.data.service.AppStateManager
 import com.habittracker.data.sync.ChallengeExpirationWorkScheduler
 import com.habittracker.data.sync.SyncWorkScheduler
@@ -38,9 +39,6 @@ class HabitTrackerApplication : Application(), Configuration.Provider {
     lateinit var challengeExpirationWorkScheduler: ChallengeExpirationWorkScheduler
 
     @Inject
-    lateinit var firebaseAppCheck: FirebaseAppCheck
-    
-    @Inject
     lateinit var appStateManager: AppStateManager
     
     @Inject
@@ -52,7 +50,18 @@ class HabitTrackerApplication : Application(), Configuration.Provider {
     // Application-level scope for non-blocking init tasks
     private val applicationScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
     
+    /** @return ошибку установки — залогируем её, когда Timber будет готов. */
+    private fun installAppCheck(): Exception? = try {
+        FirebaseAppCheck.getInstance().installAppCheckProviderFactory(appCheckProviderFactory())
+        null
+    } catch (e: Exception) {
+        e
+    }
+
     override fun onCreate() {
+        // До super.onCreate(): там Hilt создаёт синглтоны, и первые же запросы к Firebase должны
+        // уйти уже с токеном App Check
+        val appCheckError = installAppCheck()
         super.onCreate()
         
         // Initialize Timber
@@ -69,10 +78,8 @@ class HabitTrackerApplication : Application(), Configuration.Provider {
             Timber.tag("HabitTrackerApp").d("Application onCreate() called")
         }
         
-        // Touch AppCheck to ensure debug provider is installed (see FirebaseModule)
-        if (BuildConfig.DEBUG) {
-            Timber.tag("HabitTrackerApp").d("FirebaseAppCheck injected: ${::firebaseAppCheck.isInitialized}")
-        }
+        // Без App Check приложение работает как раньше: принудительная проверка в консоли выключена
+        appCheckError?.let { Timber.tag("HabitTrackerApp").e(it, "App Check provider not installed") }
         // Initialize FCM token once on app start (safe: use case checks auth internally)
         applicationScope.launch {
             manageFCMTokenUseCase.initializeFCMToken().onFailure { e ->

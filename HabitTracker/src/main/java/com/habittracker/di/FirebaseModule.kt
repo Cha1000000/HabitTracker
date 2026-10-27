@@ -2,7 +2,6 @@ package com.habittracker.di
 
 import android.content.Context
 import com.google.firebase.FirebaseApp
-import com.google.firebase.appcheck.FirebaseAppCheck
 import com.google.android.libraries.identity.googleid.GetGoogleIdOption
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.messaging.FirebaseMessaging
@@ -70,27 +69,6 @@ object FirebaseModule {
         } else {
             FirebaseStorage.getInstance()
         }
-    }
-
-    @Provides
-    @Singleton
-    fun provideFirebaseAppCheck(@ApplicationContext context: Context): FirebaseAppCheck {
-        val appCheck = FirebaseAppCheck.getInstance()
-        if (BuildConfig.DEBUG) {
-            // В debug-сборках пытаемся подключить Debug App Check провайдер через рефлексию,
-            // чтобы не держать compile-time зависимость в release.
-            try {
-                val factoryClass = Class.forName("com.google.firebase.appcheck.debug.DebugAppCheckProviderFactory")
-                val getInstance = factoryClass.getMethod("getInstance")
-                val factory = getInstance.invoke(null)
-                val providerIface = Class.forName("com.google.firebase.appcheck.AppCheckProviderFactory")
-                val install = appCheck::class.java.getMethod("installAppCheckProviderFactory", providerIface)
-                install.invoke(appCheck, factory)
-            } catch (_: Throwable) {
-                // no-op in case debug artifact is absent
-            }
-        }
-        return appCheck
     }
 
     @Provides
