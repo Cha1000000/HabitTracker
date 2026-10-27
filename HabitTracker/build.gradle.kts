@@ -28,7 +28,7 @@ ksp {
 }
 
 // Единый источник versionName для использования и в defaultConfig, и в имени APK
-val appVersionName = "1.5.11"
+val appVersionName = "1.5.12"
 
 // Release signing via local.properties or environment variables
 val releaseStoreFile = localProperties.getProperty("RELEASE_STORE_FILE") ?: System.getenv("RELEASE_STORE_FILE")
@@ -65,7 +65,7 @@ android {
         applicationId = "com.habittracker"
         minSdk = 26
         targetSdk = 36
-        versionCode = 20
+        versionCode = 21
         versionName = appVersionName
 
         testInstrumentationRunner = "com.habittracker.HiltTestRunner"
