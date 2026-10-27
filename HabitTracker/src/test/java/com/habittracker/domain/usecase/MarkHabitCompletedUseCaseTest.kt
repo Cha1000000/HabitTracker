@@ -317,8 +317,6 @@ class FakeUserRepository : UserRepository {
 
     override fun observeUser(userId: String): Flow<User?> = flowOf(users[userId])
 
-    override suspend fun backfillAvatarThumbnails(): Result<Int> = Result.success(0)
-
     override suspend fun updateLastActive(userId: String) {}
 
     override suspend fun getUserFromFirestore(userId: String): User? = users[userId]

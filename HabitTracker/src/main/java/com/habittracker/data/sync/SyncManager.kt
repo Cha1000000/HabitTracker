@@ -4,19 +4,24 @@ import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.FirebaseFirestore
 import com.habittracker.data.local.dao.SyncOutboxDao
 import com.habittracker.data.local.entity.SyncOutboxEntity
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeoutOrNull
+import kotlinx.datetime.TimeZone
+import kotlinx.datetime.toLocalDateTime
 import org.json.JSONArray
 import org.json.JSONObject
 import java.util.UUID
 import javax.inject.Inject
 import javax.inject.Singleton
 import kotlin.coroutines.resume
+import kotlin.time.Instant
 import kotlin.coroutines.resumeWithException
 import timber.log.Timber
 
@@ -182,6 +187,11 @@ class SyncManager @Inject constructor(
         outboxDao.hasPendingForEntity(entityType, entityId)
     }
 
+    /** id сущностей типа [entityType], по которым есть неотправленные операции. */
+    suspend fun pendingEntityIds(entityType: String): Set<String> = withContext(Dispatchers.IO) {
+        outboxDao.pendingEntityIds(entityType).toSet()
+    }
+
     // Дренаж очереди: вызывать WorkManager'ом периодически и вручную при старте/онбординге
     suspend fun drainPending(maxBatch: Int = 50) = withContext(Dispatchers.IO) {
         drainMutex.withLock { drainLocked(maxBatch) }
@@ -192,10 +202,18 @@ class SyncManager @Inject constructor(
             Timber.tag("SyncManager").d("[drainPending] paused, skip")
             return
         }
+        // Дренажи идут под мьютексом, значит IN_PROGRESS здесь — след убитого процесса
+        val stuck = outboxDao.resetInProgress()
+        if (stuck > 0) Timber.tag("SyncManager").w("[drainPending] $stuck operations were stuck IN_PROGRESS, back to PENDING")
         val batch = outboxDao.getByState("PENDING", maxBatch)
         Timber.tag("SyncManager").d("[drainPending] fetched=${batch.size}")
+        // Операции над одной сущностью уходят строго по порядку: если первая не прошла, следующие
+        // ждут — иначе повтор старого удаления лёг бы поверх новой отметки
+        val blocked = mutableSetOf<Pair<String, String>>()
         for (item in batch) {
             if (paused) break
+            val entity = item.entityType to item.entityId
+            if (entity in blocked) continue
             try {
                 Timber.tag("SyncManager").d(
                     "[drainPending] process id=${item.id} op=${item.opType} type=${item.entityType} entity=${item.entityId} updatedAt=${item.updatedAt}"
@@ -209,6 +227,7 @@ class SyncManager @Inject constructor(
                             val now = System.currentTimeMillis()
                             if (now < notBefore) {
                                 Timber.tag("SyncManager").d("[drainPending] skip DELETE id=${item.id} until notBefore=$notBefore")
+                                blocked += entity
                                 continue
                             }
                         }
@@ -226,8 +245,12 @@ class SyncManager @Inject constructor(
                 }
                 outboxDao.deleteById(item.id)
                 Timber.tag("SyncManager").d("[drainPending] done id=${item.id}")
+            } catch (e: CancellationException) {
+                // Операция могла не дойти: возвращаем в очередь, иначе она зависнет в IN_PROGRESS
+                withContext(NonCancellable) { outboxDao.updateState(item.id, "PENDING") }
+                throw e
             } catch (e: Exception) {
-                val nowTs = System.currentTimeMillis()
+                blocked += entity
                 // Для DELETE учитываем лимит попыток
                 if (item.opType == "DELETE") {
                     var maxRetries = 3
@@ -238,14 +261,14 @@ class SyncManager @Inject constructor(
                         Timber.tag("SyncManager").w("[drainPending] failed to parse maxRetries for id=${item.id}: ${e.message}")
                     }
                     val nextState = if (item.retryCount + 1 >= maxRetries) "FAILED" else "PENDING"
-                    outboxDao.markRetry(item.id, e.message, nextState, nowTs)
+                    outboxDao.markRetry(item.id, e.message, nextState)
                     Timber.tag("SyncManager").w(
                         e,
                         "[drainPending] DELETE failed id=${item.id} retries=${item.retryCount + 1}/$maxRetries -> $nextState: ${e.message}"
                     )
                 } else {
                     // Для UPSERT — оставляем в PENDING, чтобы WorkManager повторял
-                    outboxDao.markRetry(item.id, e.message, "PENDING", nowTs)
+                    outboxDao.markRetry(item.id, e.message, "PENDING")
                     Timber.tag("SyncManager").w(
                         e,
                         "[drainPending] UPSERT failed id=${item.id} -> PENDING retry: ${e.message}"
@@ -258,23 +281,16 @@ class SyncManager @Inject constructor(
     // --- Internal helpers ---
     private suspend fun pushUpsert(item: SyncOutboxEntity) {
         val (collection, docId) = route(item.entityType, item.entityId)
-        val map = jsonToMap(item.payloadJson)
+        val map = jsonToMap(item.payloadJson).toMutableMap()
+        if (item.entityType == "habit_entry") {
+            // Отметку могли удалить и поставить снова: снимаем надгробие, иначе она так и останется удалённой
+            map["deletedAtMillis"] = FieldValue.delete()
+            map["deletedOn"] = FieldValue.delete()
+            map["updatedAtMillis"] = item.updatedAt
+        }
         Timber.tag("SyncManager").d("[pushUpsert] ${item.entityType} -> $collection/$docId payloadKeys=${map.keys}")
         val docRef = firestore.collection(collection).document(docId)
-        // Принудительно обновляем только актуальный флаг активности isActive
-        val flagUpdates = mutableMapOf<String, Any>()
-        map["isActive"]?.let { flagUpdates["isActive"] = it }
-        if (flagUpdates.isNotEmpty()) {
-            try {
-                Timber.tag("SyncManager").d("[pushUpsert] update flags=$flagUpdates")
-                docRef.update(flagUpdates as Map<String, Any>)
-                    .awaitUnit()
-                Timber.tag("SyncManager").d("[pushUpsert] flags updated")
-            } catch (e: Exception) {
-                Timber.tag("SyncManager").w("[pushUpsert] flag update failed, will rely on merge(): ${e.message}")
-            }
-        }
-        // Затем делаем общий merge всех полей
+        // Одна запись: merge и так перезаписывает isActive, а лишний update будил слушателей дважды
         docRef.set(map, com.google.firebase.firestore.SetOptions.merge())
             .awaitUnit()
         Timber.tag("SyncManager").d("[pushUpsert] DONE ${item.entityType} -> $collection/$docId")
@@ -298,10 +314,17 @@ class SyncManager @Inject constructor(
             }
             "habit_entry", "friendship", "habit_invitation" -> {
                 // Soft delete: устанавливаем deletedAtMillis вместо физического удаления
-                val updates = mapOf(
-                    "deletedAtMillis" to item.updatedAt,
-                    "updatedAtMillis" to item.updatedAt
-                )
+                val updates = buildMap {
+                    put("deletedAtMillis", item.updatedAt)
+                    put("updatedAtMillis", item.updatedAt)
+                    if (item.entityType == "habit_entry") {
+                        // День удаления по часам удалившего: с ним сравнивается дата правки отметки
+                        // (см. RemoteDataSync.isTombstone), а часовой пояс читателя может быть другим
+                        val deletedOn = Instant.fromEpochMilliseconds(item.updatedAt)
+                            .toLocalDateTime(TimeZone.currentSystemDefault()).date
+                        put("deletedOn", deletedOn.toString())
+                    }
+                }
                 firestore.collection(collection)
                     .document(docId)
                     .set(updates, com.google.firebase.firestore.SetOptions.merge())

@@ -105,7 +105,6 @@ private class FakeUserRepository : UserRepository {
     override suspend fun updateUserLevel(userId: String, level: Int, points: Int) {}
     override suspend fun upsertUserRemoteAndLocal(user: User, fcmToken: String?) {}
     override fun observeUser(userId: String): Flow<User?> = flowOf(users[userId])
-    override suspend fun backfillAvatarThumbnails(): Result<Int> = Result.success(0)
     override suspend fun updateLastActive(userId: String) {}
     override suspend fun getUserFromFirestore(userId: String): User? = users[userId]
 }

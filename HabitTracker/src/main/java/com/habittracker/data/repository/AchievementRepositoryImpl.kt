@@ -1,5 +1,6 @@
 package com.habittracker.data.repository
 
+import com.google.firebase.firestore.DocumentChange
 import com.google.firebase.firestore.FirebaseFirestore
 import com.habittracker.data.local.dao.AchievementDao
 import com.habittracker.data.local.dao.UserAchievementDao
@@ -37,25 +38,35 @@ class AchievementRepositoryImpl @Inject constructor(
     private val listenersByUserId = mutableMapOf<String, com.google.firebase.firestore.ListenerRegistration>()
 
     private fun kickSync() {
-        try { syncWorkScheduler.scheduleOneTimeSync() } catch (_: Exception) {
+        try { syncWorkScheduler.scheduleOneTimeSync() } catch (e: Exception) {
+            Timber.tag("AchievementRepo").w(e, "schedule sync failed")
         }
         repoScope.launch {
-            try { syncManager.drainPending(maxBatch = 10) } catch (_: Exception) {
+            try { syncManager.drainPending(maxBatch = 10) } catch (e: Exception) {
+                Timber.tag("AchievementRepo").w(e, "drain failed, WorkManager will retry")
             }
         }
     }
 
     private fun startObservingRemoteUserAchievements(userId: String) {
         if (listenersByUserId.containsKey(userId)) return
+        // Вошедший пользователь один: слушатель прежнего после смены аккаунта только ловит отказы правил
+        listenersByUserId.values.forEach { it.remove() }
+        listenersByUserId.clear()
 
         val reg = firestore.collection("user_achievements")
             .whereEqualTo("userId", userId)
             .addSnapshotListener { snapshot, error ->
                 if (error != null) {
                     Timber.tag("AchievementRepo").w("user_achievements listener error: ${error.message}")
+                    // Слушатель после ошибки замолкает: снимаем его, следующий подписчик поднимет заново
+                    listenersByUserId.remove(userId)?.remove()
                     return@addSnapshotListener
                 }
-                val docs = snapshot?.documents ?: emptyList()
+                // Только новые и изменённые документы: первый снимок отдаёт все
+                val docs = snapshot?.documentChanges.orEmpty()
+                    .filter { it.type != DocumentChange.Type.REMOVED }
+                    .map { it.document }
                 if (docs.isEmpty()) return@addSnapshotListener
 
                 repoScope.launch {

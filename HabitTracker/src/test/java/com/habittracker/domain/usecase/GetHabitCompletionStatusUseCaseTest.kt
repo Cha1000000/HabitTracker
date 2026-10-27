@@ -1,8 +1,6 @@
 package com.habittracker.domain.usecase
 
-import com.habittracker.domain.model.Habit
 import com.habittracker.domain.model.HabitEntry
-import com.habittracker.domain.repository.FirestoreRepository
 import com.habittracker.domain.repository.HabitEntryRepository
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.flowOf
@@ -12,6 +10,7 @@ import kotlinx.datetime.LocalDate
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toLocalDateTime
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
@@ -19,7 +18,6 @@ import org.junit.Test
 @ExperimentalCoroutinesApi
 class GetHabitCompletionStatusUseCaseTest {
 
-    private lateinit var firestoreRepository: FakeFirestoreRepository
     private lateinit var habitEntryRepository: FakeHabitEntryRepository
     private lateinit var getHabitCompletionStatusUseCase: GetHabitCompletionStatusUseCase
 
@@ -38,124 +36,37 @@ class GetHabitCompletionStatusUseCaseTest {
         updatedAt = testDate
     )
 
-    private val incompleteEntry = HabitEntry(
-        habitId = testHabitId,
-        userId = testUserId,
-        date = testDate,
-        completed = false,
-        completedAt = null,
-        note = null,
-        createdAt = testDate,
-        updatedAt = testDate
-    )
-
     @Before
     fun setUp() {
-        firestoreRepository = FakeFirestoreRepository()
         habitEntryRepository = FakeHabitEntryRepository()
-        getHabitCompletionStatusUseCase = GetHabitCompletionStatusUseCase(firestoreRepository, habitEntryRepository)
+        getHabitCompletionStatusUseCase = GetHabitCompletionStatusUseCase(habitEntryRepository)
     }
 
     @Test
-    fun `invoke should return true when habit is completed in Firestore`() = runTest {
-        // Arrange
-        habitEntryRepository.entryToReturn = null
-        firestoreRepository.entryToReturn = completedEntry
-
-        // Act
-        val result = getHabitCompletionStatusUseCase(testHabitId, testUserId, testDate)
-
-        // Assert
-        assertTrue(result)
-        assertTrue(firestoreRepository.getHabitEntryCalled)
-        assertTrue(habitEntryRepository.getEntryCalled)
-    }
-
-    @Test
-    fun `invoke should return false when habit is not completed in Firestore`() = runTest {
-        // Arrange
-        habitEntryRepository.entryToReturn = null
-        firestoreRepository.entryToReturn = incompleteEntry
-
-        // Act
-        val result = getHabitCompletionStatusUseCase(testHabitId, testUserId, testDate)
-
-        // Assert
-        assertFalse(result)
-        assertTrue(firestoreRepository.getHabitEntryCalled)
-        assertTrue(habitEntryRepository.getEntryCalled)
-    }
-
-    @Test
-    fun `invoke should fallback to local repository when Firestore fails`() = runTest {
-        // Arrange
-        firestoreRepository.shouldThrowException = true
+    fun `invoke returns true for completed local entry`() = runTest {
         habitEntryRepository.entryToReturn = completedEntry
 
-        // Act
-        val result = getHabitCompletionStatusUseCase(testHabitId, testUserId, testDate)
-
-        // Assert
-        assertTrue(result)
-        // Локальные данные приоритетны, поэтому при наличии локальной записи Firestore не вызывается
-        assertFalse(firestoreRepository.getHabitEntryCalled)
+        assertTrue(getHabitCompletionStatusUseCase(testHabitId, testUserId, testDate))
         assertTrue(habitEntryRepository.getEntryCalled)
     }
 
     @Test
-    fun `invoke should return false when both Firestore and local fail`() = runTest {
-        // Arrange
-        firestoreRepository.shouldThrowException = true
-        habitEntryRepository.entryToReturn = null
+    fun `invoke returns false for incomplete local entry`() = runTest {
+        habitEntryRepository.entryToReturn = completedEntry.copy(completed = false, completedAt = null)
 
-        // Act
-        val result = getHabitCompletionStatusUseCase(testHabitId, testUserId, testDate)
-
-        // Assert
-        assertFalse(result)
-        assertTrue(firestoreRepository.getHabitEntryCalled)
-        assertTrue(habitEntryRepository.getEntryCalled)
+        assertFalse(getHabitCompletionStatusUseCase(testHabitId, testUserId, testDate))
     }
 
     @Test
-    fun `invoke should return false when no entry exists in both repositories`() = runTest {
-        // Arrange - оба репозитория возвращают null
-        firestoreRepository.entryToReturn = null
+    fun `missing local entry means not completed without going to network`() = runTest {
+        // Use case зависит только от Room-репозитория: сетевого фоллбэка больше нет
         habitEntryRepository.entryToReturn = null
 
-        // Act
-        val result = getHabitCompletionStatusUseCase(testHabitId, testUserId, testDate)
-
-        // Assert
-        assertFalse(result)
-        assertTrue(firestoreRepository.getHabitEntryCalled)
-        // Теперь локальный репозиторий вызывается первым, независимо от результата Firestore
-        assertTrue(habitEntryRepository.getEntryCalled)
+        assertFalse(getHabitCompletionStatusUseCase(testHabitId, testUserId, testDate))
+        assertNull(getHabitCompletionStatusUseCase.getEntry(testHabitId, testUserId, testDate))
     }
 
     // Fake implementations for testing
-    private class FakeFirestoreRepository : FirestoreRepository {
-        var getHabitEntryCalled = false
-        var entryToReturn: HabitEntry? = null
-        var shouldThrowException = false
-
-        override suspend fun getHabitEntry(habitId: String, userId: String, date: LocalDate): HabitEntry? {
-            getHabitEntryCalled = true
-            if (shouldThrowException) {
-                throw RuntimeException("Firestore error")
-            }
-            return entryToReturn
-        }
-
-        override fun getUserHabits(userId: String) = throw NotImplementedError()
-        override suspend fun getHabitById(habitId: String) = throw NotImplementedError()
-        override fun getHabitEntries(habitId: String, userId: String) = throw NotImplementedError()
-        override suspend fun syncData() = throw NotImplementedError()
-        override suspend fun getParticipantSettings(habitId: String, userId: String) = null
-        override fun getAllPublicHabits(excludeUserId: String?) = flowOf(emptyList<Habit>())
-        override suspend fun getHabitByInviteCode(inviteCode: String) = throw NotImplementedError()
-    }
-
     private class FakeHabitEntryRepository : HabitEntryRepository {
         var getEntryCalled = false
         var entryToReturn: HabitEntry? = null

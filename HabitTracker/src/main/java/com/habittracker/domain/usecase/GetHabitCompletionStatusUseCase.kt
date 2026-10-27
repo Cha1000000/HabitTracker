@@ -1,6 +1,6 @@
 package com.habittracker.domain.usecase
 
-import com.habittracker.domain.repository.FirestoreRepository
+import com.habittracker.domain.model.HabitEntry
 import com.habittracker.domain.repository.HabitEntryRepository
 import kotlin.time.Clock
 import kotlinx.datetime.LocalDate
@@ -10,10 +10,9 @@ import javax.inject.Inject
 
 /**
  * Use case для получения статуса выполнения привычки за определенную дату.
- * Приоритетно использует Firestore с локальным фоллбэком.
+ * Читает только Room: отметки с других устройств туда кладёт RemoteDataSync.
  */
 class GetHabitCompletionStatusUseCase @Inject constructor(
-    private val firestoreRepository: FirestoreRepository,
     private val habitEntryRepository: HabitEntryRepository
 ) {
     /**
@@ -31,27 +30,7 @@ class GetHabitCompletionStatusUseCase @Inject constructor(
         return getEntry(habitId, userId, date)?.completed ?: false
     }
 
-    /**
-     * Получает полную запись привычки (или null, если записи нет)
-     * Приоритет отдаётся локальным данным, так как они всегда актуальны после сохранения,
-     * а синхронизация с Firestore происходит асинхронно.
-     */
-    suspend fun getEntry(
-        habitId: String,
-        userId: String,
-        date: LocalDate
-    ): com.habittracker.domain.model.HabitEntry? {
-        // Приоритет локальным данным - они всегда актуальны после локального сохранения
-        val localEntry = habitEntryRepository.getEntry(habitId, userId, date)
-        if (localEntry != null) {
-            return localEntry
-        }
-        
-        // Если локально нет данных, пробуем получить из Firestore
-        return try {
-            firestoreRepository.getHabitEntry(habitId, userId, date)
-        } catch (e: Exception) {
-            null
-        }
-    }
+    /** Полная запись привычки за дату или null, если отметки нет. */
+    suspend fun getEntry(habitId: String, userId: String, date: LocalDate): HabitEntry? =
+        habitEntryRepository.getEntry(habitId, userId, date)
 }

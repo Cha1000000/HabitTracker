@@ -12,14 +12,18 @@ interface SyncOutboxDao {
     @Insert(onConflict = OnConflictStrategy.ABORT)
     suspend fun insert(item: SyncOutboxEntity): Long
 
-    @Query("SELECT * FROM sync_outbox WHERE state = :state ORDER BY updatedAt ASC LIMIT :limit")
+    @Query("SELECT * FROM sync_outbox WHERE state = :state ORDER BY id ASC LIMIT :limit")
     suspend fun getByState(state: String = "PENDING", limit: Int = 50): List<SyncOutboxEntity>
 
     @Query("UPDATE sync_outbox SET state = :state WHERE id = :id")
     suspend fun updateState(id: Long, state: String)
 
-    @Query("UPDATE sync_outbox SET retryCount = retryCount + 1, lastError = :error, state = :state, updatedAt = :updatedAt WHERE id = :id")
-    suspend fun markRetry(id: Long, error: String?, state: String, updatedAt: Long)
+    // updatedAt не трогаем: он уходит в облако как время правки (updatedAtMillis, deletedAtMillis)
+    @Query("UPDATE sync_outbox SET retryCount = retryCount + 1, lastError = :error, state = :state WHERE id = :id")
+    suspend fun markRetry(id: Long, error: String?, state: String)
+
+    @Query("UPDATE sync_outbox SET state = 'PENDING' WHERE state = 'IN_PROGRESS'")
+    suspend fun resetInProgress(): Int
 
     @Query("DELETE FROM sync_outbox WHERE id = :id")
     suspend fun deleteById(id: Long)
@@ -32,4 +36,7 @@ interface SyncOutboxDao {
 
     @Query("SELECT COUNT(*) > 0 FROM sync_outbox WHERE entityType = :entityType AND entityId = :entityId AND state IN ('PENDING', 'IN_PROGRESS')")
     suspend fun hasPendingForEntity(entityType: String, entityId: String): Boolean
+
+    @Query("SELECT DISTINCT entityId FROM sync_outbox WHERE entityType = :entityType AND state IN ('PENDING', 'IN_PROGRESS')")
+    suspend fun pendingEntityIds(entityType: String): List<String>
 }

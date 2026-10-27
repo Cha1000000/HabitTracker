@@ -13,6 +13,7 @@ import com.google.firebase.storage.FirebaseStorage
 import com.google.firebase.storage.StorageException
 import com.google.firebase.storage.StorageReference
 import com.habittracker.data.local.HabitTrackerDatabase
+import com.habittracker.data.sync.RemoteDataSync
 import com.habittracker.data.sync.SyncManager
 import com.habittracker.data.local.seed.AchievementSeeder
 import com.habittracker.domain.repository.AccountRepository
@@ -47,6 +48,7 @@ class AccountRepositoryImpl @Inject constructor(
     private val firebaseAuth: FirebaseAuth,
     private val firebaseMessaging: FirebaseMessaging,
     private val database: HabitTrackerDatabase,
+    private val remoteDataSync: RemoteDataSync,
     private val syncManager: SyncManager,
     private val achievementSeeder: AchievementSeeder,
     private val reminderRepository: ReminderRepository,
@@ -229,7 +231,8 @@ class AccountRepositoryImpl @Inject constructor(
             dailyReminderScheduler.cancel()
         }
         wipeStep("database") {
-            database.clearAllTables()
+            // Синк к этому моменту ещё может дописывать снимок: ждём его и не пускаем новые записи
+            remoteDataSync.withWritesBlocked { database.clearAllTables() }
             // Справочник достижений общий для всех — сразу засеваем заново
             achievementSeeder.forceReseed()
         }
@@ -271,6 +274,11 @@ class AccountRepositoryImpl @Inject constructor(
         const val GROUP_HABIT_NOTIFICATIONS = "group_habit_notifications"
         const val USER_ACHIEVEMENTS = "user_achievements"
 
-        val USER_PREFS = listOf("fcm_manager_prefs", "notification_settings", "today_habits_widget_prefs")
+        val USER_PREFS = listOf(
+            "fcm_manager_prefs",
+            "notification_settings",
+            "today_habits_widget_prefs",
+            RemoteDataSync.PREFS_NAME
+        )
     }
 }

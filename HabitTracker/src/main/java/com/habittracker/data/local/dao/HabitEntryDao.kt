@@ -79,6 +79,16 @@ interface HabitEntryDao {
     
     @Query("DELETE FROM habit_entries WHERE userId = :userId")
     suspend fun deleteAllEntriesForUser(userId: String)
+
+    @Query("DELETE FROM habit_entries WHERE habitId = :habitId AND userId = :userId AND date = :date")
+    suspend fun deleteEntry(habitId: String, userId: String, date: LocalDate)
+
+    /** Пачка отметок из облака одной транзакцией: экраны получают её целиком, а не по строке. */
+    @Transaction
+    suspend fun applyRemote(upserts: List<HabitEntryEntity>, deletes: List<HabitEntryEntity>) {
+        if (upserts.isNotEmpty()) insertEntries(upserts)
+        deletes.forEach { deleteEntry(it.habitId, it.userId, it.date) }
+    }
     
     @Query("SELECT COUNT(*) FROM habit_entries WHERE habitId = :habitId AND userId = :userId AND completed = 1 AND date BETWEEN :startDate AND :endDate AND deletedAtMillis IS NULL")
     suspend fun getCompletedEntriesCountForUserInRange(

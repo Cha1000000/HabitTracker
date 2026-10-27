@@ -7,14 +7,14 @@ import javax.inject.Inject
 
 /**
  * Use case для получения списка всех привычек пользователя.
- * Возвращает локальный Flow из Room, а синхронизацию с Firestore выполняет HabitRepository.
+ * Возвращает локальный Flow из Room, сеть не трогает.
  */
 class GetHabitsUseCase @Inject constructor(
     private val habitRepository: HabitRepository
 ) {
     /**
      * Возвращает Flow со списком привычек для указанного пользователя.
-     * Источник истины для UI — Room. Обновление Room из Firestore происходит внутри HabitRepositoryImpl.
+     * Источник истины — Room; из Firestore его наполняет RemoteDataSync.
      * @param userId ID пользователя.
      */
     operator fun invoke(userId: String): Flow<List<Habit>> {

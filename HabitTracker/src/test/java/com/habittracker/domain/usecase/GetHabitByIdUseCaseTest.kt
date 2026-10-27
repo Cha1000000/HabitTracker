@@ -130,8 +130,6 @@ class GetHabitByIdUseCaseTest {
         }
 
         override fun getUserHabits(userId: String) = throw NotImplementedError()
-        override suspend fun getHabitEntry(habitId: String, userId: String, date: LocalDate) = throw NotImplementedError()
-        override fun getHabitEntries(habitId: String, userId: String) = throw NotImplementedError()
         override suspend fun getHabitByInviteCode(inviteCode: String) = throw NotImplementedError()
         override suspend fun syncData() = throw NotImplementedError()
         override suspend fun getParticipantSettings(habitId: String, userId: String) = null

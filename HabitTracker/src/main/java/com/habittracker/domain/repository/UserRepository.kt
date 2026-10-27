@@ -38,12 +38,6 @@ interface UserRepository {
     suspend fun getUserFromFirestore(userId: String): User?
 
     /**
-     * Optional maintenance: проставляет avatarThumbnailUrl = avatarUrl для существующих пользователей,
-     * у кого миниатюра отсутствует. Возвращает количество обновленных документов.
-     */
-    suspend fun backfillAvatarThumbnails(): Result<Int>
-
-    /**
      * Обновляет время последней активности пользователя (для онлайн-статуса)
      */
     suspend fun updateLastActive(userId: String)

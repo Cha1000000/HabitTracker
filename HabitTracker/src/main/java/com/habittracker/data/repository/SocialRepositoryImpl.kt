@@ -1,5 +1,7 @@
 package com.habittracker.data.repository
 
+import com.google.firebase.firestore.DocumentChange
+import com.google.firebase.firestore.FieldPath
 import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.FirebaseFirestoreException
@@ -18,6 +20,7 @@ import com.habittracker.data.remote.model.FriendRequestRemote
 import com.habittracker.data.service.FCMApiClient
 import com.habittracker.data.service.UnregisteredTokenException
 import com.habittracker.data.sync.SyncManager
+import com.habittracker.data.sync.keepRestarting
 import com.habittracker.data.sync.SyncWorkScheduler
 import com.habittracker.domain.model.FriendRequest
 import com.habittracker.domain.model.FriendRequestStatus
@@ -40,18 +43,24 @@ import com.habittracker.domain.util.UserSearchKeys
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.cancel
+import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.buffer
 import kotlinx.coroutines.flow.callbackFlow
+import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.tasks.await
 import kotlinx.coroutines.withContext
 import kotlin.time.Clock
@@ -69,6 +78,7 @@ import javax.inject.Singleton
  * Реализация SocialRepository для работы с социальными функциями
  * Управляет друзьями, запросами дружбы, приглашениями в привычки и уведомлениями
  */
+@OptIn(ExperimentalCoroutinesApi::class)
 @Singleton
 class SocialRepositoryImpl @Inject constructor(
     private val userDao: UserDao,
@@ -242,11 +252,12 @@ class SocialRepositoryImpl @Inject constructor(
 
         return try {
             val doc = firestore.collection("users").document(userId).get().await()
-            if (doc.exists()) {
-                UserFirestoreConverter.fromFirestore(doc.data ?: emptyMap(), doc.id)
-            } else {
-                null
-            }
+            val remote = doc.data?.let { UserFirestoreConverter.fromFirestore(it, doc.id) }
+            // Кладём в Room, чтобы следующий вызов не ходил в сеть
+            remote?.let { cacheUser(it) }
+            remote
+        } catch (e: CancellationException) {
+            throw e
         } catch (e: Exception) {
             Timber.tag("SocialRepository").w(e, "getUserById Firestore failed for userId=$userId: ${e.message}")
             null
@@ -1149,37 +1160,99 @@ class SocialRepositoryImpl @Inject constructor(
                     }
                 }
 
-            val job = scope.launch {
-                friendshipDao.getFriendsForUser(userId).collect { friendshipEntities ->
-                    val list = friendshipEntities.mapNotNull { friendshipEntity ->
-                        val friendship = friendshipEntity.toDomain()
-                        try {
-                            // Используем Firestore для получения актуальных данных (включая lastActiveAt)
-                            val friendId = if (friendship.userId1 == userId) friendship.userId2 else friendship.userId1
-                            val currentUser = runBlocking { getUserById(userId) }
-                            val friendUser = runBlocking { getUserByIdFromFirestore(friendId) }
-                            if (currentUser != null && friendUser != null) {
-                                // Сохраняем порядок user1/user2 как в friendship
-                                if (friendship.userId1 == userId) {
-                                    FriendshipWithUsers(friendship, currentUser, friendUser)
-                                } else {
-                                    FriendshipWithUsers(friendship, friendUser, currentUser)
-                                }
-                            } else null
-                        } catch (_: Exception) {
-                            null
+            // Профили друзей держим свежими одним слушателем на пачку id, а не чтением каждого профиля
+            // при любом изменении дружбы
+            val profilesJob = scope.launch {
+                keepRestarting("SocialRepository", "friend ids") {
+                    friendshipDao.getFriendsForUser(userId)
+                        .map { entities ->
+                            entities.map { it.toDomain() }
+                                .filter { it.status == FriendshipStatus.ACCEPTED }
+                                .map { if (it.userId1 == userId) it.userId2 else it.userId1 }
+                                .toSortedSet()
                         }
-                    }.filter { it.friendship.status == FriendshipStatus.ACCEPTED }
-                    trySend(list)
+                        .distinctUntilChanged()
+                        .collectLatest { friendIds -> observeUserProfiles(friendIds.toList()) }
+                }
+            }
+
+            val job = scope.launch {
+                // Профиля нет в Room (новое устройство, слушатель профилей ещё не успел) — один раз
+                // берём его из сети, иначе дружба выпала бы из списка
+                val requested = mutableSetOf<String>()
+                keepRestarting("SocialRepository", "friends list") {
+                    friendshipDao.getFriendsForUser(userId)
+                        .flatMapLatest { entities ->
+                            val friendships = entities.map { it.toDomain() }
+                                .filter { it.status == FriendshipStatus.ACCEPTED }
+                            val ids = (friendships.flatMap { listOf(it.userId1, it.userId2) } + userId).distinct()
+                            userDao.getUsersByIdsFlow(ids).map { users ->
+                                val local = users.associate { it.id to it.toDomain() }
+                                val fetched = ids.filter { it !in local && requested.add(it) }
+                                    .mapNotNull { getUserById(it) }
+                                val byId = local + fetched.associateBy { it.id }
+                                friendships.mapNotNull { friendship ->
+                                    val user1 = byId[friendship.userId1]
+                                    val user2 = byId[friendship.userId2]
+                                    if (user1 == null || user2 == null) {
+                                        Timber.tag("SocialRepository").w("friendship ${friendship.userId1}-${friendship.userId2} skipped: no profile yet")
+                                        return@mapNotNull null
+                                    }
+                                    FriendshipWithUsers(friendship, user1, user2)
+                                }
+                            }
+                        }
+                        .collect { trySend(it) }
                 }
             }
 
             awaitClose {
                 reg1.remove()
                 reg2.remove()
+                profilesJob.cancel()
                 job.cancel()
                 scope.cancel()
             }
+        }
+    }
+
+    /** Кладёт профиль в Room; сбой записи только логируем — профиль из сети у вызывающего уже есть. */
+    private suspend fun cacheUser(user: User) {
+        try {
+            upsertLocalUser(user.toEntity())
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            Timber.tag("SocialRepository").w(e, "cache user ${user.id} failed")
+        }
+    }
+
+    /** Слушает профили пользователей пачками по 30 id и обновляет их в Room, пока корутину не отменят. */
+    private suspend fun observeUserProfiles(userIds: List<String>) = coroutineScope {
+        userIds.chunked(30).forEach { chunk ->
+            launch {
+                keepRestarting("SocialRepository", "friend profiles") { observeProfilesChunk(chunk) }
+            }
+        }
+    }
+
+    private suspend fun observeProfilesChunk(chunk: List<String>) {
+        callbackFlow {
+            val registration = firestore.collection("users")
+                .whereIn(FieldPath.documentId(), chunk)
+                .addSnapshotListener { snapshot, error ->
+                    if (error != null) {
+                        close(error)
+                        return@addSnapshotListener
+                    }
+                    val changed = snapshot?.documentChanges.orEmpty()
+                        .filter { it.type != DocumentChange.Type.REMOVED }
+                        .mapNotNull { UserFirestoreConverter.fromFirestore(it.document.data, it.document.id) }
+                    if (changed.isNotEmpty()) trySend(changed)
+                }
+            awaitClose { registration.remove() }
+        }.buffer(Channel.UNLIMITED).collect { users ->
+            users.forEach { cacheUser(it) }
         }
     }
 

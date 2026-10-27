@@ -238,55 +238,6 @@ class UserRepositoryImpl @Inject constructor(
         }
     }
 
-    override suspend fun backfillAvatarThumbnails(): Result<Int> {
-        return try {
-            val snapshot = firestore.collection("users").get().await()
-            var updated = 0
-            val now = System.currentTimeMillis()
-            for (doc in snapshot.documents) {
-                val data = doc.data ?: continue
-                val id = doc.id
-                val avatarUrl = data["avatarUrl"] as? String
-                val avatarThumb = data["avatarThumbnailUrl"] as? String
-                
-                if (!avatarUrl.isNullOrBlank() && avatarThumb.isNullOrBlank()) {
-                    try {
-                        // Convert to domain object to ensure consistent updates
-                        val user = UserFirestoreConverter.fromFirestore(data, id)
-                        if (user != null) {
-                            val updatedUser = user.copy(
-                                avatarThumbnailUrl = avatarUrl
-                                // we don't change other fields, but we must update 'updatedAt' for sync logic? 
-                                // Actually, User model doesn't store 'updatedAt' explicitly in domain usually? 
-                                // Repo handles it. But we need to update the local entity.
-                            )
-                            
-                            // Local update
-                            userDao.insertUser(updatedUser.userToEntity())
-                            
-                            // Enqueue Sync (Outbox)
-                            val json = SyncPayloads.userToJson(updatedUser, now)
-                            syncManager.enqueueUpsert(
-                                entityType = "user",
-                                entityId = id,
-                                payloadJson = json,
-                                updatedAt = now
-                            )
-                            updated++
-                        }
-                    } catch (e: Exception) {
-                        Timber.tag("UserRepository").d("backfillAvatarThumbnails: skipping doc=${id}, reason=${e.message}")
-                    }
-                }
-            }
-
-            if (updated > 0) kickSync()
-            Result.success(updated)
-        } catch (e: Exception) {
-            Result.failure(e)
-        }
-    }
-
     override suspend fun updateLastActive(userId: String) {
         val now = System.currentTimeMillis()
         try {

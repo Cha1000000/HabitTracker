@@ -9,9 +9,11 @@ import com.habittracker.domain.repository.FirestoreRepository
 import com.habittracker.data.sync.SyncManager
 import com.habittracker.domain.repository.ParticipantSettingsRepository
 import com.habittracker.domain.util.SyncPayloads
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 import kotlin.time.Clock
+import java.util.concurrent.ConcurrentHashMap
 import javax.inject.Inject
 import javax.inject.Singleton
 import timber.log.Timber
@@ -23,48 +25,26 @@ class ParticipantSettingsRepositoryImpl @Inject constructor(
     private val syncManager: SyncManager
 ) : ParticipantSettingsRepository {
 
-    override suspend fun get(habitId: String, userId: String): HabitParticipantSettings? {
-        val local = dao.get(habitId, userId)?.toDomain()
+    /** Привычки, у которых в облаке нет настроек; появившиеся позже принесёт RemoteDataSync. */
+    private val missingRemote: MutableSet<String> = ConcurrentHashMap.newKeySet()
 
-        val entityId = "$habitId:$userId"
-        val hasPending = try {
-            syncManager.hasPendingOperations("habit_participant_settings", entityId)
+    override suspend fun get(habitId: String, userId: String): HabitParticipantSettings? {
+        // Правки с других устройств приносит в Room RemoteDataSync; в сеть идём, только если записи ещё нет
+        dao.get(habitId, userId)?.let { return it.toDomain() }
+        // Чтение отсутствующего документа тоже платное, а экран спрашивает при каждой смене даты
+        val key = "$habitId:$userId"
+        if (key in missingRemote) return null
+        val remote = try {
+            firestoreRepository.getParticipantSettings(habitId, userId)
+                .also { if (it == null) missingRemote += key }
+        } catch (e: CancellationException) {
+            throw e
         } catch (e: Exception) {
-            Timber.tag("ParticipantSettingsRepo").d("get() hasPendingOperations failed for $entityId: ${e.message}")
-            false
-        }
-        if (hasPending) {
-            return local
-        }
-        // Всегда пытаемся получить удалённые настройки
-        val remote = try { firestoreRepository.getParticipantSettings(habitId, userId) } catch (e: Exception) {
             Timber.tag("ParticipantSettingsRepo").d("get() remote fetch failed for habit=$habitId user=$userId: ${e.message}")
             null
-        }
-        return when {
-            local == null && remote == null -> null
-            local == null && remote != null -> {
-                dao.upsert(remote.toEntity()); remote
-            }
-            local != null && remote == null -> local
-            else -> {
-                // При конфликте из-за рассинхрона часов предпочитаем remote, если содержимое отличается
-                val l = local!!
-                val r = remote!!
-                val contentDiffers = (l.reminderEnabled != r.reminderEnabled) ||
-                        (l.reminderTime != r.reminderTime) ||
-                        (l.reminderDays != r.reminderDays) ||
-                        (l.notificationsMuted != r.notificationsMuted) ||
-                        (l.seasonStartDate != r.seasonStartDate) ||
-                        (l.timeZone != r.timeZone)
-                val chooseRemote = contentDiffers || (r.updatedAt > l.updatedAt)
-                val chosen = if (chooseRemote) r else l
-                if (chooseRemote) {
-                    dao.upsert(r.toEntity())
-                }
-                chosen
-            }
-        }
+        } ?: return null
+        dao.upsert(remote.toEntity())
+        return remote
     }
 
     override fun observe(habitId: String, userId: String): Flow<HabitParticipantSettings?> {

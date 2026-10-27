@@ -107,7 +107,6 @@ class GetUserStatsUseCaseTest {
                 override suspend fun updateUserLevel(userId: String, level: Int, points: Int) {}
                 override suspend fun upsertUserRemoteAndLocal(user: User, fcmToken: String?) {}
                 override fun observeUser(userId: String): Flow<User?> = flowOf(null)
-                override suspend fun backfillAvatarThumbnails(): Result<Int> = Result.success(0)
                 override suspend fun updateLastActive(userId: String) {}
                 override suspend fun getUserFromFirestore(userId: String): User? = null
             },
